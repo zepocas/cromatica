@@ -72,3 +72,11 @@ Decisions made during the architecture review. Reopen one only if new informatio
 
 ## D15. Working name "gradient-wallpaper"
 - A placeholder until a better name is found.
+
+## D16. Export tile size 2048 px
+- **Why:** a 5K image renders in 6 tiles, which keeps each draw call short.
+- **Consequence:** the worker lowers the tile size when the device's `MAX_VIEWPORT_DIMS` or `MAX_RENDERBUFFER_SIZE` is smaller.
+
+## D17. PNG rows use a fixed Up filter
+- **Why:** in a 5K benchmark, Up tied for the smallest file on clean gradients and came within 2% on dithered ones. It is much cheaper than Paeth or the min-sum heuristic.
+- **Consequence:** the deflate step dominates encoding time. Expect about 1.5–2 s and 7–8 MB for a 5K export once dither or grain is added in M1/M5.

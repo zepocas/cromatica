@@ -12,7 +12,7 @@ Each milestone uses the same structure:
 
 ## Phase 1 — Single-monitor generator
 
-### M0 — Export pipeline spike
+### M0 — Export pipeline spike ✅
 - **Goal:** prove the riskiest part first. A render must look the same in preview and export, tile without seams, and export at 5K+ without freezing the UI.
 - **Scope:**
   - Vite + TypeScript + Svelte 5 project setup
@@ -26,10 +26,15 @@ Each milestone uses the same structure:
   - A tiled render is pixel-identical to a single-pass render
   - The preview matches the export at 1:1
   - The PNG opens correctly in macOS Preview, Chrome and Photoshop/GIMP
-- **Open questions:**
-  - Tile size: 1024 or 2048?
-  - Does JPEG need tiling at all at 6K on desktop browsers?
+- **Outcome:** all criteria met (SwiftShader timings, so real GPUs will be faster).
+  - 5K PNG export: about 0.45 s; the output is identical to a single-pass render.
+  - Longest UI frame gap during the export: 16.7 ms, with no long tasks.
+  - macOS reads the 5K PNG as 5120×2880, 8-bit RGB, sRGB.
+- **Resolved:** tile size is 2048 (D16); the PNG filter is Up (D17).
+- **Still open:**
   - How much memory does a 6K export use at its peak?
+  - JPEG currently assembles the whole image on one 2D canvas. Check this at 6K+ in Safari.
+  - Not yet checked in Photoshop/GIMP.
 
 ### M1 — Color system
 - **Goal:** blend colors perceptually, with no gray midpoints and no banding.
