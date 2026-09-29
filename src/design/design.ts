@@ -1,13 +1,29 @@
-// M0 design model: a single linear gradient. Replaced by the full versioned
-// schema (Oklch stops, pipeline stages) in M1/M6.
+// M1 design model: a single linear gradient with perceptual (Oklch) stops.
+// Replaced by the full versioned schema (pipeline stages) in M6.
 
-/** sRGB-encoded color, each channel in [0, 1]. M1 switches stops to Oklch. */
-export type Rgb = [r: number, g: number, b: number];
+/**
+ * Oklch color. L in [0, 1], C >= 0 (roughly [0, 0.4]), h in degrees [0, 360).
+ * Stored as floats, never hex (D5). May lie outside sRGB; gamut mapping
+ * happens when the ramp is baked.
+ */
+export type Oklch = [l: number, c: number, h: number];
+
+/**
+ * How the segment from a stop to the NEXT stop is interpolated (D5).
+ * - 'oklab': straight line in Oklab (default).
+ * - 'oklab-chroma': chroma-preserving Oklab — lerp L and C, rotate hue along
+ *   the shorter arc, with hue progress weighted by chroma so it equals plain
+ *   'oklab' when an end is gray and stays continuous as chroma approaches 0.
+ * - 'oklch-short' / 'oklch-long': hue path around the shorter / longer arc.
+ */
+export type BlendMode = 'oklab' | 'oklab-chroma' | 'oklch-short' | 'oklch-long';
 
 export interface ColorStop {
   /** Position along the gradient, in [0, 1]. */
   position: number;
-  color: Rgb;
+  color: Oklch;
+  /** Blend mode of the segment to the next stop. Ignored on the last stop. */
+  blend: BlendMode;
 }
 
 export interface LinearGradient {
@@ -19,21 +35,21 @@ export interface LinearGradient {
 }
 
 export interface Design {
-  engineVersion: 0;
+  engineVersion: 1;
   base: LinearGradient;
 }
 
 export const MAX_STOPS = 8;
 
 export const defaultDesign: Design = {
-  engineVersion: 0,
+  engineVersion: 1,
   base: {
     kind: 'linear',
     angle: 30,
     stops: [
-      { position: 0, color: [0.09, 0.05, 0.3] },
-      { position: 0.5, color: [0.85, 0.2, 0.55] },
-      { position: 1, color: [1.0, 0.75, 0.35] },
+      { position: 0, color: [0.2264, 0.1093, 280.42], blend: 'oklab' },
+      { position: 0.5, color: [0.6031, 0.2141, 352.9], blend: 'oklab' },
+      { position: 1, color: [0.8452, 0.1383, 76.58], blend: 'oklab' },
     ],
   },
 };

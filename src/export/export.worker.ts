@@ -59,7 +59,8 @@ async function runExport(req: ExportRequest): Promise<Blob> {
       for (const tile of band) {
         if (canvas.width !== tile.width) canvas.width = tile.width;
         if (canvas.height !== tile.height) canvas.height = tile.height;
-        renderer.render(design, output, tile);
+        // Dither is always on for exports (D7); it is indexed by output pixel, so tiles still match.
+        renderer.render(design, output, tile, { dither: true });
         // Synchronous readback doubles as the per-tile GPU sync.
         const pixels = renderer.readPixels(tile.width, tile.height);
         const tileRowBytes = tile.width * 4;

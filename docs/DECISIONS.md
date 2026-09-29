@@ -80,3 +80,14 @@ Decisions made during the architecture review. Reopen one only if new informatio
 ## D17. PNG rows use a fixed Up filter
 - **Why:** in a 5K benchmark, Up tied for the smallest file on clean gradients and came within 2% on dithered ones. It is much cheaper than Paeth or the min-sum heuristic.
 - **Consequence:** the deflate step dominates encoding time. Expect about 1.5–2 s and 7–8 MB for a 5K export once dither or grain is added in M1/M5.
+
+## D18. Dither fades out at pure black and white
+- **Why:** exact 0 and 255 channels stay exact, with no ±1 specks after clamping.
+- **Consequence:** the dither amplitude scales down within 1 LSB of either end, which adds a bias of less than 1 LSB there only.
+
+## D19. Blue-noise texture is 64×64 and generated in the repo
+- **Why:** 4096 ranks are far more than 8-bit output needs, and a 64 px repeat isn't visible at ±1 LSB.
+- **How:**
+  - `scripts/generate-blue-noise.ts` produces it with a seeded void-and-cluster algorithm, and `src/engine/blue-noise.generated.ts` is the committed output.
+  - The noise is uploaded as an R16UI texture and indexed by output pixel, so it doesn't depend on tiling.
+  - Each channel uses a different offset into the texture, so the three channels are decorrelated.

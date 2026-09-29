@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { MAX_STOPS, type Design, type Rgb } from '../design/design';
+  import type { Design } from '../design/design';
   import type { ExportFormat, ExportProgress } from '../export/types';
-  import { hexToRgb, rgbToHex } from './color';
   import { CUSTOM_PRESET_ID, DEVICE_PRESETS } from './presets';
+  import StopEditor from './StopEditor.svelte';
 
   interface Props {
     design: Design;
@@ -30,32 +30,9 @@
     oncancel,
   }: Props = $props();
 
-  const stops = $derived(design.base.stops);
   const percent = $derived(
     progress && progress.tilesTotal > 0 ? (progress.tilesDone / progress.tilesTotal) * 100 : 0,
   );
-
-  function lerpRgb(a: Rgb, b: Rgb, t: number): Rgb {
-    return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-  }
-
-  // Insert a new stop in the middle of the widest gap, colored to match.
-  function addStop() {
-    if (stops.length >= MAX_STOPS) return;
-    const sorted = [...stops].sort((a, b) => a.position - b.position);
-    let best = 0;
-    for (let i = 1; i < sorted.length - 1; i++) {
-      if (sorted[i + 1].position - sorted[i].position > sorted[best + 1].position - sorted[best].position) best = i;
-    }
-    const a = sorted[best];
-    const b = sorted[best + 1];
-    stops.push({ position: (a.position + b.position) / 2, color: lerpRgb(a.color, b.color, 0.5) });
-  }
-
-  function removeStop(i: number) {
-    if (stops.length <= 2) return;
-    stops.splice(i, 1);
-  }
 
   function clampSize(v: number): number {
     return Math.min(16384, Math.max(1, Math.round(Number.isFinite(v) ? v : 1)));
@@ -71,34 +48,7 @@
     <output>{Math.round(design.base.angle)}°</output>
   </label>
 
-  <div class="stops">
-    {#each design.base.stops as stop, i (i)}
-      <div class="stop">
-        <input
-          type="color"
-          aria-label="Stop {i + 1} color"
-          value={rgbToHex(stop.color)}
-          oninput={(e) => (stop.color = hexToRgb(e.currentTarget.value))}
-        />
-        <input
-          type="range"
-          aria-label="Stop {i + 1} position"
-          min="0"
-          max="1"
-          step="0.001"
-          bind:value={stop.position}
-        />
-        <button
-          class="icon"
-          title="Remove stop"
-          aria-label="Remove stop {i + 1}"
-          disabled={stops.length <= 2}
-          onclick={() => removeStop(i)}>×</button
-        >
-      </div>
-    {/each}
-    <button onclick={addStop} disabled={stops.length >= MAX_STOPS}>Add stop</button>
-  </div>
+  <StopEditor bind:stops={design.base.stops} />
 
   <label class="row">
     <span>Device</span>
@@ -159,7 +109,7 @@
     position: fixed;
     top: 16px;
     left: 16px;
-    width: 280px;
+    width: 300px;
     padding: 14px;
     display: flex;
     flex-direction: column;
@@ -177,19 +127,17 @@
     font-size: 14px;
     font-weight: 600;
   }
-  .row,
-  .stop {
+  .row {
     display: flex;
     align-items: center;
     gap: 8px;
   }
   .row > span:first-child {
-    width: 48px;
+    width: 60px;
     flex: none;
     color: #aaa;
   }
   .row input[type='range'],
-  .stop input[type='range'],
   select,
   progress {
     flex: 1;
@@ -205,19 +153,6 @@
     text-align: right;
     font-variant-numeric: tabular-nums;
   }
-  .stops {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  input[type='color'] {
-    width: 28px;
-    height: 22px;
-    padding: 0;
-    border: none;
-    background: none;
-    flex: none;
-  }
   button {
     background: rgba(255, 255, 255, 0.1);
     color: inherit;
@@ -230,9 +165,6 @@
   button:disabled {
     opacity: 0.4;
     cursor: default;
-  }
-  button.icon {
-    padding: 0 7px;
   }
   button.primary {
     background: #fff;

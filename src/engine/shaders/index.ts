@@ -2,7 +2,9 @@ import vertMain from './fullscreen.vert.glsl?raw';
 import fragMain from './main.frag.glsl?raw';
 import coords from './common/coords.glsl?raw';
 import linear from './gradient/linear.glsl?raw';
-import stops from './color/stops.glsl?raw';
+import ramp from './color/ramp.glsl?raw';
+import srgb from './color/srgb.glsl?raw';
+import dither from './color/dither.glsl?raw';
 
 /** Compile-time switches for a program variant; values become #defines. */
 export type Defines = Record<string, string | number | boolean>;
@@ -10,7 +12,7 @@ export type Defines = Record<string, string | number | boolean>;
 const HEADER = '#version 300 es\nprecision highp float;\nprecision highp int;\n';
 
 // Chunks are concatenated in dependency order ahead of main().
-const FRAGMENT_CHUNKS = [coords, linear, stops, fragMain];
+const FRAGMENT_CHUNKS = [coords, linear, ramp, srgb, dither, fragMain];
 
 /** Stable cache key for a variant. */
 export function variantKey(defines: Defines): string {

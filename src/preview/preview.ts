@@ -78,7 +78,7 @@ export function createPreview(
     if (!renderer || gl!.isContextLost()) return;
     applyLayout();
     const output = { width: canvas.width, height: canvas.height };
-    renderer.render(design, output, { x: 0, y: 0, ...output });
+    renderer.render(design, output, { x: 0, y: 0, ...output }, { dither: true });
     dirty = false;
   }
 

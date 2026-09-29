@@ -36,7 +36,7 @@ Each milestone uses the same structure:
   - JPEG currently assembles the whole image on one 2D canvas. Check this at 6K+ in Safari.
   - Not yet checked in Photoshop/GIMP.
 
-### M1 — Color system
+### M1 — Color system ✅
 - **Goal:** blend colors perceptually, with no gray midpoints and no banding.
 - **Scope:**
   - Oklab/Oklch conversion
@@ -51,11 +51,14 @@ Each milestone uses the same structure:
   - Math tests match culori
   - Complementary blends stay saturated in chroma-preserving mode
   - A dark, shallow gradient shows no visible banding in an 8-bit export
-- **Open questions:**
-  - Lookup texture size
-  - Default blend mode
-  - How many stops at most?
-  - Should the stop editor show a lightness curve?
+- **Outcome:** all criteria met.
+  - Color math matches culori (conversions within 1e-9, gamut mapping within ΔE 0.0013). Baking the ramp takes about 1.5 ms.
+  - In "Vivid" mode, blue↔yellow keeps at least 90% of its chroma. In "Perceptual" mode it drops below 50%.
+  - Dark shallow gradient: the longest flat run falls from 1023 px to 23 px with dither, and the 16×16 block error from 0.28 to 0.008 LSB.
+- **Resolved:** the lookup texture has 4096 entries (fewer when the GPU's texture limit is smaller); the default blend is Perceptual; at most 8 stops; no lightness curve for now. See D18 and D19.
+- **Still open:**
+  - A 5K PNG export now takes about 3.8 s in SwiftShader, because dither noise compresses poorly and `CompressionStream` has no level setting. Consider a faster deflate (for example fflate at a low level) in M7.
+  - The ramp size differs slightly on GPUs whose MAX_TEXTURE_SIZE is below 4096.
 
 ### M2 — Color-point mesh
 - **Goal:** the headline feature, a mesh gradient you edit by dragging colored points.

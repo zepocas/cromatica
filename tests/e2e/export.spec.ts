@@ -96,3 +96,69 @@ test('app loads, shows a canvas, and Export downloads a file', async ({ page }) 
   expect(download.suggestedFilename()).toBe('gradient-320x200.png');
   expect(errors).toEqual([]);
 });
+
+test('stop editor: add, drag, blend mode and delete update the preview', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(err.message));
+  await page.goto('/');
+  const canvas = page.getByTestId('preview-canvas');
+  const strip = page.getByTestId('stop-strip');
+  const handles = page.getByRole('slider', { name: /^Stop \d+$/ });
+  await expect(canvas).toBeVisible();
+  await expect(handles).toHaveCount(3);
+
+  // The preview drops to low resolution while editing; wait for the sharp redraw.
+  const settled = async () => {
+    await page.waitForTimeout(400);
+    return canvas.screenshot();
+  };
+  // Poll until the settled preview differs from `before`.
+  const expectPreviewChanged = async (before: Awaited<ReturnType<typeof settled>>) => {
+    await expect.poll(async () => (await settled()).equals(before), { timeout: 5_000 }).toBe(false);
+  };
+
+  // Click on the empty strip at 25% → new stop there, selected.
+  let before = await settled();
+  const box = (await strip.boundingBox())!;
+  await page.mouse.click(box.x + box.width * 0.25, box.y + 6);
+  await expect(handles).toHaveCount(4);
+  const added = page.getByRole('slider', { name: 'Stop 4' });
+  await expect(added).toHaveAttribute('aria-valuenow', '25');
+  await expect(added).toBeFocused();
+
+  // Dragging a handle moves the stop and changes the image.
+  before = await settled();
+  const mid = page.getByRole('slider', { name: 'Stop 2' });
+  const hb = (await mid.boundingBox())!;
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.8, hb.y + hb.height / 2, { steps: 5 });
+  await page.mouse.up();
+  await expect(mid).toHaveAttribute('aria-valuenow', '80');
+  await expectPreviewChanged(before);
+
+  // Keyboard: arrows nudge the focused stop.
+  await mid.focus();
+  await mid.press('ArrowLeft');
+  await expect(mid).toHaveAttribute('aria-valuenow', '79');
+
+  // Blend mode of the selected stop's segment.
+  before = await settled();
+  await page.getByLabel('Blend to next stop').selectOption({ label: 'Hue (long)' });
+  await expectPreviewChanged(before);
+
+  // Picking a color through the picker updates the stop.
+  before = await settled();
+  await page.getByLabel('Stop color').fill('#00ff80');
+  await expectPreviewChanged(before);
+
+  // Delete removes stops but never below 2.
+  const first = page.getByRole('slider', { name: 'Stop 1' });
+  for (let i = 0; i < 4; i++) {
+    await first.focus();
+    await first.press('Delete');
+  }
+  await expect(handles).toHaveCount(2);
+  await expect(page.getByRole('button', { name: 'Remove stop' })).toBeDisabled();
+  expect(errors).toEqual([]);
+});

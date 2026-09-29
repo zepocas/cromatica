@@ -26,13 +26,24 @@ export interface Tile {
  * - The rendered value of a pixel depends only on (design, output size, px, py),
  *   never on which tile it was rendered in.
  */
+export interface RenderOptions {
+  /**
+   * Blue-noise TPDF dither (±1 LSB, D7) before 8-bit quantization. Always on
+   * for users; tests turn it off to compare against exact references.
+   * Default true. Dither is indexed by OUTPUT pixel, so it is tile-independent.
+   */
+  dither?: boolean;
+}
+
 export interface Renderer {
   /**
    * Draw `tile` of an image of size `output` into the default framebuffer of
    * the renderer's context. The caller must have sized the drawing buffer to
    * exactly tile.width × tile.height. The renderer sets viewport itself.
+   * GL state must not be changed between render() and readPixels().
+   * The baked ramp texture is cached and only re-baked when the stops change.
    */
-  render(design: Design, output: OutputSize, tile: Tile): void;
+  render(design: Design, output: OutputSize, tile: Tile, opts?: RenderOptions): void;
   /**
    * Read back what was just drawn, as tightly packed RGBA8, rows TOP-DOWN
    * (already flipped from GL's bottom-up order). Length = w*h*4.
