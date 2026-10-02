@@ -36,6 +36,26 @@ const testDesign: Design = {
   },
 };
 
+// A mesh with a point outside the frame, an out-of-sRGB color and uneven
+// radii, so tile seams, clipping and far-field blending would all show up.
+const meshDesign: Design = {
+  engineVersion: 1,
+  base: {
+    kind: 'mesh',
+    sharpness: 0.6,
+    points: [
+      { x: -0.6, y: 0.25, color: [0.3, 0.13, 272], radius: 0.45 },
+      { x: 0.12, y: 0.3, color: [0.62, 0.3, 350], radius: 0.3 },
+      { x: 0.75, y: 0.1, color: [0.8, 0.15, 60], radius: 0.4 },
+      { x: -0.2, y: -0.33, color: [0.66, 0.11, 190], radius: 0.25 },
+      { x: 1.1, y: -0.45, color: [0.93, 0.05, 90], radius: 0.5 },
+    ],
+  },
+};
+
+export type TestPattern = 'linear' | 'mesh';
+const designs: Record<TestPattern, Design> = { linear: testDesign, mesh: meshDesign };
+
 /** Single-pass reference: one tile covering the whole output. RGBA, top-down. */
 function renderReference(design: Design, size: OutputSize): Uint8Array {
   const canvas = document.createElement('canvas');
@@ -91,11 +111,17 @@ async function exportPng(design: Design, size: OutputSize, tileSize?: number) {
   return { blob, png, exportMs, tiles };
 }
 
-async function exportVsSinglePass(width: number, height: number, tileSize?: number): Promise<CompareSummary> {
+async function exportVsSinglePass(
+  width: number,
+  height: number,
+  tileSize?: number,
+  pattern: TestPattern = 'linear',
+): Promise<CompareSummary> {
   const size = { width, height };
-  const { png, exportMs, tiles } = await exportPng(testDesign, size, tileSize);
+  const design = designs[pattern];
+  const { png, exportMs, tiles } = await exportPng(design, size, tileSize);
   const t1 = performance.now();
-  const ref = renderReference(testDesign, size);
+  const ref = renderReference(design, size);
   const referenceMs = performance.now() - t1;
   return {
     width: png.width,
@@ -108,12 +134,13 @@ async function exportVsSinglePass(width: number, height: number, tileSize?: numb
   };
 }
 
-async function previewVsExport(width: number, height: number): Promise<CompareSummary> {
+async function previewVsExport(width: number, height: number, pattern: TestPattern = 'linear'): Promise<CompareSummary> {
   const size = { width, height };
+  const design = designs[pattern];
   const canvas = document.createElement('canvas');
   document.body.append(canvas);
   const t1 = performance.now();
-  const preview = createPreview(canvas, testDesign, { fixedSize: size });
+  const preview = createPreview(canvas, design, { fixedSize: size });
   let ref: Uint8Array;
   try {
     preview.renderNow();
@@ -123,7 +150,7 @@ async function previewVsExport(width: number, height: number): Promise<CompareSu
     canvas.remove();
   }
   const referenceMs = performance.now() - t1;
-  const { png, exportMs, tiles } = await exportPng(testDesign, size);
+  const { png, exportMs, tiles } = await exportPng(design, size);
   return {
     width: png.width,
     height: png.height,

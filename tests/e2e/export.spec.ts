@@ -43,6 +43,29 @@ test.describe('export pipeline', () => {
     expect(r.mismatches).toBe(0);
   });
 
+  test('tiled 5120×2880 mesh PNG is byte-identical (RGB) to a single-pass render', async ({ page }) => {
+    test.setTimeout(300_000);
+    const r = await call(page, 'exportVsSinglePass', 5120, 2880, undefined, 'mesh');
+    console.log(`5K mesh PNG export: ${r.exportMs.toFixed(0)} ms, ${r.tiles} tiles; single-pass ${r.referenceMs.toFixed(0)} ms`);
+    expect([r.width, r.height]).toEqual([5120, 2880]);
+    expect(r.tiles).toBeGreaterThan(1);
+    expect(r.firstMismatch).toBeNull();
+    expect(r.mismatches).toBe(0);
+  });
+
+  test('mesh: small ragged tiles match single-pass', async ({ page }) => {
+    const r = await call(page, 'exportVsSinglePass', 1000, 777, 256, 'mesh');
+    expect(r.tiles).toBe(4 * 4);
+    expect(r.firstMismatch).toBeNull();
+  });
+
+  test('mesh: preview render at W×H equals exported PNG at W×H', async ({ page }) => {
+    const r = await call(page, 'previewVsExport', 2560, 1440, 'mesh');
+    expect([r.width, r.height]).toEqual([2560, 1440]);
+    expect(r.firstMismatch).toBeNull();
+    expect(r.mismatches).toBe(0);
+  });
+
   test('main thread stays responsive during a 5K export', async ({ page }) => {
     test.setTimeout(300_000);
     const r = await call(page, 'responsiveness', 5120, 2880);
@@ -105,6 +128,7 @@ test('stop editor: add, drag, blend mode and delete update the preview', async (
   const strip = page.getByTestId('stop-strip');
   const handles = page.getByRole('slider', { name: /^Stop \d+$/ });
   await expect(canvas).toBeVisible();
+  await page.getByRole('radio', { name: 'Gradient' }).click();
   await expect(handles).toHaveCount(3);
 
   // The preview drops to low resolution while editing; wait for the sharp redraw.
@@ -160,5 +184,111 @@ test('stop editor: add, drag, blend mode and delete update the preview', async (
   }
   await expect(handles).toHaveCount(2);
   await expect(page.getByRole('button', { name: 'Remove stop' })).toBeDisabled();
+  expect(errors).toEqual([]);
+});
+
+test('mesh editor: drag, add, delete, switch pattern and hide handles', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(err.message));
+  await page.goto('/');
+  const canvas = page.getByTestId('preview-canvas');
+  const overlay = page.getByTestId('mesh-overlay');
+  const points = page.getByRole('button', { name: /^Point \d+$/ });
+  await expect(canvas).toBeVisible();
+
+  // Starts on Mesh with the default points.
+  await expect(page.getByRole('radio', { name: 'Mesh' })).toHaveAttribute('aria-checked', 'true');
+  await expect(points).toHaveCount(5);
+
+  // Screenshot of the rendered image only (overlay and panel hidden), after the sharp redraw.
+  const settled = async () => {
+    await page.waitForTimeout(400);
+    return canvas.screenshot({ style: 'aside, [data-testid="mesh-overlay"] { visibility: hidden; }' });
+  };
+  const expectPreviewChanged = async (before: Awaited<ReturnType<typeof settled>>) => {
+    await expect.poll(async () => (await settled()).equals(before), { timeout: 5_000 }).toBe(false);
+  };
+  const coords = async (i: number) => {
+    const h = page.locator(`[data-point="${i}"]`);
+    return [Number(await h.getAttribute('data-x')), Number(await h.getAttribute('data-y'))];
+  };
+
+  // The overlay covers the canvas exactly.
+  const cb = (await canvas.boundingBox())!;
+  const ob = (await overlay.boundingBox())!;
+  expect(ob.x).toBeCloseTo(cb.x, 0);
+  expect(ob.y).toBeCloseTo(cb.y, 0);
+  expect(ob.width).toBeCloseTo(cb.width, 0);
+  expect(ob.height).toBeCloseTo(cb.height, 0);
+
+  // Handle sits where the composition convention puts its point.
+  const [x0, y0] = await coords(1);
+  const hb = (await points.nth(1).boundingBox())!;
+  const hx = hb.x + hb.width / 2;
+  const hy = hb.y + hb.height / 2;
+  expect(hx).toBeCloseTo(cb.x + cb.width / 2 + x0 * cb.height, 0);
+  expect(hy).toBeCloseTo(cb.y + cb.height / 2 - y0 * cb.height, 0);
+
+  // Drag right and down → x grows, y shrinks (+y is up), image changes.
+  let before = await settled();
+  await page.mouse.move(hx, hy);
+  await page.mouse.down();
+  await page.mouse.move(hx + cb.height * 0.2, hy + cb.height * 0.1, { steps: 6 });
+  await page.mouse.up();
+  const [x1, y1] = await coords(1);
+  expect(x1 - x0).toBeCloseTo(0.2, 1);
+  expect(y1 - y0).toBeCloseTo(-0.1, 1);
+  await expect(points.nth(1)).toHaveAttribute('aria-pressed', 'true');
+  await expectPreviewChanged(before);
+
+  // Arrow keys nudge the selected point.
+  await page.keyboard.press('ArrowUp');
+  expect((await coords(1))[1]).toBeCloseTo(y1 + 0.01, 3);
+
+  // Double-click empty canvas adds a selected point there.
+  before = await settled();
+  const ax = cb.x + cb.width * 0.3;
+  const ay = cb.y + cb.height * 0.75;
+  await page.mouse.dblclick(ax, ay);
+  await expect(points).toHaveCount(6);
+  await expect(points.nth(5)).toHaveAttribute('aria-pressed', 'true');
+  const [nx, ny] = await coords(5);
+  expect(nx).toBeCloseTo((ax - cb.x - cb.width / 2) / cb.height, 2);
+  expect(ny).toBeCloseTo((cb.y + cb.height / 2 - ay) / cb.height, 2);
+  await expect(page.getByText('Point 6 of 6')).toBeVisible();
+
+  // Editing the selected point's color changes the image.
+  await page.getByLabel('Point color').fill('#00ff80');
+  await expectPreviewChanged(before);
+
+  // "Add point" then a click also adds one.
+  await page.getByRole('button', { name: 'Add point' }).click();
+  await page.mouse.click(cb.x + cb.width * 0.8, cb.y + cb.height * 0.5);
+  await expect(points).toHaveCount(7);
+
+  // Delete removes the selected point.
+  await page.keyboard.press('Delete');
+  await expect(points).toHaveCount(6);
+  await page.keyboard.press('Backspace');
+  await expect(points).toHaveCount(5);
+  const edited = await coords(1);
+
+  // Switch to Gradient and back: the mesh edits are kept.
+  await page.getByRole('radio', { name: 'Gradient' }).click();
+  await expect(points).toHaveCount(0);
+  await expect(page.getByTestId('stop-strip')).toBeVisible();
+  await page.getByRole('radio', { name: 'Mesh' }).click();
+  await expect(points).toHaveCount(5);
+  expect(await coords(1)).toEqual(edited);
+
+  // H hides the handles (and the image stays the same), H again shows them.
+  before = await settled();
+  await page.keyboard.press('h');
+  await expect(points).toHaveCount(0);
+  expect((await settled()).equals(before)).toBe(true);
+  await page.keyboard.press('h');
+  await expect(points).toHaveCount(5);
+  await page.getByRole('button', { name: /Hide points/ }).click();
+  await expect(points).toHaveCount(0);
   expect(errors).toEqual([]);
 });

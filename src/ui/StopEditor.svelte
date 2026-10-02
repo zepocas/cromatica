@@ -1,7 +1,8 @@
 <script lang="ts">
   import { MAX_STOPS, type BlendMode, type ColorStop } from '../design/design';
-  import { hexToOklch, inSrgbGamut, oklabToOklch, oklchToHex, srgbEncode } from '../color/oklab';
+  import { oklabToOklch, oklchToHex, srgbEncode } from '../color/oklab';
   import { bakeRamp, evaluateRamp } from '../color/ramp';
+  import ColorControls from './ColorControls.svelte';
 
   interface Props {
     /** Stops in user order (not necessarily sorted). Mutated in place. */
@@ -30,7 +31,6 @@
   // Indices into `stops`, in position order (stable, same as App's sort).
   const order = $derived(stops.map((_, i) => i).sort((a, b) => stops[a].position - stops[b].position));
   const selIsLast = $derived(order[order.length - 1] === selected);
-  const outOfGamut = $derived(sel ? !inSrgbGamut(sel.color) : false);
 
   function sortedPlain(): ColorStop[] {
     return order.map((i) => $state.snapshot(stops[i]) as ColorStop);
@@ -169,38 +169,16 @@
 
   {#if sel}
     <div class="selected-stop">
-      <div class="row">
-        <input
-          type="color"
-          aria-label="Stop color"
-          value={oklchToHex(sel.color)}
-          oninput={(e) => (sel.color = hexToOklch(e.currentTarget.value))}
-        />
-        {#if outOfGamut}
-          <span class="gamut" title="This color can't be shown exactly; the closest displayable color is used.">
-            Out of sRGB — will be mapped
-          </span>
-        {/if}
-        <button
-          class="remove"
-          aria-label="Remove stop"
-          title="Remove stop (Delete)"
-          disabled={stops.length <= 2}
-          onclick={() => removeStop(selected)}>Remove</button
-        >
-      </div>
-      <label class="row">
-        <span>Lightness</span>
-        <input type="range" min="0" max="1" step="0.001" bind:value={sel.color[0]} />
-      </label>
-      <label class="row">
-        <span>Intensity</span>
-        <input type="range" min="0" max="0.37" step="0.001" bind:value={sel.color[1]} />
-      </label>
-      <label class="row">
-        <span>Hue</span>
-        <input class="hue" type="range" min="0" max="360" step="0.5" bind:value={sel.color[2]} />
-      </label>
+      <ColorControls bind:color={sel.color} label="Stop color">
+        {#snippet actions()}
+          <button
+            aria-label="Remove stop"
+            title="Remove stop (Delete)"
+            disabled={stops.length <= 2}
+            onclick={() => removeStop(selected)}>Remove</button
+          >
+        {/snippet}
+      </ColorControls>
       <label class="row">
         <span>Blend</span>
         <select aria-label="Blend to next stop" bind:value={sel.blend} disabled={selIsLast}>
@@ -283,25 +261,9 @@
     flex: none;
     color: #aaa;
   }
-  .row input[type='range'],
   select {
     flex: 1;
     min-width: 0;
-  }
-  input[type='color'] {
-    width: 32px;
-    height: 24px;
-    padding: 0;
-    border: none;
-    background: none;
-    flex: none;
-  }
-  .gamut {
-    font-size: 11px;
-    color: #f0c674;
-  }
-  .remove {
-    margin-left: auto;
   }
   button {
     background: rgba(255, 255, 255, 0.1);

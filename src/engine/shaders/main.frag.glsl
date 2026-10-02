@@ -4,7 +4,11 @@ out vec4 fragColor;
 // by the framebuffer.
 void main() {
   ivec2 px = outputPixel();
-  float t = linearGradientT(compositionCoord(px));
-  vec3 encoded = srgbEncode(rampColor(t));
+#if BASE_MESH
+  vec3 rgb = gamutClip(meshColor(compositionCoord(px)));
+#else
+  vec3 rgb = rampColor(linearGradientT(compositionCoord(px)));
+#endif
+  vec3 encoded = srgbEncode(rgb);
   fragColor = vec4(dither(encoded, px), 1.0);
 }

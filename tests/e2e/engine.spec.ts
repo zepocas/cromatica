@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import type { BlendMode, Design, Oklch } from '../../src/design/design';
+import { defaultMesh, type BlendMode, type Design, type Oklch } from '../../src/design/design';
 import type { EngineHarness } from './harness/engine';
 
 declare global {
@@ -187,5 +187,186 @@ test.describe('aspect behavior', () => {
       expect(r.left).toBeLessThanOrEqual(1);
       expect(r.right).toBeLessThanOrEqual(1);
     });
+  }
+});
+
+// ---- M2: color-point mesh -------------------------------------------------
+
+function mesh(sharpness: number, points: [x: number, y: number, color: Oklch, radius: number][]): Design {
+  return {
+    engineVersion: 1,
+    base: { kind: 'mesh', sharpness, points: points.map(([x, y, color, radius]) => ({ x, y, color, radius })) },
+  };
+}
+
+const meshDefault: Design = { engineVersion: 1, base: defaultMesh };
+
+// 16 points (MAX_MESH_POINTS) with vivid, partly out-of-gamut colors and varied radii.
+const mesh16 = mesh(
+  0.6,
+  Array.from({ length: 16 }, (_, i) => [
+    ((i * 0.618) % 1) * 1.9 - 0.95,
+    ((i * 0.381 + 0.13) % 1) * 1.1 - 0.55,
+    [0.35 + ((i * 0.29) % 0.55), 0.12 + (i % 4) * 0.07, (i * 67) % 360],
+    0.12 + (i % 5) * 0.08,
+  ]),
+);
+
+// sRGB primaries and secondaries: their Oklab blends leave the sRGB gamut.
+const primaries = mesh(0.2, [
+  [-0.6, 0.25, [0.628, 0.2577, 29.23], 0.35],
+  [0.0, 0.3, [0.8664, 0.2948, 142.5], 0.35],
+  [0.6, 0.25, [0.452, 0.3132, 264.05], 0.35],
+  [-0.4, -0.3, [0.9054, 0.1546, 194.77], 0.3],
+  [0.4, -0.3, [0.7017, 0.3225, 328.36], 0.3],
+]);
+
+// Every point far outside the frame, with extreme radii.
+const farAway = (sharpness: number) =>
+  mesh(sharpness, [
+    [-3, 2, [0.55, 0.12, 270], 0.3],
+    [4, 0.2, [0.7, 0.15, 10], 2],
+    [0.5, -6, [0.8, 0.13, 70], 0.05],
+    [-1e3, -1e3, [0.65, 0.1, 190], 5],
+    [1e6, 1e6, [0.9, 0.05, 90], 1e-3],
+    [-1e6, 3e5, [0.6, 0.2, 140], 1e3],
+  ]);
+
+// Degenerate inputs inside the frame: tiny/huge radii, coincident points.
+const extreme = mesh(1, [
+  [0, 0, [0.6, 0.2, 30], 1e-6],
+  [0, 0, [0.7, 0.1, 200], 1e-6],
+  [0.3, 0.1, [0.75, 0.15, 120], 1e5],
+  [-0.5, -0.2, [0.5, 0.25, 300], 1e-3],
+  [2e7, -2e7, [0.4, 0.1, 60], 0.5],
+]);
+
+test.describe('mesh tile independence', () => {
+  for (const dither of [true, false]) {
+    const label = `dither ${dither ? 'on' : 'off'}`;
+    test(`1531×917 single pass equals 256 px tiles (${label})`, async ({ page }) => {
+      const r = await page.evaluate(
+        ([d, dither]) => window.engineHarness.compareTiled(d, 1531, 917, 256, dither),
+        [mesh16, dither] as const,
+      );
+      expect(r.first).toBeNull();
+      expect(r.identical).toBe(true);
+      expect(r.tiles).toBe(24);
+    });
+
+    test(`5120×2880 single pass equals 2048 px tiles (${label})`, async ({ page }) => {
+      const r = await page.evaluate(
+        ([d, dither]) => window.engineHarness.compareTiled(d, 5120, 2880, 2048, dither),
+        [mesh16, dither] as const,
+      );
+      console.log(
+        `mesh 5120×2880 ${label}: ${r.tiles} tiles, single ${r.singleMs.toFixed(0)} ms, tiled ${r.tiledMs.toFixed(0)} ms`,
+      );
+      expect(r.first).toBeNull();
+      expect(r.identical).toBe(true);
+      expect(r.tiles).toBe(6);
+    });
+
+    test(`worker tiles equal main-thread single pass (${label})`, async ({ page }) => {
+      const r = await page.evaluate(
+        ([d, dither]) => window.engineHarness.compareWorker(d, 1001, 777, 300, dither),
+        [primaries, dither] as const,
+      );
+      expect(r.first).toBeNull();
+      expect(r.identical).toBe(true);
+    });
+  }
+});
+
+test.describe('mesh vs CPU reference (dither off)', () => {
+  const cases: [string, Design][] = [
+    ['default', meshDefault],
+    ['default haze', { engineVersion: 1, base: { ...defaultMesh, sharpness: 0 } }],
+    ['default blobby', { engineVersion: 1, base: { ...defaultMesh, sharpness: 1 } }],
+    ['16 points', mesh16],
+    ['primaries', primaries],
+    ['far away', farAway(0.5)],
+    ['extreme', extreme],
+  ];
+  for (const [name, d] of cases) {
+    for (const [w, h] of [
+      [640, 360],
+      [479, 777],
+    ]) {
+      test(`${name}, ${w}×${h}`, async ({ page }) => {
+        const r = await page.evaluate(
+          ([d, w, h]) => window.engineHarness.compareReference(d, w, h),
+          [d, w, h] as const,
+        );
+        console.log(`mesh reference ${name} ${w}×${h}: max ${r.maxDiff}`);
+        expect(r.alphaOk).toBe(true);
+        expect(r.maxDiff, JSON.stringify(r.worst)).toBeLessThanOrEqual(1);
+      });
+    }
+  }
+
+  for (const [name, d] of [
+    ['primaries', primaries],
+    ['16 points', mesh16],
+  ] as const) {
+    test(`gamut clip stays within ΔE_OK 0.02 of CSS gamut mapping (${name})`, async ({ page }) => {
+      const r = await page.evaluate(
+        ([d]) => window.engineHarness.meshGamutVsCss(d, 480, 270),
+        [d] as const,
+      );
+      console.log(`mesh gamut ${name}: ${JSON.stringify(r)}`);
+      expect(r.outOfGamut).toBeGreaterThan(0);
+      expect(r.clip).toBeLessThanOrEqual(0.02);
+      expect(r.gpu).toBeLessThanOrEqual(0.02);
+    });
+  }
+});
+
+test.describe('mesh robustness', () => {
+  for (const dither of [true, false]) {
+    const label = `dither ${dither ? 'on' : 'off'}`;
+    for (const s of [0, 1]) {
+      test(`points far outside the frame give a smooth image (sharpness ${s}, ${label})`, async ({ page }) => {
+        const r = await page.evaluate(
+          ([d, dither]) => window.engineHarness.imageStats(d, 1600, 900, dither),
+          [farAway(s), dither] as const,
+        );
+        console.log(`mesh far away s=${s} ${label}: ${JSON.stringify(r)}`);
+        expect(r.alphaOk).toBe(true);
+        expect(r.black).toBe(0);
+        expect(r.min).toBeGreaterThan(10);
+        expect(r.maxStep).toBeLessThanOrEqual(dither ? 3 : 1);
+      });
+    }
+
+    test(`degenerate radii and positions produce no NaN specks (${label})`, async ({ page }) => {
+      const r = await page.evaluate(
+        ([d, dither]) => window.engineHarness.imageStats(d, 1600, 900, dither),
+        [extreme, dither] as const,
+      );
+      console.log(`mesh extreme ${label}: ${JSON.stringify(r)}`);
+      expect(r.alphaOk).toBe(true);
+      expect(r.black).toBe(0);
+      expect(r.min).toBeGreaterThan(10);
+      expect(r.max).toBeLessThanOrEqual(255);
+    });
+  }
+});
+
+test('mesh render time, 16 points', async ({ page }) => {
+  for (const [w, h] of [
+    [3456, 2234],
+    [5120, 2880],
+  ]) {
+    const ms = await page.evaluate(
+      ([d, w, h]) => window.engineHarness.timeRender(d, w, h, 3),
+      [mesh16, w, h] as const,
+    );
+    const linearMs = await page.evaluate(
+      ([d, w, h]) => window.engineHarness.timeRender(d, w, h, 3),
+      [threeStops(30), w, h] as const,
+    );
+    console.log(`mesh 16 points ${w}×${h}: ${ms.toFixed(0)} ms (linear ${linearMs.toFixed(0)} ms)`);
+    expect(ms).toBeGreaterThan(0);
   }
 });

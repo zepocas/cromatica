@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { untrack, type Snippet } from 'svelte';
   import type { Design } from '../design/design';
   import { createPreview, type PreviewController } from '../preview/preview';
 
@@ -7,9 +7,11 @@
     design: Design;
     aspect: number;
     paused?: boolean;
+    /** Rendered over the canvas, in a box that matches its displayed rect exactly. */
+    overlay?: Snippet;
   }
 
-  let { design, aspect, paused = false }: Props = $props();
+  let { design, aspect, paused = false, overlay }: Props = $props();
 
   let container: HTMLDivElement;
   let canvas: HTMLCanvasElement;
@@ -37,7 +39,11 @@
 </script>
 
 <div class="viewport" bind:this={container}>
-  <canvas bind:this={canvas} data-testid="preview-canvas"></canvas>
+  <!-- The frame hugs the letterboxed canvas, so the overlay shares its rect. -->
+  <div class="frame">
+    <canvas bind:this={canvas} data-testid="preview-canvas"></canvas>
+    {@render overlay?.()}
+  </div>
   {#if error}
     <p class="error">Preview unavailable: {error}</p>
   {/if}
@@ -51,6 +57,10 @@
     align-items: center;
     justify-content: center;
     overflow: hidden;
+  }
+  .frame {
+    position: relative;
+    flex: none;
   }
   canvas {
     display: block;

@@ -1,7 +1,15 @@
 import * as twgl from 'twgl.js';
 import { RAMP_SIZE } from '../color/types';
+import { GAMUT_CLIP_STEPS, prepareMesh } from '../color/mesh';
 import { bakeRamp } from '../color/ramp';
-import { MAX_STOPS, type ColorStop, type Design, type LinearGradient } from '../design/design';
+import {
+  MAX_MESH_POINTS,
+  MAX_STOPS,
+  type ColorStop,
+  type Design,
+  type LinearGradient,
+  type PointMesh,
+} from '../design/design';
 import { BLUE_NOISE_SIZE, DITHER_CHANNEL_OFFSETS, blueNoiseRanks } from './blue-noise';
 import { buildShaderSources, variantKey, type Defines } from './shaders';
 import type { OutputSize, RenderOptions, Renderer, Tile } from './types';
@@ -15,6 +23,16 @@ function linearGradientUniforms(g: LinearGradient, output: OutputSize) {
   const dy = Math.sin(a);
   const extent = Math.abs(dx) * (output.width / output.height) + Math.abs(dy);
   return { u_linearAxis: [dx / extent, dy / extent] };
+}
+
+/** Mesh uniforms, padded to MAX_MESH_POINTS; uploaded every render (tiny). */
+function meshUniforms(mesh: PointMesh) {
+  const m = prepareMesh(mesh);
+  const points = new Float32Array(MAX_MESH_POINTS * 3);
+  const colors = new Float32Array(MAX_MESH_POINTS * 3);
+  points.set(m.geometry);
+  colors.set(m.colors);
+  return { u_meshCount: m.count, u_meshExponent: m.exponent, u_meshPoint: points, u_meshColor: colors };
 }
 
 /** Cheap structural key of the stops; the ramp is re-baked only when it changes. */
@@ -33,7 +51,7 @@ function createTexture(gl: WebGL2RenderingContext, filter: GLenum, wrap: GLenum)
 }
 
 export function createRenderer(gl: WebGL2RenderingContext): Renderer {
-  // Program variants keyed by their #define set (M1 has a single variant).
+  // Program variants keyed by their #define set (one per base pattern).
   const programs = new Map<string, twgl.ProgramInfo>();
   const vao = gl.createVertexArray();
 
@@ -83,8 +101,21 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
 
   return {
     render(design: Design, output: OutputSize, tile: Tile, opts: RenderOptions = {}) {
-      const info = getProgram({ BLUE_NOISE_SIZE });
-      updateRamp(design.base.stops);
+      const base = design.base;
+      const isMesh = base.kind === 'mesh';
+      const info = getProgram({
+        BLUE_NOISE_SIZE,
+        BASE_LINEAR: !isMesh,
+        BASE_MESH: isMesh,
+        ...(isMesh ? { MAX_MESH_POINTS, GAMUT_CLIP_STEPS } : {}),
+      });
+      let baseUniforms: object;
+      if (isMesh) {
+        baseUniforms = meshUniforms(base);
+      } else {
+        updateRamp(base.stops);
+        baseUniforms = { ...linearGradientUniforms(base, output), u_ramp: rampTexture, u_rampSize: rampSize };
+      }
 
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       gl.viewport(0, 0, tile.width, tile.height);
@@ -100,9 +131,7 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
       twgl.setUniforms(info, {
         u_outputSize: [output.width, output.height],
         u_tile: [tile.x, tile.y, tile.width, tile.height],
-        ...linearGradientUniforms(design.base, output),
-        u_ramp: rampTexture,
-        u_rampSize: rampSize,
+        ...baseUniforms,
         u_blueNoise: blueNoiseTexture,
         u_ditherOffset: ditherOffsets,
         u_dither: opts.dither === false ? 0 : 1,

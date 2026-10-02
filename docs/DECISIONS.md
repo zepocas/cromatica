@@ -91,3 +91,16 @@ Decisions made during the architecture review. Reopen one only if new informatio
   - `scripts/generate-blue-noise.ts` produces it with a seeded void-and-cluster algorithm, and `src/engine/blue-noise.generated.ts` is the committed output.
   - The noise is uploaded as an R16UI texture and indexed by output pixel, so it doesn't depend on tiling.
   - Each channel uses a different offset into the texture, so the three channels are decorrelated.
+
+## D20. Mesh weights use a rational-quadratic kernel computed in the log domain
+- **Formula:** `w_i = (1 + d²/r_i²)^(-k)` with `k = 1.5·12^sharpness`, normalized and blended in Oklab.
+- **Why:** it is smooth everywhere and NaN-free far from all points. Seams widen with distance instead of sharpening.
+- **Rejected after comparison renders:**
+  - Gaussian: hard seams far from points.
+  - Softened Shepard: bullseyes, and never gets blobby.
+  - Rational-quadratic with k from 1 to 16: muddy at the soft end.
+- **Shared code:** inputs are sanitized in one place, which the shader and the CPU reference (`src/color/mesh.ts`) both use. Positions are clamped to ±1e6 and radii to [1e-4, 1e4].
+
+## D21. The mesh shader uses the CSS Color 4 gamut-mapping algorithm
+- **How:** a fixed 16-step bisection, so results are deterministic and don't depend on tiling.
+- **Why:** pure constant-L/h chroma reduction gave up to ΔE 0.06 less chroma near the blue cusp than CSS mapping. Using the same algorithm keeps meshes and linear ramps consistent and blues vivid.

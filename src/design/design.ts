@@ -34,12 +34,43 @@ export interface LinearGradient {
   stops: ColorStop[];
 }
 
+/**
+ * A colored point of the mesh gradient. Position is in composition
+ * coordinates (image height = 1, origin at the center, +y up; see
+ * src/engine/types.ts), so a 16:9 frame spans x in [-0.889, 0.889] and
+ * y in [-0.5, 0.5]. Points may lie outside the frame.
+ */
+export interface MeshPoint {
+  x: number;
+  y: number;
+  color: Oklch;
+  /** Influence radius in composition units (image height = 1), > 0. */
+  radius: number;
+}
+
+/**
+ * Color-point mesh (M2): every pixel blends all point colors in Oklab with
+ * smooth distance-based weights. The weight function is documented in the
+ * engine; it must be smooth everywhere, finite far from all points, and
+ * never produce hard seams.
+ */
+export interface PointMesh {
+  kind: 'mesh';
+  /** 1..MAX_MESH_POINTS points. */
+  points: MeshPoint[];
+  /** 0 = soft haze, 1 = blobby, distinct shapes. */
+  sharpness: number;
+}
+
+export type BasePattern = LinearGradient | PointMesh;
+
 export interface Design {
   engineVersion: 1;
-  base: LinearGradient;
+  base: BasePattern;
 }
 
 export const MAX_STOPS = 8;
+export const MAX_MESH_POINTS = 16;
 
 export const defaultDesign: Design = {
   engineVersion: 1,
@@ -52,4 +83,16 @@ export const defaultDesign: Design = {
       { position: 1, color: [0.8452, 0.1383, 76.58], blend: 'oklab' },
     ],
   },
+};
+
+export const defaultMesh: PointMesh = {
+  kind: 'mesh',
+  sharpness: 0.35,
+  points: [
+    { x: -0.62, y: 0.28, color: [0.2941, 0.1292, 272.93], radius: 0.45 },
+    { x: 0.1, y: 0.32, color: [0.5881, 0.201, 5.25], radius: 0.4 },
+    { x: 0.7, y: 0.18, color: [0.7851, 0.154, 60.69], radius: 0.4 },
+    { x: -0.25, y: -0.3, color: [0.6505, 0.1092, 191.68], radius: 0.4 },
+    { x: 0.55, y: -0.34, color: [0.9304, 0.0522, 89.04], radius: 0.35 },
+  ],
 };

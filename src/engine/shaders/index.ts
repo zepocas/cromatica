@@ -2,6 +2,8 @@ import vertMain from './fullscreen.vert.glsl?raw';
 import fragMain from './main.frag.glsl?raw';
 import coords from './common/coords.glsl?raw';
 import linear from './gradient/linear.glsl?raw';
+import mesh from './gradient/mesh.glsl?raw';
+import oklab from './color/oklab.glsl?raw';
 import ramp from './color/ramp.glsl?raw';
 import srgb from './color/srgb.glsl?raw';
 import dither from './color/dither.glsl?raw';
@@ -12,7 +14,8 @@ export type Defines = Record<string, string | number | boolean>;
 const HEADER = '#version 300 es\nprecision highp float;\nprecision highp int;\n';
 
 // Chunks are concatenated in dependency order ahead of main().
-const FRAGMENT_CHUNKS = [coords, linear, ramp, srgb, dither, fragMain];
+// Base-pattern chunks are compiled in only under their BASE_* define.
+const FRAGMENT_CHUNKS = [coords, linear, mesh, ramp, oklab, srgb, dither, fragMain];
 
 /** Stable cache key for a variant. */
 export function variantKey(defines: Defines): string {

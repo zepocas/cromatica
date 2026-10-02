@@ -1,9 +1,17 @@
 // Test harness for the renderer. On the page it exposes `window.engineHarness`
 // (called by tests/e2e/engine.spec.ts); the same module also runs as a Worker
 // to render on an OffscreenCanvas.
+import { createMeshEvaluator, meshGamutClip } from '../../../src/color/mesh';
+import {
+  gamutMapToLinearSrgb,
+  linearSrgbToOklab,
+  oklabToLinearSrgb,
+  oklabToOklch,
+  srgbDecode,
+} from '../../../src/color/oklab';
 import { bakeRamp } from '../../../src/color/ramp';
-import { RAMP_SIZE } from '../../../src/color/types';
-import type { Design } from '../../../src/design/design';
+import { RAMP_SIZE, type Rgb } from '../../../src/color/types';
+import type { Design, LinearGradient, PointMesh } from '../../../src/design/design';
 import { createRenderer } from '../../../src/engine/renderer';
 import {
   CONTEXT_ATTRIBUTES,
@@ -94,11 +102,13 @@ const f16round = (Math as unknown as { f16round?: (x: number) => number }).f16ro
  * Returns ENCODED values scaled to 0..255, unrounded.
  */
 function createReference(design: Design, output: OutputSize, halfFloat = false) {
-  const ramp = bakeRamp(design.base.stops, RAMP_SIZE);
+  if (design.base.kind === 'mesh') return createMeshReference(design.base, output);
+  const base = design.base;
+  const ramp = bakeRamp(base.stops, RAMP_SIZE);
   if (halfFloat && f16round) for (let i = 0; i < ramp.length; i++) ramp[i] = f16round(ramp[i]);
   const n = RAMP_SIZE;
   const { width: w, height: h } = output;
-  const a = (design.base.angle * Math.PI) / 180;
+  const a = (base.angle * Math.PI) / 180;
   const dx = Math.cos(a);
   const dy = Math.sin(a);
   const extent = Math.abs(dx) * (w / h) + Math.abs(dy);
@@ -119,6 +129,26 @@ function createReference(design: Design, output: OutputSize, halfFloat = false) 
     return out;
   };
 }
+
+/** Composition coords of an output pixel center (src/engine/types.ts). */
+const compositionCoord = (px: number, py: number, w: number, h: number) =>
+  [(px + 0.5 - w / 2) / h, (h / 2 - (py + 0.5)) / h] as const;
+
+/** CPU reference of the mesh: Oklab blend → the shader's gamut clip → sRGB, 0..255 unrounded. */
+function createMeshReference(mesh: PointMesh, output: OutputSize) {
+  const evaluate = createMeshEvaluator(mesh);
+  const { width: w, height: h } = output;
+  return (px: number, py: number): Triple => {
+    const rgb = meshGamutClip(evaluate(...compositionCoord(px, py, w, h)));
+    return [srgbEncode(rgb[0]) * 255, srgbEncode(rgb[1]) * 255, srgbEncode(rgb[2]) * 255];
+  };
+}
+
+const deltaEOK = (a: Rgb, b: Rgb) => {
+  const p = linearSrgbToOklab(a);
+  const q = linearSrgbToOklab(b);
+  return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+};
 
 function compareToReference(image: Uint8Array, ref: (x: number, y: number) => Triple, w: number, h: number) {
   let maxDiff = 0;
@@ -260,7 +290,7 @@ const harness = {
     const frames: Uint8Array[] = [];
     try {
       for (const d of [a, b, a, mutated]) {
-        if (d === mutated) mutated.base.stops[0].color[0] += 0.2;
+        if (d === mutated) (mutated.base as LinearGradient).stops[0].color[0] += 0.2;
         renderer.render(d, output, tile, { dither: false });
         frames.push(renderer.readPixels(width, height));
       }
@@ -335,7 +365,7 @@ const harness = {
    */
   edgeColumns(design: Design, width: number, height: number) {
     const image = render(design, { width, height }, false);
-    const ramp = bakeRamp(design.base.stops, RAMP_SIZE);
+    const ramp = bakeRamp((design.base as LinearGradient).stops, RAMP_SIZE);
     const at = (t: number) => {
       const s = t * (RAMP_SIZE - 1);
       const i0 = Math.floor(s);
@@ -357,6 +387,93 @@ const harness = {
       left: columnDiff(0, at(0.5 / width)),
       right: columnDiff(width - 1, at(1 - 0.5 / width)),
     };
+  },
+
+  /**
+   * Mesh gamut clip vs the CSS Color 4 gamut mapping (gamutMapToLinearSrgb),
+   * as ΔE_OK, on the CPU (`clip`) and for the rendered, dither-off 8-bit
+   * pixels (`gpu`, includes quantization). `outOfGamut` = share of pixels
+   * whose blend needed clipping.
+   */
+  meshGamutVsCss(design: Design, width: number, height: number) {
+    const mesh = design.base as PointMesh;
+    const image = render(design, { width, height }, false);
+    const evaluate = createMeshEvaluator(mesh);
+    let clip = 0;
+    let gpu = 0;
+    let outOfGamut = 0;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const lab = evaluate(...compositionCoord(x, y, width, height));
+        const css = gamutMapToLinearSrgb(oklabToOklch(lab));
+        const ours = meshGamutClip(lab);
+        const raw = oklabToLinearSrgb(lab);
+        if (raw.some((v) => v < 0 || v > 1)) outOfGamut++;
+        clip = Math.max(clip, deltaEOK(ours, css));
+        const i = (y * width + x) * 4;
+        const px: Rgb = [0, 1, 2].map((k) => srgbDecode(image[i + k] / 255)) as Rgb;
+        gpu = Math.max(gpu, deltaEOK(px, css));
+      }
+    }
+    return { clip, gpu, outOfGamut: outOfGamut / (width * height) };
+  },
+
+  /**
+   * Channel range, black pixels, and the largest step between neighboring
+   * pixels (max over channels, horizontal and vertical) of a render.
+   */
+  imageStats(design: Design, width: number, height: number, dither: boolean) {
+    const image = render(design, { width, height }, dither);
+    let min = 255;
+    let max = 0;
+    let black = 0;
+    let maxStep = 0;
+    let alphaOk = true;
+    const stride = width * 4;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i = y * stride + x * 4;
+        if (image[i] === 0 && image[i + 1] === 0 && image[i + 2] === 0) black++;
+        if (image[i + 3] !== 255) alphaOk = false;
+        for (let k = 0; k < 3; k++) {
+          const v = image[i + k];
+          min = Math.min(min, v);
+          max = Math.max(max, v);
+          if (x > 0) maxStep = Math.max(maxStep, Math.abs(v - image[i - 4 + k]));
+          if (y > 0) maxStep = Math.max(maxStep, Math.abs(v - image[i - stride + k]));
+        }
+      }
+    }
+    return { min, max, black, maxStep, alphaOk };
+  },
+
+  /** Median GPU time (draw + finish, no readback) of a single-pass render. */
+  timeRender(design: Design, width: number, height: number, reps: number) {
+    const canvas = newCanvas();
+    canvas.width = width;
+    canvas.height = height;
+    const gl = canvas.getContext('webgl2', CONTEXT_ATTRIBUTES) as WebGL2RenderingContext;
+    const renderer = createRenderer(gl);
+    const output = { width, height };
+    const tile = { x: 0, y: 0, width, height };
+    const times: number[] = [];
+    try {
+      // Warm-up compiles the program.
+      renderer.render(design, output, tile);
+      gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+      for (let r = 0; r < reps; r++) {
+        const t0 = performance.now();
+        renderer.render(design, output, tile);
+        // A 1-pixel readback forces the draw to complete (finish() may not block).
+        gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+        times.push(performance.now() - t0);
+      }
+    } finally {
+      renderer.dispose();
+      gl.getExtension('WEBGL_lose_context')?.loseContext();
+    }
+    times.sort((a, b) => a - b);
+    return times[times.length >> 1];
   },
 };
 

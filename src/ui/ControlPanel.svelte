@@ -1,11 +1,12 @@
 <script lang="ts">
-  import type { Design } from '../design/design';
   import type { ExportFormat, ExportProgress } from '../export/types';
+  import type { EditorState } from './editor.svelte';
+  import MeshEditor from './MeshEditor.svelte';
   import { CUSTOM_PRESET_ID, DEVICE_PRESETS } from './presets';
   import StopEditor from './StopEditor.svelte';
 
   interface Props {
-    design: Design;
+    editor: EditorState;
     presetId: string;
     customWidth: number;
     customHeight: number;
@@ -18,7 +19,7 @@
   }
 
   let {
-    design = $bindable(),
+    editor = $bindable(),
     presetId = $bindable(),
     customWidth = $bindable(),
     customHeight = $bindable(),
@@ -30,6 +31,11 @@
     oncancel,
   }: Props = $props();
 
+  const PATTERNS = [
+    { kind: 'linear', label: 'Gradient' },
+    { kind: 'mesh', label: 'Mesh' },
+  ] as const;
+
   const percent = $derived(
     progress && progress.tilesTotal > 0 ? (progress.tilesDone / progress.tilesTotal) * 100 : 0,
   );
@@ -40,15 +46,32 @@
 </script>
 
 <aside class="panel">
-  <h1>Gradient</h1>
+  <h1>Wallpaper</h1>
 
-  <label class="row">
-    <span>Angle</span>
-    <input type="range" min="0" max="360" step="1" bind:value={design.base.angle} />
-    <output>{Math.round(design.base.angle)}°</output>
-  </label>
+  <div class="segmented" role="radiogroup" aria-label="Pattern">
+    {#each PATTERNS as p (p.kind)}
+      <button
+        role="radio"
+        aria-checked={editor.kind === p.kind}
+        class:active={editor.kind === p.kind}
+        onclick={() => (editor.kind = p.kind)}>{p.label}</button
+      >
+    {/each}
+  </div>
 
-  <StopEditor bind:stops={design.base.stops} />
+  {#if editor.kind === 'mesh'}
+    <MeshEditor bind:editor />
+  {:else}
+    <label class="row">
+      <span>Angle</span>
+      <input type="range" min="0" max="360" step="1" bind:value={editor.linear.angle} />
+      <output>{Math.round(editor.linear.angle)}°</output>
+    </label>
+
+    <StopEditor bind:stops={editor.linear.stops} />
+  {/if}
+
+  <hr />
 
   <label class="row">
     <span>Device</span>
@@ -126,6 +149,29 @@
     margin: 0;
     font-size: 14px;
     font-weight: 600;
+  }
+  .segmented {
+    display: flex;
+    padding: 2px;
+    gap: 2px;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 8px;
+  }
+  .segmented button {
+    flex: 1;
+    border: none;
+    background: none;
+    padding: 4px 10px;
+  }
+  .segmented button.active {
+    background: rgba(255, 255, 255, 0.16);
+    font-weight: 600;
+  }
+  hr {
+    width: 100%;
+    margin: 2px 0;
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
   }
   .row {
     display: flex;

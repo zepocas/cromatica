@@ -60,7 +60,7 @@ Each milestone uses the same structure:
   - A 5K PNG export now takes about 3.8 s in SwiftShader, because dither noise compresses poorly and `CompressionStream` has no level setting. Consider a faster deflate (for example fflate at a low level) in M7.
   - The ramp size differs slightly on GPUs whose MAX_TEXTURE_SIZE is below 4096.
 
-### M2 — Color-point mesh
+### M2 — Color-point mesh ✅
 - **Goal:** the headline feature, a mesh gradient you edit by dragging colored points.
 - **Scope:**
   - Radial-basis-function point field blended in Oklab
@@ -71,10 +71,14 @@ Each milestone uses the same structure:
 - **Done when:**
   - Dragging a point stays at 60 fps on an integrated GPU
   - Blends never show clipping artifacts
-- **Open questions:**
-  - Maximum number of points (a uniform array limit)
-  - Can points sit outside the visible frame?
-  - Handle design and how to hide handles
+- **Outcome:** all criteria met (SwiftShader timings).
+  - 5K mesh export is byte-identical to a single-pass render. Rendering 16 points takes 235 ms at 3456×2234 and 452 ms at 5120×2880. Out-of-sRGB colors are mapped the same way as in the linear ramp.
+  - Handles line up with the rendered blobs to within 1 CSS px at 16:9, ultrawide and 1:1, after a resize and after a drag.
+- **Resolved:** up to 16 points; points may sit off-frame, shown as clamped edge indicators (the UI limits positions to the frame plus 0.5 units); H hides the handles. See D20 and D21.
+- **Still open (to tune):**
+  - **Size is relative:** weights are normalized and there is no background color, so a point's size only matters relative to the other points. If every point is small, you get flat cells instead of separate blobs. Consider an absolute falloff or a background color.
+  - The "Defined" end of the Blend slider gives cell-like regions with straight borders rather than round blobs. That may be fine, but review it with real use.
+  - **Panel overlap:** the floating panel can cover point handles (the default mesh's first point sits under it). Make the panel collapsible or movable (M7).
 
 ### M3 — Distortion
 - **Goal:** the biggest jump in visual quality, turning flat blends into organic, liquid shapes.

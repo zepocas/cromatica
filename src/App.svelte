@@ -1,12 +1,14 @@
 <script lang="ts">
-  import { defaultDesign, type Design } from './design/design';
   import { exportImage } from './export/exporter';
   import type { ExportFormat, ExportProgress } from './export/types';
   import ControlPanel from './ui/ControlPanel.svelte';
+  import { EditorState } from './ui/editor.svelte';
+  import MeshOverlay from './ui/MeshOverlay.svelte';
   import Preview from './ui/Preview.svelte';
   import { CUSTOM_PRESET_ID, DEVICE_PRESETS } from './ui/presets';
 
-  let design = $state<Design>(structuredClone(defaultDesign));
+  // Class instance (not proxied); $state only so it can be bound down the panel tree.
+  let editor = $state(new EditorState());
   let presetId = $state('studio');
   let customWidth = $state(1920);
   let customHeight = $state(1080);
@@ -23,11 +25,10 @@
       : { width: preset.width, height: preset.height };
   });
 
-  // Plain (non-proxy) copy with stops sorted, as the renderer and worker expect.
-  const renderDesign = $derived.by(() => {
-    const d = $state.snapshot(design) as Design;
-    d.base.stops.sort((a, b) => a.position - b.position);
-    return d;
+  const renderDesign = $derived(editor.design);
+  const aspect = $derived(output.width / output.height);
+  $effect(() => {
+    editor.aspect = aspect;
   });
 
   function download(blob: Blob, name: string) {
@@ -70,9 +71,15 @@
   }
 </script>
 
-<Preview design={renderDesign} aspect={output.width / output.height} paused={exporting} />
+<Preview design={renderDesign} {aspect} paused={exporting}>
+  {#snippet overlay()}
+    {#if editor.kind === 'mesh'}
+      <MeshOverlay {editor} {aspect} />
+    {/if}
+  {/snippet}
+</Preview>
 <ControlPanel
-  bind:design
+  bind:editor
   bind:presetId
   bind:customWidth
   bind:customHeight
