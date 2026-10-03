@@ -55,7 +55,7 @@ Decisions made during the architecture review. Reopen one only if new informatio
 ## D11. Bicubic patch mesh deferred
 - **Why:** it's complex. The draggable color-point mesh (a radial-basis-function field) covers most of the look for Phase 1.
 
-## D12. Palette shuffle belongs to M5
+## D12. Palette shuffle belongs to M5 (superseded by D22)
 - The curated library, the Curated/Remix/Generate modes, and the colors/layout locks are all part of M5.
 - No user-saved palettes in Phase 1.
 
@@ -104,3 +104,18 @@ Decisions made during the architecture review. Reopen one only if new informatio
 ## D21. The mesh shader uses the CSS Color 4 gamut-mapping algorithm
 - **How:** a fixed 16-step bisection, so results are deterministic and don't depend on tiling.
 - **Why:** pure constant-L/h chroma reduction gave up to ΔE 0.06 less chroma near the blue cusp than CSS mapping. Using the same algorithm keeps meshes and linear ramps consistent and blues vivid.
+
+## D22. Re-plan after M2: the look comes first
+- **Why:** comparing with photogradient.com showed that most of its look comes from film grain, a menu of warp shapes ("Warp Shape", "Warp", "Warp Size"), and shuffled, natural palettes. Its base is a grid Bézier mesh.
+- **Consequence:**
+  - M3 becomes warp, grain and basic shuffle.
+  - M4 becomes curated palettes, Remix and palette from image.
+  - M5 becomes the remaining patterns plus a grid Bézier mesh style.
+  - We don't copy photogradient's warps one for one. We build a broad experimental catalogue, then prune whatever doesn't add a distinct look.
+
+## D23. Warp catalogue pruned to 12 shapes
+- **Removed:**
+  - `value`: barely distinguishable from `simplex`.
+  - `gravity`: read as a dark blot and was too subtle on smooth meshes.
+- **Kept:** domain, fbm, simplex, waves, rows, columns, circular, oval, worley, voronoi and curl, plus none.
+- **Next pruning candidates:** `worley` (flat polygon patches) and `fbm` (overlaps with domain).

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { WARP_SHAPES } from '../../src/design/design';
 import type { Harness } from './harness/export';
 
 async function openHarness(page: Page) {
@@ -64,6 +65,17 @@ test.describe('export pipeline', () => {
     expect([r.width, r.height]).toEqual([2560, 1440]);
     expect(r.firstMismatch).toBeNull();
     expect(r.mismatches).toBe(0);
+  });
+
+  test('every warp shape: small ragged tiles match single-pass, gradient and mesh', async ({ page }) => {
+    test.setTimeout(300_000);
+    for (const pattern of ['linear', 'mesh'] as const) {
+      for (const shape of WARP_SHAPES) {
+        const r = await call(page, 'exportVsSinglePass', 600, 450, 256, pattern, shape);
+        expect(r.tiles, `${pattern}/${shape}`).toBe(3 * 2);
+        expect(r.firstMismatch, `${pattern}/${shape}`).toBeNull();
+      }
+    }
   });
 
   test('main thread stays responsive during a 5K export', async ({ page }) => {
@@ -291,4 +303,225 @@ test('mesh editor: drag, add, delete, switch pattern and hide handles', async ({
   await page.getByRole('button', { name: /Hide points/ }).click();
   await expect(points).toHaveCount(0);
   expect(errors).toEqual([]);
+});
+
+/** Screenshots of the rendered image only (panel and handles hidden), after the sharp redraw. */
+function previewProbe(page: Page) {
+  const canvas = page.getByTestId('preview-canvas');
+  const settled = async () => {
+    await page.waitForTimeout(400);
+    return canvas.screenshot({ style: 'aside, [data-testid="mesh-overlay"] { visibility: hidden; }' });
+  };
+  const expectPreviewChanged = async (before: Awaited<ReturnType<typeof settled>>) => {
+    await expect.poll(async () => (await settled()).equals(before), { timeout: 5_000 }).toBe(false);
+  };
+  return { canvas, settled, expectPreviewChanged };
+}
+
+async function readPoints(page: Page) {
+  return page.locator('[data-point]').evaluateAll((els) =>
+    els.map((el) => ({
+      pos: `${el.getAttribute('data-x')} ${el.getAttribute('data-y')} ${el.getAttribute('data-r')}`,
+      color: el.getAttribute('data-color')!,
+    })),
+  );
+}
+
+async function readWarp(page: Page) {
+  return {
+    shape: await page.getByLabel('Warp shape').inputValue(),
+    amount: await page.getByLabel('Warp', { exact: true }).inputValue(),
+    size: await page.getByLabel('Warp size').inputValue(),
+    seed: await page.getByRole('button', { name: 'New variation' }).getAttribute('data-seed'),
+  };
+}
+
+const blur = (page: Page) => page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+
+test('shuffle: button, Space, color and layout locks', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(err.message));
+  await page.goto('/');
+  const { canvas, settled, expectPreviewChanged } = previewProbe(page);
+  await expect(canvas).toBeVisible();
+  const shuffle = page.getByRole('button', { name: /^Shuffle/ });
+  const lockColors = page.getByRole('button', { name: 'Lock colors' });
+  const lockLayout = page.getByRole('button', { name: 'Lock layout' });
+  await expect(page.locator('[data-point]')).toHaveCount(5);
+
+  // Plain shuffle changes the image.
+  let before = await settled();
+  await shuffle.click();
+  await expectPreviewChanged(before);
+
+  // Colors locked: layout changes, every color is one of the old ones.
+  await lockColors.click();
+  await expect(lockColors).toHaveAttribute('aria-pressed', 'true');
+  let pts = await readPoints(page);
+  await shuffle.click();
+  let next = await readPoints(page);
+  expect(next.map((p) => p.pos)).not.toEqual(pts.map((p) => p.pos));
+  const oldColors = new Set(pts.map((p) => p.color));
+  for (const p of next) expect(oldColors.has(p.color)).toBe(true);
+
+  // Space shuffles, even with a button focused (without clicking that button).
+  await lockColors.click();
+  await expect(lockColors).toBeFocused();
+  await expect(lockColors).toHaveAttribute('aria-pressed', 'false');
+  pts = await readPoints(page);
+  before = await settled();
+  await page.keyboard.press('Space');
+  await expect(lockColors).toHaveAttribute('aria-pressed', 'false');
+  await expectPreviewChanged(before);
+  expect(await readPoints(page)).not.toEqual(pts);
+
+  // ...but not while typing into a field.
+  await page.getByLabel('Device preset').selectOption('custom');
+  pts = await readPoints(page);
+  await page.getByLabel('Custom width').focus();
+  await page.keyboard.press('Space');
+  expect(await readPoints(page)).toEqual(pts);
+
+  // Layout locked: positions, radii and warp stay, colors change.
+  await lockLayout.click();
+  pts = await readPoints(page);
+  const warp = await readWarp(page);
+  before = await settled();
+  await shuffle.click();
+  await expectPreviewChanged(before);
+  next = await readPoints(page);
+  expect(next.map((p) => p.pos)).toEqual(pts.map((p) => p.pos));
+  expect(next.map((p) => p.color)).not.toEqual(pts.map((p) => p.color));
+  expect(await readWarp(page)).toEqual(warp);
+
+  // Both locked: nothing to shuffle.
+  await lockColors.click();
+  await expect(shuffle).toBeDisabled();
+  pts = await readPoints(page);
+  await blur(page);
+  await page.keyboard.press('Space');
+  expect(await readPoints(page)).toEqual(pts);
+
+  // Only the active pattern is shuffled: a gradient shuffle leaves the mesh alone.
+  await lockColors.click();
+  await lockLayout.click();
+  await page.getByRole('radio', { name: 'Gradient' }).click();
+  before = await settled();
+  await shuffle.click();
+  await expectPreviewChanged(before);
+  await page.getByRole('radio', { name: 'Mesh' }).click();
+  expect(await readPoints(page)).toEqual(pts);
+  expect(errors).toEqual([]);
+});
+
+test('warp controls: shape, amount, size, new variation and [ ] cycling', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(err.message));
+  await page.goto('/');
+  const { canvas, settled, expectPreviewChanged } = previewProbe(page);
+  await expect(canvas).toBeVisible();
+  const shape = page.getByLabel('Warp shape');
+  await expect(shape).toHaveValue('domain');
+  await expect(shape.locator('option')).toHaveCount(WARP_SHAPES.length);
+
+  let before = await settled();
+  await shape.selectOption('fbm');
+  await expectPreviewChanged(before);
+
+  before = await settled();
+  await page.getByLabel('Warp', { exact: true }).fill('0.8');
+  await expectPreviewChanged(before);
+
+  before = await settled();
+  await page.getByLabel('Warp size').fill('0.8');
+  await expectPreviewChanged(before);
+
+  const variation = page.getByRole('button', { name: 'New variation' });
+  const seed = await variation.getAttribute('data-seed');
+  before = await settled();
+  await variation.click();
+  await expect(variation).not.toHaveAttribute('data-seed', seed!);
+  await expectPreviewChanged(before);
+
+  // ] and [ step through the shapes (wrapping), each one rendering differently.
+  await blur(page);
+  before = await settled();
+  await page.keyboard.press(']');
+  await expect(shape).toHaveValue('simplex');
+  await expectPreviewChanged(before);
+  await page.keyboard.press('[');
+  await page.keyboard.press('[');
+  await page.keyboard.press('[');
+  await expect(shape).toHaveValue('none');
+  await expect(page.getByLabel('Warp size')).toBeDisabled();
+  await page.keyboard.press('[');
+  await expect(shape).toHaveValue('curl');
+  await page.keyboard.press(']');
+  await expect(shape).toHaveValue('none');
+  expect(errors).toEqual([]);
+});
+
+test('grain sliders change the preview', async ({ page }) => {
+  await page.goto('/');
+  const { canvas, settled, expectPreviewChanged } = previewProbe(page);
+  await expect(canvas).toBeVisible();
+  let before = await settled();
+  await page.getByLabel('Grain amount').fill('0');
+  await expectPreviewChanged(before);
+  before = await settled();
+  await page.getByLabel('Grain amount').fill('1');
+  await expectPreviewChanged(before);
+  before = await settled();
+  await page.getByLabel('Grain size').fill('1');
+  await expectPreviewChanged(before);
+});
+
+test('panel collapses to a bar so handles under it can be reached', async ({ page }) => {
+  await page.goto('/');
+  const panel = page.locator('aside');
+  const first = page.getByRole('button', { name: 'Point 1', exact: true });
+  await expect(first).toBeVisible();
+
+  // The first default point sits under the expanded panel.
+  const center = async () => {
+    const b = (await first.boundingBox())!;
+    return [b.x + b.width / 2, b.y + b.height / 2] as const;
+  };
+  const [x, y] = await center();
+  const covered = () => page.evaluate(([px, py]) => !!document.elementFromPoint(px, py)?.closest('aside'), [x, y]);
+  expect(await covered()).toBe(true);
+
+  await page.getByRole('button', { name: 'Collapse panel' }).click();
+  const expand = page.getByRole('button', { name: 'Expand panel' });
+  await expect(expand).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.getByLabel('Warp shape')).toHaveCount(0);
+  await expect(page.getByLabel('Device preset')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Shuffle/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Export' })).toBeVisible();
+  expect((await panel.boundingBox())!.height).toBeLessThan(70);
+  expect(await covered()).toBe(false);
+
+  await page.getByRole('button', { name: 'Point 2', exact: true }).click();
+  await first.click();
+  await expect(first).toHaveAttribute('aria-pressed', 'true');
+
+  await expand.click();
+  await expect(page.getByRole('button', { name: 'Collapse panel' })).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByLabel('Warp shape')).toBeVisible();
+});
+
+test('screenshots: six shuffles in a row', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  const { canvas, settled } = previewProbe(page);
+  await expect(canvas).toBeVisible();
+  await settled();
+  await page.screenshot({ path: '/tmp/m3-panel.png' });
+  await page.getByRole('button', { name: 'Collapse panel' }).click();
+  await page.keyboard.press('h');
+  for (let i = 1; i <= 6; i++) {
+    await page.getByRole('button', { name: /^Shuffle/ }).click();
+    await settled();
+    await page.screenshot({ path: `/tmp/m3-shuffle-${i}.png` });
+  }
 });

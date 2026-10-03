@@ -67,3 +67,14 @@ export const CONTEXT_ATTRIBUTES: WebGLContextAttributes = {
   preserveDrawingBuffer: true,
   powerPreference: 'high-performance',
 };
+
+/**
+ * CPU reference of the warp stage, implemented in src/engine/warp.ts (pure TS,
+ * no GL), used by the UI (e.g. the color under the cursor of a warped mesh)
+ * and by tests:
+ *   export function warpPoint(warp: Warp, x: number, y: number): [x: number, y: number]
+ * Maps composition coordinates to warped composition coordinates; the base
+ * pattern is then evaluated at the result. Same math as the shader, in
+ * doubles (GPU results may differ slightly in fp32).
+ */
+export type WarpPoint = (warp: import('../design/design').Warp, x: number, y: number) => [number, number];

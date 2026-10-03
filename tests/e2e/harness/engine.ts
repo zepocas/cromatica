@@ -11,8 +11,9 @@ import {
 } from '../../../src/color/oklab';
 import { bakeRamp } from '../../../src/color/ramp';
 import { RAMP_SIZE, type Rgb } from '../../../src/color/types';
-import type { Design, LinearGradient, PointMesh } from '../../../src/design/design';
+import { noGrain, noWarp, type Design, type LinearGradient, type PointMesh } from '../../../src/design/design';
 import { createRenderer } from '../../../src/engine/renderer';
+import { createWarp } from '../../../src/engine/warp';
 import {
   CONTEXT_ATTRIBUTES,
   type OutputSize,
@@ -97,24 +98,26 @@ function srgbEncode(x: number): number {
 const f16round = (Math as unknown as { f16round?: (x: number) => number }).f16round;
 
 /**
- * CPU reference of the linear gradient, in doubles: t per pixel, then the
- * baked ramp with the texture's linear filtering, then the sRGB transfer.
- * Returns ENCODED values scaled to 0..255, unrounded.
+ * CPU reference of the (warped) linear gradient, in doubles: warped composition
+ * coords per pixel, t, then the baked ramp with the texture's linear filtering,
+ * then the sRGB transfer. Returns ENCODED values scaled to 0..255, unrounded.
+ * Grain is not modeled (render references with grain off).
  */
 function createReference(design: Design, output: OutputSize, halfFloat = false) {
-  if (design.base.kind === 'mesh') return createMeshReference(design.base, output);
+  const warp = createWarp(design.warp ?? noWarp);
+  const { width: w, height: h } = output;
+  const at = (px: number, py: number) => warp(...compositionCoord(px, py, w, h));
+  if (design.base.kind === 'mesh') return createMeshReference(design.base, at);
   const base = design.base;
   const ramp = bakeRamp(base.stops, RAMP_SIZE);
   if (halfFloat && f16round) for (let i = 0; i < ramp.length; i++) ramp[i] = f16round(ramp[i]);
   const n = RAMP_SIZE;
-  const { width: w, height: h } = output;
   const a = (base.angle * Math.PI) / 180;
   const dx = Math.cos(a);
   const dy = Math.sin(a);
   const extent = Math.abs(dx) * (w / h) + Math.abs(dy);
   return (px: number, py: number): Triple => {
-    const u = (px + 0.5 - w / 2) / h;
-    const v = (h / 2 - (py + 0.5)) / h;
+    const [u, v] = at(px, py);
     const t = Math.min(1, Math.max(0, (u * dx + v * dy) / extent + 0.5));
     // Sampling at (t·(n-1) + 0.5) / n with LINEAR filtering = lerp at t·(n-1).
     const s = t * (n - 1);
@@ -135,11 +138,10 @@ const compositionCoord = (px: number, py: number, w: number, h: number) =>
   [(px + 0.5 - w / 2) / h, (h / 2 - (py + 0.5)) / h] as const;
 
 /** CPU reference of the mesh: Oklab blend → the shader's gamut clip → sRGB, 0..255 unrounded. */
-function createMeshReference(mesh: PointMesh, output: OutputSize) {
+function createMeshReference(mesh: PointMesh, at: (px: number, py: number) => readonly [number, number]) {
   const evaluate = createMeshEvaluator(mesh);
-  const { width: w, height: h } = output;
   return (px: number, py: number): Triple => {
-    const rgb = meshGamutClip(evaluate(...compositionCoord(px, py, w, h)));
+    const rgb = meshGamutClip(evaluate(...at(px, py)));
     return [srgbEncode(rgb[0]) * 255, srgbEncode(rgb[1]) * 255, srgbEncode(rgb[2]) * 255];
   };
 }
@@ -474,6 +476,166 @@ const harness = {
     }
     times.sort((a, b) => a - b);
     return times[times.length >> 1];
+  },
+
+  /** Two designs rendered with dither on, compared byte-for-byte. */
+  compareDesigns(a: Design, b: Design, width: number, height: number) {
+    const output = { width, height };
+    return diffImages(render(a, output, true), render(b, output, true), width);
+  },
+
+  // ---- M3: warp and grain ----------------------------------------------------
+
+  /**
+   * Dither-off, grain-off render of a warped design vs the CPU reference
+   * (warpPoint → base pattern). Pixels within 1 px of a warp discontinuity
+   * (a step of rows/columns/voronoi: the warp jumps by > 4 px between
+   * neighbors) are counted separately.
+   */
+  compareWarpReference(design: Design, width: number, height: number, tolerance: number) {
+    const output = { width, height };
+    const d: Design = { ...design, grain: noGrain };
+    const image = render(d, output, false);
+    const ref = createReference(d, output);
+    const warp = createWarp(d.warp ?? noWarp);
+    const warped = new Float64Array(width * height * 2);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const p = warp(...compositionCoord(x, y, width, height));
+        warped[(y * width + x) * 2] = p[0];
+        warped[(y * width + x) * 2 + 1] = p[1];
+      }
+    }
+    const jump = 4 / height;
+    const nearStep = (x: number, y: number) => {
+      const i = (y * width + x) * 2;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if ((dx === 0 && dy === 0) || nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+          const j = (ny * width + nx) * 2;
+          const moved = Math.hypot(warped[i] - warped[j], warped[i + 1] - warped[j + 1]);
+          if (moved > jump) return true;
+        }
+      }
+      return false;
+    };
+    let maxDiff = 0;
+    let maxDiffOffStep = 0;
+    let over = 0;
+    let overOffStep = 0;
+    let stepPixels = 0;
+    type Worst = { x: number; y: number; gpu: number[]; ref: number[] } | null;
+    let worst: Worst = null;
+    let worstAny: Worst = null;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i = (y * width + x) * 4;
+        const r = ref(x, y).map(Math.round);
+        let diff = 0;
+        for (let k = 0; k < 3; k++) diff = Math.max(diff, Math.abs(image[i + k] - r[k]));
+        const step = nearStep(x, y);
+        if (step) stepPixels++;
+        if (diff > maxDiff) {
+          maxDiff = diff;
+          worstAny = { x, y, gpu: Array.from(image.subarray(i, i + 3)), ref: r };
+        }
+        if (diff > tolerance) over++;
+        if (!step) {
+          if (diff > maxDiffOffStep) {
+            maxDiffOffStep = diff;
+            worst = { x, y, gpu: Array.from(image.subarray(i, i + 3)), ref: r };
+          }
+          if (diff > tolerance) overOffStep++;
+        }
+      }
+    }
+    return { maxDiff, maxDiffOffStep, over, overOffStep, stepPixels, worst, worstAny };
+  },
+
+  /**
+   * Grain on vs off (dither on in both) over the whole image: mean difference
+   * per channel, σ of the luma-ish (channel-mean) difference, its horizontal
+   * autocorrelation at lags 1..4, and how many pixels that are exactly 0 or
+   * 255 without grain changed with it.
+   */
+  grainStats(design: Design, width: number, height: number) {
+    const output = { width, height };
+    const on = render(design, output, true);
+    const off = render({ ...design, grain: noGrain }, output, true);
+    const n = width * height;
+    const mean = [0, 0, 0];
+    const diff = new Float64Array(n);
+    let changedAtEnds = 0;
+    let maxChangeAtEnds = 0;
+    let ends = 0;
+    for (let p = 0; p < n; p++) {
+      let dsum = 0;
+      for (let k = 0; k < 3; k++) {
+        const a = on[p * 4 + k];
+        const b = off[p * 4 + k];
+        mean[k] += a - b;
+        dsum += a - b;
+        if (b === 0 || b === 255) {
+          ends++;
+          if (a !== b) changedAtEnds++;
+          maxChangeAtEnds = Math.max(maxChangeAtEnds, Math.abs(a - b));
+        }
+      }
+      diff[p] = dsum / 3;
+    }
+    const m = diff.reduce((a, b) => a + b, 0) / n;
+    let v = 0;
+    for (let p = 0; p < n; p++) v += (diff[p] - m) ** 2;
+    v /= n;
+    const autocorr = [1, 2, 3, 4].map((lag) => {
+      let c = 0;
+      let count = 0;
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x + lag < width; x++) {
+          c += (diff[y * width + x] - m) * (diff[y * width + x + lag] - m);
+          count++;
+        }
+      }
+      return c / count / v;
+    });
+    return { meanDiff: mean.map((s) => s / n), sigma: Math.sqrt(v), autocorr, ends, changedAtEnds, maxChangeAtEnds };
+  },
+
+  /**
+   * Contact sheet: rows × columns of designs, each rendered at cellW × cellH
+   * with dither on, labeled, as a PNG data URL.
+   */
+  async contactSheet(rows: { label: string; designs: Design[] }[], columns: string[], cellW: number, cellH: number) {
+    const labelW = 110;
+    const headerH = 28;
+    const gap = 4;
+    const sheet = document.createElement('canvas');
+    sheet.width = labelW + columns.length * (cellW + gap);
+    sheet.height = headerH + rows.length * (cellH + gap);
+    const ctx = sheet.getContext('2d')!;
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, sheet.width, sheet.height);
+    ctx.fillStyle = '#eee';
+    ctx.font = '16px sans-serif';
+    ctx.textBaseline = 'middle';
+    columns.forEach((c, i) => ctx.fillText(c, labelW + i * (cellW + gap) + 8, headerH / 2));
+    rows.forEach((row, r) => {
+      const y0 = headerH + r * (cellH + gap);
+      ctx.fillStyle = '#eee';
+      ctx.fillText(row.label, 8, y0 + cellH / 2);
+      row.designs.forEach((d, c) => {
+        const px = render(d, { width: cellW, height: cellH }, true);
+        const img = new ImageData(new Uint8ClampedArray(px.buffer as ArrayBuffer), cellW, cellH);
+        ctx.putImageData(img, labelW + c * (cellW + gap), y0);
+      });
+    });
+    const blob = await new Promise<Blob>((resolve) => sheet.toBlob((b) => resolve(b!), 'image/png'));
+    const buf = new Uint8Array(await blob.arrayBuffer());
+    let bin = '';
+    for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+    return btoa(bin);
   },
 };
 

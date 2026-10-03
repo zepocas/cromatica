@@ -1,7 +1,7 @@
 // Test harness: exposes window.harness for tests/e2e/export.spec.ts. All
 // pixel comparisons happen in-page; only small summaries go back to Node.
 import { decode } from 'fast-png';
-import { defaultDesign, type Design } from '../../../src/design/design';
+import { defaultDesign, type Design, type WarpShape } from '../../../src/design/design';
 import { createRenderer } from '../../../src/engine/renderer';
 import { CONTEXT_ATTRIBUTES, type OutputSize } from '../../../src/engine/types';
 import { exportImage } from '../../../src/export/exporter';
@@ -21,9 +21,12 @@ export interface CompareSummary {
 
 // A 4-stop design at an awkward angle so tile seams would show up; every
 // blend mode and one out-of-sRGB color are exercised. Dither stays on (the
-// default), so parity also proves the dither is tile-independent.
+// default), so parity also proves the dither is tile-independent. Warp and
+// grain are on too: both must be tile-independent as well.
 const testDesign: Design = {
   engineVersion: 1,
+  warp: { shape: 'waves', amount: 0.45, size: 0.4, seed: 7 },
+  grain: { amount: 0.5, size: 0.6 },
   base: {
     kind: 'linear',
     angle: 37,
@@ -40,6 +43,8 @@ const testDesign: Design = {
 // radii, so tile seams, clipping and far-field blending would all show up.
 const meshDesign: Design = {
   engineVersion: 1,
+  warp: { shape: 'domain', amount: 0.5, size: 0.35, seed: 0x9e3779b9 },
+  grain: { amount: 0.35, size: 0.2 },
   base: {
     kind: 'mesh',
     sharpness: 0.6,
@@ -116,9 +121,10 @@ async function exportVsSinglePass(
   height: number,
   tileSize?: number,
   pattern: TestPattern = 'linear',
+  warpShape?: WarpShape,
 ): Promise<CompareSummary> {
   const size = { width, height };
-  const design = designs[pattern];
+  const design = warpShape ? { ...designs[pattern], warp: { ...designs[pattern].warp, shape: warpShape } } : designs[pattern];
   const { png, exportMs, tiles } = await exportPng(design, size, tileSize);
   const t1 = performance.now();
   const ref = renderReference(design, size);

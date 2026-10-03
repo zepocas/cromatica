@@ -2,13 +2,21 @@ import { oklabToOklch } from '../color/oklab';
 import { evaluateMesh } from '../color/mesh';
 import {
   defaultDesign,
+  defaultGrain,
   defaultMesh,
+  defaultWarp,
   MAX_MESH_POINTS,
+  WARP_SHAPES,
   type BasePattern,
   type Design,
+  type Grain,
   type LinearGradient,
   type PointMesh,
+  type Warp,
 } from '../design/design';
+import { randomSeed } from '../design/random';
+import { shuffleDesign } from '../design/shuffle';
+import { warpPoint } from '../engine/warp';
 
 export type PatternKind = BasePattern['kind'];
 
@@ -29,6 +37,11 @@ export class EditorState {
   kind = $state<PatternKind>('mesh');
   linear = $state<LinearGradient>(structuredClone(defaultDesign.base as LinearGradient));
   mesh = $state<PointMesh>(structuredClone(defaultMesh));
+  warp = $state<Warp>({ ...defaultWarp });
+  grain = $state<Grain>({ ...defaultGrain });
+  /** Shuffle locks: a locked part is kept as is. */
+  colorsLocked = $state(false);
+  layoutLocked = $state(false);
   selectedPoint = $state(0);
   showHandles = $state(true);
   /** "Add point" armed: the next click on the canvas adds a point there. */
@@ -40,7 +53,40 @@ export class EditorState {
   get design(): Design {
     const base = $state.snapshot(this.kind === 'mesh' ? this.mesh : this.linear) as BasePattern;
     if (base.kind === 'linear') base.stops.sort((a, b) => a.position - b.position);
-    return { engineVersion: 1, base };
+    return { engineVersion: 1, base, warp: { ...this.warp }, grain: { ...this.grain } };
+  }
+
+  get canShuffle(): boolean {
+    return !(this.colorsLocked && this.layoutLocked);
+  }
+
+  /** Shuffle the active pattern (and warp) except for the locked parts. */
+  shuffle(): void {
+    if (!this.canShuffle) return;
+    const next = shuffleDesign(
+      this.design,
+      { colors: !this.colorsLocked, layout: !this.layoutLocked, seed: randomSeed() },
+      this.aspect,
+    );
+    if (next.base.kind === 'mesh') {
+      this.mesh = next.base;
+      this.selectedPoint = Math.min(this.selectedPoint, next.base.points.length - 1);
+      this.adding = false;
+    } else {
+      this.linear = next.base;
+    }
+    this.warp = next.warp;
+  }
+
+  /** Step through WARP_SHAPES (wrapping), e.g. with the [ and ] keys. */
+  cycleWarpShape(step: 1 | -1): void {
+    const n = WARP_SHAPES.length;
+    const i = WARP_SHAPES.indexOf(this.warp.shape);
+    this.warp.shape = WARP_SHAPES[(i + step + n) % n];
+  }
+
+  newWarpVariation(): void {
+    this.warp.seed = randomSeed();
   }
 
   get point() {
@@ -62,7 +108,7 @@ export class EditorState {
     return [clamp(x, -hx, hx), clamp(y, -hy, hy)];
   }
 
-  /** Add a point at (x, y) colored like the mesh there, with the median radius. */
+  /** Add a point at (x, y) colored like the (warped) image there, with the median radius. */
   addPoint(x: number, y: number): number | null {
     this.adding = false;
     if (!this.canAddPoint) return null;
@@ -71,7 +117,8 @@ export class EditorState {
     const mid = radii.length >> 1;
     const radius = radii.length % 2 ? radii[mid] : (radii[mid - 1] + radii[mid]) / 2;
     const [cx, cy] = this.clampPosition(x, y);
-    this.mesh.points.push({ x: cx, y: cy, color: oklabToOklch(evaluateMesh(plain, cx, cy)), radius });
+    const [wx, wy] = warpPoint($state.snapshot(this.warp), cx, cy);
+    this.mesh.points.push({ x: cx, y: cy, color: oklabToOklch(evaluateMesh(plain, wx, wy)), radius });
     this.selectedPoint = this.mesh.points.length - 1;
     return this.selectedPoint;
   }

@@ -1,5 +1,19 @@
+/// <reference types="node" />
 import { expect, test, type Page } from '@playwright/test';
-import { defaultMesh, type BlendMode, type Design, type Oklch } from '../../src/design/design';
+import { writeFileSync } from 'node:fs';
+import {
+  WARP_SHAPES,
+  defaultGrain,
+  defaultMesh,
+  noGrain,
+  noWarp,
+  type BlendMode,
+  type Design,
+  type Grain,
+  type Oklch,
+  type Warp,
+  type WarpShape,
+} from '../../src/design/design';
 import type { EngineHarness } from './harness/engine';
 
 declare global {
@@ -13,6 +27,8 @@ type StopSpec = [position: number, color: Oklch, blend?: BlendMode];
 function linear(angle: number, stops: StopSpec[]): Design {
   return {
     engineVersion: 1,
+    warp: noWarp,
+    grain: noGrain,
     base: {
       kind: 'linear',
       angle,
@@ -195,11 +211,13 @@ test.describe('aspect behavior', () => {
 function mesh(sharpness: number, points: [x: number, y: number, color: Oklch, radius: number][]): Design {
   return {
     engineVersion: 1,
+    warp: noWarp,
+    grain: noGrain,
     base: { kind: 'mesh', sharpness, points: points.map(([x, y, color, radius]) => ({ x, y, color, radius })) },
   };
 }
 
-const meshDefault: Design = { engineVersion: 1, base: defaultMesh };
+const meshDefault: Design = { engineVersion: 1, warp: noWarp, grain: noGrain, base: defaultMesh };
 
 // 16 points (MAX_MESH_POINTS) with vivid, partly out-of-gamut colors and varied radii.
 const mesh16 = mesh(
@@ -281,8 +299,8 @@ test.describe('mesh tile independence', () => {
 test.describe('mesh vs CPU reference (dither off)', () => {
   const cases: [string, Design][] = [
     ['default', meshDefault],
-    ['default haze', { engineVersion: 1, base: { ...defaultMesh, sharpness: 0 } }],
-    ['default blobby', { engineVersion: 1, base: { ...defaultMesh, sharpness: 1 } }],
+    ['default haze', { ...meshDefault, base: { ...defaultMesh, sharpness: 0 } }],
+    ['default blobby', { ...meshDefault, base: { ...defaultMesh, sharpness: 1 } }],
     ['16 points', mesh16],
     ['primaries', primaries],
     ['far away', farAway(0.5)],
@@ -368,5 +386,205 @@ test('mesh render time, 16 points', async ({ page }) => {
     );
     console.log(`mesh 16 points ${w}×${h}: ${ms.toFixed(0)} ms (linear ${linearMs.toFixed(0)} ms)`);
     expect(ms).toBeGreaterThan(0);
+  }
+});
+
+// ---- M3: warp and grain ---------------------------------------------------
+
+const SHAPES = WARP_SHAPES.filter((s) => s !== 'none');
+/** Intentionally stepped shapes: compared off their step edges only. */
+const STEPPED: readonly WarpShape[] = ['rows', 'columns', 'voronoi'];
+
+const warp = (shape: WarpShape, amount = 0.5, size = 0.5, seed = 7): Warp => ({ shape, amount, size, seed });
+const withLook = (d: Design, w: Warp, grain: Grain = noGrain): Design => ({ ...d, warp: w, grain });
+const bases: [string, Design][] = [
+  ['linear', threeStops(30)],
+  ['mesh', mesh16],
+];
+
+test.describe('warp tile independence (dither + grain on)', () => {
+  for (const shape of WARP_SHAPES) {
+    for (const [name, base] of bases) {
+      test(`${shape} × ${name}: 1531×917 single pass equals 256 px tiles`, async ({ page }) => {
+        const r = await page.evaluate(
+          ([d]) => window.engineHarness.compareTiled(d, 1531, 917, 256, true),
+          [withLook(base, warp(shape), defaultGrain)] as const,
+        );
+        expect(r.first).toBeNull();
+        expect(r.identical).toBe(true);
+        expect(r.tiles).toBe(24);
+      });
+    }
+  }
+
+  for (const shape of ['domain', 'curl', 'voronoi'] as const) {
+    test(`${shape} mesh 5120×2880 single pass equals 2048 px tiles`, async ({ page }) => {
+      const r = await page.evaluate(
+        ([d]) => window.engineHarness.compareTiled(d, 5120, 2880, 2048, true),
+        [withLook(mesh16, warp(shape, 0.6, 0.4, 0xdeadbeef), { amount: 0.8, size: 0.6 })] as const,
+      );
+      console.log(`${shape} 5120×2880: single ${r.singleMs.toFixed(0)} ms, tiled ${r.tiledMs.toFixed(0)} ms`);
+      expect(r.first).toBeNull();
+      expect(r.identical).toBe(true);
+      expect(r.tiles).toBe(6);
+    });
+  }
+
+  test('worker tiles equal main-thread single pass (domain, grain)', async ({ page }) => {
+    const r = await page.evaluate(
+      ([d]) => window.engineHarness.compareWorker(d, 1001, 777, 300, true),
+      [withLook(primaries, warp('domain'), defaultGrain)] as const,
+    );
+    expect(r.first).toBeNull();
+    expect(r.identical).toBe(true);
+  });
+});
+
+test.describe('warp vs CPU reference (dither + grain off)', () => {
+  for (const shape of SHAPES) {
+    for (const [name, base] of [
+      ['mesh', meshDefault],
+      ['linear', threeStops(60)],
+    ] as const) {
+      test(`${shape} × ${name}`, async ({ page }) => {
+        const stepped = STEPPED.includes(shape);
+        for (const w of [warp(shape, 0.5, 0.35, 1), warp(shape, 0.9, 0.8, 0x9e3779b9)]) {
+          const r = await page.evaluate(
+            ([d]) => window.engineHarness.compareWarpReference(d, 640, 360, 2),
+            [withLook(base, w)] as const,
+          );
+          console.log(
+            `warp ref ${shape} × ${name} a=${w.amount} s=${w.size}: max ${r.maxDiff}, off-step max ${r.maxDiffOffStep}, ` +
+              `>2: ${r.over} (${r.overOffStep} off-step), step px ${r.stepPixels}`,
+          );
+          if (stepped) {
+            expect(r.overOffStep, JSON.stringify(r.worst)).toBe(0);
+          } else if (shape === 'curl') {
+            // 8 integrated steps amplify fp32 error where the flow stretches
+            // hardest: a handful of pixels may reach ±3-4.
+            expect(r.maxDiff, JSON.stringify(r.worstAny)).toBeLessThanOrEqual(4);
+            expect(r.over).toBeLessThanOrEqual(640 * 360 * 1e-4);
+          } else {
+            expect(r.maxDiff, JSON.stringify(r.worstAny)).toBeLessThanOrEqual(2);
+          }
+        }
+      });
+    }
+  }
+});
+
+test.describe('warp identities', () => {
+  for (const shape of SHAPES) {
+    test(`${shape}: amount 0 is bit-identical to no warp; seeds differ`, async ({ page }) => {
+      const r = await page.evaluate(
+        ([plain, zero, a, b]) => {
+          const h = window.engineHarness;
+          return {
+            zero: h.compareDesigns(plain, zero, 480, 270),
+            seeds: h.compareDesigns(a, b, 480, 270),
+          };
+        },
+        [
+          meshDefault,
+          withLook(meshDefault, warp(shape, 0)),
+          withLook(meshDefault, warp(shape, 0.5, 0.5, 1)),
+          withLook(meshDefault, warp(shape, 0.5, 0.5, 2)),
+        ] as const,
+      );
+      expect(r.zero.identical).toBe(true);
+      expect(r.seeds.mismatches).toBeGreaterThan(1000);
+    });
+  }
+
+  test('grain amount 0 is bit-identical to no grain', async ({ page }) => {
+    const r = await page.evaluate(
+      ([a, b]) => window.engineHarness.compareDesigns(a, b, 480, 270),
+      [withLook(mesh16, warp('fbm')), withLook(mesh16, warp('fbm'), { amount: 0, size: 0.7 })] as const,
+    );
+    expect(r.identical).toBe(true);
+  });
+});
+
+const gray = (l: number): Design =>
+  mesh(0.5, [[0, 0, [l, 0, 0], 0.5]]);
+
+test.describe('grain', () => {
+  test('is unbiased, grows with amount, and size sets its correlation length', async ({ page }) => {
+    const stats: Record<string, { meanDiff: number[]; sigma: number; autocorr: number[] }> = {};
+    for (const amount of [0.15, 0.35, 1]) {
+      for (const size of [0, 0.5, 1]) {
+        const r = await page.evaluate(
+          ([d]) => window.engineHarness.grainStats(d, 1024, 512),
+          [withLook(gray(0.6), noWarp, { amount, size })] as const,
+        );
+        stats[`${amount}/${size}`] = r;
+        console.log(
+          `grain a=${amount} s=${size}: mean ${r.meanDiff.map((m) => m.toFixed(3))}, σ ${r.sigma.toFixed(2)} LSB, ` +
+            `autocorr ${r.autocorr.map((c) => c.toFixed(2))}`,
+        );
+        for (const m of r.meanDiff) expect(Math.abs(m)).toBeLessThan(0.2);
+      }
+    }
+    for (const size of ['0', '0.5', '1']) {
+      expect(stats[`0.35/${size}`].sigma).toBeGreaterThan(stats[`0.15/${size}`].sigma * 1.8);
+      expect(stats[`1/${size}`].sigma).toBeGreaterThan(stats[`0.35/${size}`].sigma * 2.2);
+    }
+    // Size 0 is white per pixel; coarser grain stays correlated over more pixels.
+    expect(Math.abs(stats['0.35/0'].autocorr[0])).toBeLessThan(0.05);
+    expect(stats['0.35/0.5'].autocorr[0]).toBeGreaterThan(0.3);
+    expect(stats['0.35/1'].autocorr[1]).toBeGreaterThan(stats['0.35/0.5'].autocorr[1] + 0.1);
+  });
+
+  test('leaves pure black and white exact', async ({ page }) => {
+    const d3 = threeStops(0);
+    for (const d of [gray(0), gray(1), d3]) {
+      const r = await page.evaluate(
+        ([d]) => window.engineHarness.grainStats(d, 800, 450),
+        [withLook(d, warp('domain'), { amount: 1, size: 0.3 })] as const,
+      );
+      // Channels that only round to 0/255 may move by 1 LSB; never a speck.
+      expect(r.maxChangeAtEnds).toBeLessThanOrEqual(1);
+      if (d !== d3) expect(r.changedAtEnds).toBe(0);
+    }
+    const r = await page.evaluate(
+      ([d]) => window.engineHarness.grainStats(d, 800, 450),
+      [withLook(gray(0), noWarp, { amount: 1, size: 0 })] as const,
+    );
+    expect(r.ends).toBe(800 * 450 * 3);
+    expect(r.changedAtEnds).toBe(0);
+  });
+});
+
+test('warp render time at 5120×2880 (mesh, 16 points, grain on)', async ({ page }) => {
+  const lines: string[] = [];
+  for (const shape of WARP_SHAPES) {
+    const ms = await page.evaluate(
+      ([d]) => window.engineHarness.timeRender(d, 5120, 2880, 3),
+      [withLook(mesh16, warp(shape), defaultGrain)] as const,
+    );
+    lines.push(`${shape} ${ms.toFixed(0)} ms`);
+    expect(ms).toBeGreaterThan(0);
+  }
+  console.log(`warp timings 5120×2880: ${lines.join(', ')}`);
+});
+
+test.describe('contact sheets', () => {
+  const sheetBase: Design = { ...meshDefault, grain: defaultGrain };
+  const sheets: [string, string[], (shape: WarpShape, i: number) => Warp][] = [
+    ['/tmp/m3-warps-amount.png', ['amount 0.2', 'amount 0.5', 'amount 0.8'], (s, i) => warp(s, [0.2, 0.5, 0.8][i], 0.35, 1)],
+    ['/tmp/m3-warps-size.png', ['size 0.1', 'size 0.5', 'size 0.9'], (s, i) => warp(s, 0.4, [0.1, 0.5, 0.9][i], 1)],
+  ];
+  for (const [path, columns, make] of sheets) {
+    test(path, async ({ page }) => {
+      const rows = WARP_SHAPES.map((shape) => ({
+        label: shape,
+        designs: columns.map((_, i) => withLook(sheetBase, make(shape, i), defaultGrain)),
+      }));
+      const png = await page.evaluate(
+        ([rows, columns]) => window.engineHarness.contactSheet(rows, columns, 480, 270),
+        [rows, columns] as const,
+      );
+      writeFileSync(path, Buffer.from(png, 'base64'));
+    });
   }
 });

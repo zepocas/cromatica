@@ -80,46 +80,83 @@ Each milestone uses the same structure:
   - The "Defined" end of the Blend slider gives cell-like regions with straight borders rather than round blobs. That may be fine, but review it with real use.
   - **Panel overlap:** the floating panel can cover point handles (the default mesh's first point sits under it). Make the panel collapsible or movable (M7).
 
-### M3 — Distortion
-- **Goal:** the biggest jump in visual quality, turning flat blends into organic, liquid shapes.
-- **Scope:**
-  - Domain warp (0–3 levels deep)
-  - Curl flow integrated in a single shader pass
-  - Transform controls (rotation, scale, offset, frequency, octaves)
-  - Shader variant builder and cache
-- **Done when:**
-  - Every distortion works with every base pattern
-  - Switching variants doesn't visibly stall the UI
-  - Integrated GPUs stay within the preview frame budget, with adaptive resolution helping
-- **Open questions:**
-  - Number of curl-flow steps versus cost
-  - Which parameters to show versus hide as presets
-  - Octave limits
+> **Re-plan (after M2):** a comparison with photogradient.com showed that most of its look comes from three things: strong film grain, a menu of warp shapes, and shuffled, natural-looking palettes. Those moved forward into M3. Curated palettes and palette-from-image are now M4, and the remaining patterns are M5. See D22.
 
-### M4 — Pattern variety
-- **Goal:** widen the aesthetic range beyond gradients and meshes.
-- **Scope:** fBm noise (plain, ridged, billow), Worley cells (F1, F2, F2−F1, smooth), aurora ribbons (additive, blended in linear light).
-- **Done when:** each pattern has golden-image tests and at least 3 good-looking reference designs.
-- **Open questions:**
-  - Should aurora have its own ribbon-count and palette controls?
-  - How far should Worley go toward caustics?
-
-### M5 — Finish, harmony and shuffle
-- **Goal:** the creative loop: shuffle, adjust, export.
+### M3 — The look: warp, grain, shuffle ✅
+- **Goal:** match photogradient's look, then go beyond it.
 - **Scope:**
-  - Film grain: strength, size, stronger in midtones
-  - Harmony generator
-  - Curated palette library (50–100 palettes, tagged)
-  - Shuffle modes: Curated, Remix and Generate
-  - Lock toggles: colors only or layout only
-  - Seeded random generator
+  - **Warp stage** (coordinate distortion before the base pattern, for both gradient and mesh).
+    - An *experimental catalogue* of shapes: domain warp, FBM, simplex, value noise, waves, rows, columns, circular, oval, Worley, Voronoi, gravity, curl flow.
+    - Controls: Warp (strength), Warp size (scale), and a seed ("new variation").
+    - We expect to prune shapes that don't earn their place.
+  - **Film grain** (finish stage): amount and size, stronger in midtones, defined per output pixel, applied before dither.
+  - **Basic shuffle:**
+    - A seeded random generator.
+    - A harmony palette generator: random rule, lightness spread, chroma relative to the maximum in gamut, with a lean toward natural, muted palettes.
+    - Randomizes layout: mesh points and radii, gradient angle, and warp shape, amount, size and seed.
+    - Locks for colors only and layout only.
 - **Done when:**
-  - 10 shuffles in a row mostly produce results worth keeping
-  - Every shuffle can be undone and shared
+  - Every warp shape renders tile-identically and works with both base patterns.
+  - A contact sheet of all shapes has been reviewed and pruned.
+  - Grain looks the same in preview (1:1) and export.
+  - 10 shuffles in a row mostly give results worth keeping.
+- **Outcome:** all criteria met.
+  - Every warp shape tiles byte-identically on both patterns, including 5K exports.
+  - The GPU matches the CPU reference within ±1, except curl (±3 on one pixel), whose integration amplifies fp32 error.
+  - Grain is unbiased, and pure black and white stay exact.
+  - Natural shuffles read like photogradient.
+- **Resolved:**
+  - `value` and `gravity` were pruned, leaving 12 shapes (D23).
+  - Grain has a small chroma component (0.2× luma).
+  - Default grain amount is 0.35.
+  - Space shuffles everywhere except text, number and color inputs, selects and editable content.
+- **Still open:**
+  - Vivid palettes with 5–6 colors can look garish (tune in M4).
+  - Grain in the preview differs from the export at DPR below 1 (the 1:1 loupe comes in M7).
+  - `warpPoint` ignores aspect (seeded centers sit in a 16:9 box).
+
+### M3.5 — UI refinement (photogradient-style panel) and transforms
+- **Goal:** a simpler panel organized like photogradient's, plus the basic whole-image transforms that are missing.
+- **Scope (draft, to agree on):**
+  - **Panel order:**
+    1. Gradient (pattern)
+    2. Warp shape
+    3. Size: device preset plus W×H
+    4. Warp, Warp size and Noise sliders
+    5. Colors list: swatch and hex per row, with shuffle and add icons
+    6. Download
+  - **Grain:** a single "Noise" fader; size stays fixed.
+  - **Transforms:** rotate (90° steps plus a free angle), zoom and flip. They apply to the whole composition, before the warp.
+- **Open questions:**
+  - Light or dark panel?
+  - Pull undo/redo forward from M6?
+  - Should the app open on a random design?
+
+### M4 — Palettes: curated library, Remix, palette from image
+- **Goal:** better colors with less effort.
+- **Scope:**
+  - Curated palette library: 50–100 palettes, tagged, stored as Oklch.
+  - Shuffle modes Curated, Remix and Generate.
+  - **Palette from image (new):**
+    - Fully local in the browser: the image is never uploaded.
+    - Picks dominant colors with k-means in Oklab.
+    - Optionally seeds mesh point positions from where those colors appear in the image.
+- **Done when:**
+  - Palettes extracted from photos look natural, with no muddy duplicates.
+  - Remix keeps how the current colors relate to each other.
 - **Open questions:**
   - Who curates the palettes, and from what sources (licensing)?
-  - Tag vocabulary
-  - How strong should Remix variation be?
+  - Tag vocabulary.
+  - How many colors to extract, and how to weight colorful areas against large dull ones.
+
+### M5 — Pattern variety
+- **Goal:** widen the range of looks beyond gradients and meshes.
+- **Scope:**
+  - fBm noise fields.
+  - Worley cells.
+  - Aurora ribbons.
+  - A **grid Bézier mesh** style (photogradient's core style; revisits D11).
+- **Done when:** each pattern has golden-image tests and at least 3 good reference designs.
 
 ### M6 — Saving
 - **Goal:** never lose work within a session, and make designs shareable.

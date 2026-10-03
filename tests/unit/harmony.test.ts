@@ -1,0 +1,120 @@
+import { describe, expect, it } from 'vitest';
+import {
+  deltaEOk,
+  generatePalette,
+  HARMONY_RULES,
+  maxChroma,
+  MIN_L_SPAN,
+  minPaletteDeltaE,
+  MOOD_TUNING,
+} from '../../src/color/harmony';
+import { inSrgbGamut } from '../../src/color/oklab';
+import { createRng } from '../../src/design/random';
+import type { Oklch } from '../../src/design/design';
+
+const relChroma = (c: Oklch) => {
+  const m = maxChroma(c[0], c[2]);
+  return m > 1e-4 ? c[1] / m : 0;
+};
+
+describe('maxChroma', () => {
+  it('finds the gamut boundary', () => {
+    for (const [l, h] of [[0.5, 30], [0.7, 140], [0.4, 265], [0.9, 100]]) {
+      const m = maxChroma(l, h);
+      expect(inSrgbGamut([l, m, h])).toBe(true);
+      expect(inSrgbGamut([l, m + 1e-3, h])).toBe(false);
+    }
+    expect(maxChroma(0, 0)).toBe(0);
+    expect(maxChroma(1, 0)).toBe(0);
+  });
+});
+
+describe('generatePalette', () => {
+  const cases = HARMONY_RULES.flatMap((rule) =>
+    (['natural', 'vivid', 'any'] as const).flatMap((mood) => [2, 3, 4, 5, 6, 8].map((count) => ({ rule, mood, count }))),
+  );
+
+  it('meets gamut, ΔE spacing and lightness spread for every rule/mood/count', () => {
+    for (const { rule, mood, count } of cases) {
+      for (let seed = 0; seed < 12; seed++) {
+        const pal = generatePalette(createRng(seed * 7919 + count), count, { rule, mood });
+        expect(pal).toHaveLength(count);
+        for (const c of pal) {
+          expect(inSrgbGamut(c)).toBe(true);
+          expect(c[2]).toBeGreaterThanOrEqual(0);
+          expect(c[2]).toBeLessThan(360);
+        }
+        const min = minPaletteDeltaE(count);
+        for (let i = 0; i < count; i++) {
+          for (let j = i + 1; j < count; j++) expect(deltaEOk(pal[i], pal[j])).toBeGreaterThanOrEqual(min);
+        }
+        const ls = pal.map((c) => c[0]);
+        const span = Math.max(...ls) - Math.min(...ls);
+        if (count >= 3 && rule !== 'monochrome') expect(span).toBeGreaterThanOrEqual(MIN_L_SPAN);
+        if (count >= 3 && rule === 'monochrome') expect(span).toBeGreaterThanOrEqual(0.4);
+      }
+    }
+  });
+
+  it('is deterministic for an rng state', () => {
+    for (let seed = 0; seed < 20; seed++) {
+      expect(generatePalette(createRng(seed), 5)).toEqual(generatePalette(createRng(seed), 5));
+    }
+  });
+
+  it('covers the rules when none is requested', () => {
+    // Hue structure is hidden, so just check variety: different seeds give different palettes.
+    const keys = new Set(Array.from({ length: 50 }, (_, s) => JSON.stringify(generatePalette(createRng(s), 4))));
+    expect(keys.size).toBe(50);
+  });
+
+  it('keeps natural chroma low/medium and vivid chroma high', () => {
+    const nat = MOOD_TUNING.natural;
+    const viv = MOOD_TUNING.vivid;
+    const natRel: number[] = [];
+    const vivRel: number[] = [];
+    for (let seed = 0; seed < 200; seed++) {
+      for (const c of generatePalette(createRng(seed), 5, { mood: 'natural' })) {
+        expect(c[1]).toBeLessThanOrEqual(nat.maxChroma);
+        if (c[1] < 0.045) continue; // near-neutral anchor: tiny absolute chroma, relative is meaningless
+        expect(relChroma(c)).toBeLessThanOrEqual(nat.accent[1][1] + 0.01);
+        natRel.push(relChroma(c));
+      }
+      for (const c of generatePalette(createRng(seed), 5, { mood: 'vivid' })) {
+        // Near-neutral anchors (deep near-black) are allowed in vivid palettes.
+        if (c[1] > 0.045) expect(relChroma(c)).toBeGreaterThanOrEqual(viv.rel[0] - 0.01);
+        vivRel.push(relChroma(c));
+      }
+    }
+    const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+    expect(median(natRel)).toBeLessThan(0.45);
+    expect(median(vivRel)).toBeGreaterThan(0.7);
+  });
+
+  it('includes near-neutral anchors in some natural palettes', () => {
+    let anchors = 0;
+    for (let seed = 0; seed < 100; seed++) {
+      const pal = generatePalette(createRng(seed), 4, { mood: 'natural' });
+      if (pal.some((c) => c[1] < 0.04 && (c[0] > 0.9 || c[0] < 0.3))) anchors++;
+    }
+    expect(anchors).toBeGreaterThan(20);
+    expect(anchors).toBeLessThan(80);
+  });
+
+  it('mood any leans natural', () => {
+    let natural = 0;
+    for (let seed = 0; seed < 300; seed++) {
+      const pal = generatePalette(createRng(seed), 4);
+      if (pal.every((c) => c[1] <= MOOD_TUNING.natural.maxChroma + 1e-9 && relChroma(c) < 0.73)) natural++;
+    }
+    expect(natural / 300).toBeGreaterThan(0.5);
+    expect(natural / 300).toBeLessThan(0.85);
+  });
+
+  it('handles 1 and 16 colors', () => {
+    expect(generatePalette(createRng(1), 1)).toHaveLength(1);
+    const pal = generatePalette(createRng(1), 16);
+    expect(pal).toHaveLength(16);
+    for (const c of pal) expect(inSrgbGamut(c)).toBe(true);
+  });
+});

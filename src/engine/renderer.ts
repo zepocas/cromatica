@@ -11,7 +11,9 @@ import {
   type PointMesh,
 } from '../design/design';
 import { BLUE_NOISE_SIZE, DITHER_CHANNEL_OFFSETS, blueNoiseRanks } from './blue-noise';
+import { prepareGrain } from './grain';
 import { buildShaderSources, variantKey, type Defines } from './shaders';
+import { CURL_STEPS, MAX_WARP_COORD, WARP_EDGE, WARP_PARAM_SLOTS, prepareWarp, type PreparedWarp } from './warp';
 import type { OutputSize, RenderOptions, Renderer, Tile } from './types';
 
 /** Uniforms shared by every pixel of an output; independent of the tile. */
@@ -35,6 +37,29 @@ function meshUniforms(mesh: PointMesh) {
   return { u_meshCount: m.count, u_meshExponent: m.exponent, u_meshPoint: points, u_meshColor: colors };
 }
 
+/** Warp variant defines: none for 'none' (identity), else WARP_ANY + WARP_<SHAPE>. */
+function warpDefines(w: PreparedWarp): Defines {
+  if (w.shape === 'none') return {};
+  return {
+    WARP_ANY: true,
+    [`WARP_${w.shape.toUpperCase()}`]: true,
+    WARP_PARAM_SLOTS,
+    MAX_WARP_COORD,
+    WARP_EDGE,
+    ...(w.shape === 'curl' ? { CURL_STEPS } : {}),
+  };
+}
+
+function warpUniforms(w: PreparedWarp) {
+  if (w.shape === 'none') return {};
+  return {
+    u_warpSeed: w.seed,
+    u_warpFreq: w.freq,
+    u_warpAmp: w.amp,
+    u_warpParam: new Float32Array(w.params),
+  };
+}
+
 /** Cheap structural key of the stops; the ramp is re-baked only when it changes. */
 function stopsKey(stops: readonly ColorStop[]): string {
   return stops.map((s) => `${s.position},${s.color[0]},${s.color[1]},${s.color[2]},${s.blend}`).join('|');
@@ -51,7 +76,7 @@ function createTexture(gl: WebGL2RenderingContext, filter: GLenum, wrap: GLenum)
 }
 
 export function createRenderer(gl: WebGL2RenderingContext): Renderer {
-  // Program variants keyed by their #define set (one per base pattern).
+  // Program variants keyed by their #define set (base pattern × warp shape).
   const programs = new Map<string, twgl.ProgramInfo>();
   const vao = gl.createVertexArray();
 
@@ -103,11 +128,15 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
     render(design: Design, output: OutputSize, tile: Tile, opts: RenderOptions = {}) {
       const base = design.base;
       const isMesh = base.kind === 'mesh';
+      // Designs from before M3 have no warp/grain: treat as off.
+      const warp = prepareWarp(design.warp);
+      const grain = prepareGrain(design.grain);
       const info = getProgram({
         BLUE_NOISE_SIZE,
         BASE_LINEAR: !isMesh,
         BASE_MESH: isMesh,
         ...(isMesh ? { MAX_MESH_POINTS, GAMUT_CLIP_STEPS } : {}),
+        ...warpDefines(warp),
       });
       let baseUniforms: object;
       if (isMesh) {
@@ -132,6 +161,10 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
         u_outputSize: [output.width, output.height],
         u_tile: [tile.x, tile.y, tile.width, tile.height],
         ...baseUniforms,
+        ...warpUniforms(warp),
+        u_grainAmp: grain.sigma,
+        u_grainScale: 1 / grain.sizePx,
+        u_grainChroma: grain.chroma,
         u_blueNoise: blueNoiseTexture,
         u_ditherOffset: ditherOffsets,
         u_dither: opts.dither === false ? 0 : 1,

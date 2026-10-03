@@ -64,16 +64,69 @@ export interface PointMesh {
 
 export type BasePattern = LinearGradient | PointMesh;
 
+/**
+ * Coordinate distortion applied before the base pattern (M3). Experimental
+ * catalogue — shapes that don't earn their place will be pruned (D22).
+ */
+export type WarpShape =
+  | 'none'
+  | 'domain' // recursive domain-warped fBm (IQ-style)
+  | 'fbm'
+  | 'simplex'
+  | 'waves'
+  | 'rows' // stepped horizontal bands
+  | 'columns' // stepped vertical bands
+  | 'circular' // radial ripples around the center
+  | 'oval' // elliptical swirl/pinch around the center
+  | 'worley'
+  | 'voronoi'
+  | 'curl'; // stateless curl-noise flow, integrated in-shader
+
+export const WARP_SHAPES: readonly WarpShape[] = [
+  'none', 'domain', 'fbm', 'simplex', 'waves', 'rows', 'columns',
+  'circular', 'oval', 'worley', 'voronoi', 'curl',
+];
+
+export interface Warp {
+  shape: WarpShape;
+  /** Strength in [0, 1]; 0 = no distortion. */
+  amount: number;
+  /** Feature scale in [0, 1]; 0 = large, slow features, 1 = small, busy ones. */
+  size: number;
+  /** uint32 seed. Mixed into hashes, never used as a coordinate offset (D2). */
+  seed: number;
+}
+
+/**
+ * Film grain (finish stage, D7). Defined per OUTPUT pixel (D4 exception),
+ * applied after the sRGB transfer and before dither; strongest in midtones.
+ */
+export interface Grain {
+  /** [0, 1]; 0 = off. */
+  amount: number;
+  /** [0, 1]; 0 = finest (≈1 px), 1 = coarse (≈3 px). */
+  size: number;
+}
+
 export interface Design {
   engineVersion: 1;
   base: BasePattern;
+  warp: Warp;
+  grain: Grain;
 }
+
+export const defaultWarp: Warp = { shape: 'domain', amount: 0.3, size: 0.35, seed: 1 };
+export const noWarp: Warp = { shape: 'none', amount: 0, size: 0.5, seed: 1 };
+export const defaultGrain: Grain = { amount: 0.35, size: 0.2 };
+export const noGrain: Grain = { amount: 0, size: 0 };
 
 export const MAX_STOPS = 8;
 export const MAX_MESH_POINTS = 16;
 
 export const defaultDesign: Design = {
   engineVersion: 1,
+  warp: noWarp,
+  grain: noGrain,
   base: {
     kind: 'linear',
     angle: 30,

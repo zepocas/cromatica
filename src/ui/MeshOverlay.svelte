@@ -151,6 +151,8 @@
         data-point={i}
         data-x={p.x.toFixed(4)}
         data-y={p.y.toFixed(4)}
+        data-r={p.radius.toFixed(4)}
+        data-color={p.color.map((c) => c.toFixed(4)).join(' ')}
         role="button"
         tabindex="0"
         aria-label="Point {i + 1}"

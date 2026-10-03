@@ -48,7 +48,7 @@ Internally, an export is "a rectangle over the composition", so multi-monitor su
 - Gamut mapping into sRGB by reducing chroma at constant L and h.
 - Gradient precomputed into an RGBA16F lookup texture (~4096 entries, linear RGB).
 - Harmony generator (analogous, complementary, split-complementary, triadic, tetradic) with even lightness steps and chroma set relative to the maximum in-gamut chroma for each hue.
-- Curated palette library (see M5).
+- Curated palette library and palette from image (see M4).
 
 ### `engine`
 - GLSL library: integer hashes (PCG), simplex noise, fBm, Worley, curl, Oklab conversion, cheap in-shader gamut clip, grain, blue-noise dither.
@@ -88,13 +88,13 @@ Internally, an export is "a rectangle over the composition", so multi-monitor su
 | **M0** | **Export pipeline spike:** one linear gradient → tiled 5K export in a Worker → custom PNG encoder | The riskiest part, so it comes first. Tests: a tiled render is pixel-identical to a single-pass render, and the preview matches the export at 1:1. |
 | M1 | Color system: stops, lookup texture, blend modes, spline, dither | Everything else builds on it |
 | M2 | Color-point mesh + on-canvas drag handles | Headline feature |
-| M3 | Distortion: domain warp, curl flow | Biggest jump in visual quality |
-| M4 | Patterns: fBm, Worley, aurora | Visual variety |
-| M5 | Grain, harmony generator, **palette shuffle** | See below |
+| M3 | **The look:** warp stage (catalogue of shapes), film grain, basic shuffle | Re-planned after M2 (D22) |
+| M4 | Palettes: curated library, Remix, **palette from image** | See ROADMAP |
+| M5 | Patterns: fBm, Worley, aurora, grid Bézier mesh | Visual variety |
 | M6 | Saving: undo/redo, autosave cache, share links | |
 | M7 | Device presets, loupe, performance tuning on integrated GPUs | Polish |
 
-### M5 — Palette shuffle
+### M3/M4 — Palette shuffle (split: basic shuffle in M3, curated, Remix and from-image in M4)
 
 - **Curated library:** 50–100 hand-picked palettes stored as Oklch, each with a name and tags (warm, pastel, dark, neon, earthy…), bundled as a static file.
 - **One shuffle button with three modes:**
