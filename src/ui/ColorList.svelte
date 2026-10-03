@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { HARMONY_RULES } from '../color/harmony';
   import { hexToOklch, inSrgbGamut, oklchToHex } from '../color/oklab';
   import type { BlendMode, Oklch } from '../design/design';
   import ColorControls from './ColorControls.svelte';
@@ -20,6 +21,15 @@
     { value: 'oklch-long', label: 'hue, long way' },
   ];
 
+  const RULE_LABELS: Record<(typeof HARMONY_RULES)[number], string> = {
+    monochrome: 'monochrome',
+    analogous: 'analogous',
+    complementary: 'complementary',
+    'split-complementary': 'split complementary',
+    triadic: 'triadic',
+    tetradic: 'tetradic',
+  };
+
   const isMesh = $derived(editor.kind === 'mesh');
   const noun = $derived(isMesh ? 'point' : 'stop');
   const colors = $derived<Oklch[]>(
@@ -39,12 +49,14 @@
     else editor.selectedStop = i;
   }
 
-  function setColor(i: number, color: Oklch) {
-    if (isMesh) editor.mesh.points[i].color = color;
-    else editor.linear.stops[i].color = color;
-  }
+  const setColor = (i: number, color: Oklch) => editor.setColor(i, color);
 
   const hexOf = (c: Oklch) => oklchToHex(c).toUpperCase();
+
+  /** Anchor the harmony on the selected color's hue. */
+  function baseFromSelected() {
+    editor.baseHue = Math.round(colors[selected][2]);
+  }
 
   function onHexChange(e: Event & { currentTarget: HTMLInputElement }, i: number) {
     const input = e.currentTarget;
@@ -70,6 +82,32 @@
       onclick={() => editor.addColor()}>+</button
     >
   {/snippet}
+
+  <label class="row">
+    <span>harmony</span>
+    <select aria-label="Harmony" title="Steers ⟳ and shuffle" bind:value={editor.harmony}>
+      <option value="auto">auto{editor.lastHarmony ? ` (${RULE_LABELS[editor.lastHarmony.rule]})` : ''}</option>
+      {#each HARMONY_RULES as r (r)}
+        <option value={r}>{RULE_LABELS[r]}</option>
+      {/each}
+    </select>
+  </label>
+
+  <div class="row">
+    <span>edit</span>
+    <button
+      aria-label="Link colors"
+      aria-pressed={editor.linkColors}
+      title="Linked: changing one color moves the whole palette with it, keeping the harmony"
+      onclick={() => (editor.linkColors = !editor.linkColors)}>{editor.linkColors ? '[x]' : '[ ]'} linked</button
+    >
+    <span class="spacer"></span>
+    <button
+      aria-label="Remix colors"
+      title="Shift the whole palette at random, keeping how the colors relate"
+      onclick={() => editor.remix()}>[ remix ]</button
+    >
+  </div>
 
   {#if !isMesh}
     <StopStrip bind:editor />
@@ -117,8 +155,44 @@
   </ul>
 
   {#snippet more()}
+    <label class="row">
+      <span>mood</span>
+      <select aria-label="Mood" bind:value={editor.mood}>
+        <option value="any">auto{editor.lastHarmony ? ` (${editor.lastHarmony.mood})` : ''}</option>
+        <option value="natural">natural</option>
+        <option value="vivid">vivid</option>
+      </select>
+    </label>
+    <div class="row">
+      <span>base hue</span>
+      <button
+        aria-label="Fix base hue"
+        aria-pressed={editor.baseHue !== null}
+        title="Build the harmony around one hue instead of a random one"
+        onclick={() => (editor.baseHue = editor.baseHue === null ? Math.round(colors[selected][2]) : null)}
+        >{editor.baseHue === null ? '[ ]' : '[x]'}</button
+      >
+      <input
+        class="hue"
+        type="range"
+        min="0"
+        max="359"
+        step="1"
+        aria-label="Base hue"
+        disabled={editor.baseHue === null}
+        value={editor.baseHue ?? 0}
+        oninput={(e) => (editor.baseHue = e.currentTarget.valueAsNumber)}
+      />
+      <button
+        class="icon"
+        aria-label="Base hue from selected color"
+        title="Use the selected color's hue"
+        onclick={baseFromSelected}>⌖</button
+      >
+    </div>
+    <hr />
     {#if isMesh}
-      <ColorControls bind:color={editor.mesh.points[selected].color} />
+      <ColorControls color={editor.mesh.points[selected].color} onchange={(c) => setColor(selected, c)} />
       <label class="row">
         <span>size</span>
         <input
@@ -143,7 +217,7 @@
         >
       </div>
     {:else}
-      <ColorControls bind:color={editor.linear.stops[selected].color} />
+      <ColorControls color={editor.linear.stops[selected].color} onchange={(c) => setColor(selected, c)} />
       <label class="row">
         <span>blend</span>
         <select aria-label="Blend to next stop" bind:value={editor.linear.stops[selected].blend} disabled={selIsLastStop}>
@@ -224,5 +298,17 @@
   }
   .toggle {
     color: var(--ink);
+  }
+  .spacer {
+    flex: 1;
+  }
+  .row button[aria-pressed='true'] {
+    color: var(--ink);
+  }
+  hr {
+    width: 100%;
+    margin: 2px 0;
+    border: none;
+    border-top: 1px dashed var(--rule);
   }
 </style>

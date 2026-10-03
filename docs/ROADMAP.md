@@ -147,21 +147,33 @@ Each milestone uses the same structure:
 - **Still open:**
   - On slow GPUs the grain still coarsens while dragging (the half-resolution fallback).
 
-### M4 — Palettes: curated library, Remix, palette from image
-- **Goal:** better colors with less effort.
-- **Scope:**
-  - Curated palette library: 50–100 palettes, tagged, stored as Oklch.
-  - Shuffle modes Curated, Remix and Generate.
-  - **Palette from image (new):**
-    - Fully local in the browser: the image is never uploaded.
-    - Picks dominant colors with k-means in Oklab.
-    - Optionally seeds mesh point positions from where those colors appear in the image.
+### M4 — Color: harmony controls, curated palettes, Remix, palette from image
+- **Goal:** make the color theory visible and steerable, and get good colors with less effort.
+- **Background:** since M3, every shuffle builds its palette from a harmony rule (monochrome, analogous, complementary, split-complementary, triadic or tetradic) in Oklch. Lightness is spread evenly, chroma is set relative to the maximum in-gamut chroma for each hue, and near-duplicates are rejected. `generatePalette` already accepts `rule` and `mood`, but the UI exposes neither.
+- **Scope, in build order:**
+  1. **Harmony picker** in the colors section: auto (today's weighted random), monochrome, analogous, complementary, split-complementary, triadic, tetradic. It steers ⟳ and the main shuffle. On auto, show which rule the current palette came from, so a result you like can be pinned.
+  2. **Mood toggle:** natural or vivid (today: natural-leaning random). Tune vivid with 5–6 colors first: it currently looks garish (open since M3).
+  3. **Base hue (optional):** keep the rule but anchor it on a hue you choose, e.g. "triadic around this blue". Could come from the selected color row.
+  4. **Remix:** keep how the current colors relate to each other (hue gaps, lightness order, relative chroma) but shift hue, lightness or saturation. Works on hand-edited palettes too, not just generated ones.
+  5. ~~**Curated library:**~~ skipped (see Decided).
+  6. **Palette from image:**
+     - Fully local in the browser: the image is never uploaded.
+     - Picks dominant colors with k-means in Oklab.
+     - Optionally seeds mesh point positions from where those colors appear in the image.
+- **UI:** stays lean, following the terminal panel. The harmony picker and the ⟳ source are in the main view; mood, base hue and Remix go behind "+ more".
 - **Done when:**
-  - Palettes extracted from photos look natural, with no muddy duplicates.
+  - Every rule produces palettes that visibly read as that rule.
+  - Vivid palettes with 5–6 colors are no longer garish.
   - Remix keeps how the current colors relate to each other.
+  - Palettes extracted from photos look natural, with no muddy duplicates.
+- **Progress:**
+  - ✅ Steps 1–3: the harmony picker is in the main view; on auto it shows the rule it picked, e.g. "auto (tetradic)". Mood (auto, natural or vivid) and base hue (a hue-wheel slider, ⌖ to take the selected color's hue) are behind "+ more".
+  - ✅ Step 4, Remix, became a link mode: with "edit [x] linked", changing one color moves the whole palette by the same shift. Hue rotates every color by the same angle, keeping the harmony. Lightness shifts logit(L), keeping the order without clipping. Intensity scales by the same ratio. Every part reverses exactly when dragged back, except where a color hits the sRGB edge. "Free" edits one color as before. "[ remix ]" applies a random linked shift. It works on hand-edited palettes too (`src/color/linked.ts`).
+  - ✅ Vivid tuning: with 4+ colors and a multi-hue rule, only the base hue's colors and one accent stay vivid; the other hues drop to a supporting chroma (0.3–0.55 of max). Yellow-greens (hue 100–140) are capped at 0.55 of max chroma, so they no longer read as acid. Natural palettes are unchanged.
+- **Decided:**
+  - The rule, mood and base hue are UI settings that only steer the next shuffle. They aren't saved in the design or carried in share links.
+  - No curated palette library: the harmony generator with its controls covers it. This also removes the curation and licensing questions.
 - **Open questions:**
-  - Who curates the palettes, and from what sources (licensing)?
-  - Tag vocabulary.
   - How many colors to extract, and how to weight colorful areas against large dull ones.
 
 ### M5 — Pattern variety

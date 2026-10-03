@@ -13,13 +13,16 @@ import {
   type Design,
   type Grain,
   type LinearGradient,
+  type Oklch,
   type PointMesh,
   type Transform,
   type Warp,
 } from '../design/design';
+import { relinkPalette, remixShift, shiftPalette } from '../color/linked';
 import { evaluateRamp } from '../color/ramp';
-import { randomSeed } from '../design/random';
-import { shuffleDesign } from '../design/shuffle';
+import { createRng, randomSeed } from '../design/random';
+import { shuffleWithHarmony } from '../design/shuffle';
+import type { HarmonyRule, PaletteMood } from '../design/shuffle.types';
 import {
   applyMat2,
   clampZoom,
@@ -56,6 +59,15 @@ export class EditorState {
   warp = $state<Warp>({ ...defaultWarp });
   grain = $state<Grain>({ ...defaultGrain });
   transform = $state<Transform>({ ...identityTransform });
+  /** Palette steering for shuffles (UI only, not part of the design). */
+  harmony = $state<HarmonyRule | 'auto'>('auto');
+  mood = $state<PaletteMood>('any');
+  /** Hue the harmony is built around; null = random each shuffle. */
+  baseHue = $state<number | null>(null);
+  /** Rule and mood of the last generated palette; null until the first color shuffle. */
+  lastHarmony = $state<{ rule: HarmonyRule; mood: Exclude<PaletteMood, 'any'> } | null>(null);
+  /** Linked: editing one color moves the whole palette with it (keeps the harmony). */
+  linkColors = $state(false);
   /** Shuffle locks: a locked part is kept as is. */
   colorsLocked = $state(false);
   layoutLocked = $state(false);
@@ -100,7 +112,17 @@ export class EditorState {
   }
 
   private applyShuffle(colors: boolean, layout: boolean): void {
-    const next = shuffleDesign(this.design, { colors, layout, seed: randomSeed() }, this.aspect);
+    const palette = {
+      rule: this.harmony === 'auto' ? undefined : this.harmony,
+      mood: this.mood,
+      baseHue: this.baseHue ?? undefined,
+    };
+    const { design: next, harmony } = shuffleWithHarmony(
+      this.design,
+      { colors, layout, palette, seed: randomSeed() },
+      this.aspect,
+    );
+    if (harmony) this.lastHarmony = harmony;
     if (next.base.kind === 'mesh') {
       this.mesh = next.base;
       this.selectedPoint = Math.min(this.selectedPoint, next.base.points.length - 1);
@@ -177,6 +199,33 @@ export class EditorState {
 
   get canRemoveColor(): boolean {
     return this.kind === 'mesh' ? this.canRemovePoint : this.linear.stops.length > 2;
+  }
+
+  /** Points or stops of the active pattern, each with a `color`. */
+  private get colorItems(): { color: Oklch }[] {
+    return this.kind === 'mesh' ? this.mesh.points : this.linear.stops;
+  }
+
+  private plainColors(): Oklch[] {
+    return this.colorItems.map((x) => $state.snapshot(x.color) as Oklch);
+  }
+
+  /** Set color i; when linked, the other colors move by the same shift. */
+  setColor(i: number, next: Oklch): void {
+    const items = this.colorItems;
+    if (!items[i]) return;
+    if (!this.linkColors) {
+      items[i].color = next;
+      return;
+    }
+    const out = relinkPalette(this.plainColors(), i, next);
+    items.forEach((x, k) => (x.color = out[k]));
+  }
+
+  /** New take on the palette: one random linked shift, relationships kept. */
+  remix(): void {
+    const out = shiftPalette(this.plainColors(), remixShift(createRng(randomSeed())));
+    this.colorItems.forEach((x, k) => (x.color = out[k]));
   }
 
   /** Mesh: a point in the emptiest spot of the frame. Linear: a stop in the widest gap. */

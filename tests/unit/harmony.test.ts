@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   deltaEOk,
+  generateHarmony,
   generatePalette,
   HARMONY_RULES,
   maxChroma,
@@ -80,15 +81,53 @@ describe('generatePalette', () => {
         expect(relChroma(c)).toBeLessThanOrEqual(nat.accent[1][1] + 0.01);
         natRel.push(relChroma(c));
       }
-      for (const c of generatePalette(createRng(seed), 5, { mood: 'vivid' })) {
-        // Near-neutral anchors (deep near-black) are allowed in vivid palettes.
-        if (c[1] > 0.045) expect(relChroma(c)).toBeGreaterThanOrEqual(viv.rel[0] - 0.01);
-        vivRel.push(relChroma(c));
-      }
+      const vivid = generatePalette(createRng(seed), 5, { mood: 'vivid' });
+      // Near-neutral anchors (deep near-black) are allowed in vivid palettes;
+      // supporting colors step back, but at least one color stays vivid.
+      const chromatic = vivid.filter((c) => c[1] > 0.045);
+      for (const c of chromatic) expect(relChroma(c)).toBeGreaterThanOrEqual(viv.support![0] - 0.01);
+      expect(chromatic.filter((c) => relChroma(c) >= viv.rel[0] - 0.01).length).toBeGreaterThanOrEqual(1);
+      vivRel.push(...vivid.map(relChroma));
     }
     const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
     expect(median(natRel)).toBeLessThan(0.45);
-    expect(median(vivRel)).toBeGreaterThan(0.7);
+    expect(median(vivRel)).toBeGreaterThan(0.55);
+  });
+
+  it('vivid multi-hue palettes keep one lead hue and a single vivid accent', () => {
+    const viv = MOOD_TUNING.vivid;
+    const near = (h: number, base: number) => Math.abs(((h - base + 540) % 360) - 180) <= 15;
+    for (let seed = 0; seed < 100; seed++) {
+      for (const rule of ['triadic', 'tetradic', 'split-complementary'] as const) {
+        const pal = generatePalette(createRng(seed), 6, { mood: 'vivid', rule, baseHue: 250 });
+        const loudOthers = pal.filter((c) => c[1] > 0.045 && !near(c[2], 250) && relChroma(c) > viv.support![1] + 0.01);
+        expect(loudOthers.length, `${rule} seed ${seed}`).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it('caps acid yellow-greens', () => {
+    for (let seed = 0; seed < 200; seed++) {
+      for (const c of generatePalette(createRng(seed), 5, { mood: 'vivid', baseHue: 120 })) {
+        if (c[1] > 0.045 && c[2] >= 100 && c[2] <= 140) expect(relChroma(c)).toBeLessThanOrEqual(0.56);
+      }
+    }
+  });
+
+  it('builds the rule around a given base hue and reports rule and mood', () => {
+    for (let seed = 0; seed < 50; seed++) {
+      const h = generateHarmony(createRng(seed), 4, { rule: 'complementary', mood: 'natural', baseHue: 30 });
+      expect(h.rule).toBe('complementary');
+      expect(h.mood).toBe('natural');
+      // Every chromatic color sits near 30° or its complement 210° (±8° jitter, ±15° nudges).
+      for (const c of h.colors.filter((c) => c[1] > 0.045)) {
+        const d = Math.min(Math.abs(((c[2] - 30 + 540) % 360) - 180), Math.abs(((c[2] - 210 + 540) % 360) - 180));
+        expect(d).toBeLessThanOrEqual(24);
+      }
+      const auto = generateHarmony(createRng(seed), 4);
+      expect(HARMONY_RULES).toContain(auto.rule);
+      expect(['natural', 'vivid']).toContain(auto.mood);
+    }
   });
 
   it('includes near-neutral anchors in some natural palettes', () => {

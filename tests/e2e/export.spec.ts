@@ -1,3 +1,4 @@
+import { hexToOklch } from '../../src/color/oklab';
 import { expect, test, type Page } from '@playwright/test';
 import { WARP_SHAPES } from '../../src/design/design';
 import type { Harness } from './harness/export';
@@ -492,6 +493,67 @@ test('noise slider changes the preview', async ({ page }) => {
   before = await settled();
   await page.getByLabel('Noise').fill('1');
   await expectPreviewChanged(before);
+});
+
+test('harmony, mood and base hue steer the color shuffle', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(err.message));
+  await page.goto('/');
+  const harmony = page.getByLabel('Harmony');
+  // On auto, the label names the rule the current palette was built with.
+  await expect(harmony.locator('option[value="auto"]')).toHaveText(/^auto \((monochrome|analogous|complementary|split complementary|triadic|tetradic)\)$/);
+
+  await page.getByRole('button', { name: 'More colors settings' }).click();
+  await harmony.selectOption('monochrome');
+  await page.getByLabel('Mood').selectOption('vivid');
+  await page.getByRole('button', { name: 'Fix base hue' }).click();
+  await page.getByLabel('Base hue', { exact: true }).fill('250');
+  const hexes = page.locator('li input.hex');
+  for (let i = 0; i < 3; i++) {
+    const before = await hexes.evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));
+    await page.getByRole('button', { name: 'Shuffle colors' }).click();
+    await expect.poll(() => hexes.evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value))).not.toEqual(before);
+    // Monochrome around 250°: every colorful swatch is a blue.
+    for (const hex of await hexes.evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value))) {
+      const [, c, h] = hexToOklch(hex);
+      if (c > 0.045) expect(Math.abs(((h - 250 + 540) % 360) - 180), hex).toBeLessThanOrEqual(30);
+    }
+  }
+  expect(errors).toEqual([]);
+});
+
+test('linked editing moves the whole palette; free edits one color; remix shifts all', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(err.message));
+  await page.goto('/?default');
+  const hexes = page.locator('li input.hex');
+  const read = () => hexes.evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));
+  await page.getByRole('button', { name: 'More colors settings' }).click();
+  const hue = page.locator('.advanced input.hue').last();
+
+  // Free (default): only the selected color changes.
+  let before = await read();
+  await hue.fill('120');
+  let after = await read();
+  expect(after[0]).not.toBe(before[0]);
+  expect(after.slice(1)).toEqual(before.slice(1));
+
+  // Linked: every colorful swatch turns with it, and the hue gaps are kept.
+  await page.getByRole('button', { name: 'Link colors' }).click();
+  before = await read();
+  await hue.fill('200');
+  after = await read();
+  expect(after.filter((h, i) => h !== before[i]).length).toBeGreaterThanOrEqual(after.length - 1);
+  const h = (hex: string) => hexToOklch(hex)[2];
+  const gap = (a: number, b: number) => (((b - a) % 360) + 360) % 360;
+  expect(gap(h(after[0]), h(after[1]))).toBeCloseTo(gap(h(before[0]), h(before[1])), -1);
+
+  // Remix changes all of them.
+  before = await read();
+  await page.getByRole('button', { name: 'Remix colors' }).click();
+  after = await read();
+  expect(after.every((x, i) => x !== before[i])).toBe(true);
+  expect(errors).toEqual([]);
 });
 
 test('opens on a shuffled design unless ?default', async ({ page }) => {

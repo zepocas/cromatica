@@ -1,4 +1,4 @@
-import { deltaEOk, generatePalette } from '../color/harmony';
+import { deltaEOk, generateHarmony } from '../color/harmony';
 import {
   MAX_MESH_POINTS,
   MAX_STOPS,
@@ -15,7 +15,10 @@ import {
 } from './design';
 import { applyMat2, clampZoom, transformMatrix } from '../engine/transform';
 import { createRng } from './random';
-import type { Rng, ShuffleOptions } from './shuffle.types';
+import type { Harmony, Rng, ShuffleOptions } from './shuffle.types';
+
+/** Makes the new palette for n colors (bound to the color stream and palette options). */
+type MakePalette = (n: number) => Oklch[];
 
 type Range = [min: number, max: number];
 
@@ -142,7 +145,7 @@ function assignMeshColors(points: { x: number; y: number }[], palette: Oklch[], 
   return out;
 }
 
-function shuffleMesh(base: PointMesh, opts: ShuffleOptions, aspect: number, colorRng: Rng, layoutRng: Rng): PointMesh {
+function shuffleMesh(base: PointMesh, opts: ShuffleOptions, aspect: number, palette: MakePalette, layoutRng: Rng): PointMesh {
   let n = base.points.length;
   if (opts.layout && opts.colors && layoutRng.next() < MESH_SHUFFLE.countChange) {
     n = clamp(n + (layoutRng.next() < 0.5 ? -1 : 1), Math.min(2, n), MAX_MESH_POINTS);
@@ -163,7 +166,7 @@ function shuffleMesh(base: PointMesh, opts: ShuffleOptions, aspect: number, colo
   }
 
   const colors = opts.colors
-    ? assignMeshColors(geo, generatePalette(colorRng, n), spacing)
+    ? assignMeshColors(geo, palette(n), spacing)
     : base.points.map((p) => copyColor(p.color));
 
   const points: MeshPoint[] = geo.map((g, i) => ({ ...g, color: colors[i] }));
@@ -193,7 +196,13 @@ function stopPositions(rng: Rng, n: number): number[] {
   );
 }
 
-function shuffleLinear(base: LinearGradient, opts: ShuffleOptions, colorRng: Rng, layoutRng: Rng): LinearGradient {
+function shuffleLinear(
+  base: LinearGradient,
+  opts: ShuffleOptions,
+  palette: MakePalette,
+  colorRng: Rng,
+  layoutRng: Rng,
+): LinearGradient {
   const n = Math.min(base.stops.length, MAX_STOPS);
   const stops = base.stops.slice(0, n);
   const angle = opts.layout ? Math.round(layoutRng.range(0, 360)) % 360 : base.angle;
@@ -202,7 +211,7 @@ function shuffleLinear(base: LinearGradient, opts: ShuffleOptions, colorRng: Rng
   let colors: Oklch[];
   if (opts.colors) {
     // Lightness ramp reads well; direction random.
-    colors = generatePalette(colorRng, n).sort((a, b) => a[0] - b[0]);
+    colors = palette(n).sort((a, b) => a[0] - b[0]);
     if (colorRng.next() < 0.5) colors.reverse();
   } else {
     colors = stops.map((s) => copyColor(s.color));
@@ -214,18 +223,33 @@ function shuffleLinear(base: LinearGradient, opts: ShuffleOptions, colorRng: Rng
 
 /** Pure: a new design with fresh colors and/or layout (per the locks), deterministic for (design, opts, aspect). */
 export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 / 9): Design {
+  return shuffleWithHarmony(design, opts, aspect).design;
+}
+
+/** shuffleDesign, plus the rule and mood of the new palette (null when colors weren't shuffled). */
+export function shuffleWithHarmony(
+  design: Design,
+  opts: ShuffleOptions,
+  aspect = 16 / 9,
+): { design: Design; harmony: Omit<Harmony, 'colors'> | null } {
   const seed = opts.seed >>> 0;
   const colorRng = createRng((seed ^ COLOR_STREAM) >>> 0);
   const layoutRng = createRng((seed ^ LAYOUT_STREAM) >>> 0);
   const a = Number.isFinite(aspect) && aspect > 0 ? aspect : 16 / 9;
+  let harmony: Omit<Harmony, 'colors'> | null = null;
+  const palette: MakePalette = (n) => {
+    const h = generateHarmony(colorRng, n, opts.palette);
+    harmony = { rule: h.rule, mood: h.mood };
+    return h.colors;
+  };
 
   let base =
     design.base.kind === 'mesh'
-      ? shuffleMesh(design.base, opts, a, colorRng, layoutRng)
-      : shuffleLinear(design.base, opts, colorRng, layoutRng);
+      ? shuffleMesh(design.base, opts, a, palette, layoutRng)
+      : shuffleLinear(design.base, opts, palette, colorRng, layoutRng);
   if (base.kind === 'mesh' && opts.layout && design.transform) base = toPatternSpace(base, design.transform);
   const warp = opts.layout ? shuffleWarp(layoutRng) : { ...design.warp };
   const out: Design = { engineVersion: design.engineVersion, base, warp, grain: { ...design.grain } };
   if (design.transform) out.transform = { ...design.transform };
-  return out;
+  return { design: out, harmony };
 }

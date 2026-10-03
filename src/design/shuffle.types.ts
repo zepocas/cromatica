@@ -33,6 +33,15 @@ export interface PaletteOptions {
   rule?: HarmonyRule;
   /** Default 'any' (weighted toward 'natural', the photogradient-like look). */
   mood?: PaletteMood;
+  /** Hue (degrees) the rule is built around; random when omitted. */
+  baseHue?: number;
+}
+
+/** A generated palette and the rule and mood it was actually built with. */
+export interface Harmony {
+  colors: Oklch[];
+  rule: HarmonyRule;
+  mood: Exclude<PaletteMood, 'any'>;
 }
 
 /**
@@ -48,6 +57,8 @@ export type GeneratePalette = (rng: Rng, count: number, opts?: PaletteOptions) =
 export interface ShuffleOptions {
   /** Replace stop/point colors with a new palette. */
   colors: boolean;
+  /** Steers the new palette when `colors` is set. */
+  palette?: PaletteOptions;
   /** Re-randomize layout: mesh points + radii (or gradient angle + stop positions), mesh sharpness, warp shape/amount/size/seed. */
   layout: boolean;
   seed: number;

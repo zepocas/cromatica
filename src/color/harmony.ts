@@ -1,5 +1,5 @@
 import type { Oklch } from '../design/design';
-import type { HarmonyRule, PaletteMood, PaletteOptions, Rng } from '../design/shuffle.types';
+import type { Harmony, HarmonyRule, PaletteMood, PaletteOptions, Rng } from '../design/shuffle.types';
 import { inSrgbGamut, normalizeHue, oklchToOklab } from './oklab';
 
 export const HARMONY_RULES: readonly HarmonyRule[] = [
@@ -22,6 +22,12 @@ const NATURAL_SHARE = 0.65;
 interface MoodTuning {
   /** Chroma as a fraction of the max in-gamut chroma at (L, h). */
   rel: [number, number];
+  /**
+   * With 4+ colors, only the base hue's colors and one accent keep `rel`; the
+   * other rule hues get this calmer range (null = all keep `rel`). Several
+   * hues at full chroma compete and read as garish.
+   */
+  support: [number, number] | null;
   /** Optional accent color with stronger relative chroma (probability, range). */
   accent: [number, [number, number]];
   /** Absolute chroma ceiling, keeps "natural" from reading as neon on high-gamut hues. */
@@ -35,8 +41,8 @@ interface MoodTuning {
 }
 
 export const MOOD_TUNING: Record<Exclude<PaletteMood, 'any'>, MoodTuning> = {
-  natural: { rel: [0.2, 0.45], accent: [0.5, [0.45, 0.72]], maxChroma: 0.15, l: [0.24, 0.95], anchor: 0.45, cuspOrder: 0.6 },
-  vivid: { rel: [0.66, 0.94], accent: [0, [0, 0]], maxChroma: 0.4, l: [0.3, 0.9], anchor: 0.25, cuspOrder: 0.8 },
+  natural: { rel: [0.2, 0.45], support: null, accent: [0.5, [0.45, 0.72]], maxChroma: 0.15, l: [0.24, 0.95], anchor: 0.45, cuspOrder: 0.6 },
+  vivid: { rel: [0.66, 0.94], support: [0.3, 0.55], accent: [0, [0, 0]], maxChroma: 0.4, l: [0.3, 0.9], anchor: 0.25, cuspOrder: 0.8 },
 };
 
 /** Minimum pairwise ΔE_OK; relaxed for large palettes (mesh with many points). */
@@ -137,6 +143,10 @@ interface Slot {
   anchor?: 'light' | 'dark';
 }
 
+/** Yellow-greens at high chroma read as acid; their chroma is capped at this fraction of max. */
+const ACID_HUES: [number, number] = [100, 140];
+const ACID_REL = 0.55;
+
 function planLightness(rng: Rng, count: number, mono: boolean, band: [number, number]): number[] {
   if (count === 1) return [rng.range(band[0] + 0.1, band[1] - 0.1)];
   const width = band[1] - band[0];
@@ -159,28 +169,46 @@ function avoidOlive(l: number, h: number): number {
 
 function realize(slot: Slot, cap: number, vivid: boolean): Oklch {
   const h = vivid ? avoidOlive(slot.l, slot.h) : normalizeHue(slot.h);
-  const c = Math.min(slot.rel * maxChroma(slot.l, h), cap) * GAMUT_MARGIN;
+  const rel = h >= ACID_HUES[0] && h <= ACID_HUES[1] ? Math.min(slot.rel, ACID_REL) : slot.rel;
+  const c = Math.min(rel * maxChroma(slot.l, h), cap) * GAMUT_MARGIN;
   return [slot.l, c, h];
 }
 
-function planPalette(rng: Rng, count: number, rule: HarmonyRule, mood: Exclude<PaletteMood, 'any'>): Slot[] {
+function planPalette(
+  rng: Rng,
+  count: number,
+  rule: HarmonyRule,
+  mood: Exclude<PaletteMood, 'any'>,
+  baseHue: number | undefined,
+): Slot[] {
   const t = MOOD_TUNING[mood];
-  const base = rng.range(0, 360);
+  // Drawn either way, so a base hue doesn't shift the rest of the sequence.
+  const randomBase = rng.range(0, 360);
+  const base = baseHue ?? randomBase;
   const offsets = ruleOffsets(rng, rule);
   // Round-robin over the rule hues so each hue appears, then shuffle which
-  // hue gets which lightness.
-  const hues = shuffleInPlace(rng, Array.from({ length: count }, (_, i) => base + offsets[i % offsets.length] + rng.range(-8, 8)));
+  // hue gets which lightness. `lead` marks the base hue's colors.
+  const picks = shuffleInPlace(
+    rng,
+    Array.from({ length: count }, (_, i) => ({ h: base + offsets[i % offsets.length] + rng.range(-8, 8), lead: i % offsets.length === 0 })),
+  );
   const ls = planLightness(rng, count, rule === 'monochrome', t.l);
   if (rule !== 'monochrome' && rng.next() < t.cuspOrder) {
     // Pair ascending lightness with ascending cusp lightness, so yellows sit
     // light and blues/purples dark instead of turning olive or washed out.
-    hues.sort((a, b) => cuspLightness(a) - cuspLightness(b));
+    picks.sort((a, b) => cuspLightness(a.h) - cuspLightness(b.h));
     if (count >= 3 && rng.next() < 0.3) {
       const i = rng.int(count - 1);
-      [hues[i], hues[i + 1]] = [hues[i + 1], hues[i]];
+      [picks[i], picks[i + 1]] = [picks[i + 1], picks[i]];
     }
   }
-  const slots: Slot[] = ls.map((l, i) => ({ l, h: hues[i], rel: rng.range(t.rel[0], t.rel[1]) }));
+  const slots: Slot[] = ls.map((l, i) => ({ l, h: picks[i].h, rel: rng.range(t.rel[0], t.rel[1]) }));
+  if (t.support && count >= 4 && offsets.length > 1) {
+    // Dominant + accent: one non-base color stays vivid, the rest step back.
+    const others = slots.filter((_, i) => !picks[i].lead);
+    const accent = rng.pick(others);
+    for (const slot of others) if (slot !== accent) slot.rel = rng.range(t.support[0], t.support[1]);
+  }
 
   if (count >= 2 && rng.next() < t.accent[0]) {
     rng.pick(slots).rel = rng.range(t.accent[1][0], t.accent[1][1]);
@@ -222,9 +250,16 @@ function lSpan(colors: Oklch[]): number {
   return Math.max(...ls) - Math.min(...ls);
 }
 
-function buildOnce(rng: Rng, count: number, rule: HarmonyRule, mood: Exclude<PaletteMood, 'any'>, minDe: number): Oklch[] {
+function buildOnce(
+  rng: Rng,
+  count: number,
+  rule: HarmonyRule,
+  mood: Exclude<PaletteMood, 'any'>,
+  minDe: number,
+  baseHue: number | undefined,
+): Oklch[] {
   const t = MOOD_TUNING[mood];
-  const slots = planPalette(rng, count, rule, mood);
+  const slots = planPalette(rng, count, rule, mood, baseHue);
   const colors: Oklch[] = [];
   for (const slot of slots) {
     let best = slotColor(slot, rng, t);
@@ -251,29 +286,36 @@ function buildOnce(rng: Rng, count: number, rule: HarmonyRule, mood: Exclude<Pal
 }
 
 /**
- * Harmony palette: a hue rule around a random base hue, a deliberate lightness
- * spread, and chroma relative to the max in-gamut chroma at each (L, h).
+ * Harmony palette: a hue rule around a base hue (random unless given), a
+ * deliberate lightness spread, and chroma relative to the max in-gamut chroma
+ * at each (L, h).
  */
 export function generatePalette(rng: Rng, count: number, opts: PaletteOptions = {}): Oklch[] {
+  return generateHarmony(rng, count, opts).colors;
+}
+
+/** Like generatePalette, but also reports the rule and mood it resolved to. */
+export function generateHarmony(rng: Rng, count: number, opts: PaletteOptions = {}): Harmony {
   const n = Math.max(1, Math.floor(count));
   const rule = opts.rule ?? pickRule(rng);
   const want = opts.mood ?? 'any';
   const mood = want === 'any' ? (rng.next() < NATURAL_SHARE ? 'natural' : 'vivid') : want;
+  const baseHue = opts.baseHue !== undefined && Number.isFinite(opts.baseHue) ? normalizeHue(opts.baseHue) : undefined;
   const minDe = minPaletteDeltaE(n);
   const needSpan = rule !== 'monochrome' && n >= 3 ? MIN_L_SPAN : 0;
 
   let best: Oklch[] = [];
   let bestScore = -Infinity;
   for (let attempt = 0; attempt < 16; attempt++) {
-    const colors = buildOnce(rng, n, rule, mood, minDe);
+    const colors = buildOnce(rng, n, rule, mood, minDe, baseHue);
     const d = n > 1 ? minDistance(colors) : Infinity;
     const span = lSpan(colors);
-    if (d >= minDe && span >= needSpan) return colors;
+    if (d >= minDe && span >= needSpan) return { colors, rule, mood };
     const score = Math.min(d - minDe, span - needSpan);
     if (score > bestScore) {
       best = colors;
       bestScore = score;
     }
   }
-  return best;
+  return { colors: best, rule, mood };
 }

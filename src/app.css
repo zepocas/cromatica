@@ -152,6 +152,26 @@ body,
   border-radius: 50%;
   background: var(--ink);
 }
+/* Hue sliders: the track is the hue wheel itself, at an even lightness and chroma. */
+.panel input[type='range'].hue::-webkit-slider-runnable-track {
+  height: 3px;
+  background: linear-gradient(
+    to right,
+    oklch(0.72 0.12 0), oklch(0.72 0.12 60), oklch(0.72 0.12 120), oklch(0.72 0.12 180),
+    oklch(0.72 0.12 240), oklch(0.72 0.12 300), oklch(0.72 0.12 360)
+  );
+}
+.panel input[type='range'].hue::-moz-range-track {
+  height: 3px;
+  background: linear-gradient(
+    to right,
+    oklch(0.72 0.12 0), oklch(0.72 0.12 60), oklch(0.72 0.12 120), oklch(0.72 0.12 180),
+    oklch(0.72 0.12 240), oklch(0.72 0.12 300), oklch(0.72 0.12 360)
+  );
+}
+.panel input[type='range'].hue::-webkit-slider-thumb {
+  margin-top: -3px;
+}
 
 .panel :focus-visible {
   outline: 1px dashed var(--ink);
