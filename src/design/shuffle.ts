@@ -9,9 +9,11 @@ import {
   type MeshPoint,
   type Oklch,
   type PointMesh,
+  type Transform,
   type Warp,
   type WarpShape,
 } from './design';
+import { applyMat2, clampZoom, transformMatrix } from '../engine/transform';
 import { createRng } from './random';
 import type { Rng, ShuffleOptions } from './shuffle.types';
 
@@ -168,6 +170,17 @@ function shuffleMesh(base: PointMesh, opts: ShuffleOptions, aspect: number, colo
   return { kind: 'mesh', points, sharpness };
 }
 
+/** Layouts are made on screen; map them under the transform so they land in view. */
+function toPatternSpace(mesh: PointMesh, transform: Transform): PointMesh {
+  const m = transformMatrix(transform);
+  const zoom = clampZoom(transform.zoom);
+  const points = mesh.points.map((p) => {
+    const [x, y] = applyMat2(m, p.x, p.y);
+    return { ...p, x: round4(x), y: round4(y), radius: round4(p.radius / zoom) };
+  });
+  return { ...mesh, points };
+}
+
 function stopPositions(rng: Rng, n: number): number[] {
   const first = rng.range(LINEAR_SHUFFLE.first[0], LINEAR_SHUFFLE.first[1]);
   const last = rng.range(LINEAR_SHUFFLE.last[0], LINEAR_SHUFFLE.last[1]);
@@ -206,10 +219,13 @@ export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 
   const layoutRng = createRng((seed ^ LAYOUT_STREAM) >>> 0);
   const a = Number.isFinite(aspect) && aspect > 0 ? aspect : 16 / 9;
 
-  const base =
+  let base =
     design.base.kind === 'mesh'
       ? shuffleMesh(design.base, opts, a, colorRng, layoutRng)
       : shuffleLinear(design.base, opts, colorRng, layoutRng);
+  if (base.kind === 'mesh' && opts.layout && design.transform) base = toPatternSpace(base, design.transform);
   const warp = opts.layout ? shuffleWarp(layoutRng) : { ...design.warp };
-  return { engineVersion: design.engineVersion, base, warp, grain: { ...design.grain } };
+  const out: Design = { engineVersion: design.engineVersion, base, warp, grain: { ...design.grain } };
+  if (design.transform) out.transform = { ...design.transform };
+  return out;
 }

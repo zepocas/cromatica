@@ -14,16 +14,22 @@ import { BLUE_NOISE_SIZE, DITHER_CHANNEL_OFFSETS, blueNoiseRanks } from './blue-
 import { prepareGrain } from './grain';
 import { buildShaderSources, variantKey, type Defines } from './shaders';
 import { CURL_STEPS, MAX_WARP_COORD, WARP_EDGE, WARP_PARAM_SLOTS, prepareWarp, type PreparedWarp } from './warp';
+import { applyMat2, mat2Uniform, orientationMatrix, transformMatrix } from './transform';
 import type { OutputSize, RenderOptions, Renderer, Tile } from './types';
 
 /** Uniforms shared by every pixel of an output; independent of the tile. */
-function linearGradientUniforms(g: LinearGradient, output: OutputSize) {
-  // Frame is aspect × 1 centered at the origin; its extent along the unit
-  // direction d is |dx|·aspect + |dy|. Dividing by it maps the frame to t ∈ [-0.5, 0.5].
+function linearGradientUniforms(g: LinearGradient, output: OutputSize, transform: Design['transform']) {
+  // Frame is aspect × 1 centered at the origin. Rotated and flipped by the
+  // transform's orientation O, its extent along the unit direction d is
+  // |ex|·aspect + |ey| with e = Oᵀd. Dividing by it maps the frame to
+  // t ∈ [-0.5, 0.5], so the ramp always spans the frame; zoom is left out
+  // so it still magnifies the ramp.
   const a = (g.angle * Math.PI) / 180;
   const dx = Math.cos(a);
   const dy = Math.sin(a);
-  const extent = Math.abs(dx) * (output.width / output.height) + Math.abs(dy);
+  const o = orientationMatrix(transform);
+  const [ex, ey] = applyMat2([o[0], o[2], o[1], o[3]], dx, dy);
+  const extent = Math.abs(ex) * (output.width / output.height) + Math.abs(ey);
   return { u_linearAxis: [dx / extent, dy / extent] };
 }
 
@@ -143,7 +149,7 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
         baseUniforms = meshUniforms(base);
       } else {
         updateRamp(base.stops);
-        baseUniforms = { ...linearGradientUniforms(base, output), u_ramp: rampTexture, u_rampSize: rampSize };
+        baseUniforms = { ...linearGradientUniforms(base, output, design.transform), u_ramp: rampTexture, u_rampSize: rampSize };
       }
 
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -160,6 +166,7 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
       twgl.setUniforms(info, {
         u_outputSize: [output.width, output.height],
         u_tile: [tile.x, tile.y, tile.width, tile.height],
+        u_transform: mat2Uniform(transformMatrix(design.transform)),
         ...baseUniforms,
         ...warpUniforms(warp),
         u_grainAmp: grain.sigma,

@@ -11,6 +11,7 @@ import {
   type Design,
   type Grain,
   type Oklch,
+  type Transform,
   type Warp,
   type WarpShape,
 } from '../../src/design/design';
@@ -500,6 +501,83 @@ test.describe('warp identities', () => {
     const r = await page.evaluate(
       ([a, b]) => window.engineHarness.compareDesigns(a, b, 480, 270),
       [withLook(mesh16, warp('fbm')), withLook(mesh16, warp('fbm'), { amount: 0, size: 0.7 })] as const,
+    );
+    expect(r.identical).toBe(true);
+  });
+});
+
+const turn = (d: Design, t: Partial<Transform>): Design => ({
+  ...d,
+  transform: { rotate: 0, zoom: 1, flipX: false, flipY: false, ...t },
+});
+
+test.describe('transform (M3.5)', () => {
+  const warpedMesh = withLook(meshDefault, warp('domain', 0.6, 0.4, 7));
+  const warpedLinear = withLook(threeStops(30), warp('waves', 0.6, 0.4, 7));
+
+  for (const [name, base] of [
+    ['mesh', warpedMesh],
+    ['linear', warpedLinear],
+  ] as const) {
+    test(`${name}: identity transform is bit-identical to none`, async ({ page }) => {
+      const r = await page.evaluate(
+        ([a, b]) => window.engineHarness.compareDesigns(a, b, 480, 270),
+        [base, turn(base, {})] as const,
+      );
+      expect(r.identical).toBe(true);
+    });
+
+    for (const [map, t] of [
+      ['flipX', { flipX: true }],
+      ['flipY', { flipY: true }],
+      ['rotate180', { rotate: 180 }],
+    ] as const) {
+      test(`${name}: ${map} permutes pixels exactly`, async ({ page }) => {
+        const r = await page.evaluate(
+          ([a, b, m]) => window.engineHarness.compareRemapped(a, b, 481, 271, m),
+          [base, turn(base, t), map] as const,
+        );
+        expect(r.first).toBeNull();
+        expect(r.different).toBe(true);
+      });
+    }
+
+    test(`${name}: rotate 90 permutes pixels exactly on a square`, async ({ page }) => {
+      const r = await page.evaluate(
+        ([a, b]) => window.engineHarness.compareRemapped(a, b, 301, 301, 'rotate90'),
+        [base, turn(base, { rotate: 90 })] as const,
+      );
+      expect(r.first).toBeNull();
+    });
+
+    test(`${name}: free angle, zoom and flip match the CPU reference`, async ({ page }) => {
+      const r = await page.evaluate(
+        ([d]) => window.engineHarness.compareWarpReference(d, 640, 360, 2),
+        [turn(base, { rotate: 33, zoom: 1.7, flipX: true })] as const,
+      );
+      expect(r.maxDiff, JSON.stringify(r.worstAny)).toBeLessThanOrEqual(2);
+    });
+
+    test(`${name}: transformed 1531×917 single pass equals 256 px tiles (grain on)`, async ({ page }) => {
+      const r = await page.evaluate(
+        ([d]) => window.engineHarness.compareTiled(d, 1531, 917, 256, true),
+        [turn({ ...base, grain: defaultGrain }, { rotate: 117, zoom: 0.6, flipY: true })] as const,
+      );
+      expect(r.first).toBeNull();
+      expect(r.identical).toBe(true);
+    });
+  }
+
+  test('linear: a quarter turn keeps the ramp spanning the frame', async ({ page }) => {
+    // Angle 0 turned by 90° runs bottom→top: the ramp's ends land on the
+    // top and bottom rows rather than off-frame.
+    const stops: StopSpec[] = [
+      [0, [0.628, 0.2577, 29.23]],
+      [1, [0.452, 0.3132, 264.05]],
+    ];
+    const r = await page.evaluate(
+      ([a, b]) => window.engineHarness.compareDesigns(a, b, 640, 360),
+      [linear(90, stops), turn(linear(0, stops), { rotate: 90 })] as const,
     );
     expect(r.identical).toBe(true);
   });

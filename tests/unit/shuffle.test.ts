@@ -11,6 +11,7 @@ import {
   type PointMesh,
 } from '../../src/design/design';
 import { LINEAR_SHUFFLE, MESH_SHUFFLE, shuffleDesign, WARP_SHUFFLE_TABLE } from '../../src/design/shuffle';
+import { applyMat2, inverseTransformMatrix } from '../../src/engine/transform';
 
 const meshDesign: Design = {
   engineVersion: 1,
@@ -47,6 +48,24 @@ describe('shuffleDesign', () => {
         expect(shuffleDesign(d, all(99), aspect)).toEqual(shuffleDesign(d, all(99), aspect));
       }
       expect(shuffleDesign(d, all(1))).not.toEqual(shuffleDesign(d, all(2)));
+    }
+  });
+
+  it('keeps the transform and lays mesh points out on screen, not in pattern space', () => {
+    const transform = { rotate: 90, zoom: 2, flipX: true, flipY: false };
+    const turned: Design = { ...meshDesign, transform };
+    for (let s = 0; s < 10; s++) {
+      const plain = mesh(shuffleDesign(meshDesign, all(s), 16 / 9));
+      const out = shuffleDesign(turned, all(s), 16 / 9);
+      expect(out.transform).toEqual(transform);
+      expect(out.transform).not.toBe(transform);
+      // Mapped back to the screen, the points are where an untransformed shuffle puts them.
+      mesh(out).points.forEach((p, i) => {
+        const [x, y] = applyMat2(inverseTransformMatrix(transform), p.x, p.y);
+        expect(x).toBeCloseTo(plain.points[i].x, 3);
+        expect(y).toBeCloseTo(plain.points[i].y, 3);
+        expect(p.radius * 2).toBeCloseTo(plain.points[i].radius, 3);
+      });
     }
   });
 

@@ -107,15 +107,16 @@ test.describe('export pipeline', () => {
 test('app loads, shows a canvas, and Export downloads a file', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (err) => errors.push(err.message));
-  await page.goto('/');
+  await page.goto('/?default');
   const canvas = page.getByTestId('preview-canvas');
   await expect(canvas).toBeVisible();
 
-  await page.getByLabel('Device preset').selectOption('custom');
-  await page.getByLabel('Custom width').fill('320');
-  await page.getByLabel('Custom width').press('Tab');
-  await page.getByLabel('Custom height').fill('200');
-  await page.getByLabel('Custom height').press('Tab');
+  // Typing a size switches the preset to Custom.
+  await page.getByLabel('Width').fill('320');
+  await page.getByLabel('Width').press('Tab');
+  await page.getByLabel('Height').fill('200');
+  await page.getByLabel('Height').press('Tab');
+  await expect(page.getByLabel('Device preset')).toHaveValue('custom');
 
   // Letterboxed to 16:10 (layout is applied on the next animation frame).
   await expect
@@ -126,7 +127,7 @@ test('app loads, shows a canvas, and Export downloads a file', async ({ page }) 
     .toBeCloseTo(1.6, 2);
 
   const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export' }).click();
+  await page.getByRole('button', { name: 'Download' }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe('gradient-320x200.png');
   expect(errors).toEqual([]);
@@ -135,12 +136,12 @@ test('app loads, shows a canvas, and Export downloads a file', async ({ page }) 
 test('stop editor: add, drag, blend mode and delete update the preview', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (err) => errors.push(err.message));
-  await page.goto('/');
+  await page.goto('/?default');
   const canvas = page.getByTestId('preview-canvas');
   const strip = page.getByTestId('stop-strip');
   const handles = page.getByRole('slider', { name: /^Stop \d+$/ });
   await expect(canvas).toBeVisible();
-  await page.getByRole('radio', { name: 'Gradient' }).click();
+  await page.getByLabel('Gradient', { exact: true }).selectOption('linear');
   await expect(handles).toHaveCount(3);
 
   // The preview drops to low resolution while editing; wait for the sharp redraw.
@@ -178,38 +179,54 @@ test('stop editor: add, drag, blend mode and delete update the preview', async (
   await mid.press('ArrowLeft');
   await expect(mid).toHaveAttribute('aria-valuenow', '79');
 
-  // Blend mode of the selected stop's segment.
+  // Blend mode of the selected stop's segment (under "more").
   before = await settled();
-  await page.getByLabel('Blend to next stop').selectOption({ label: 'Hue (long)' });
+  await page.getByRole('button', { name: 'More colors settings' }).click();
+  await page.getByLabel('Blend to next stop').selectOption({ label: 'hue, long way' });
   await expectPreviewChanged(before);
 
-  // Picking a color through the picker updates the stop.
+  // Picking a color through the selected row's swatch updates the stop.
   before = await settled();
-  await page.getByLabel('Stop color').fill('#00ff80');
+  await page.getByLabel('Color 2', { exact: true }).fill('#00ff80');
   await expectPreviewChanged(before);
+
+  // Typing a hex updates it too; junk is reverted.
+  const hex = page.getByLabel('Hex of color 2');
+  before = await settled();
+  await hex.fill('#3366cc');
+  await hex.press('Enter');
+  await expect(hex).toHaveValue('#3366CC');
+  await expectPreviewChanged(before);
+  await hex.fill('nope');
+  await hex.press('Enter');
+  await expect(hex).toHaveValue('#3366CC');
+
+  // The + button adds a stop in the widest gap.
+  await page.getByRole('button', { name: 'Add color' }).click();
+  await expect(handles).toHaveCount(5);
 
   // Delete removes stops but never below 2.
   const first = page.getByRole('slider', { name: 'Stop 1' });
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 5; i++) {
     await first.focus();
     await first.press('Delete');
   }
   await expect(handles).toHaveCount(2);
-  await expect(page.getByRole('button', { name: 'Remove stop' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Remove color 1' })).toBeDisabled();
   expect(errors).toEqual([]);
 });
 
 test('mesh editor: drag, add, delete, switch pattern and hide handles', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (err) => errors.push(err.message));
-  await page.goto('/');
+  await page.goto('/?default');
   const canvas = page.getByTestId('preview-canvas');
   const overlay = page.getByTestId('mesh-overlay');
   const points = page.getByRole('button', { name: /^Point \d+$/ });
   await expect(canvas).toBeVisible();
 
   // Starts on Mesh with the default points.
-  await expect(page.getByRole('radio', { name: 'Mesh' })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByLabel('Gradient', { exact: true })).toHaveValue('mesh');
   await expect(points).toHaveCount(5);
 
   // Screenshot of the rendered image only (overlay and panel hidden), after the sharp redraw.
@@ -267,16 +284,17 @@ test('mesh editor: drag, add, delete, switch pattern and hide handles', async ({
   const [nx, ny] = await coords(5);
   expect(nx).toBeCloseTo((ax - cb.x - cb.width / 2) / cb.height, 2);
   expect(ny).toBeCloseTo((cb.y + cb.height / 2 - ay) / cb.height, 2);
-  await expect(page.getByText('Point 6 of 6')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Edit color 6' })).toHaveAttribute('aria-pressed', 'true');
 
   // Editing the selected point's color changes the image.
-  await page.getByLabel('Point color').fill('#00ff80');
+  await page.getByLabel('Color 6', { exact: true }).fill('#00ff80');
   await expectPreviewChanged(before);
 
-  // "Add point" then a click also adds one.
-  await page.getByRole('button', { name: 'Add point' }).click();
-  await page.mouse.click(cb.x + cb.width * 0.8, cb.y + cb.height * 0.5);
+  // The + button also adds one, inside the frame.
+  await page.getByRole('button', { name: 'Add color' }).click();
   await expect(points).toHaveCount(7);
+  await expect(points.nth(6)).not.toHaveClass(/outside/);
+  await points.nth(6).focus();
 
   // Delete removes the selected point.
   await page.keyboard.press('Delete');
@@ -286,10 +304,10 @@ test('mesh editor: drag, add, delete, switch pattern and hide handles', async ({
   const edited = await coords(1);
 
   // Switch to Gradient and back: the mesh edits are kept.
-  await page.getByRole('radio', { name: 'Gradient' }).click();
+  await page.getByLabel('Gradient', { exact: true }).selectOption('linear');
   await expect(points).toHaveCount(0);
   await expect(page.getByTestId('stop-strip')).toBeVisible();
-  await page.getByRole('radio', { name: 'Mesh' }).click();
+  await page.getByLabel('Gradient', { exact: true }).selectOption('mesh');
   await expect(points).toHaveCount(5);
   expect(await coords(1)).toEqual(edited);
 
@@ -300,6 +318,7 @@ test('mesh editor: drag, add, delete, switch pattern and hide handles', async ({
   expect((await settled()).equals(before)).toBe(true);
   await page.keyboard.press('h');
   await expect(points).toHaveCount(5);
+  await page.getByRole('button', { name: 'More colors settings' }).click();
   await page.getByRole('button', { name: /Hide points/ }).click();
   await expect(points).toHaveCount(0);
   expect(errors).toEqual([]);
@@ -341,13 +360,15 @@ const blur = (page: Page) => page.evaluate(() => (document.activeElement as HTML
 test('shuffle: button, Space, color and layout locks', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (err) => errors.push(err.message));
-  await page.goto('/');
+  await page.goto('/?default');
   const { canvas, settled, expectPreviewChanged } = previewProbe(page);
   await expect(canvas).toBeVisible();
-  const shuffle = page.getByRole('button', { name: /^Shuffle/ });
+  const shuffle = page.getByRole('button', { name: /^Shuffle( Space)?$/ });
   const lockColors = page.getByRole('button', { name: 'Lock colors' });
   const lockLayout = page.getByRole('button', { name: 'Lock layout' });
   await expect(page.locator('[data-point]')).toHaveCount(5);
+  // Warp size (read by readWarp) lives under "more".
+  await page.getByRole('button', { name: 'More adjust settings' }).click();
 
   // Plain shuffle changes the image.
   let before = await settled();
@@ -376,9 +397,8 @@ test('shuffle: button, Space, color and layout locks', async ({ page }) => {
   expect(await readPoints(page)).not.toEqual(pts);
 
   // ...but not while typing into a field.
-  await page.getByLabel('Device preset').selectOption('custom');
   pts = await readPoints(page);
-  await page.getByLabel('Custom width').focus();
+  await page.getByLabel('Width').focus();
   await page.keyboard.press('Space');
   expect(await readPoints(page)).toEqual(pts);
 
@@ -405,11 +425,11 @@ test('shuffle: button, Space, color and layout locks', async ({ page }) => {
   // Only the active pattern is shuffled: a gradient shuffle leaves the mesh alone.
   await lockColors.click();
   await lockLayout.click();
-  await page.getByRole('radio', { name: 'Gradient' }).click();
+  await page.getByLabel('Gradient', { exact: true }).selectOption('linear');
   before = await settled();
   await shuffle.click();
   await expectPreviewChanged(before);
-  await page.getByRole('radio', { name: 'Mesh' }).click();
+  await page.getByLabel('Gradient', { exact: true }).selectOption('mesh');
   expect(await readPoints(page)).toEqual(pts);
   expect(errors).toEqual([]);
 });
@@ -417,12 +437,13 @@ test('shuffle: button, Space, color and layout locks', async ({ page }) => {
 test('warp controls: shape, amount, size, new variation and [ ] cycling', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (err) => errors.push(err.message));
-  await page.goto('/');
+  await page.goto('/?default');
   const { canvas, settled, expectPreviewChanged } = previewProbe(page);
   await expect(canvas).toBeVisible();
   const shape = page.getByLabel('Warp shape');
   await expect(shape).toHaveValue('domain');
   await expect(shape.locator('option')).toHaveCount(WARP_SHAPES.length);
+  await page.getByRole('button', { name: 'More adjust settings' }).click();
 
   let before = await settled();
   await shape.selectOption('fbm');
@@ -461,52 +482,117 @@ test('warp controls: shape, amount, size, new variation and [ ] cycling', async 
   expect(errors).toEqual([]);
 });
 
-test('grain sliders change the preview', async ({ page }) => {
-  await page.goto('/');
+test('noise slider changes the preview', async ({ page }) => {
+  await page.goto('/?default');
   const { canvas, settled, expectPreviewChanged } = previewProbe(page);
   await expect(canvas).toBeVisible();
   let before = await settled();
-  await page.getByLabel('Grain amount').fill('0');
+  await page.getByLabel('Noise').fill('0');
   await expectPreviewChanged(before);
   before = await settled();
-  await page.getByLabel('Grain amount').fill('1');
-  await expectPreviewChanged(before);
-  before = await settled();
-  await page.getByLabel('Grain size').fill('1');
+  await page.getByLabel('Noise').fill('1');
   await expectPreviewChanged(before);
 });
 
-test('panel collapses to a bar so handles under it can be reached', async ({ page }) => {
-  await page.goto('/');
-  const panel = page.locator('aside');
-  const first = page.getByRole('button', { name: 'Point 1', exact: true });
-  await expect(first).toBeVisible();
+test('opens on a shuffled design unless ?default', async ({ page }) => {
+  await page.goto('/?default');
+  await expect(page.getByLabel('Warp shape')).toHaveValue('domain');
+  const defaults = await readPoints(page);
+  const seen = new Set<string>();
+  for (let i = 0; i < 2; i++) {
+    await page.goto('/');
+    await expect(page.getByTestId('preview-canvas')).toBeVisible();
+    const pts = await readPoints(page);
+    expect(pts).not.toEqual(defaults);
+    seen.add(JSON.stringify(pts));
+  }
+  expect(seen.size).toBe(2);
+});
 
-  // The first default point sits under the expanded panel.
+test('transform: rotate, flip, zoom and reset move the image and the handles together', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(err.message));
+  await page.goto('/?default');
+  const { canvas, settled, expectPreviewChanged } = previewProbe(page);
+  await expect(canvas).toBeVisible();
+  const handle = page.locator('[data-point="1"]');
   const center = async () => {
-    const b = (await first.boundingBox())!;
-    return [b.x + b.width / 2, b.y + b.height / 2] as const;
+    const b = (await handle.boundingBox())!;
+    const c = (await canvas.boundingBox())!;
+    // Screen composition coords of the handle.
+    return [(b.x + b.width / 2 - c.x - c.width / 2) / c.height, (c.y + c.height / 2 - b.y - b.height / 2) / c.height];
   };
-  const [x, y] = await center();
-  const covered = () => page.evaluate(([px, py]) => !!document.elementFromPoint(px, py)?.closest('aside'), [x, y]);
-  expect(await covered()).toBe(true);
+  const [x0, y0] = await center();
+  const pts = await readPoints(page);
+  await page.getByRole('button', { name: 'More adjust settings' }).click();
+  const reset = page.getByRole('button', { name: 'Reset' });
+  await expect(reset).toBeDisabled();
+
+  // A quarter turn left: (x, y) → (-y, x) on screen; the stored point doesn't move.
+  let before = await settled();
+  await page.getByRole('button', { name: 'Rotate left' }).click();
+  await expect(page.getByLabel('Rotate', { exact: true })).toHaveValue('90');
+  await expectPreviewChanged(before);
+  let [x, y] = await center();
+  expect(x).toBeCloseTo(-y0, 2);
+  expect(y).toBeCloseTo(x0, 2);
+  expect(await readPoints(page)).toEqual(pts);
+
+  // Flip horizontally mirrors what's on screen: x → -x.
+  before = await settled();
+  await page.getByRole('button', { name: 'Flip horizontally' }).click();
+  await expectPreviewChanged(before);
+  [x, y] = await center();
+  expect(x).toBeCloseTo(y0, 2);
+  expect(y).toBeCloseTo(x0, 2);
+  await expect(page.getByLabel('Rotate', { exact: true })).toHaveValue('270');
+
+  // Zoom 2× doubles distances from the center.
+  before = await settled();
+  await page.getByLabel('Zoom').fill('1');
+  await expect(page.locator('output', { hasText: '2.0×' })).toBeVisible();
+  await expectPreviewChanged(before);
+  [x, y] = await center();
+  expect(x).toBeCloseTo(2 * y0, 2);
+  expect(y).toBeCloseTo(2 * x0, 2);
+
+  // Reset brings back the original image exactly.
+  await reset.click();
+  await expect(reset).toBeDisabled();
+  [x, y] = await center();
+  expect(x).toBeCloseTo(x0, 2);
+  expect(y).toBeCloseTo(y0, 2);
+  expect(errors).toEqual([]);
+});
+
+test('docked panel never covers the preview; collapsing gives it the full width', async ({ page }) => {
+  await page.goto('/?default');
+  const panel = page.locator('aside');
+  const canvas = page.getByTestId('preview-canvas');
+  await expect(canvas).toBeVisible();
+
+  // Docked: the preview sits entirely to the right of the panel.
+  const pb = (await panel.boundingBox())!;
+  const docked = (await canvas.boundingBox())!;
+  expect(docked.x).toBeGreaterThanOrEqual(pb.x + pb.width);
+  const first = page.getByRole('button', { name: 'Point 1', exact: true });
+  const b = (await first.boundingBox())!;
+  const covered = await page.evaluate(
+    ([x, y]) => !!document.elementFromPoint(x, y)?.closest('aside'),
+    [b.x + b.width / 2, b.y + b.height / 2],
+  );
+  expect(covered).toBe(false);
 
   await page.getByRole('button', { name: 'Collapse panel' }).click();
   const expand = page.getByRole('button', { name: 'Expand panel' });
   await expect(expand).toHaveAttribute('aria-expanded', 'false');
   await expect(page.getByLabel('Warp shape')).toHaveCount(0);
-  await expect(page.getByLabel('Device preset')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /^Shuffle/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Export' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Shuffle( Space)?$/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Download' })).toBeVisible();
   expect((await panel.boundingBox())!.height).toBeLessThan(70);
-  expect(await covered()).toBe(false);
-
-  await page.getByRole('button', { name: 'Point 2', exact: true }).click();
-  await first.click();
-  await expect(first).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(async () => (await canvas.boundingBox())!.width).toBeGreaterThan(docked.width);
 
   await expand.click();
-  await expect(page.getByRole('button', { name: 'Collapse panel' })).toHaveAttribute('aria-expanded', 'true');
   await expect(page.getByLabel('Warp shape')).toBeVisible();
 });
 
@@ -520,7 +606,7 @@ test('screenshots: six shuffles in a row', async ({ page }) => {
   await page.getByRole('button', { name: 'Collapse panel' }).click();
   await page.keyboard.press('h');
   for (let i = 1; i <= 6; i++) {
-    await page.getByRole('button', { name: /^Shuffle/ }).click();
+    await page.getByRole('button', { name: /^Shuffle( Space)?$/ }).click();
     await settled();
     await page.screenshot({ path: `/tmp/m3-shuffle-${i}.png` });
   }

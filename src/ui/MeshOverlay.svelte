@@ -40,11 +40,11 @@
     e.preventDefault();
     e.stopPropagation();
     editor.selectedPoint = i;
-    editor.adding = false;
     const [u0, v0] = toComposition(e);
     const p = editor.mesh.points[i];
+    const [x0, y0] = editor.toScreen(p.x, p.y);
     // Move by pointer delta, so clamped edge indicators can be dragged without the point jumping.
-    drag = { index: i, pointerId: e.pointerId, u0, v0, x0: p.x, y0: p.y };
+    drag = { index: i, pointerId: e.pointerId, u0, v0, x0, y0 };
     dragging = true;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     (e.currentTarget as HTMLElement).focus();
@@ -64,13 +64,6 @@
     if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
   }
 
-  function onOverlayPointerDown(e: PointerEvent) {
-    if (e.button !== 0 || !editor.adding) return;
-    const [x, y] = toComposition(e);
-    const i = editor.addPoint(x, y);
-    if (i !== null) focusHandle(i);
-  }
-
   function onOverlayDblClick(e: MouseEvent) {
     if ((e.target as HTMLElement).closest('[data-point]')) return;
     const [x, y] = toComposition(e);
@@ -84,17 +77,15 @@
     if ((e.target as HTMLElement | null)?.closest?.('input, select, textarea, [contenteditable]')) return;
     if (e.key === 'h' || e.key === 'H') {
       editor.showHandles = !editor.showHandles;
-      if (!editor.showHandles) editor.adding = false;
       e.preventDefault();
       return;
     }
     if (!editor.showHandles) return;
-    const p = editor.point;
+    // Nudges follow the screen, whatever the transform.
+    const [px, py] = editor.toScreen(editor.point.x, editor.point.y);
+    const p = { x: px, y: py };
     const step = e.shiftKey ? NUDGE_LARGE : NUDGE;
     switch (e.key) {
-      case 'Escape':
-        editor.adding = false;
-        break;
       case 'Delete':
       case 'Backspace':
         editor.removePoint();
@@ -124,26 +115,26 @@
 <div
   class="overlay"
   class:hidden={!editor.showHandles}
-  class:adding={editor.adding}
   class:dragging
   bind:this={overlay}
   role="group"
   aria-label="Color points"
   data-testid="mesh-overlay"
-  onpointerdown={onOverlayPointerDown}
   ondblclick={onOverlayDblClick}
 >
   {#if editor.showHandles}
-    {@const sel = editor.point}
+    {@const [sx, sy] = editor.toScreen(editor.point.x, editor.point.y)}
+    {@const size = editor.pointSize()}
     <div
       class="radius"
-      style:left="{leftPct(sel.x)}%"
-      style:top="{topPct(sel.y)}%"
-      style:width="{((2 * sel.radius) / aspect) * 100}%"
-      style:height="{2 * sel.radius * 100}%"
+      style:left="{leftPct(sx)}%"
+      style:top="{topPct(sy)}%"
+      style:width="{((2 * size) / aspect) * 100}%"
+      style:height="{2 * size * 100}%"
     ></div>
     {#each editor.mesh.points as p, i (i)}
-      {@const outside = isOutside(p.x, p.y)}
+      {@const [x, y] = editor.toScreen(p.x, p.y)}
+      {@const outside = isOutside(x, y)}
       <div
         class="handle"
         class:selected={i === editor.selectedPoint}
@@ -158,10 +149,10 @@
         aria-label="Point {i + 1}"
         aria-pressed={i === editor.selectedPoint}
         title={outside ? 'Outside the frame — drag to bring it back' : 'Drag to move · Delete to remove'}
-        style:left="clamp(14px, {leftPct(p.x)}%, calc(100% - 14px))"
-        style:top="clamp(14px, {topPct(p.y)}%, calc(100% - 14px))"
+        style:left="clamp(14px, {leftPct(x)}%, calc(100% - 14px))"
+        style:top="clamp(14px, {topPct(y)}%, calc(100% - 14px))"
         style:--color={oklchToHex(p.color)}
-        style:--angle="{Math.atan2(-p.y, p.x)}rad"
+        style:--angle="{Math.atan2(-y, x)}rad"
         onfocus={() => (editor.selectedPoint = i)}
         onpointerdown={(e) => onHandlePointerDown(e, i)}
         onpointermove={onHandlePointerMove}
@@ -182,9 +173,6 @@
   }
   .overlay.hidden {
     pointer-events: none;
-  }
-  .overlay.adding {
-    cursor: crosshair;
   }
   .radius {
     position: absolute;

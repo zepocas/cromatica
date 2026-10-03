@@ -108,17 +108,39 @@ export interface Grain {
   size: number;
 }
 
+/**
+ * Whole-image transform (M3.5), applied to composition coords before the
+ * warp, so the warp turns, scales and mirrors with the pattern. Grain and
+ * dither stay on the output pixel grid. Pattern coords are
+ *   q = S · R(-rotate) · p / zoom,   S = diag(flipX ? -1 : 1, flipY ? -1 : 1)
+ * (src/engine/transform.ts). Flipping in pattern space means a flip button
+ * that mirrors the image as seen on screen must also negate `rotate`.
+ */
+export interface Transform {
+  /** Counter-clockwise rotation of the image, degrees in [0, 360). */
+  rotate: number;
+  /** Magnification: 1 = none, 2 = features twice as large. In [MIN_ZOOM, MAX_ZOOM]. */
+  zoom: number;
+  flipX: boolean;
+  flipY: boolean;
+}
+
 export interface Design {
   engineVersion: 1;
   base: BasePattern;
   warp: Warp;
   grain: Grain;
+  /** Missing (designs from before M3.5) = identity. */
+  transform?: Transform;
 }
 
 export const defaultWarp: Warp = { shape: 'domain', amount: 0.3, size: 0.35, seed: 1 };
 export const noWarp: Warp = { shape: 'none', amount: 0, size: 0.5, seed: 1 };
-export const defaultGrain: Grain = { amount: 0.35, size: 0.2 };
+export const defaultGrain: Grain = { amount: 0.35, size: 0 };
 export const noGrain: Grain = { amount: 0, size: 0 };
+export const identityTransform: Transform = { rotate: 0, zoom: 1, flipX: false, flipY: false };
+export const MIN_ZOOM = 0.5;
+export const MAX_ZOOM = 4;
 
 export const MAX_STOPS = 8;
 export const MAX_MESH_POINTS = 16;

@@ -13,6 +13,7 @@ import { bakeRamp } from '../../../src/color/ramp';
 import { RAMP_SIZE, type Rgb } from '../../../src/color/types';
 import { noGrain, noWarp, type Design, type LinearGradient, type PointMesh } from '../../../src/design/design';
 import { createRenderer } from '../../../src/engine/renderer';
+import { applyMat2, orientationMatrix, transformMatrix } from '../../../src/engine/transform';
 import { createWarp } from '../../../src/engine/warp';
 import {
   CONTEXT_ATTRIBUTES,
@@ -105,8 +106,9 @@ const f16round = (Math as unknown as { f16round?: (x: number) => number }).f16ro
  */
 function createReference(design: Design, output: OutputSize, halfFloat = false) {
   const warp = createWarp(design.warp ?? noWarp);
+  const m = transformMatrix(design.transform);
   const { width: w, height: h } = output;
-  const at = (px: number, py: number) => warp(...compositionCoord(px, py, w, h));
+  const at = (px: number, py: number) => warp(...applyMat2(m, ...compositionCoord(px, py, w, h)));
   if (design.base.kind === 'mesh') return createMeshReference(design.base, at);
   const base = design.base;
   const ramp = bakeRamp(base.stops, RAMP_SIZE);
@@ -115,7 +117,10 @@ function createReference(design: Design, output: OutputSize, halfFloat = false) 
   const a = (base.angle * Math.PI) / 180;
   const dx = Math.cos(a);
   const dy = Math.sin(a);
-  const extent = Math.abs(dx) * (w / h) + Math.abs(dy);
+  // The ramp spans the rotated/flipped frame (see linearGradientUniforms).
+  const o = orientationMatrix(design.transform);
+  const [ex, ey] = applyMat2([o[0], o[2], o[1], o[3]], dx, dy);
+  const extent = Math.abs(ex) * (w / h) + Math.abs(ey);
   return (px: number, py: number): Triple => {
     const [u, v] = at(px, py);
     const t = Math.min(1, Math.max(0, (u * dx + v * dy) / extent + 0.5));
@@ -240,7 +245,40 @@ function renderInWorker(design: Design, output: OutputSize, tileSize: number, op
   });
 }
 
+/** Output pixel of the untransformed image that a transformed pixel must equal. */
+export type PixelMap = 'flipX' | 'flipY' | 'rotate180' | 'rotate90';
+
+const PIXEL_MAPS: Record<PixelMap, (x: number, y: number, w: number, h: number) => [number, number]> = {
+  flipX: (x, y, w) => [w - 1 - x, y],
+  flipY: (x, y, _w, h) => [x, h - 1 - y],
+  rotate180: (x, y, w, h) => [w - 1 - x, h - 1 - y],
+  // Square outputs only: composition (u, v) → (v, -u).
+  rotate90: (x, y, w) => [w - 1 - y, x],
+};
+
 const harness = {
+  /**
+   * Renders `plain` and `transformed` (dither off) and checks that each
+   * pixel of `transformed` equals the pixel of `plain` given by `map`.
+   * Quarter turns and flips only permute exact composition coords, so the
+   * match must be byte-exact.
+   */
+  compareRemapped(plain: Design, transformed: Design, width: number, height: number, map: PixelMap) {
+    const output = { width, height };
+    const a = render(plain, output, false);
+    const b = render(transformed, output, false);
+    const expected = new Uint8Array(a.length);
+    const f = PIXEL_MAPS[map];
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const [sx, sy] = f(x, y, width, height);
+        const i = (sy * width + sx) * 4;
+        expected.set(a.subarray(i, i + 4), (y * width + x) * 4);
+      }
+    }
+    return { ...diffImages(expected, b, width), different: !diffImages(a, b, width).identical };
+  },
+
   /** Single pass vs tiled render of the same output, compared byte-for-byte. */
   compareTiled(design: Design, width: number, height: number, tileSize: number, dither: boolean) {
     const output = { width, height };
@@ -498,10 +536,11 @@ const harness = {
     const image = render(d, output, false);
     const ref = createReference(d, output);
     const warp = createWarp(d.warp ?? noWarp);
+    const m = transformMatrix(d.transform);
     const warped = new Float64Array(width * height * 2);
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        const p = warp(...compositionCoord(x, y, width, height));
+        const p = warp(...applyMat2(m, ...compositionCoord(x, y, width, height)));
         warped[(y * width + x) * 2] = p[0];
         warped[(y * width + x) * 2 + 1] = p[1];
       }

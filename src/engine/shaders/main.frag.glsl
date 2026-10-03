@@ -1,10 +1,10 @@
 out vec4 fragColor;
 
-// Output order (D5, D7): warp → base pattern (linear RGB) → sRGB transfer →
+// Output order (D5, D7): transform → warp → base pattern (linear RGB) → sRGB transfer →
 // grain → dither → 8-bit quantization by the framebuffer.
 void main() {
   ivec2 px = outputPixel();
-  vec2 uv = warpCoord(compositionCoord(px));
+  vec2 uv = warpCoord(transformCoord(compositionCoord(px)));
 #if BASE_MESH
   vec3 rgb = gamutClip(meshColor(uv));
 #else

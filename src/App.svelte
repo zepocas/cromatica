@@ -8,11 +8,13 @@
   import { CUSTOM_PRESET_ID, DEVICE_PRESETS } from './ui/presets';
 
   // Class instance (not proxied); $state only so it can be bound down the panel tree.
-  let editor = $state(new EditorState());
+  // Opens on a shuffled design; `?default` starts from the built-in one (tests).
+  let editor = $state(new EditorState({ shuffle: !new URLSearchParams(location.search).has('default') }));
   let presetId = $state('studio');
   let customWidth = $state(1920);
   let customHeight = $state(1080);
   let format = $state<ExportFormat>('png');
+  let collapsed = $state(false);
   let exporting = $state(false);
   let progress = $state<ExportProgress | null>(null);
   let error = $state('');
@@ -71,7 +73,7 @@
   }
 </script>
 
-<Preview design={renderDesign} {aspect} paused={exporting}>
+<Preview design={renderDesign} {aspect} paused={exporting} docked={!collapsed}>
   {#snippet overlay()}
     {#if editor.kind === 'mesh'}
       <MeshOverlay {editor} {aspect} />
@@ -83,7 +85,9 @@
   bind:presetId
   bind:customWidth
   bind:customHeight
+  {output}
   bind:format
+  bind:collapsed
   {exporting}
   {progress}
   {error}

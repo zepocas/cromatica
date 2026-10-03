@@ -1,18 +1,22 @@
 <script lang="ts">
+  import { WARP_SHAPES, type WarpShape } from '../design/design';
   import type { ExportFormat, ExportProgress } from '../export/types';
+  import ColorList from './ColorList.svelte';
   import type { EditorState } from './editor.svelte';
   import { isTypingTarget } from './keys';
-  import MeshEditor from './MeshEditor.svelte';
   import { CUSTOM_PRESET_ID, DEVICE_PRESETS } from './presets';
-  import StopEditor from './StopEditor.svelte';
-  import WarpControls from './WarpControls.svelte';
+  import Section from './Section.svelte';
 
   interface Props {
     editor: EditorState;
     presetId: string;
     customWidth: number;
     customHeight: number;
+    /** Export size in pixels (from the preset or the custom size). */
+    output: { width: number; height: number };
     format: ExportFormat;
+    /** Collapsed to a one-line bar floating over a full-width preview. */
+    collapsed: boolean;
     exporting: boolean;
     progress: ExportProgress | null;
     error: string;
@@ -25,7 +29,9 @@
     presetId = $bindable(),
     customWidth = $bindable(),
     customHeight = $bindable(),
+    output,
     format = $bindable(),
+    collapsed = $bindable(),
     exporting,
     progress,
     error,
@@ -34,18 +40,39 @@
   }: Props = $props();
 
   const PATTERNS = [
-    { kind: 'linear', label: 'Gradient' },
-    { kind: 'mesh', label: 'Mesh' },
+    { kind: 'mesh', label: 'mesh' },
+    { kind: 'linear', label: 'linear' },
   ] as const;
+
+  const WARP_LABELS: Record<WarpShape, string> = {
+    none: 'none',
+    domain: 'liquid',
+    fbm: 'fbm',
+    simplex: 'simplex',
+    waves: 'waves',
+    rows: 'rows',
+    columns: 'columns',
+    circular: 'ripples',
+    oval: 'swirl',
+    worley: 'worley',
+    voronoi: 'facets',
+    curl: 'flow',
+  };
 
   const percent = $derived(
     progress && progress.tilesTotal > 0 ? (progress.tilesDone / progress.tilesTotal) * 100 : 0,
   );
-
-  let collapsed = $state(false);
+  const warpOff = $derived(editor.warp.shape === 'none');
 
   function clampSize(v: number): number {
     return Math.min(16384, Math.max(1, Math.round(Number.isFinite(v) ? v : 1)));
+  }
+
+  /** Typing a size switches to Custom, starting from the current size. */
+  function setSize(axis: 'width' | 'height', v: number) {
+    customWidth = axis === 'width' ? clampSize(v) : output.width;
+    customHeight = axis === 'height' ? clampSize(v) : output.height;
+    presetId = CUSTOM_PRESET_ID;
   }
 
   function onWindowKeyDown(e: KeyboardEvent) {
@@ -65,336 +92,289 @@
 
 <aside class="panel" class:collapsed>
   <header>
-    <h1>Wallpaper</h1>
+    <h1>wallpaper</h1>
     <button
-      class="chevron"
+      class="icon"
       aria-expanded={!collapsed}
       aria-label={collapsed ? 'Expand panel' : 'Collapse panel'}
       title={collapsed ? 'Expand panel' : 'Collapse panel'}
-      onclick={() => (collapsed = !collapsed)}
+      onclick={() => (collapsed = !collapsed)}>{collapsed ? '□' : '_'}</button
     >
-      <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
-        <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
-      </svg>
-    </button>
   </header>
 
-  <div class="shuffle">
-    <button
-      class="shuffle-button"
-      disabled={!editor.canShuffle}
-      title={editor.canShuffle ? 'Shuffle (Space)' : 'Unlock colors or layout to shuffle'}
-      onclick={() => editor.shuffle()}>Shuffle <kbd>Space</kbd></button
-    >
-    {#if !collapsed}
-      <div class="locks" role="group" aria-label="Keep when shuffling">
+  {#if !collapsed}
+    <Section title="pattern">
+      <label class="row">
+        <span>gradient</span>
+        <select aria-label="Gradient" bind:value={editor.kind}>
+          {#each PATTERNS as p (p.kind)}
+            <option value={p.kind}>{p.label}</option>
+          {/each}
+        </select>
+      </label>
+      <div class="row">
+        <label for="warp-shape">warp shape</label>
+        <select id="warp-shape" aria-label="Warp shape" title="[ and ] to step through" bind:value={editor.warp.shape}>
+          {#each WARP_SHAPES as s (s)}
+            <option value={s}>{WARP_LABELS[s]}</option>
+          {/each}
+        </select>
         <button
-          class="lock"
+          class="icon"
+          aria-label="New variation"
+          title="New variation of this shape"
+          disabled={warpOff}
+          data-seed={editor.warp.seed}
+          onclick={() => editor.newWarpVariation()}>⚄</button
+        >
+      </div>
+      <label class="row">
+        <span>size</span>
+        <select bind:value={presetId} aria-label="Device preset">
+          {#each DEVICE_PRESETS as p (p.id)}
+            <option value={p.id}>{p.label}</option>
+          {/each}
+          <option value={CUSTOM_PRESET_ID}>custom</option>
+        </select>
+      </label>
+      <div class="row">
+        <span></span>
+        <input
+          type="number"
+          min="1"
+          max="16384"
+          aria-label="Width"
+          value={output.width}
+          onchange={(e) => setSize('width', e.currentTarget.valueAsNumber)}
+        />
+        <span class="dim">×</span>
+        <input
+          type="number"
+          min="1"
+          max="16384"
+          aria-label="Height"
+          value={output.height}
+          onchange={(e) => setSize('height', e.currentTarget.valueAsNumber)}
+        />
+      </div>
+    </Section>
+
+    <Section title="adjust">
+      <label class="row">
+        <span>warp</span>
+        <input type="range" min="0" max="1" step="0.01" aria-label="Warp" disabled={warpOff} bind:value={editor.warp.amount} />
+        <output>{editor.warp.amount.toFixed(2)}</output>
+      </label>
+      <label class="row">
+        <span>noise</span>
+        <input type="range" min="0" max="1" step="0.01" aria-label="Noise" bind:value={editor.grain.amount} />
+        <output>{editor.grain.amount.toFixed(2)}</output>
+      </label>
+      {#if editor.kind === 'mesh'}
+        <label class="row">
+          <span>blend</span>
+          <input type="range" min="0" max="1" step="0.01" aria-label="Blend" title="Soft ↔ defined" bind:value={editor.mesh.sharpness} />
+          <output>{editor.mesh.sharpness.toFixed(2)}</output>
+        </label>
+      {:else}
+        <label class="row">
+          <span>angle</span>
+          <input type="range" min="0" max="360" step="1" aria-label="Angle" bind:value={editor.linear.angle} />
+          <output>{Math.round(editor.linear.angle)}°</output>
+        </label>
+      {/if}
+
+      {#snippet more()}
+        <label class="row">
+          <span>warp size</span>
+          <input type="range" min="0" max="1" step="0.01" aria-label="Warp size" disabled={warpOff} bind:value={editor.warp.size} />
+          <output>{editor.warp.size.toFixed(2)}</output>
+        </label>
+        <label class="row">
+          <span>zoom</span>
+          <input
+            type="range"
+            min="-1"
+            max="2"
+            step="0.01"
+            aria-label="Zoom"
+            value={Math.log2(editor.transform.zoom)}
+            oninput={(e) => editor.setZoom(2 ** e.currentTarget.valueAsNumber)}
+          />
+          <output>{editor.transform.zoom.toFixed(1)}×</output>
+        </label>
+        <div class="row">
+          <label for="rotate">rotate</label>
+          <input
+            id="rotate"
+            type="range"
+            min="0"
+            max="359"
+            step="1"
+            aria-label="Rotate"
+            value={editor.transform.rotate}
+            oninput={(e) => editor.setRotate(e.currentTarget.valueAsNumber)}
+          />
+          <button class="icon" aria-label="Rotate left" title="Rotate 90° left" onclick={() => editor.rotateBy(90)}>↺</button>
+          <button class="icon" aria-label="Rotate right" title="Rotate 90° right" onclick={() => editor.rotateBy(-90)}>↻</button>
+          <output>{Math.round(editor.transform.rotate)}°</output>
+        </div>
+        <div class="row">
+          <span>flip</span>
+          <button class="icon" aria-label="Flip horizontally" title="Mirror left ↔ right" onclick={() => editor.flip('x')}>⇋</button>
+          <button class="icon" aria-label="Flip vertically" title="Mirror top ↔ bottom" onclick={() => editor.flip('y')}>⇵</button>
+          <span class="spacer"></span>
+          <button aria-label="Reset" title="Undo rotate, zoom and flips" disabled={!editor.isTransformed} onclick={() => editor.resetTransform()}>[ reset ]</button>
+        </div>
+      {/snippet}
+    </Section>
+
+    <ColorList bind:editor />
+  {/if}
+
+  <footer>
+    {#if !collapsed}
+      <div class="row">
+        <span>keep</span>
+        <button
           aria-label="Lock colors"
           aria-pressed={editor.colorsLocked}
           title="Keep the colors when shuffling"
-          onclick={() => (editor.colorsLocked = !editor.colorsLocked)}>{@render lockIcon(editor.colorsLocked)}Colors</button
+          onclick={() => (editor.colorsLocked = !editor.colorsLocked)}>{editor.colorsLocked ? '[x]' : '[ ]'} colors</button
         >
         <button
-          class="lock"
           aria-label="Lock layout"
           aria-pressed={editor.layoutLocked}
           title="Keep the layout and warp when shuffling"
-          onclick={() => (editor.layoutLocked = !editor.layoutLocked)}>{@render lockIcon(editor.layoutLocked)}Layout</button
+          onclick={() => (editor.layoutLocked = !editor.layoutLocked)}>{editor.layoutLocked ? '[x]' : '[ ]'} layout</button
         >
       </div>
     {/if}
-  </div>
-
-  {#if !collapsed}
-    <hr />
-
-    <div class="segmented" role="radiogroup" aria-label="Pattern">
-      {#each PATTERNS as p (p.kind)}
-        <button
-          role="radio"
-          aria-checked={editor.kind === p.kind}
-          class:active={editor.kind === p.kind}
-          onclick={() => (editor.kind = p.kind)}>{p.label}</button
-        >
-      {/each}
+    <div class="row actions">
+      <button
+        class="primary"
+        aria-label="Shuffle"
+        disabled={!editor.canShuffle}
+        title={editor.canShuffle ? 'Shuffle (Space)' : 'Unlock colors or layout to shuffle'}
+        onclick={() => editor.shuffle()}>[ shuffle<kbd> ␣</kbd> ]</button
+      >
+      {#if exporting}
+        <progress max="100" value={percent} aria-label="Export progress"></progress>
+        <button onclick={oncancel}>[ cancel ]</button>
+      {:else}
+        <button class="strong" aria-label="Download" onclick={onexport}>[ download ]</button>
+        {#if !collapsed}
+          <span class="spacer"></span>
+          <select bind:value={format} aria-label="Format">
+            <option value="png">png</option>
+            <option value="jpeg">jpeg</option>
+          </select>
+        {/if}
+      {/if}
     </div>
-
-    {#if editor.kind === 'mesh'}
-      <MeshEditor bind:editor />
-    {:else}
-      <label class="row">
-        <span>Angle</span>
-        <input type="range" min="0" max="360" step="1" bind:value={editor.linear.angle} />
-        <output>{Math.round(editor.linear.angle)}°</output>
-      </label>
-
-      <StopEditor bind:stops={editor.linear.stops} />
+    {#if error}
+      <p class="error" role="alert">{error}</p>
     {/if}
-
-    <hr />
-    <h2>Warp</h2>
-    <WarpControls bind:editor />
-
-    <hr />
-    <h2>Grain</h2>
-    <label class="row">
-      <span>Amount</span>
-      <input type="range" min="0" max="1" step="0.01" aria-label="Grain amount" bind:value={editor.grain.amount} />
-    </label>
-    <label class="row">
-      <span>Size</span>
-      <input type="range" min="0" max="1" step="0.01" aria-label="Grain size" bind:value={editor.grain.size} />
-    </label>
-
-    <hr />
-
-    <label class="row">
-      <span>Device</span>
-      <select bind:value={presetId} aria-label="Device preset">
-        {#each DEVICE_PRESETS as p (p.id)}
-          <option value={p.id}>{p.label} — {p.width}×{p.height}</option>
-        {/each}
-        <option value={CUSTOM_PRESET_ID}>Custom</option>
-      </select>
-    </label>
-
-    {#if presetId === CUSTOM_PRESET_ID}
-      <div class="row">
-        <span>Size</span>
-        <input
-          type="number"
-          min="1"
-          max="16384"
-          aria-label="Custom width"
-          value={customWidth}
-          onchange={(e) => (customWidth = clampSize(e.currentTarget.valueAsNumber))}
-        />
-        <span>×</span>
-        <input
-          type="number"
-          min="1"
-          max="16384"
-          aria-label="Custom height"
-          value={customHeight}
-          onchange={(e) => (customHeight = clampSize(e.currentTarget.valueAsNumber))}
-        />
-      </div>
-    {/if}
-
-    <label class="row">
-      <span>Format</span>
-      <select bind:value={format} aria-label="Format">
-        <option value="png">PNG</option>
-        <option value="jpeg">JPEG</option>
-      </select>
-    </label>
-  {/if}
-
-  {#if exporting}
-    <div class="row">
-      <progress max="100" value={percent} aria-label="Export progress"></progress>
-      <button onclick={oncancel}>Cancel</button>
-    </div>
-  {:else}
-    <button class="primary" onclick={onexport}>Export</button>
-  {/if}
-  {#if error}
-    <p class="error" role="alert">{error}</p>
-  {/if}
+  </footer>
 </aside>
 
-{#snippet lockIcon(locked: boolean)}
-  <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true">
-    <rect x="2" y="5.5" width="8" height="5.5" rx="1" fill="currentColor" />
-    <path
-      d={locked ? 'M3.8 5.5V4a2.2 2.2 0 0 1 4.4 0v1.5' : 'M3.8 5.5V4a2.2 2.2 0 0 1 4.3-.7'}
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.3"
-    />
-  </svg>
-{/snippet}
-
 <style>
+  /* Docked: a full-height column next to the preview, never over it. */
   .panel {
+    --pad: 13px;
     position: fixed;
-    top: 16px;
-    left: 16px;
-    width: 300px;
-    padding: 14px;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: var(--sidebar);
+    padding: 0 var(--pad);
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    background: rgba(20, 20, 24, 0.72);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    color: #eee;
-    font-size: 13px;
-    max-height: calc(100vh - 32px);
     box-sizing: border-box;
     overflow-y: auto;
+    background: var(--panel);
+    border-right: 1px solid var(--rule);
   }
-  /* Collapsed: one compact bar, so handles under the panel can be reached. */
-  .panel.collapsed {
-    width: auto;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    padding: 8px 10px;
-  }
-  .collapsed header {
-    gap: 2px;
-  }
-  .collapsed .shuffle-button kbd {
-    display: none;
+  /* Scroll when too tall instead of squashing the controls. */
+  .panel > :global(*) {
+    flex-shrink: 0;
   }
   header {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    padding: 6px 0;
   }
   h1 {
     margin: 0;
-    font-size: 14px;
-    font-weight: 600;
-  }
-  h2 {
-    margin: 0;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: #888;
-  }
-  .chevron {
-    display: grid;
-    place-items: center;
-    padding: 4px;
-    border: none;
-    background: none;
-    color: #aaa;
-  }
-  .chevron svg {
-    transition: transform 0.15s;
-  }
-  .collapsed .chevron svg {
-    transform: rotate(-90deg);
-  }
-  .shuffle {
-    display: flex;
-    gap: 6px;
-  }
-  .shuffle-button {
-    flex: 1;
-    padding: 7px 10px;
-    background: #7ab8ff;
-    border-color: transparent;
-    color: #111;
-    font-weight: 600;
-  }
-  .shuffle-button kbd {
     font: inherit;
-    font-size: 11px;
-    font-weight: 400;
-    opacity: 0.6;
-    margin-left: 4px;
+    color: var(--ink);
   }
-  .locks {
-    display: flex;
-    gap: 4px;
+  h1::before {
+    content: '~/';
+    color: var(--dim);
   }
-  .lock {
+  /* Pinned to the bottom; the sections scroll above it on short screens. */
+  footer {
+    position: sticky;
+    bottom: 0;
+    margin: auto calc(-1 * var(--pad)) 0;
     display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px var(--pad);
+    border-top: 1px solid var(--rule);
+    background: var(--panel);
+  }
+  /* Collapsed: one compact bar, so handles under the panel can be reached. */
+  .panel.collapsed {
+    top: 16px;
+    left: 16px;
+    bottom: auto;
+    width: auto;
+    flex-direction: row;
     align-items: center;
-    gap: 4px;
-    padding: 4px 7px;
-    color: #aaa;
+    gap: 12px;
+    border: 1px solid var(--rule);
+    background: var(--panel-float);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
   }
-  .lock[aria-pressed='true'] {
-    background: rgba(255, 255, 255, 0.22);
-    color: #fff;
-  }
-  .segmented {
-    display: flex;
-    padding: 2px;
-    gap: 2px;
-    background: rgba(0, 0, 0, 0.35);
-    border-radius: 8px;
-  }
-  .segmented button {
-    flex: 1;
+  .collapsed footer {
+    position: static;
+    flex-direction: row;
+    margin: 0;
+    padding: 6px 0;
     border: none;
     background: none;
-    padding: 4px 10px;
   }
-  .segmented button.active {
-    background: rgba(255, 255, 255, 0.16);
-    font-weight: 600;
+  .collapsed kbd {
+    display: none;
   }
-  hr {
-    width: 100%;
-    margin: 2px 0;
-    border: none;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  kbd {
+    font: inherit;
+    opacity: 0.6;
   }
-  .row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  .spacer {
+    flex: 1;
   }
-  .row > span:first-child {
-    width: 60px;
+  .dim {
+    color: var(--dim);
+  }
+  .panel .actions select {
     flex: none;
-    color: #aaa;
   }
-  .row input[type='range'],
-  select,
+  footer button[aria-pressed='true'],
+  .strong {
+    color: var(--ink);
+  }
   progress {
     flex: 1;
     min-width: 0;
-  }
-  .row input[type='number'] {
-    width: 72px;
-    flex: 1;
-    min-width: 0;
-  }
-  output {
-    width: 36px;
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-  }
-  button {
-    background: rgba(255, 255, 255, 0.1);
-    color: inherit;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 6px;
-    padding: 5px 10px;
-    font: inherit;
-    cursor: pointer;
-  }
-  button:disabled {
-    opacity: 0.4;
-    cursor: default;
-  }
-  button.primary {
-    background: #fff;
-    color: #111;
-    font-weight: 600;
-  }
-  select,
-  input[type='number'] {
-    background: rgba(0, 0, 0, 0.35);
-    color: inherit;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 6px;
-    padding: 4px;
-    font: inherit;
+    accent-color: var(--ink);
   }
   .error {
     margin: 0;
-    color: #ff8a8a;
+    color: var(--warn);
   }
 </style>

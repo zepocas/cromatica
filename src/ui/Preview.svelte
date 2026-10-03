@@ -9,9 +9,11 @@
     paused?: boolean;
     /** Rendered over the canvas, in a box that matches its displayed rect exactly. */
     overlay?: Snippet;
+    /** Leave room for the docked sidebar (--sidebar) on the left. */
+    docked?: boolean;
   }
 
-  let { design, aspect, paused = false, overlay }: Props = $props();
+  let { design, aspect, paused = false, overlay, docked = false }: Props = $props();
 
   let container: HTMLDivElement;
   let canvas: HTMLCanvasElement;
@@ -38,7 +40,7 @@
   $effect(() => controller?.setPaused(paused));
 </script>
 
-<div class="viewport" bind:this={container}>
+<div class="viewport" class:docked bind:this={container}>
   <!-- The frame hugs the letterboxed canvas, so the overlay shares its rect. -->
   <div class="frame">
     <canvas bind:this={canvas} data-testid="preview-canvas"></canvas>
@@ -58,9 +60,14 @@
     justify-content: center;
     overflow: hidden;
   }
+  .viewport.docked {
+    inset: 24px 24px 24px calc(var(--sidebar) + 24px);
+  }
   .frame {
     position: relative;
     flex: none;
+    /* Keeps the radius ring of a big point inside the frame. */
+    overflow: hidden;
   }
   canvas {
     display: block;

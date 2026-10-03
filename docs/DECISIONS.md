@@ -119,3 +119,11 @@ Decisions made during the architecture review. Reopen one only if new informatio
   - `gravity`: read as a dark blot and was too subtle on smooth meshes.
 - **Kept:** domain, fbm, simplex, waves, rows, columns, circular, oval, worley, voronoi and curl, plus none.
 - **Next pruning candidates:** `worley` (flat polygon patches) and `fbm` (overlaps with domain).
+
+## D24. Transforms act on composition coordinates, before the warp
+- **Model:** pattern coordinates are `q = S · R(-rotate) · p / zoom`, where `S` holds the flips. The matrix is uploaded as a `mat2` uniform. The identity is exact in fp32, so designs from before M3.5 render bit-identically.
+- **Why before the warp:** the whole image turns, scales and mirrors as one piece. Grain and dither stay on the output pixel grid.
+- **Flips in pattern space:** the flip buttons also negate the rotation, so a flip always mirrors what is on screen and the rotation always turns counter-clockwise on screen.
+- **Linear gradients:** the ramp is refitted to the rotated and flipped frame, so it always spans the frame like the angle does. Zoom is left out of the fit, so it still magnifies the ramp.
+- **Mesh points stay in pattern space:** handles, drags, nudges, "add" and the Size slider convert through the transform. Shuffle lays points out on screen and maps them into pattern space, so they land in view under any transform.
+- **Ranges:** rotation is in [0, 360). Zoom is in [0.5, 4] on a log slider.

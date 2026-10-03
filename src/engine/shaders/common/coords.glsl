@@ -22,3 +22,10 @@ vec2 compositionCoord(ivec2 px) {
   ivec2 num = ivec2(2 * px.x + 1 - u_outputSize.x, u_outputSize.y - 2 * px.y - 1);
   return vec2(num) / float(2 * u_outputSize.y);
 }
+
+// Whole-image transform (src/engine/transform.ts): composition → pattern coords.
+uniform mat2 u_transform;
+
+vec2 transformCoord(vec2 p) {
+  return u_transform * p;
+}

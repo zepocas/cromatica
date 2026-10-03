@@ -30,6 +30,12 @@ export interface PreviewController {
 const IDLE_MS = 150;
 const INTERACTIVE_SCALE = 0.5;
 const MAX_DPR = 2;
+/**
+ * Full-resolution frames cheaper than this stay at full resolution while
+ * editing. Dropping resolution changes how grain looks (it is per output
+ * pixel), so it is only worth it on GPUs that can't keep up.
+ */
+const FRAME_BUDGET_MS = 12;
 
 export function createPreview(
   canvas: HTMLCanvasElement,
@@ -46,6 +52,9 @@ export function createPreview(
   let aspect = opts.aspect ?? 16 / 9;
   let renderer: Renderer | null = createRenderer(gl);
   let scale = 1;
+  /** Cost of the last full-resolution frame, GPU included; Infinity until measured. */
+  let fullFrameMs = Infinity;
+  const syncPixel = new Uint8Array(4);
   let paused = false;
   let dirty = true;
   let rafId = 0;
@@ -78,7 +87,13 @@ export function createPreview(
     if (!renderer || gl!.isContextLost()) return;
     applyLayout();
     const output = { width: canvas.width, height: canvas.height };
+    const t0 = performance.now();
     renderer.render(design, output, { x: 0, y: 0, ...output }, { dither: true });
+    if (scale === 1) {
+      // A 1-pixel read waits for the GPU, so the time covers the whole frame.
+      gl!.readPixels(0, 0, 1, 1, gl!.RGBA, gl!.UNSIGNED_BYTE, syncPixel);
+      fullFrameMs = performance.now() - t0;
+    }
     dirty = false;
   }
 
@@ -91,9 +106,9 @@ export function createPreview(
     });
   }
 
-  // Drop to low resolution while changes keep arriving; sharpen once idle.
+  // On slow GPUs, drop to low resolution while changes keep arriving; sharpen once idle.
   function interact(): void {
-    if (!opts.fixedSize) {
+    if (!opts.fixedSize && fullFrameMs > FRAME_BUDGET_MS) {
       scale = INTERACTIVE_SCALE;
       clearTimeout(idleTimer);
       idleTimer = setTimeout(() => {

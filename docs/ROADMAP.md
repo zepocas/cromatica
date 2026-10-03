@@ -115,9 +115,9 @@ Each milestone uses the same structure:
   - Grain in the preview differs from the export at DPR below 1 (the 1:1 loupe comes in M7).
   - `warpPoint` ignores aspect (seeded centers sit in a 16:9 box).
 
-### M3.5 — UI refinement (photogradient-style panel) and transforms
+### M3.5 — UI refinement (photogradient-style panel) and transforms ✅
 - **Goal:** a simpler panel organized like photogradient's, plus the basic whole-image transforms that are missing.
-- **Scope (draft, to agree on):**
+- **Scope:**
   - **Panel order:**
     1. Gradient (pattern)
     2. Warp shape
@@ -127,10 +127,25 @@ Each milestone uses the same structure:
     6. Download
   - **Grain:** a single "Noise" fader; size stays fixed.
   - **Transforms:** rotate (90° steps plus a free angle), zoom and flip. They apply to the whole composition, before the warp.
-- **Open questions:**
-  - Light or dark panel?
-  - Pull undo/redo forward from M6?
-  - Should the app open on a random design?
+- **Decided:**
+  - **Theme:** the panel stays dark.
+  - **Blend slider:** the mesh Blend slider stays.
+  - **Undo/redo:** waits for M6.
+  - **Random design on load:** the app opens on a full shuffle (palette, layout and warp, natural mood). Once M6 adds autosave, it restores the last design and only shuffles on a first visit.
+- **Outcome:**
+  - Panel order as planned. Blend (mesh) or Angle (linear) sits with the sliders, and Rotate, Zoom, the 90° turns, the flips and Reset come after them.
+  - **Colors list:** each row has a swatch (opens the picker), an editable hex value and a remove button. Selecting a row shows the Lightness, Intensity and Hue sliders, plus Size (mesh) or Blend to the next stop (linear). The header has show/hide points (mesh), shuffle colors only, and add. For linear, the stop strip sits above the rows.
+  - "Add" places a mesh point in the emptiest spot of the frame and a stop in the widest gap. The armed "Add point, then click the image" mode is gone, but double-clicking the image still adds a point.
+  - Typing a width or height switches the preset to Custom. "Export" is now "Download", with the format next to it.
+  - Grain size is no longer exposed and stays at 0.2.
+  - Transforms tile byte-identically, and the identity transform is bit-identical to no transform. Flips and quarter turns are exact pixel permutations. Free angles and zoom match the CPU reference within ±2.
+  - `?default` in the URL skips the opening shuffle (used by tests).
+  - **Look:** a monochrome terminal style. The panel uses one monospace face, lowercase labels, `├─ section ───┤` rules, hairline `───●───` sliders with value readouts, and `[ bracketed ]` buttons. The only color in the panel comes from the wallpaper's own swatches.
+  - **"More" disclosures:** the main view keeps gradient, warp shape, size, warp, noise, blend (mesh) or angle (linear), and the color rows. Behind "+ more" sit warp size, zoom, rotation (a slider with ↺ ↻ quarter turns on the same row), the flips and reset (adjust), plus lightness, intensity, hue, point size or blend to the next stop, and showing points (colors).
+  - **Docked sidebar:** the panel is a full-height column and the preview letterboxes into the space beside it, so it never covers the wallpaper or the mesh handles. This resolves the M2 panel-overlap note. Collapsing turns it into a one-line floating bar and gives the preview the full width. Shuffle and download stay pinned at the bottom.
+  - **Grain in the preview:** the preview only drops to half resolution while editing when a full-resolution frame costs more than 12 ms. Otherwise the grain changed size whenever a slider was held. Grain is now crisp, one speck per pixel (default size 0, was 0.2).
+- **Still open:**
+  - On slow GPUs the grain still coarsens while dragging (the half-resolution fallback).
 
 ### M4 — Palettes: curated library, Remix, palette from image
 - **Goal:** better colors with less effort.
@@ -182,6 +197,7 @@ Each milestone uses the same structure:
   - Custom pixel sizes
   - 1:1 loupe
   - Adaptive preview resolution tuning
+  - **Full-screen preview:** shows the wallpaper edge to edge with no panel, to make up for the smaller preview next to the docked sidebar. Esc or a small × in a corner exits. Use the Fullscreen API where available; the render stays at screen resolution so the grain reads true. Handles stay hidden.
   - Export progress and cancel
   - Context-loss recovery
   - Shader compile warm-up
