@@ -297,6 +297,7 @@ Each milestone uses the same structure:
 ## Later — Backlog (unordered)
 
 - ~~Blend: sharper at the top of the slider.~~ Done in M4.5: the far end now reaches near-hard edges (D34).
+- Bands on the mesh, if they should ever be bolder (D33): step the lightness (strong topographic look, but no line between colors of similar lightness), step the blend between the two strongest points (closest to ramp bands), or draw contour lines at band boundaries (the only way to show bands between near-identical colors). Kept as is for now: the user likes the current look.
 - Bicubic patch mesh (Figma/SwiftUI-style bendable grid)
 - Display P3 output, as an internal flag with no UI
 - 16-bit PNG export
