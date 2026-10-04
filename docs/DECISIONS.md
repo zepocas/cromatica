@@ -223,12 +223,10 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Change:** the mesh exponent is `k = 1.5 · 12^s · (1 + 4·s⁶)`. The extra factor is ×1.007 at s = 0.35, ×1.06 at 0.5, ×1.47 at 0.7 and ×5 at 1, so k tops out at 90 instead of 18. Low and mid blends (shuffles stay in 0.1–0.5) look as before; the far end gives near-hard, Voronoi-like edges.
 - **Safe:** weights are computed in the log domain normalized by the largest, so k = 90 is fine in fp32; CPU and GPU still match. The continuity test bound scales with k, since steeper (still continuous) transitions change faster per sample.
 
-## D35. Brushed and smudge warps stroke along a seeded direction
+## D35. Brushed strokes along a seeded direction; smudge dropped
 
-- **Frame:** both work in coordinates along and across a seeded stroke direction (`strokeFrame`), like silk and marble.
-- **Brushed** (`bristle`): simplex noise at 0.3× along and 8× across the stroke gives fine bristle lines; it displaces along the stroke, so colors smear into streaks, and a coarse simplex mask (smoothstep −0.3…0.3) breaks strokes off like a dry brush.
-- **Smudge:** every point samples from behind it along the stroke by `amp · (0.5 + 0.5 · fbm)`, a smooth positive amount, so colors trail one way like a finger smear.
-- **Both kept for review**, the plan's "bristle and smudge variants in the same chunk" built as two shapes so the contact sheet can prune either.
+- **Brushed** (`bristle`): in coordinates along and across a seeded stroke direction, simplex noise at 0.15× along and 14× across gives fine, long bristle lines; it displaces along the stroke by up to 0.7 (gain) times a soft mask (0.4–1, from coarse simplex), so colors drag across the frame in streaks. The first tuning (gain 0.18, a mask that cut strokes off fully) was barely visible: a warp only moves colors, and soft colors smeared into soft colors look the same.
+- **Smudge dropped:** a smooth one-way drag was invisible on soft gradients; finger-width trails with a hard start (hashed per trail) turned into rectangular blocks with straight cuts, a digital, glitchy look rather than a smear. That look is noted for M5 as a "digital / glitch" item.
 
 ## D36. Print texture: litho ink modulation to xerox lightness screen
 

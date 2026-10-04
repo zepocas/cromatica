@@ -25,7 +25,6 @@ import warpCurl from './warp/curl.glsl?raw';
 import warpRidged from './warp/ridged.glsl?raw';
 import warpMarble from './warp/marble.glsl?raw';
 import warpBristle from './warp/bristle.glsl?raw';
-import warpSmudge from './warp/smudge.glsl?raw';
 import warp from './warp/warp.glsl?raw';
 
 /** Compile-time switches for a program variant; values become #defines. */
@@ -51,7 +50,6 @@ const WARP_CHUNKS = [
   warpRidged,
   warpMarble,
   warpBristle,
-  warpSmudge,
   warp,
 ];
 const FRAGMENT_CHUNKS = [

@@ -66,7 +66,6 @@ export const WARP_SHUFFLE_TABLE: Record<WarpShape, { weight: number; amount: Ran
   ridged: { weight: 1, amount: [0.2, 0.5], size: [0.2, 0.5] },
   marble: { weight: 0.8, amount: [0.3, 0.7], size: [0.2, 0.5] },
   bristle: { weight: 0.8, amount: [0.3, 0.7], size: [0.2, 0.5] },
-  smudge: { weight: 0.8, amount: [0.3, 0.7], size: [0.2, 0.5] },
 };
 
 export const MESH_SHUFFLE = {

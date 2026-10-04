@@ -86,8 +86,7 @@ export type WarpShape =
   | 'curl' // stateless curl-noise flow, integrated in-shader
   | 'ridged' // ridged fBm: veined, folded-satin creases
   | 'marble' // noise-turbulent sine bands
-  | 'bristle' // dry-brush streaks along a stroke direction
-  | 'smudge'; // one-way smear along a stroke direction
+  | 'bristle'; // dry-brush streaks along a stroke direction
 
 export const WARP_SHAPES: readonly WarpShape[] = [
   'none',
@@ -105,7 +104,6 @@ export const WARP_SHAPES: readonly WarpShape[] = [
   'ridged',
   'marble',
   'bristle',
-  'smudge',
 ];
 
 export interface Warp {
