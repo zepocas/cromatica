@@ -213,7 +213,7 @@ async function cancelThenExport() {
   const ac = new AbortController();
   let tilesAtAbort = 0;
   let tilesTotal = 0;
-  let errorName = '';
+  let errorName: string;
   let errorMessage = '';
   const req: ExportRequest = { design: testDesign, output: { width: 5120, height: 2880 }, format: 'png', tileSize: 1024 };
   try {

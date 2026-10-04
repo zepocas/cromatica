@@ -81,7 +81,7 @@
 
   function onImagePicked(e: Event & { currentTarget: HTMLInputElement }) {
     const file = e.currentTarget.files?.[0];
-    if (file) editor.importImage(file);
+    if (file) void editor.importImage(file);
     // Clear, so picking the same file again still fires change.
     e.currentTarget.value = '';
   }

@@ -13,7 +13,7 @@ Phase 1 is in progress; see the roadmap for where things stand.
 ## Development
 
 - **Run:** `npm run dev`. `?default` in the URL skips the opening shuffle (the UI tests rely on it).
-- **Checks:** `npm test` (vitest), `npm run check` (svelte-check plus tsc), `npx playwright test` (about 2 min, SwiftShader). The 5K warp benchmark can stall under load; rerun it alone before treating a timeout as a regression.
+- **Checks:** `npm run lint` (ESLint), `npm run format:check` (Prettier; `npm run format` to fix), `npm test` (vitest), `npm run check` (svelte-check plus tsc), `npx playwright test` (about 2 min, SwiftShader). The 5K warp benchmark can stall under load; rerun it alone before treating a timeout as a regression.
 - **Test selectors:**
   - Many controls are behind "+ more", so tests click `More adjust settings` or `More colors settings` first.
   - Use `{ exact: true }` for labels that are substrings of others ("Harmony" and "Keep harmony", "Rotate" and "Rotate left").

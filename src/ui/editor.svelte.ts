@@ -164,7 +164,7 @@ export class EditorState {
     const rng = createRng(randomSeed());
     const key = (cs: Oklch[]) => cs.map((c) => c.join(',')).join('|');
     const start = key(colors);
-    if (new Set(colors.map((c) => c.join(','))).size < 2) return;
+    if (colors.every((c) => c.join(',') === colors[0].join(','))) return;
     let order = colors;
     // Retry until the arrangement actually changes (cheap: n <= 16).
     for (let attempt = 0; attempt < 20 && key(order) === start; attempt++) {

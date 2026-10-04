@@ -157,7 +157,7 @@ test('stop editor: add, drag, blend mode and delete update the preview', async (
   };
 
   // Click on the empty strip at 25% → new stop there, selected.
-  let before = await settled();
+  await settled();
   const box = (await strip.boundingBox())!;
   await page.mouse.click(box.x + box.width * 0.25, box.y + 6);
   await expect(handles).toHaveCount(4);
@@ -166,7 +166,7 @@ test('stop editor: add, drag, blend mode and delete update the preview', async (
   await expect(added).toBeFocused();
 
   // Dragging a handle moves the stop and changes the image.
-  before = await settled();
+  let before = await settled();
   const mid = page.getByRole('slider', { name: 'Stop 2' });
   const hb = (await mid.boundingBox())!;
   await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);

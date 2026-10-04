@@ -79,7 +79,7 @@
     if (!hasFiles(e)) return;
     e.preventDefault();
     const file = [...(e.dataTransfer?.files ?? [])].find((f) => f.type.startsWith('image/'));
-    if (file) editor.importImage(file);
+    if (file) void editor.importImage(file);
   }
 </script>
 

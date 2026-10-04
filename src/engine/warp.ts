@@ -79,7 +79,7 @@ export const warpFrequency = (size: number) => 0.5 * Math.pow(16, clamp01(size))
 /** Seeded uniform [0, 1) number i of a seed (CPU only; uploaded as uniforms). */
 const seeded = (seed: number, i: number) => (pcg(hashKey(seed, 0x1000 + i)) >>> 8) / 16777216;
 
-function seededParams(shape: WarpShape, seed: number, freq: number): Float64Array {
+function seededParams(shape: WarpShape, seed: number): Float64Array {
   const p = new Float64Array(WARP_PARAM_SLOTS * 4);
   const r = (i: number) => seeded(seed, i);
   const set = (slot: number, ...v: number[]) => p.set(v, slot * 4);
@@ -122,7 +122,7 @@ export function prepareWarp(warp: Warp | undefined): PreparedWarp {
   const t = TUNING[shape];
   const amp = amount * t.gain * Math.pow(FREQ_REF / freq, t.coupling);
   const f = freq * t.density;
-  return { shape, freq: f, amp, seed, params: seededParams(shape, seed, f) };
+  return { shape, freq: f, amp, seed, params: seededParams(shape, seed) };
 }
 
 const smoothstep = (a: number, b: number, x: number) => {
@@ -253,7 +253,12 @@ function curl(x: number, y: number, w: PreparedWarp): Vec2 {
   return [x, y];
 }
 
-/** CPU reference of the warp stage (contract: src/engine/types.ts WarpPoint). */
+/**
+ * CPU reference of the warp stage: composition coordinates → warped
+ * composition coordinates, where the base pattern is then evaluated. Same
+ * math as the shader, in doubles (GPU results may differ slightly in fp32).
+ * Used by the UI (the color under a new mesh point) and by tests.
+ */
 export function warpPreparedPoint(w: PreparedWarp, x: number, y: number): Vec2 {
   if (w.shape === 'none') return [x, y];
   x = Math.min(MAX_WARP_COORD, Math.max(-MAX_WARP_COORD, x));
