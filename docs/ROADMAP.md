@@ -195,6 +195,34 @@ Each milestone uses the same structure:
   - No curated palette library: the harmony generator with its controls covers it. This also removes the curation and licensing questions.
 - **Settled:** palette from image takes up to 6 colors, leaning distinct (D25). Weighting colorful pixels so small accents survive is noted under step 6 for later.
 
+### M4.5 — More shapes, base patterns and finishes
+
+- **Goal:** widen the range of looks cheaply, using the slots the product already has: warp shapes, base patterns and finishing effects. No layers and no new editors.
+- **Background:** from the R&D review of other shape and noise algorithms. These items were approved because each one fits the existing model (base pattern, then warp, then grain, then transform) and adds little or no UI. Bigger ideas stay in M5 and the backlog.
+- **Scope, in build order:**
+  1. **New warp shapes.** They appear in the existing shape select and reuse Warp, Warp size and Seed, so there is no new UI. Each needs a GLSL chunk, its CPU mirror in `warp.ts` and a golden test, and goes through the same contact-sheet review and pruning as M3 (D22).
+     - **Ridged / silk:** veined, folded-satin flows (`1 - |n|` fBm).
+     - **Marble:** sine bands with noise turbulence.
+     - **Kaleidoscope / mirror fold:** polar N-fold symmetry. N comes from the seed. It works on both base patterns.
+     - _Optional, only if the first three go well:_ **flow / brushed** (anisotropic streaks, an extension of curl) and **Voronoi edges** (F2−F1, crackle and cell walls; lowest priority).
+  2. **Radial and conic base patterns.** They reuse the existing ramp and stops. The center defaults to the middle of the frame, and the pattern select gains two entries. The stop editor, blend modes and shuffle work as they do for linear.
+  3. **Finishes**, one slider each, next to Noise (grain):
+     - **Vignette.**
+     - **Bands / contours:** quantizes the ramp into steps for a topographic or posterized look.
+- **UI:** stays lean, following the terminal panel. New warp shapes are dropdown entries only. Radial and conic are entries in the pattern select. Vignette and Bands are one slider each, behind "+ more" unless they prove central.
+- **Done when:**
+  - Every new warp shape renders tile-identically on both base patterns and in the export, and the GPU matches the CPU reference within the M3 tolerance.
+  - Radial and conic work with shuffle, palette from image (stops follow the gradient direction) and the stop editor.
+  - A contact sheet of the new shapes has been reviewed and pruned.
+  - Vignette and Bands leave pure black and white exact and are unaffected by tiling.
+- **Not doing:**
+  - **Reaction-diffusion and other iterative or stateful algorithms:** they break the stateless, tile-independent render rule (D4).
+  - **Fractals, Truchet and quasi-periodic tilings:** too graphic for gradient wallpapers.
+  - **User-facing layers:** the product stays one pattern, one warp and a few finishes.
+- **Open questions:**
+  - Does conic need a seam control, or is a smooth seam enough?
+  - Should Vignette and Bands be in the main view or behind "+ more"?
+
 ### M5 — Pattern variety
 
 - **Goal:** widen the range of looks beyond gradients and meshes.
@@ -266,3 +294,6 @@ Each milestone uses the same structure:
 - WebGPU backend
 - User-saved palettes
 - Mobile authoring
+- **Stipple / halftone finish:** a density-to-dot stage (threshold against the blue-noise tile, as in the prototype) applied to any design with one amount slider. No blob generator and no layers.
+- **Liquid-jazz "ink blobs" look:** seeded smin-capsule blobs rendered as stipple in flat inks (reference: stippled vinyl cover). A prototype exists in `prototype-stipple.html` and `prototype/stipple/` (untracked, not part of the app). Open findings: union all blobs into one silhouette and use per-ink fields only for the color inside it; use a black base with white as an ink; fill more of the frame. Decide later whether it is a style of this product or a separate one.
+- Flow-field advection (LIC) and Gabor noise, if more warp variety is wanted after M4.5
