@@ -1,15 +1,16 @@
 <script lang="ts">
   import { oklchToHex } from '../color/hex';
-  import { oklabToOklch, srgbEncode } from '../color/oklab';
-  import { bakeRamp, evaluateRamp } from '../color/ramp';
-  import { type ColorStop, MAX_STOPS } from '../design/design';
+  import { srgbEncode } from '../color/oklab';
+  import { bakeRamp } from '../color/ramp';
+  import type { ColorStop } from '../design/design';
+  import { clamp01 } from '../math';
   import type { EditorState } from './editor.svelte';
 
   interface Props {
     editor: EditorState;
   }
 
-  // Bindable only so child bindings into its state pass Svelte's ownership checks.
+  // Bindable so child bindings into the editor's state pass Svelte's ownership checks.
   let { editor = $bindable() }: Props = $props();
 
   const STRIP_SAMPLES = 512;
@@ -44,21 +45,9 @@
     ctx.putImageData(img, 0, 0);
   });
 
-  const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
-
   function positionAt(clientX: number): number {
     const r = strip.getBoundingClientRect();
     return clamp01((clientX - r.left) / r.width);
-  }
-
-  function addStopAt(t: number): number | null {
-    if (stops.length >= MAX_STOPS) return null;
-    const sorted = sortedPlain();
-    // Inherit the blend of the segment the new stop splits.
-    let left = sorted[0];
-    for (const s of sorted) if (s.position <= t) left = s;
-    stops.push({ position: t, color: oklabToOklch(evaluateRamp(sorted, t)), blend: left.blend });
-    return stops.length - 1;
   }
 
   function onStripPointerDown(e: PointerEvent) {
@@ -68,7 +57,7 @@
     if (handle) {
       index = Number(handle.dataset.stop);
     } else {
-      index = addStopAt(positionAt(e.clientX));
+      index = editor.addStop(positionAt(e.clientX));
       if (index === null) return;
     }
     e.preventDefault();

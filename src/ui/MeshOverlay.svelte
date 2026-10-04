@@ -1,6 +1,7 @@
 <script lang="ts">
   import { oklchToHex } from '../color/hex';
   import type { EditorState } from './editor.svelte';
+  import { isFormControl } from './keys';
 
   interface Props {
     editor: EditorState;
@@ -73,8 +74,7 @@
 
   function onWindowKeyDown(e: KeyboardEvent) {
     if (editor.kind !== 'mesh' || e.metaKey || e.ctrlKey || e.altKey) return;
-    // Leave typing and slider/select keys alone.
-    if ((e.target as HTMLElement | null)?.closest?.('input, select, textarea, [contenteditable]')) return;
+    if (isFormControl(e.target)) return;
     if (e.key === 'h' || e.key === 'H') {
       editor.showHandles = !editor.showHandles;
       e.preventDefault();
