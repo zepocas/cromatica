@@ -110,22 +110,6 @@ export function meshWeights(mesh: PointMesh, x: number, y: number): number[] {
 }
 
 /**
- * Each point's share of the image: its blend weight averaged over the sample
- * positions (composition coords). Shares sum to 1; a point that blends into
- * its neighbours counts in proportion to how much of it shows.
- */
-export function meshAreaShares(mesh: PointMesh, samples: readonly (readonly [number, number])[]): number[] {
-  const m = prepareMesh(mesh);
-  const shares = new Array<number>(m.count).fill(0);
-  const w: number[] = new Array(m.count);
-  for (const [x, y] of samples) {
-    preparedWeights(m, x, y, w);
-    for (let i = 0; i < m.count; i++) shares[i] += w[i];
-  }
-  return shares.map((s) => s / Math.max(1, samples.length));
-}
-
-/**
  * Blended Oklab color of the mesh at composition (x, y), before the gamut
  * clip (it can lie slightly outside sRGB). Same math as the shader, in doubles.
  */

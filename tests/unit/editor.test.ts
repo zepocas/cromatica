@@ -170,34 +170,3 @@ describe('points and stops', () => {
     expect(e.linear.stops.at(-1)!.position).toBeCloseTo(0.25, 9);
   });
 });
-
-describe('proportion', () => {
-  const radii = (e: EditorState) => e.mesh.points.map((p) => p.radius);
-
-  it('60-30-10 resizes points to the roles; even restores the sizes', () => {
-    const e = fresh();
-    const before = radii(e);
-    e.setProportion('60-30-10');
-    expect(radii(e)).not.toEqual(before);
-    e.setProportion('even');
-    expect(radii(e)).toEqual(before);
-  });
-
-  it('even keeps sizes changed by hand after the fit', () => {
-    const e = fresh();
-    e.setProportion('60-30-10');
-    e.setPointSize(0, 0.3);
-    const edited = radii(e);
-    e.setProportion('even');
-    expect(radii(e)).toEqual(edited);
-  });
-
-  it('stays on through shuffles', () => {
-    const e = fresh();
-    e.setProportion('60-30-10');
-    e.shuffle();
-    const fitted = radii(e);
-    e.setProportion('even');
-    expect(radii(e)).not.toEqual(fitted);
-  });
-});

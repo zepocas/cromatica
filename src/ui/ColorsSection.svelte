@@ -2,9 +2,7 @@
   import { HARMONY_RULES, type HarmonyRule } from '../color/harmony';
   import type { Oklch } from '../color/types';
   import { shortestTurn } from '../math';
-  import type { Proportion } from '../design/proportion';
   import ColorRow from './ColorRow.svelte';
-  import Choice from './controls/Choice.svelte';
   import Toggle from './controls/Toggle.svelte';
   import type { EditorState } from './editor.svelte';
   import PaletteSettings from './PaletteSettings.svelte';
@@ -27,14 +25,6 @@
     triadic: 'triadic',
     tetradic: 'tetradic',
   };
-
-  const PROPORTIONS: { value: Proportion; title: string }[] = [
-    { value: 'even', title: 'Point sizes as laid out' },
-    {
-      value: '60-30-10',
-      title: 'Size points so the calmest color covers about 60%, the most vivid about 10%, the rest 30%',
-    },
-  ];
 
   const palette = $derived(editor.palette);
   const isMesh = $derived(editor.kind === 'mesh');
@@ -183,15 +173,6 @@
 
   {#snippet more()}
     <PaletteSettings {palette} selectedHue={colors[selected][2]} />
-    {#if isMesh}
-      <Choice
-        label="proportion"
-        ariaLabel="Proportion"
-        options={PROPORTIONS}
-        value={editor.proportion}
-        onchange={(p) => editor.setProportion(p)}
-      />
-    {/if}
     <hr />
     <SelectedColorSettings bind:editor {selected} isLastStop={!isMesh && order[order.length - 1] === selected} />
   {/snippet}

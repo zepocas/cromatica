@@ -151,18 +151,3 @@ test('switching mood or key away and back restores the colors', async ({ page })
   await key.selectOption(startKey);
   await expect.poll(() => readHexes(page)).toEqual(original);
 });
-
-test('proportion 60-30-10 resizes the mesh points; even puts them back', async ({ page }) => {
-  await openApp(page);
-  await openMore(page, 'colors');
-  const radii = () => page.locator('[data-point]').evaluateAll((els) => els.map((el) => el.getAttribute('data-r')));
-  const group = page.getByRole('group', { name: 'Proportion' });
-  const before = await radii();
-  await group.getByRole('button', { name: '60-30-10' }).click();
-  await expect.poll(radii).not.toEqual(before);
-  await group.getByRole('button', { name: 'even' }).click();
-  await expect.poll(radii).toEqual(before);
-  // Mesh only.
-  await page.getByLabel('Gradient', { exact: true }).selectOption('linear');
-  await expect(group).toHaveCount(0);
-});

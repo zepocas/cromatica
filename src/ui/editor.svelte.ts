@@ -21,7 +21,6 @@ import {
   type Transform,
   type Warp,
 } from '../design/design';
-import { fitRadii, frameSamples, proportionTargets, type Proportion } from '../design/proportion';
 import { randomSeed } from '../design/random';
 import { shuffleDesign } from '../design/shuffle';
 import { applyMat2, clampZoom, inverseTransformMatrix, transformMatrix } from '../engine/transform';
@@ -69,10 +68,6 @@ export class EditorState {
   imageStatus = $state('');
   /** Frame aspect (width / height), for clamping drags to the frame. */
   aspect = $state(16 / 9);
-  /** Mesh proportion (D29): '60-30-10' sizes points so a calm color dominates and the most vivid is an accent. */
-  proportion = $state<Proportion>('even');
-  /** Radii before and after the last proportion fit, so 'even' can put them back. */
-  private proportionFit: { before: number[]; after: number[] } | null = null;
 
   readonly palette = new PaletteEditor({
     kind: () => this.kind,
@@ -132,40 +127,6 @@ export class EditorState {
     this.warp = next.design.warp;
     // Built around the base hue already; temperature carries over.
     if (next.palette) this.palette.adopt({ info: next.palette, seed }, temperature);
-    if (base.kind === 'mesh' && this.proportion !== 'even') this.fitProportion();
-  }
-
-  // ---- Proportion (mesh) ----------------------------------------------------
-
-  /** '60-30-10' fits the point sizes now and after every shuffle; 'even' puts the sizes back. */
-  setProportion(proportion: Proportion): void {
-    if (proportion === this.proportion) return;
-    this.proportion = proportion;
-    if (proportion === 'even') this.restoreRadii();
-    else this.fitProportion();
-  }
-
-  private fitProportion(): void {
-    const mesh = $state.snapshot(this.mesh) as PointMesh;
-    if (mesh.points.length < 2) return;
-    const before = mesh.points.map((p) => p.radius);
-    // Shares are measured over the visible frame, in pattern space.
-    const samples = frameSamples(this.aspect).map(([x, y]) => this.toPattern(x, y));
-    const zoom = this.transform.zoom;
-    const targets = proportionTargets(mesh.points.map((p) => p.color));
-    const radii = fitRadii(mesh, targets, samples, [MIN_RADIUS / zoom, MAX_RADIUS / zoom]);
-    this.mesh.points.forEach((p, i) => (p.radius = radii[i]));
-    this.proportionFit = { before, after: this.mesh.points.map((p) => p.radius) };
-  }
-
-  /** Back to the sizes before the fit, unless points were resized, added or removed since. */
-  private restoreRadii(): void {
-    const fit = this.proportionFit;
-    this.proportionFit = null;
-    const now = this.mesh.points.map((p) => p.radius);
-    if (fit && now.length === fit.after.length && now.every((r, i) => r === fit.after[i])) {
-      this.mesh.points.forEach((p, i) => (p.radius = fit.before[i]));
-    }
   }
 
   // ---- Warp -----------------------------------------------------------------
