@@ -47,6 +47,8 @@
     curl: 'flow',
     ridged: 'silk',
     marble: 'marble',
+    bristle: 'brushed',
+    smudge: 'smudge',
   };
 
   /** Typing a size switches to custom, starting from the current size. */

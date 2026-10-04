@@ -30,6 +30,12 @@ const SILK_ALONG = 0.25;
 const MARBLE_OCTAVES = 4;
 const MARBLE_TURBULENCE = 4.5;
 
+/** Bristle: noise frequency along and across the stroke (fine lines across, long along). */
+const BRISTLE_ALONG = 0.3;
+const BRISTLE_ACROSS = 8;
+/** Smudge: fBm frequency along and across the stroke. */
+const SMUDGE_ALONG = 0.4;
+const SMUDGE_ACROSS = 2.5;
 /** Squared radius added under the circular warp's 1 / r, so the center doesn't tear. */
 const CIRCULAR_SOFTENING = 0.0004;
 /** Hash-key salts, one per independent noise channel of a shape. */
@@ -47,6 +53,10 @@ export const WARP_SHADER_CONSTANTS = {
   SILK_ALONG: glslFloat(SILK_ALONG),
   MARBLE_OCTAVES,
   MARBLE_TURBULENCE: glslFloat(MARBLE_TURBULENCE),
+  BRISTLE_ALONG: glslFloat(BRISTLE_ALONG),
+  BRISTLE_ACROSS: glslFloat(BRISTLE_ACROSS),
+  SMUDGE_ALONG: glslFloat(SMUDGE_ALONG),
+  SMUDGE_ACROSS: glslFloat(SMUDGE_ACROSS),
   CURL_STEPS,
   WORLEY_RIM: glslFloat(WORLEY_RIM),
   CIRCULAR_SOFTENING: glslFloat(CIRCULAR_SOFTENING),
@@ -82,6 +92,8 @@ const TUNING: Record<Exclude<WarpShape, 'none'>, ShapeTuning> = {
   curl: { gain: 0.6, density: 1, coupling: 0.5 },
   ridged: { gain: 0.6, density: 0.6, coupling: 0.5 },
   marble: { gain: 0.8, density: 2, coupling: 1 }, // displacement ∝ band spacing
+  bristle: { gain: 0.18, density: 1, coupling: 0.5 },
+  smudge: { gain: 0.4, density: 1, coupling: 0.5 },
 };
 
 /** The warp as the shader sees it. */
@@ -125,8 +137,10 @@ function seededParams(shape: WarpShape, seed: number): Float64Array {
       set(0, (r(0) - 0.5) * 0.7, (r(1) - 0.5) * 0.4, r(2) * TAU, Math.sin(r(2) * TAU));
       break;
     case 'ridged':
-    case 'marble': {
-      // Folds (silk) or bands (marble) along a seeded direction.
+    case 'marble':
+    case 'bristle':
+    case 'smudge': {
+      // Folds (silk), bands (marble) or strokes (bristle, smudge) along a seeded direction.
       const a = r(0) * Math.PI;
       set(0, Math.cos(a), Math.sin(a), 0, 0);
       break;
@@ -364,6 +378,33 @@ function marble(x: number, y: number, w: PreparedWarp): Vec2 {
   return [x + s * dx, y + s * dy];
 }
 
+/** Coordinates along and across the seeded stroke direction, in feature units. */
+function strokeFrame(x: number, y: number, w: PreparedWarp): [along: number, across: number] {
+  const [dx, dy] = w.params;
+  return [(dx * x + dy * y) * w.freq, (-dy * x + dx * y) * w.freq];
+}
+
+function bristle(x: number, y: number, w: PreparedWarp): Vec2 {
+  // Bristle lines: noise fast across the stroke and slow along it, displacing
+  // along the stroke so colors smear into streaks; a coarse mask breaks the
+  // strokes off, like a dry brush.
+  const [dx, dy] = w.params;
+  const [along, across] = strokeFrame(x, y, w);
+  const streak = simplex(along * BRISTLE_ALONG, across * BRISTLE_ACROSS, saltKey(w, 0))[0];
+  const mask = smoothstep(-0.3, 0.3, simplex(along * 0.5, across * 0.5, saltKey(w, 1))[0]);
+  const s = w.amp * streak * mask;
+  return [x + s * dx, y + s * dy];
+}
+
+function smudge(x: number, y: number, w: PreparedWarp): Vec2 {
+  // A one-way drag: every point samples from behind it along the stroke, by
+  // a smooth positive amount, so colors trail like a finger smear.
+  const [dx, dy] = w.params;
+  const [along, across] = strokeFrame(x, y, w);
+  const s = w.amp * (0.5 + 0.5 * fbm(along * SMUDGE_ALONG, across * SMUDGE_ACROSS, saltKey(w, 0), 3));
+  return [x - s * dx, y - s * dy];
+}
+
 const SHAPES: Record<Exclude<WarpShape, 'none'>, (x: number, y: number, w: PreparedWarp) => Vec2> = {
   domain,
   fbm: fbmWarp,
@@ -378,6 +419,8 @@ const SHAPES: Record<Exclude<WarpShape, 'none'>, (x: number, y: number, w: Prepa
   curl,
   ridged: silk,
   marble,
+  bristle,
+  smudge,
 };
 
 /** Warped composition coords of (x, y) under a prepared warp. */
