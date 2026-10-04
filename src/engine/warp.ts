@@ -2,7 +2,7 @@
 // before the base pattern. This is the CPU reference, in doubles; the shader
 // chunks in src/engine/shaders/warp/ do the same math in fp32 and read the
 // same prepared uniforms (prepareWarp), so seeded parameters are bit-identical.
-import { WARP_SHAPES, type Warp, type WarpShape } from '../design/design';
+import { type Warp, WARP_SHAPES, type WarpShape } from '../design/design';
 import { clampCoord, fbm, hash1, hash2, hashKey, pcg, simplex, type Vec2 } from './noise';
 
 const TAU = 6.283185307179586;

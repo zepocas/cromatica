@@ -1,13 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { identityTransform, MAX_ZOOM, MIN_ZOOM, type Transform } from '../../src/design/design';
-import {
-  applyMat2,
-  clampZoom,
-  inverseTransformMatrix,
-  mat2Uniform,
-  normalizeAngle,
-  transformMatrix,
-} from '../../src/engine/transform';
+import { applyMat2, clampZoom, inverseTransformMatrix, mat2Uniform, transformMatrix } from '../../src/engine/transform';
+import { normalizeDegrees } from '../../src/math';
 
 const t = (p: Partial<Transform>): Transform => ({ ...identityTransform, ...p });
 /** -0 → 0, since toEqual tells them apart (both act the same in the shader). */
@@ -50,9 +44,9 @@ describe('transform', () => {
   });
 
   it('sanitizes angles and zoom', () => {
-    expect(normalizeAngle(-30)).toBe(330);
-    expect(normalizeAngle(720)).toBe(0);
-    expect(normalizeAngle(NaN)).toBe(0);
+    expect(normalizeDegrees(-30)).toBe(330);
+    expect(normalizeDegrees(720)).toBe(0);
+    expect(normalizeDegrees(NaN)).toBe(0);
     expect(clampZoom(100)).toBe(MAX_ZOOM);
     expect(clampZoom(0)).toBe(MIN_ZOOM);
     expect(clampZoom(NaN)).toBe(1);

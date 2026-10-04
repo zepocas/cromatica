@@ -1,21 +1,11 @@
+// Oklab / Oklch ↔ linear sRGB conversions and the sRGB transfer functions.
+// Björn Ottosson's matrices (2021 revision), as used by CSS Color 4 and culori.
+import { normalizeDegrees } from '../math';
 import type { Oklab, Oklch, Rgb } from './types';
 
-// Björn Ottosson's matrices (2021 revision), as used by CSS Color 4 and culori.
-
 /** Chroma below which hue is powerless and reported as 0. */
-export const ACHROMATIC_CHROMA = 1e-6;
-/** Default tolerance of the sRGB gamut test, in linear units. */
-const GAMUT_EPS = 1e-6;
-const JND = 0.02;
-const MAP_EPSILON = 0.0001;
-
+const ACHROMATIC_CHROMA = 1e-6;
 const DEG = Math.PI / 180;
-
-export function normalizeHue(h: number): number {
-  const r = h % 360;
-  const n = r < 0 ? r + 360 : r;
-  return n >= 360 ? 0 : n;
-}
 
 export function oklchToOklab(c: Oklch): Oklab {
   const [l, ch, h] = c;
@@ -23,13 +13,15 @@ export function oklchToOklab(c: Oklch): Oklab {
   return [l, ch * Math.cos(h * DEG), ch * Math.sin(h * DEG)];
 }
 
+/** h in [0, 360); h = 0 when the color is achromatic. */
 export function oklabToOklch(c: Oklab): Oklch {
   const [l, a, b] = c;
   const ch = Math.sqrt(a * a + b * b);
   if (ch < ACHROMATIC_CHROMA) return [l, ch, 0];
-  return [l, ch, normalizeHue(Math.atan2(b, a) / DEG)];
+  return [l, ch, normalizeDegrees(Math.atan2(b, a) / DEG)];
 }
 
+/** Unclamped: out-of-gamut colors give channels outside [0, 1]. */
 export function oklabToLinearSrgb(c: Oklab): Rgb {
   const [l, a, b] = c;
   const lp = l + 0.3963377773761749 * a + 0.2158037573099136 * b;
@@ -58,102 +50,17 @@ export function linearSrgbToOklab(c: Rgb): Oklab {
 }
 
 // Both transfer functions are extended to negative values by odd symmetry.
+
+/** Linear → sRGB-encoded, per channel. */
 export function srgbEncode(x: number): number {
   const ax = Math.abs(x);
   const y = ax > 0.0031308 ? 1.055 * Math.pow(ax, 1 / 2.4) - 0.055 : ax * 12.92;
   return x < 0 ? -y : y;
 }
 
+/** sRGB-encoded → linear, per channel. */
 export function srgbDecode(x: number): number {
   const ax = Math.abs(x);
   const y = ax > 0.04045 ? Math.pow((ax + 0.055) / 1.055, 2.4) : ax / 12.92;
   return x < 0 ? -y : y;
-}
-
-function rgbInGamut(rgb: Rgb, eps: number): boolean {
-  const lo = -eps;
-  const hi = 1 + eps;
-  return rgb[0] >= lo && rgb[0] <= hi && rgb[1] >= lo && rgb[1] <= hi && rgb[2] >= lo && rgb[2] <= hi;
-}
-
-export function inSrgbGamut(c: Oklch, eps = GAMUT_EPS): boolean {
-  return rgbInGamut(oklabToLinearSrgb(oklchToOklab(c)), eps);
-}
-
-const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
-
-function clipRgb(rgb: Rgb): Rgb {
-  return [clamp01(rgb[0]), clamp01(rgb[1]), clamp01(rgb[2])];
-}
-
-function deltaEOK(a: Oklab, b: Oklab): number {
-  const dl = a[0] - b[0];
-  const da = a[1] - b[1];
-  const db = a[2] - b[2];
-  return Math.sqrt(dl * dl + da * da + db * db);
-}
-
-/**
- * CSS Color 4 "binary search gamut mapping with local MINDE" into sRGB.
- * Returns LINEAR sRGB, always within [0, 1].
- */
-export function gamutMapToLinearSrgb(c: Oklch): Rgb {
-  const [l, ch, h] = c;
-  if (l >= 1) return [1, 1, 1];
-  if (l <= 0) return [0, 0, 0];
-  const origin = oklabToLinearSrgb(oklchToOklab(c));
-  if (rgbInGamut(origin, GAMUT_EPS)) return clipRgb(origin);
-
-  let clipped = clipRgb(origin);
-  if (deltaEOK(linearSrgbToOklab(clipped), oklchToOklab(c)) < JND) return clipped;
-
-  const cosH = Math.cos(h * DEG);
-  const sinH = Math.sin(h * DEG);
-  let min = 0;
-  let max = ch;
-  let minInGamut = true;
-  while (max - min > MAP_EPSILON) {
-    const chroma = (min + max) / 2;
-    const current: Oklab = [l, chroma * cosH, chroma * sinH];
-    const rgb = oklabToLinearSrgb(current);
-    if (minInGamut && rgbInGamut(rgb, GAMUT_EPS)) {
-      min = chroma;
-      continue;
-    }
-    clipped = clipRgb(rgb);
-    const e = deltaEOK(linearSrgbToOklab(clipped), current);
-    if (e < JND) {
-      if (JND - e < MAP_EPSILON) return clipped;
-      minInGamut = false;
-      min = chroma;
-    } else {
-      max = chroma;
-    }
-  }
-  return clipped;
-}
-
-export function gamutMapSrgb(c: Oklch): Oklch {
-  if (c[0] >= 1) return [1, 0, 0];
-  if (c[0] <= 0) return [0, 0, 0];
-  if (inSrgbGamut(c)) return [c[0], c[1], c[2]];
-  return oklabToOklch(linearSrgbToOklab(gamutMapToLinearSrgb(c)));
-}
-
-export function oklchToHex(c: Oklch): string {
-  const rgb = gamutMapToLinearSrgb(c);
-  let hex = '#';
-  for (const x of rgb) {
-    const v = Math.round(clamp01(srgbEncode(x)) * 255);
-    hex += v.toString(16).padStart(2, '0');
-  }
-  return hex;
-}
-
-export function hexToOklch(hex: string): Oklch {
-  let s = hex.trim().replace(/^#/, '');
-  if (/^[0-9a-f]{3}$/i.test(s)) s = s.replace(/./g, (d) => d + d);
-  if (!/^[0-9a-f]{6}$/i.test(s)) throw new Error(`Invalid hex color: ${hex}`);
-  const rgb: Rgb = [0, 2, 4].map((i) => srgbDecode(parseInt(s.slice(i, i + 2), 16) / 255)) as Rgb;
-  return oklabToOklch(linearSrgbToOklab(rgb));
 }

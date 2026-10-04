@@ -6,10 +6,10 @@
 // - lightness: shift logit(L) by the same amount (keeps the order, never
 //   clips, and compresses gently toward black and white);
 // - chroma: scale by the same ratio (keeps relative intensity).
-import type { Oklch } from '../design/design';
-import type { Rng } from '../design/shuffle.types';
-import { maxChroma } from './harmony';
-import { normalizeHue } from './oklab';
+import type { Rng } from '../design/random';
+import { normalizeDegrees, shortestTurn } from '../math';
+import { maxChroma } from './gamut';
+import type { Oklch } from './types';
 
 export interface PaletteShift {
   /** Hue rotation, degrees. */
@@ -21,23 +21,20 @@ export interface PaletteShift {
 }
 
 const L_EPS = 1e-3;
-/** Below this chroma a color is treated as neutral: its chroma changes additively, not by ratio. */
-const NEUTRAL_C = 0.02;
+/**
+ * Below this chroma a color counts as gray: its chroma changes additively,
+ * not by ratio (a ratio of almost nothing swings wildly), and its hue doesn't steer the others.
+ */
+const GRAY_CHROMA = 0.02;
 
 const clampL = (l: number) => Math.min(1 - L_EPS, Math.max(L_EPS, l));
 const logit = (l: number) => Math.log(clampL(l) / (1 - clampL(l)));
 const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
 
-/** Signed shortest rotation from a to b, in (-180, 180]. */
-function hueDelta(a: number, b: number): number {
-  const d = ((((b - a) % 360) + 540) % 360) - 180;
-  return d === -180 ? 180 : d;
-}
-
 function applyShift(c: Oklch, s: PaletteShift, chromaAdd: number): Oklch {
   const l = sigmoid(logit(c[0]) + s.lightness);
-  const h = normalizeHue(c[2] + s.hue);
-  const scaled = c[1] >= NEUTRAL_C ? c[1] * s.chroma : c[1] + chromaAdd;
+  const h = normalizeDegrees(c[2] + s.hue);
+  const scaled = c[1] >= GRAY_CHROMA ? c[1] * s.chroma : c[1] + chromaAdd;
   return [l, Math.max(0, Math.min(scaled, maxChroma(l, h))), h];
 }
 
@@ -55,11 +52,11 @@ export function relinkPalette(colors: readonly Oklch[], index: number, next: Okl
   if (!prev) return colors.slice();
   const shift: PaletteShift = {
     // A gray has no hue to speak of: don't swing the others when its hue changes.
-    hue: prev[1] < NEUTRAL_C && next[1] < NEUTRAL_C ? 0 : hueDelta(prev[2], next[2]),
+    hue: prev[1] < GRAY_CHROMA && next[1] < GRAY_CHROMA ? 0 : shortestTurn(prev[2], next[2]),
     lightness: logit(next[0]) - logit(prev[0]),
-    chroma: prev[1] >= NEUTRAL_C ? next[1] / prev[1] : 1,
+    chroma: prev[1] >= GRAY_CHROMA ? next[1] / prev[1] : 1,
   };
-  const chromaAdd = prev[1] < NEUTRAL_C ? next[1] - prev[1] : 0;
+  const chromaAdd = prev[1] < GRAY_CHROMA ? next[1] - prev[1] : 0;
   return colors.map((c, i) => (i === index ? ([next[0], next[1], next[2]] as Oklch) : applyShift(c, shift, chromaAdd)));
 }
 

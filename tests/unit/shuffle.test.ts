@@ -1,17 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { inSrgbGamut } from '../../src/color/oklab';
+import { inSrgbGamut } from '../../src/color/gamut';
 import {
   defaultDesign,
   defaultMesh,
   defaultWarp,
-  MAX_MESH_POINTS,
-  WARP_SHAPES,
   type Design,
   type LinearGradient,
+  MAX_MESH_POINTS,
   type PointMesh,
+  WARP_SHAPES,
 } from '../../src/design/design';
 import { LINEAR_SHUFFLE, MESH_SHUFFLE, shuffleDesign, WARP_SHUFFLE_TABLE } from '../../src/design/shuffle';
 import { applyMat2, inverseTransformMatrix } from '../../src/engine/transform';
+
+/** Just the design of a shuffle. */
+const shuffled = (...args: Parameters<typeof shuffleDesign>) => shuffleDesign(...args).design;
 
 const meshDesign: Design = {
   engineVersion: 1,
@@ -29,13 +32,13 @@ describe('shuffleDesign', () => {
   it('does not mutate its input', () => {
     for (const d of [meshDesign, linearDesign]) {
       const before = structuredClone(d);
-      for (let s = 0; s < 20; s++) shuffleDesign(d, all(s));
+      for (let s = 0; s < 20; s++) shuffled(d, all(s));
       expect(d).toEqual(before);
     }
   });
 
   it('returns no references into the input', () => {
-    const out = shuffleDesign(meshDesign, { colors: false, layout: false, seed: 1 });
+    const out = shuffled(meshDesign, { colors: false, layout: false, seed: 1 });
     expect(out).toEqual(meshDesign);
     expect(out.base).not.toBe(meshDesign.base);
     expect(mesh(out).points[0].color).not.toBe(defaultMesh.points[0].color);
@@ -45,9 +48,9 @@ describe('shuffleDesign', () => {
   it('is deterministic for (design, opts, aspect)', () => {
     for (const d of [meshDesign, linearDesign]) {
       for (const aspect of [16 / 9, 9 / 19.5, 1]) {
-        expect(shuffleDesign(d, all(99), aspect)).toEqual(shuffleDesign(d, all(99), aspect));
+        expect(shuffled(d, all(99), aspect)).toEqual(shuffled(d, all(99), aspect));
       }
-      expect(shuffleDesign(d, all(1))).not.toEqual(shuffleDesign(d, all(2)));
+      expect(shuffled(d, all(1))).not.toEqual(shuffled(d, all(2)));
     }
   });
 
@@ -55,8 +58,8 @@ describe('shuffleDesign', () => {
     const transform = { rotate: 90, zoom: 2, flipX: true, flipY: false };
     const turned: Design = { ...meshDesign, transform };
     for (let s = 0; s < 10; s++) {
-      const plain = mesh(shuffleDesign(meshDesign, all(s), 16 / 9));
-      const out = shuffleDesign(turned, all(s), 16 / 9);
+      const plain = mesh(shuffled(meshDesign, all(s), 16 / 9));
+      const out = shuffled(turned, all(s), 16 / 9);
       expect(out.transform).toEqual(transform);
       expect(out.transform).not.toBe(transform);
       // Mapped back to the screen, the points are where an untransformed shuffle puts them.
@@ -71,24 +74,24 @@ describe('shuffleDesign', () => {
 
   it('keeps base kind and grain', () => {
     for (let s = 0; s < 20; s++) {
-      expect(shuffleDesign(meshDesign, all(s)).base.kind).toBe('mesh');
-      expect(shuffleDesign(linearDesign, all(s)).base.kind).toBe('linear');
-      expect(shuffleDesign(meshDesign, all(s)).grain).toEqual(meshDesign.grain);
+      expect(shuffled(meshDesign, all(s)).base.kind).toBe('mesh');
+      expect(shuffled(linearDesign, all(s)).base.kind).toBe('linear');
+      expect(shuffled(meshDesign, all(s)).grain).toEqual(meshDesign.grain);
     }
   });
 
   it('colors lock (colors=false) keeps every color exactly', () => {
     for (let s = 0; s < 30; s++) {
-      const m = mesh(shuffleDesign(meshDesign, { colors: false, layout: true, seed: s }));
+      const m = mesh(shuffled(meshDesign, { colors: false, layout: true, seed: s }));
       expect(m.points.map((p) => p.color)).toEqual(defaultMesh.points.map((p) => p.color));
-      const l = linear(shuffleDesign(linearDesign, { colors: false, layout: true, seed: s }));
+      const l = linear(shuffled(linearDesign, { colors: false, layout: true, seed: s }));
       expect(l.stops.map((p) => [p.color, p.blend])).toEqual(linear(linearDesign).stops.map((p) => [p.color, p.blend]));
     }
   });
 
   it('layout lock (layout=false) keeps geometry and warp exactly', () => {
     for (let s = 0; s < 30; s++) {
-      const md = shuffleDesign(meshDesign, { colors: true, layout: false, seed: s });
+      const md = shuffled(meshDesign, { colors: true, layout: false, seed: s });
       const m = mesh(md);
       expect(m.sharpness).toBe(defaultMesh.sharpness);
       expect(m.points.map(({ x, y, radius }) => [x, y, radius])).toEqual(
@@ -97,7 +100,7 @@ describe('shuffleDesign', () => {
       expect(md.warp).toEqual(meshDesign.warp);
       expect(m.points.map((p) => p.color)).not.toEqual(defaultMesh.points.map((p) => p.color));
 
-      const ld = shuffleDesign(linearDesign, { colors: true, layout: false, seed: s });
+      const ld = shuffled(linearDesign, { colors: true, layout: false, seed: s });
       expect(linear(ld).angle).toBe(linear(linearDesign).angle);
       expect(linear(ld).stops.map((p) => p.position)).toEqual(linear(linearDesign).stops.map((p) => p.position));
       expect(ld.warp).toEqual(linearDesign.warp);
@@ -106,9 +109,9 @@ describe('shuffleDesign', () => {
 
   it('draws colors and layout from independent streams', () => {
     for (let s = 0; s < 10; s++) {
-      const full = shuffleDesign(linearDesign, all(s));
-      const colorOnly = shuffleDesign(linearDesign, { colors: true, layout: false, seed: s });
-      const layoutOnly = shuffleDesign(linearDesign, { colors: false, layout: true, seed: s });
+      const full = shuffled(linearDesign, all(s));
+      const colorOnly = shuffled(linearDesign, { colors: true, layout: false, seed: s });
+      const layoutOnly = shuffled(linearDesign, { colors: false, layout: true, seed: s });
       expect(linear(full).stops.map((p) => p.color)).toEqual(linear(colorOnly).stops.map((p) => p.color));
       expect(full.warp).toEqual(layoutOnly.warp);
       expect(linear(full).angle).toBe(linear(layoutOnly).angle);
@@ -121,7 +124,7 @@ describe('shuffleDesign', () => {
       let inside = 0;
       let total = 0;
       for (let s = 0; s < 60; s++) {
-        const d = shuffleDesign(meshDesign, all(s), aspect);
+        const d = shuffled(meshDesign, all(s), aspect);
         const m = mesh(d);
         const n = m.points.length;
         expect(n).toBeGreaterThanOrEqual(defaultMesh.points.length - 1);
@@ -160,9 +163,9 @@ describe('shuffleDesign', () => {
     };
     const one: Design = { ...meshDesign, base: { ...defaultMesh, points: [defaultMesh.points[0]] } };
     for (let s = 0; s < 40; s++) {
-      expect(mesh(shuffleDesign(big, all(s))).points.length).toBeLessThanOrEqual(MAX_MESH_POINTS);
-      expect(mesh(shuffleDesign(one, all(s))).points.length).toBeGreaterThanOrEqual(1);
-      expect(mesh(shuffleDesign(one, all(s))).points.length).toBeLessThanOrEqual(2);
+      expect(mesh(shuffled(big, all(s))).points.length).toBeLessThanOrEqual(MAX_MESH_POINTS);
+      expect(mesh(shuffled(one, all(s))).points.length).toBeGreaterThanOrEqual(1);
+      expect(mesh(shuffled(one, all(s))).points.length).toBeLessThanOrEqual(2);
     }
   });
 
@@ -176,7 +179,7 @@ describe('shuffleDesign', () => {
       },
     };
     for (let s = 0; s < 50; s++) {
-      const l = linear(shuffleDesign(five, all(s)));
+      const l = linear(shuffled(five, all(s)));
       expect(l.stops).toHaveLength(5);
       expect(l.angle).toBeGreaterThanOrEqual(0);
       expect(l.angle).toBeLessThan(360);
@@ -196,7 +199,7 @@ describe('shuffleDesign', () => {
     const counts = new Map<string, number>();
     const n = 2000;
     for (let s = 0; s < n; s++) {
-      const w = shuffleDesign(linearDesign, all(s)).warp;
+      const w = shuffled(linearDesign, all(s)).warp;
       expect(WARP_SHAPES).toContain(w.shape);
       const t = WARP_SHUFFLE_TABLE[w.shape];
       expect(w.amount).toBeGreaterThanOrEqual(t.amount[0] - 1e-4);

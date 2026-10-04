@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { maxChroma } from '../../src/color/harmony';
-import { relinkPalette, remixShift, shiftPalette } from '../../src/color/linked';
-import type { Oklch } from '../../src/design/design';
+import { maxChroma } from '../../src/color/gamut';
+import type { Oklch } from '../../src/color/types';
 import { createRng } from '../../src/design/random';
+import { relinkPalette, remixShift, shiftPalette } from '../../src/color/linked';
 
 // A muted triadic: hues 250 / 10 / 130, moderate chroma so caps don't interfere.
 const palette: Oklch[] = [

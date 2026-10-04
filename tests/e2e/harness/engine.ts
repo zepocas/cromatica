@@ -2,18 +2,13 @@
 // (called by tests/e2e/engine.spec.ts); the same module also runs as a Worker
 // to render on an OffscreenCanvas.
 import { createMeshEvaluator, meshGamutClip } from '../../../src/color/mesh';
-import {
-  gamutMapToLinearSrgb,
-  linearSrgbToOklab,
-  oklabToLinearSrgb,
-  oklabToOklch,
-  srgbDecode,
-} from '../../../src/color/oklab';
-import { bakeRamp } from '../../../src/color/ramp';
-import { RAMP_SIZE, type Rgb } from '../../../src/color/types';
-import { noGrain, noWarp, type Design, type LinearGradient, type PointMesh } from '../../../src/design/design';
-import { createRenderer } from '../../../src/engine/renderer';
+import { gamutMapToLinearSrgb } from '../../../src/color/gamut';
+import { linearSrgbToOklab, oklabToLinearSrgb, oklabToOklch, srgbDecode } from '../../../src/color/oklab';
+import { bakeRamp, RAMP_SIZE } from '../../../src/color/ramp';
+import type { Rgb } from '../../../src/color/types';
+import { type Design, type LinearGradient, noGrain, noWarp, type PointMesh } from '../../../src/design/design';
 import { applyMat2, orientationMatrix, transformMatrix } from '../../../src/engine/transform';
+import { createRenderer } from '../../../src/engine/renderer';
 import { createWarp } from '../../../src/engine/warp';
 import { CONTEXT_ATTRIBUTES, type OutputSize, type RenderOptions, type Tile } from '../../../src/engine/types';
 

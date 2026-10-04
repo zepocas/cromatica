@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Oklch } from '../design/design';
+  import type { Oklch } from '../color/types';
 
   interface Props {
     color: Oklch;

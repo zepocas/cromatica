@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { WARP_SHAPES, defaultWarp, noWarp, type Warp, type WarpShape } from '../../src/design/design';
+import { defaultWarp, noWarp, type Warp, WARP_SHAPES, type WarpShape } from '../../src/design/design';
 import { pcg3d } from '../../src/engine/noise';
 import { createWarp, prepareWarp, warpPoint } from '../../src/engine/warp';
 

@@ -1,14 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { createMeshEvaluator, evaluateMesh, meshGamutClip, meshWeights } from '../../src/color/mesh';
-import {
-  gamutMapSrgb,
-  gamutMapToLinearSrgb,
-  linearSrgbToOklab,
-  oklabToOklch,
-  oklchToOklab,
-} from '../../src/color/oklab';
-import type { Oklab } from '../../src/color/types';
-import { defaultMesh, type MeshPoint, type Oklch, type PointMesh } from '../../src/design/design';
+import { gamutMapSrgb, gamutMapToLinearSrgb } from '../../src/color/gamut';
+import { linearSrgbToOklab, oklabToOklch, oklchToOklab } from '../../src/color/oklab';
+import type { Oklab, Oklch } from '../../src/color/types';
+import { defaultMesh, type MeshPoint, type PointMesh } from '../../src/design/design';
 
 type PointSpec = [x: number, y: number, color: Oklch, radius: number];
 

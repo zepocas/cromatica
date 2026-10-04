@@ -1,24 +1,48 @@
-import { deltaEOk, generateHarmony } from '../color/harmony';
+import { oklchDistance } from '../color/gamut';
+import { type GeneratedPalette, generatePalette, type PaletteInfo, type PaletteOptions } from '../color/harmony';
+import type { Oklch } from '../color/types';
+import { applyMat2, clampZoom, transformMatrix } from '../engine/transform';
+import { clamp } from '../math';
 import {
-  MAX_MESH_POINTS,
-  MAX_STOPS,
-  WARP_SHAPES,
   type ColorStop,
   type Design,
   type LinearGradient,
+  MAX_MESH_POINTS,
+  MAX_STOPS,
   type MeshPoint,
-  type Oklch,
   type PointMesh,
   type Transform,
   type Warp,
+  WARP_SHAPES,
   type WarpShape,
 } from './design';
-import { applyMat2, clampZoom, transformMatrix } from '../engine/transform';
-import { createRng } from './random';
-import type { Harmony, Rng, ShuffleOptions } from './shuffle.types';
+import { createRng, pickWeighted, type Rng } from './random';
 
-/** Makes the new palette for n colors (bound to the color stream and palette options). */
-type MakePalette = (n: number) => Oklch[];
+export interface ShuffleOptions {
+  /** Replace stop/point colors with a new palette. */
+  colors: boolean;
+  /** Steers the new palette when `colors` is set. */
+  palette?: PaletteOptions;
+  /** Re-randomize layout: mesh points + radii (or gradient angle + stop positions), mesh sharpness, warp shape/amount/size/seed. */
+  layout: boolean;
+  seed: number;
+}
+
+export interface ShuffleResult {
+  design: Design;
+  /** Rule, mood and key of the new palette; null when colors weren't shuffled. */
+  palette: PaletteInfo | null;
+}
+
+/** What shuffleMesh and shuffleLinear draw from. */
+interface ShuffleContext {
+  opts: ShuffleOptions;
+  aspect: number;
+  colorRng: Rng;
+  layoutRng: Rng;
+  /** A palette for n colors, from the color stream and the palette options. */
+  makePalette: (n: number) => GeneratedPalette;
+}
 
 type Range = [min: number, max: number];
 
@@ -68,22 +92,48 @@ export const LINEAR_SHUFFLE = {
 const COLOR_STREAM = 0x9e3779b9;
 const LAYOUT_STREAM = 0x85ebca6b;
 
+/** Shuffled mesh radii stay in this range (composition units). */
+const RADIUS_LIMITS: Range = [0.05, 2];
+
+const WARP_WEIGHTS = Object.fromEntries(WARP_SHAPES.map((k) => [k, WARP_SHUFFLE_TABLE[k].weight])) as Record<
+  WarpShape,
+  number
+>;
+
 const round4 = (x: number) => Math.round(x * 1e4) / 1e4;
 const copyColor = (c: Oklch): Oklch => [c[0], c[1], c[2]];
-const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x));
 
-function pickWarpShape(rng: Rng): WarpShape {
-  const total = WARP_SHAPES.reduce((s, k) => s + WARP_SHUFFLE_TABLE[k].weight, 0);
-  let r = rng.next() * total;
-  for (const k of WARP_SHAPES) {
-    r -= WARP_SHUFFLE_TABLE[k].weight;
-    if (r < 0) return k;
-  }
-  return 'domain';
+/**
+ * Pure: a new design with fresh colors and/or layout, deterministic for
+ * (design, opts, aspect). Keeps the pattern kind and grain. Mesh layouts keep
+ * points mostly inside the frame of the given aspect and avoid clumping; when
+ * both colors and layout are shuffled, the point count may change by ±1.
+ */
+export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 / 9): ShuffleResult {
+  const seed = opts.seed >>> 0;
+  const colorRng = createRng((seed ^ COLOR_STREAM) >>> 0);
+  const ctx: ShuffleContext = {
+    opts,
+    aspect: Number.isFinite(aspect) && aspect > 0 ? aspect : 16 / 9,
+    colorRng,
+    layoutRng: createRng((seed ^ LAYOUT_STREAM) >>> 0),
+    makePalette: (n) => generatePalette(colorRng, n, opts.palette),
+  };
+  const shuffled = design.base.kind === 'mesh' ? shuffleMesh(design.base, ctx) : shuffleLinear(design.base, ctx);
+  let base = shuffled.pattern;
+  if (base.kind === 'mesh' && opts.layout && design.transform) base = toPatternSpace(base, design.transform);
+  const warp = opts.layout ? shuffleWarp(ctx.layoutRng) : { ...design.warp };
+  const out: Design = { engineVersion: design.engineVersion, base, warp, grain: { ...design.grain } };
+  if (design.transform) out.transform = { ...design.transform };
+  return { design: out, palette: shuffled.palette };
+}
+
+function paletteInfo({ rule, mood, key }: GeneratedPalette): PaletteInfo {
+  return { rule, mood, key };
 }
 
 function shuffleWarp(rng: Rng): Warp {
-  const shape = pickWarpShape(rng);
+  const shape = pickWeighted(rng, WARP_WEIGHTS);
   const t = WARP_SHUFFLE_TABLE[shape];
   return {
     shape,
@@ -133,7 +183,7 @@ function assignMeshColors(points: { x: number; y: number }[], palette: Oklch[], 
       for (let j = 0; j < i; j++) {
         const d = Math.hypot(points[i].x - points[j].x, points[i].y - points[j].y) / spacing;
         // Close neighbours dominate; a similar color right next door is penalised hard.
-        score += Math.exp(-d * d) * Math.min(deltaEOk(left[k], out[j]), 0.25);
+        score += Math.exp(-d * d) * Math.min(oklchDistance(left[k], out[j]), 0.25);
       }
       if (score > bestScore + 1e-12) {
         bestScore = score;
@@ -145,13 +195,8 @@ function assignMeshColors(points: { x: number; y: number }[], palette: Oklch[], 
   return out;
 }
 
-function shuffleMesh(
-  base: PointMesh,
-  opts: ShuffleOptions,
-  aspect: number,
-  palette: MakePalette,
-  layoutRng: Rng,
-): PointMesh {
+function shuffleMesh(base: PointMesh, ctx: ShuffleContext): { pattern: PointMesh; palette: PaletteInfo | null } {
+  const { opts, aspect, layoutRng } = ctx;
   let n = base.points.length;
   if (opts.layout && opts.colors && layoutRng.next() < MESH_SHUFFLE.countChange) {
     n = clamp(n + (layoutRng.next() < 0.5 ? -1 : 1), Math.min(2, n), MAX_MESH_POINTS);
@@ -164,17 +209,17 @@ function shuffleMesh(
     geo = layoutPoints(layoutRng, n, aspect).map(([x, y]) => ({
       x: round4(x),
       y: round4(y),
-      radius: round4(clamp(spacing * layoutRng.range(MESH_SHUFFLE.radius[0], MESH_SHUFFLE.radius[1]), 0.05, 2)),
+      radius: round4(clamp(spacing * layoutRng.range(...MESH_SHUFFLE.radius), ...RADIUS_LIMITS)),
     }));
-    sharpness = round4(layoutRng.range(MESH_SHUFFLE.sharpness[0], MESH_SHUFFLE.sharpness[1]));
+    sharpness = round4(layoutRng.range(...MESH_SHUFFLE.sharpness));
   } else {
     geo = base.points.map((p) => ({ x: p.x, y: p.y, radius: p.radius }));
   }
 
-  const colors = opts.colors ? assignMeshColors(geo, palette(n), spacing) : base.points.map((p) => copyColor(p.color));
-
+  const palette = opts.colors ? ctx.makePalette(n) : null;
+  const colors = palette ? assignMeshColors(geo, palette.colors, spacing) : base.points.map((p) => copyColor(p.color));
   const points: MeshPoint[] = geo.map((g, i) => ({ ...g, color: colors[i] }));
-  return { kind: 'mesh', points, sharpness };
+  return { pattern: { kind: 'mesh', points, sharpness }, palette: palette && paletteInfo(palette) };
 }
 
 /** Layouts are made on screen; map them under the transform so they land in view. */
@@ -202,58 +247,24 @@ function stopPositions(rng: Rng, n: number): number[] {
 
 function shuffleLinear(
   base: LinearGradient,
-  opts: ShuffleOptions,
-  palette: MakePalette,
-  colorRng: Rng,
-  layoutRng: Rng,
-): LinearGradient {
+  ctx: ShuffleContext,
+): { pattern: LinearGradient; palette: PaletteInfo | null } {
+  const { opts, colorRng, layoutRng } = ctx;
   const n = Math.min(base.stops.length, MAX_STOPS);
   const stops = base.stops.slice(0, n);
   const angle = opts.layout ? Math.round(layoutRng.range(0, 360)) % 360 : base.angle;
   const positions = opts.layout ? stopPositions(layoutRng, n) : stops.map((s) => s.position);
 
+  const palette = opts.colors ? ctx.makePalette(n) : null;
   let colors: Oklch[];
-  if (opts.colors) {
+  if (palette) {
     // Lightness ramp reads well; direction random.
-    colors = palette(n).sort((a, b) => a[0] - b[0]);
+    colors = palette.colors.sort((a, b) => a[0] - b[0]);
     if (colorRng.next() < 0.5) colors.reverse();
   } else {
     colors = stops.map((s) => copyColor(s.color));
   }
 
   const out: ColorStop[] = stops.map((s, i) => ({ position: positions[i], color: colors[i], blend: s.blend }));
-  return { kind: 'linear', angle, stops: out };
-}
-
-/** Pure: a new design with fresh colors and/or layout (per the locks), deterministic for (design, opts, aspect). */
-export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 / 9): Design {
-  return shuffleWithHarmony(design, opts, aspect).design;
-}
-
-/** shuffleDesign, plus the rule, mood and key of the new palette (null when colors weren't shuffled). */
-export function shuffleWithHarmony(
-  design: Design,
-  opts: ShuffleOptions,
-  aspect = 16 / 9,
-): { design: Design; harmony: Omit<Harmony, 'colors'> | null } {
-  const seed = opts.seed >>> 0;
-  const colorRng = createRng((seed ^ COLOR_STREAM) >>> 0);
-  const layoutRng = createRng((seed ^ LAYOUT_STREAM) >>> 0);
-  const a = Number.isFinite(aspect) && aspect > 0 ? aspect : 16 / 9;
-  let harmony: Omit<Harmony, 'colors'> | null = null;
-  const palette: MakePalette = (n) => {
-    const h = generateHarmony(colorRng, n, opts.palette);
-    harmony = { rule: h.rule, mood: h.mood, key: h.key };
-    return h.colors;
-  };
-
-  let base =
-    design.base.kind === 'mesh'
-      ? shuffleMesh(design.base, opts, a, palette, layoutRng)
-      : shuffleLinear(design.base, opts, palette, colorRng, layoutRng);
-  if (base.kind === 'mesh' && opts.layout && design.transform) base = toPatternSpace(base, design.transform);
-  const warp = opts.layout ? shuffleWarp(layoutRng) : { ...design.warp };
-  const out: Design = { engineVersion: design.engineVersion, base, warp, grain: { ...design.grain } };
-  if (design.transform) out.transform = { ...design.transform };
-  return { design: out, harmony };
+  return { pattern: { kind: 'linear', angle, stops: out }, palette: palette && paletteInfo(palette) };
 }

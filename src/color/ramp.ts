@@ -1,6 +1,11 @@
 import type { BlendMode, ColorStop } from '../design/design';
-import { gamutMapToLinearSrgb, oklabToLinearSrgb, oklabToOklch, oklchToOklab } from './oklab';
-import { RAMP_SIZE, type Oklab } from './types';
+import { clamp01, shortestTurn } from '../math';
+import { gamutMapToLinearSrgb, rgbInGamut } from './gamut';
+import { oklabToLinearSrgb, oklabToOklch, oklchToOklab } from './oklab';
+import type { Oklab } from './types';
+
+/** Number of entries in the baked ramp lookup texture. */
+export const RAMP_SIZE = 4096;
 
 /*
  * Spline design
@@ -61,10 +66,9 @@ interface CompiledRamp {
   segments: Segment[];
 }
 
-const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
-
-function hueDelta(h0: number, h1: number, mode: BlendMode): number {
-  const short = ((((h1 - h0) % 360) + 540) % 360) - 180;
+/** Hue travel of a segment: the shorter arc, or the longer one for 'oklch-long'. */
+function hueTravel(h0: number, h1: number, mode: BlendMode): number {
+  const short = shortestTurn(h0, h1);
   if (mode !== 'oklch-long') return short;
   // CSS Color 4 'longer': equal hues go all the way around.
   return short > 0 ? short - 360 : short + 360;
@@ -95,7 +99,7 @@ function makeSegment(a: ColorStop, b: ColorStop): Segment {
   const [l1, c1, h1raw] = oklabToOklch(oklchToOklab(b.color));
   let h0 = h0raw;
   let dh = 0;
-  if (Math.min(c0, c1) >= HUE_EPS) dh = hueDelta(h0raw, h1raw, a.blend);
+  if (Math.min(c0, c1) >= HUE_EPS) dh = hueTravel(h0raw, h1raw, a.blend);
   else if (c0 < c1) h0 = h1raw;
   return {
     x0,
@@ -139,10 +143,18 @@ function compile(input: ColorStop[]): CompiledRamp {
     segs.push(s.len > 0 ? s : null);
   }
 
-  // Natural end slopes (dv/dx with a linear ease). For oklab-chroma hue the
-  // chroma weighting makes them δ·C1/C0 at the start and δ·C0/C1 at the end.
-  const natStart: Vec3[] = [];
-  const natEnd: Vec3[] = [];
+  fitEases(segs, x0, x1);
+  return { first, last, x0, x1, segments: segs.filter((s): s is Segment => s !== null) };
+}
+
+/**
+ * Natural end slopes of each segment (dv/dx with a linear ease). For
+ * oklab-chroma hue the chroma weighting makes them δ·C1/C0 at the start and
+ * δ·C0/C1 at the end.
+ */
+function naturalSlopes(segs: (Segment | null)[]): { start: Vec3[]; end: Vec3[] } {
+  const start: Vec3[] = [];
+  const end: Vec3[] = [];
   for (const s of segs) {
     const ns: Vec3 = [0, 0, 0];
     const ne: Vec3 = [0, 0, 0];
@@ -154,11 +166,19 @@ function compile(input: ColorStop[]): CompiledRamp {
         ne[k] = premult ? (sec * s.c0) / s.c1 : sec;
       }
     }
-    natStart.push(ns);
-    natEnd.push(ne);
+    start.push(ns);
+    end.push(ne);
   }
+  return { start, end };
+}
 
-  const segments: Segment[] = [];
+/**
+ * Set each segment's ease end slopes (alpha, beta) from PCHIP tangents
+ * across neighbouring segments, per the rules in the header. x0 and x1 are
+ * the first and last stop positions (holds lie outside them).
+ */
+function fitEases(segs: (Segment | null)[], x0: number, x1: number): void {
+  const { start: natStart, end: natEnd } = naturalSlopes(segs);
   for (let i = 0; i < segs.length; i++) {
     const s = segs[i];
     if (!s) continue;
@@ -183,9 +203,7 @@ function compile(input: ColorStop[]): CompiledRamp {
       s.alpha[k] = clampSlope(m0 / natStart[i][k]);
       s.beta[k] = clampSlope(m1 / natEnd[i][k]);
     }
-    segments.push(s);
   }
-  return { first, last, x0, x1, segments };
 }
 
 function evalSegment(s: Segment, u: number): Oklab {
@@ -233,8 +251,7 @@ export function bakeRamp(stops: ColorStop[], size = RAMP_SIZE): Float32Array {
   for (let i = 0; i < size; i++) {
     const lab = evalCompiled(ramp, i / denom);
     let rgb = oklabToLinearSrgb(lab);
-    const inGamut = rgb[0] >= 0 && rgb[0] <= 1 && rgb[1] >= 0 && rgb[1] <= 1 && rgb[2] >= 0 && rgb[2] <= 1;
-    if (!inGamut) rgb = gamutMapToLinearSrgb(oklabToOklch(lab));
+    if (!rgbInGamut(rgb, 0)) rgb = gamutMapToLinearSrgb(oklabToOklch(lab));
     out[i * 4] = rgb[0];
     out[i * 4 + 1] = rgb[1];
     out[i * 4 + 2] = rgb[2];

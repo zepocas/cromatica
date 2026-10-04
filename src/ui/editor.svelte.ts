@@ -1,32 +1,32 @@
 import { imageLayout } from '../color/extract';
+import type { HarmonyRule, PaletteInfo, PaletteMood, ValueKey } from '../color/harmony';
 import { oklabToOklch } from '../color/oklab';
-import { evaluateMesh } from '../color/mesh';
+import { evaluateRamp } from '../color/ramp';
+import type { Oklch } from '../color/types';
 import {
+  type BasePattern,
   defaultDesign,
   defaultGrain,
   defaultMesh,
   defaultWarp,
-  identityTransform,
-  MAX_MESH_POINTS,
-  MAX_STOPS,
-  WARP_SHAPES,
-  type BasePattern,
   type Design,
   type Grain,
+  identityTransform,
   type LinearGradient,
-  type Oklch,
+  MAX_MESH_POINTS,
+  MAX_STOPS,
   type PointMesh,
   type Transform,
   type Warp,
+  WARP_SHAPES,
 } from '../design/design';
+import { createRng, randomSeed } from '../design/random';
+import { shuffleDesign } from '../design/shuffle';
+import { applyMat2, clampZoom, inverseTransformMatrix, transformMatrix } from '../engine/transform';
+import { normalizeDegrees } from '../math';
+import { evaluateMesh } from '../color/mesh';
 import { relinkPalette, remixShift, shiftPalette } from '../color/linked';
 import { applyTemperature, type Temperature } from '../color/temperature';
-import { evaluateRamp } from '../color/ramp';
-import { createRng, randomSeed } from '../design/random';
-import { shuffleWithHarmony } from '../design/shuffle';
-import type { HarmonyRule, PaletteMood, ValueKey } from '../design/shuffle.types';
-import { normalizeHue } from '../color/oklab';
-import { applyMat2, clampZoom, inverseTransformMatrix, normalizeAngle, transformMatrix } from '../engine/transform';
 import { warpPoint } from '../engine/warp';
 import { paletteFromImage, type ImagePalette } from './image-palette';
 
@@ -46,8 +46,6 @@ interface Adjustment {
 
 const samePalette = (a: readonly Oklch[], b: readonly Oklch[]) =>
   a.length === b.length && a.every((c, i) => c[0] === b[i][0] && c[1] === b[i][1] && c[2] === b[i][2]);
-
-export type PaletteHarmony = { rule: HarmonyRule; mood: Exclude<PaletteMood, 'any'>; key: ValueKey };
 
 /** Point size limits, in screen (composition) units: radius × zoom. */
 export const MIN_RADIUS = 0.05;
@@ -82,7 +80,7 @@ export class EditorState {
   /** Hue and temperature adjustments over each pattern's original colors; null = none. */
   private adjustments = $state.raw<Record<PatternKind, Adjustment | null>>({ mesh: null, linear: null });
   /** Rule, mood and key each pattern's palette was last generated with; null before its first color shuffle. */
-  private harmonies = $state<Record<PatternKind, PaletteHarmony | null>>({ mesh: null, linear: null });
+  private harmonies = $state<Record<PatternKind, PaletteInfo | null>>({ mesh: null, linear: null });
   /** Linked: editing one color moves the whole palette with it (keeps the harmony). */
   linkColors = $state(false);
   /** Shuffle locks: a locked part is kept as is. */
@@ -131,7 +129,7 @@ export class EditorState {
   }
 
   /** Rule, mood and key of the active pattern's palette. */
-  get harmony(): PaletteHarmony | null {
+  get harmony(): PaletteInfo | null {
     return this.harmonies[this.kind];
   }
 
@@ -141,7 +139,7 @@ export class EditorState {
   }
 
   /** A new palette in this mood, keeping the current rule and key. */
-  setHarmonyMood(mood: Exclude<PaletteMood, 'any'>): void {
+  setHarmonyMood(mood: PaletteMood): void {
     this.applyShuffle(true, false, { rule: this.harmony?.rule, mood, key: this.harmony?.key ?? 'any' });
   }
 
@@ -174,7 +172,7 @@ export class EditorState {
   private applyShuffle(
     colors: boolean,
     layout: boolean,
-    force?: { rule?: HarmonyRule; mood: PaletteMood; key: ValueKey | 'any' },
+    force?: { rule?: HarmonyRule; mood: PaletteMood | 'any'; key: ValueKey | 'any' },
   ): void {
     const kept = this.keepHarmony ? this.harmony : null;
     const palette = {
@@ -185,7 +183,7 @@ export class EditorState {
     };
     const kind = this.kind;
     const temperature = this.temperature;
-    const { design: next, harmony } = shuffleWithHarmony(
+    const { design: next, palette: harmony } = shuffleDesign(
       this.design,
       { colors, layout, palette, seed: randomSeed() },
       this.aspect,
@@ -220,11 +218,11 @@ export class EditorState {
 
   /** Rotate the image on screen by `deg` (counter-clockwise). */
   rotateBy(deg: number): void {
-    this.transform.rotate = normalizeAngle(Math.round(this.transform.rotate + deg));
+    this.transform.rotate = normalizeDegrees(Math.round(this.transform.rotate + deg));
   }
 
   setRotate(deg: number): void {
-    this.transform.rotate = normalizeAngle(deg);
+    this.transform.rotate = normalizeDegrees(deg);
   }
 
   setZoom(zoom: number): void {
@@ -238,7 +236,7 @@ export class EditorState {
   flip(axis: 'x' | 'y'): void {
     if (axis === 'x') this.transform.flipX = !this.transform.flipX;
     else this.transform.flipY = !this.transform.flipY;
-    this.transform.rotate = normalizeAngle(-this.transform.rotate);
+    this.transform.rotate = normalizeDegrees(-this.transform.rotate);
   }
 
   resetTransform(): void {
@@ -349,7 +347,7 @@ export class EditorState {
 
   /** Back to the original colors; the base hue goes back with them. */
   resetAdjustments(): void {
-    if (this.baseHue !== null) this.baseHue = normalizeHue(this.baseHue - this.hueOffset);
+    if (this.baseHue !== null) this.baseHue = normalizeDegrees(this.baseHue - this.hueOffset);
     this.adjust({ hue: 0, temperature: 'off' });
   }
 

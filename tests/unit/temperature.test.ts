@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { inSrgbGamut } from '../../src/color/oklab';
-import { applyTemperature, COOL_HUE, MAX_HUE_SHIFT, temperatureDeltas, WARM_HUE } from '../../src/color/temperature';
-import type { Oklch } from '../../src/design/design';
+import { inSrgbGamut } from '../../src/color/gamut';
+import type { Oklch } from '../../src/color/types';
+import {
+  applyTemperature,
+  COOL_HUE,
+  MAX_TEMPERATURE_TURN,
+  temperatureDeltas,
+  WARM_HUE,
+} from '../../src/color/temperature';
 
 const hueDist = (a: number, b: number) => Math.abs(((((a - b) % 360) + 540) % 360) - 180);
 
@@ -21,14 +27,14 @@ const gain = (i: number, d: number[], target: number) =>
 describe('temperatureDeltas', () => {
   it('warm: the lightest turns toward amber, the darkest toward blue-violet', () => {
     const d = temperatureDeltas(palette, 'warm');
-    expect(gain(4, d, WARM_HUE)).toBeCloseTo(MAX_HUE_SHIFT, 9);
-    expect(gain(0, d, COOL_HUE)).toBeCloseTo(MAX_HUE_SHIFT, 9);
+    expect(gain(4, d, WARM_HUE)).toBeCloseTo(MAX_TEMPERATURE_TURN, 9);
+    expect(gain(0, d, COOL_HUE)).toBeCloseTo(MAX_TEMPERATURE_TURN, 9);
   });
 
   it('cool: the lightest turns toward blue-violet, the darkest toward amber', () => {
     const d = temperatureDeltas(palette, 'cool');
-    expect(gain(4, d, COOL_HUE)).toBeCloseTo(MAX_HUE_SHIFT, 9);
-    expect(gain(0, d, WARM_HUE)).toBeCloseTo(MAX_HUE_SHIFT, 9);
+    expect(gain(4, d, COOL_HUE)).toBeCloseTo(MAX_TEMPERATURE_TURN, 9);
+    expect(gain(0, d, WARM_HUE)).toBeCloseTo(MAX_TEMPERATURE_TURN, 9);
   });
 
   it('is zero when off, for the mid-tone, neutrals and a flat palette', () => {

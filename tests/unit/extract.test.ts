@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { clusterImage, imageLayout, pickPalette, type ColorCluster } from '../../src/color/extract';
-import { hexToOklch, oklchToOklab } from '../../src/color/oklab';
+import { hexToOklch } from '../../src/color/hex';
+import { oklchToOklab } from '../../src/color/oklab';
 import type { Oklab } from '../../src/color/types';
 import { createRng } from '../../src/design/random';
 

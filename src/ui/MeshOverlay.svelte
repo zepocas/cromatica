@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { oklchToHex } from '../color/oklab';
+  import { oklchToHex } from '../color/hex';
   import type { EditorState } from './editor.svelte';
 
   interface Props {

@@ -1,13 +1,11 @@
 import { converter, formatHex, toGamut } from 'culori';
 import { describe, expect, it } from 'vitest';
+import { gamutMapSrgb, inSrgbGamut } from '../../src/color/gamut';
+import { hexToOklch, oklchToHex } from '../../src/color/hex';
 import {
-  gamutMapSrgb,
-  hexToOklch,
-  inSrgbGamut,
   linearSrgbToOklab,
   oklabToLinearSrgb,
   oklabToOklch,
-  oklchToHex,
   oklchToOklab,
   srgbDecode,
   srgbEncode,

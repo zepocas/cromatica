@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { MAX_STOPS, type ColorStop } from '../design/design';
-  import { oklabToOklch, oklchToHex, srgbEncode } from '../color/oklab';
+  import { oklchToHex } from '../color/hex';
+  import { oklabToOklch, srgbEncode } from '../color/oklab';
   import { bakeRamp, evaluateRamp } from '../color/ramp';
+  import { type ColorStop, MAX_STOPS } from '../design/design';
   import type { EditorState } from './editor.svelte';
 
   interface Props {

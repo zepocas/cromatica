@@ -1,20 +1,19 @@
 import * as twgl from 'twgl.js';
-import { RAMP_SIZE } from '../color/types';
-import { GAMUT_CLIP_STEPS, prepareMesh } from '../color/mesh';
-import { bakeRamp } from '../color/ramp';
+import { bakeRamp, RAMP_SIZE } from '../color/ramp';
 import {
-  MAX_MESH_POINTS,
-  MAX_STOPS,
   type ColorStop,
   type Design,
   type LinearGradient,
+  MAX_MESH_POINTS,
+  MAX_STOPS,
   type PointMesh,
 } from '../design/design';
+import { applyMat2, mat2Uniform, orientationMatrix, transformMatrix } from './transform';
+import { GAMUT_CLIP_STEPS, prepareMesh } from '../color/mesh';
 import { BLUE_NOISE_SIZE, DITHER_CHANNEL_OFFSETS, blueNoiseRanks } from './blue-noise';
 import { prepareGrain } from './grain';
 import { buildShaderSources, variantKey, type Defines } from './shaders';
 import { CURL_STEPS, MAX_WARP_COORD, WARP_EDGE, WARP_PARAM_SLOTS, prepareWarp, type PreparedWarp } from './warp';
-import { applyMat2, mat2Uniform, orientationMatrix, transformMatrix } from './transform';
 import type { OutputSize, RenderOptions, Renderer, Tile } from './types';
 
 /** Uniforms shared by every pixel of an output; independent of the tile. */

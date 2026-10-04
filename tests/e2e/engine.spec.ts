@@ -1,18 +1,18 @@
 /// <reference types="node" />
 import { expect, test, type Page } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
+import type { Oklch } from '../../src/color/types';
 import {
-  WARP_SHAPES,
+  type BlendMode,
   defaultGrain,
   defaultMesh,
-  noGrain,
-  noWarp,
-  type BlendMode,
   type Design,
   type Grain,
-  type Oklch,
+  noGrain,
+  noWarp,
   type Transform,
   type Warp,
+  WARP_SHAPES,
   type WarpShape,
 } from '../../src/design/design';
 import type { EngineHarness } from './harness/engine';

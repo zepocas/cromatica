@@ -1,12 +1,8 @@
-// M1 design model: a single linear gradient with perceptual (Oklch) stops.
-// Replaced by the full versioned schema (pipeline stages) in M6.
-
-/**
- * Oklch color. L in [0, 1], C >= 0 (roughly [0, 0.4]), h in degrees [0, 360).
- * Stored as floats, never hex (D5). May lie outside sRGB; gamut mapping
- * happens when the ramp is baked.
- */
-export type Oklch = [l: number, c: number, h: number];
+// The design: everything that defines an image, independent of resolution
+// (D4). A base pattern (linear gradient or color-point mesh), a warp, film
+// grain and a whole-image transform. Versioned by engineVersion; the full
+// saved-design schema comes with M6.
+import type { Oklch } from '../color/types';
 
 /**
  * How the segment from a stop to the NEXT stop is interpolated (D5).
@@ -30,7 +26,7 @@ export interface LinearGradient {
   kind: 'linear';
   /** Direction in degrees. 0 = left→right, 90 = bottom→top (counter-clockwise). */
   angle: number;
-  /** Sorted by position, at least 2 stops. At most MAX_STOPS. */
+  /** Sorted by position. At least 2 stops in the editor (the renderer accepts 1), at most MAX_STOPS. */
   stops: ColorStop[];
 }
 
@@ -49,10 +45,10 @@ export interface MeshPoint {
 }
 
 /**
- * Color-point mesh (M2): every pixel blends all point colors in Oklab with
- * smooth distance-based weights. The weight function is documented in the
- * engine; it must be smooth everywhere, finite far from all points, and
- * never produce hard seams.
+ * Color-point mesh: every pixel blends all point colors in Oklab with
+ * smooth distance-based weights. The weight function (D20) is documented in
+ * src/color/mesh.ts; it is smooth everywhere, finite far from all points,
+ * and never produces hard seams.
  */
 export interface PointMesh {
   kind: 'mesh';
@@ -65,7 +61,7 @@ export interface PointMesh {
 export type BasePattern = LinearGradient | PointMesh;
 
 /**
- * Coordinate distortion applied before the base pattern (M3). Experimental
+ * Coordinate distortion applied before the base pattern (D23). Experimental
  * catalogue — shapes that don't earn their place will be pruned (D22).
  */
 export type WarpShape =
@@ -119,7 +115,7 @@ export interface Grain {
 }
 
 /**
- * Whole-image transform (M3.5), applied to composition coords before the
+ * Whole-image transform (D24), applied to composition coords before the
  * warp, so the warp turns, scales and mirrors with the pattern. Grain and
  * dither stay on the output pixel grid. Pattern coords are
  *   q = S · R(-rotate) · p / zoom,   S = diag(flipX ? -1 : 1, flipY ? -1 : 1)

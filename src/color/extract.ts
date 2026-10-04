@@ -1,4 +1,5 @@
-import type { Rng } from '../design/shuffle.types';
+import type { Rng } from '../design/random';
+import { oklabDistance } from './gamut';
 import { linearSrgbToOklab, srgbDecode } from './oklab';
 import type { Oklab } from './types';
 
@@ -35,6 +36,11 @@ export interface ClusterOptions {
   /** k-means runs from different starts; the best fit is kept. */
   restarts?: number;
 }
+
+/** Cells per side of the grid that locates each cluster's peak. */
+const GRID = 12;
+/** Mesh point radius per unit of mean point spacing, before area scaling (as the shuffle's MESH_SHUFFLE.radius range). */
+const RADIUS_PER_SPACING = 0.65;
 
 const SRGB_TO_LINEAR = Float64Array.from({ length: 256 }, (_, i) => srgbDecode(i / 255));
 
@@ -127,9 +133,6 @@ function kmeans(lab: Float64Array, n: number, k: number, rng: Rng, iterations: n
   return { centers, assign, counts, error };
 }
 
-/** Cells per side of the grid that locates each cluster's peak. */
-const GRID = 12;
-
 /** Densest cell of a GRID² histogram after a 3×3 box blur, as its center in [0, 1]². */
 function peak(hist: Float64Array): [number, number] {
   let best = 0;
@@ -213,8 +216,6 @@ export interface PickOptions {
   minDeltaE?: number;
 }
 
-const labDist = (a: Oklab, b: Oklab) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
-
 /** Clusters sorted by weight (as clusterImage returns them) → palette, in pick order. */
 export function pickPalette(
   clusters: readonly ColorCluster[],
@@ -222,7 +223,7 @@ export function pickPalette(
 ): ColorCluster[] {
   if (clusters.length === 0) return [];
   const picked: ColorCluster[] = [clusters[0]];
-  const minDist = clusters.map((c) => labDist(c.color, clusters[0].color));
+  const minDist = clusters.map((c) => oklabDistance(c.color, clusters[0].color));
   while (picked.length < max) {
     let best = -1;
     let bestScore = -Infinity;
@@ -238,7 +239,7 @@ export function pickPalette(
     const chosen = clusters[best];
     picked.push(chosen);
     for (let i = 0; i < clusters.length; i++) {
-      minDist[i] = Math.min(minDist[i], labDist(clusters[i].color, chosen.color));
+      minDist[i] = Math.min(minDist[i], oklabDistance(clusters[i].color, chosen.color));
     }
   }
   return picked;
@@ -265,7 +266,7 @@ export function imageLayout(
 ): { x: number; y: number; radius: number }[] {
   const n = palette.length;
   const scale = Math.max(1, frameAspect / imageAspect);
-  const base = 0.65 * Math.sqrt(frameAspect / n);
+  const base = RADIUS_PER_SPACING * Math.sqrt(frameAspect / n);
   return palette.map((c) => ({
     x: (c.x - 0.5) * imageAspect * scale,
     y: (0.5 - c.y) * scale,

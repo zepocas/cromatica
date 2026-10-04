@@ -1,14 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import {
-  gamutMapToLinearSrgb,
-  hexToOklch,
-  inSrgbGamut,
-  linearSrgbToOklab,
-  oklabToOklch,
-  oklchToOklab,
-} from '../../src/color/oklab';
-import { bakeRamp, evaluateRamp } from '../../src/color/ramp';
-import { RAMP_SIZE, type Oklab, type Oklch } from '../../src/color/types';
+import { gamutMapToLinearSrgb, inSrgbGamut } from '../../src/color/gamut';
+import { hexToOklch } from '../../src/color/hex';
+import { linearSrgbToOklab, oklabToOklch, oklchToOklab } from '../../src/color/oklab';
+import { bakeRamp, evaluateRamp, RAMP_SIZE } from '../../src/color/ramp';
+import type { Oklab, Oklch } from '../../src/color/types';
 import type { BlendMode, ColorStop } from '../../src/design/design';
 
 function rng(seed: number): () => number {

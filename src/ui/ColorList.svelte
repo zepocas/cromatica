@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { HARMONY_RULES } from '../color/harmony';
-  import { hexToOklch, inSrgbGamut, oklchToHex } from '../color/oklab';
+  import { inSrgbGamut } from '../color/gamut';
+  import { HARMONY_RULES, type HarmonyRule, type ValueKey } from '../color/harmony';
+  import { hexToOklch, oklchToHex } from '../color/hex';
+  import type { Oklch } from '../color/types';
+  import type { BlendMode } from '../design/design';
   import type { Temperature } from '../color/temperature';
-  import type { BlendMode, Oklch } from '../design/design';
-  import type { HarmonyRule, ValueKey } from '../design/shuffle.types';
   import ColorControls from './ColorControls.svelte';
   import { MAX_RADIUS, MIN_RADIUS, type EditorState } from './editor.svelte';
   import Section from './Section.svelte';

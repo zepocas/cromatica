@@ -3,18 +3,12 @@
 // GPU agree; the identity matrix is exact in fp32, so untransformed designs
 // render bit-identically to before.
 import { MAX_ZOOM, MIN_ZOOM, type Transform } from '../design/design';
+import { normalizeDegrees } from '../math';
 
 /** Row-major 2×2 matrix [m00, m01, m10, m11]: q = (m00·x + m01·y, m10·x + m11·y). */
 export type Mat2 = [number, number, number, number];
 
 export const IDENTITY: Mat2 = [1, 0, 0, 1];
-
-/** Degrees → [0, 360). */
-export function normalizeAngle(deg: number): number {
-  if (!Number.isFinite(deg)) return 0;
-  const a = deg % 360;
-  return a < 0 ? a + 360 : a;
-}
 
 export function clampZoom(zoom: number): number {
   return Number.isFinite(zoom) ? Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom)) : 1;
@@ -22,7 +16,7 @@ export function clampZoom(zoom: number): number {
 
 /** cos and sin with exact values at multiples of 90°, so quarter turns don't leak 6e-17 terms. */
 function cosSin(deg: number): [number, number] {
-  const a = normalizeAngle(deg);
+  const a = normalizeDegrees(deg);
   switch (a) {
     case 0:
       return [1, 0];
