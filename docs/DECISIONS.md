@@ -222,3 +222,19 @@ Decisions made during the architecture review. Reopen one only if new informatio
 
 - **Change:** the mesh exponent is `k = 1.5 · 12^s · (1 + 4·s⁶)`. The extra factor is ×1.007 at s = 0.35, ×1.06 at 0.5, ×1.47 at 0.7 and ×5 at 1, so k tops out at 90 instead of 18. Low and mid blends (shuffles stay in 0.1–0.5) look as before; the far end gives near-hard, Voronoi-like edges.
 - **Safe:** weights are computed in the log domain normalized by the largest, so k = 90 is fine in fp32; CPU and GPU still match. The continuity test bound scales with k, since steeper (still continuous) transitions change faster per sample.
+
+## D35. Brushed and smudge warps stroke along a seeded direction
+
+- **Frame:** both work in coordinates along and across a seeded stroke direction (`strokeFrame`), like silk and marble.
+- **Brushed** (`bristle`): simplex noise at 0.3× along and 8× across the stroke gives fine bristle lines; it displaces along the stroke, so colors smear into streaks, and a coarse simplex mask (smoothstep −0.3…0.3) breaks strokes off like a dry brush.
+- **Smudge:** every point samples from behind it along the stroke by `amp · (0.5 + 0.5 · fbm)`, a smooth positive amount, so colors trail one way like a finger smear.
+- **Both kept for review**, the plan's "bristle and smudge variants in the same chunk" built as two shapes so the contact sheet can prune either.
+
+## D36. Print texture: litho ink modulation to xerox lightness screen
+
+- **One slider** (`finish.print`), applied per output pixel after the sRGB transfer, before grain and dither; 0 is an exact passthrough. It fades in over 0–0.25.
+- **Paper tooth:** smooth value noise over output pixels, mostly a fine tooth (0.9 px⁻¹) plus two faint fiber layers at different angles, stretched toward a uniform distribution.
+- **Litho (low end):** the tooth modulates the ink, `ink = 1 − e` scaled by `1 ± 0.6·print`: bare paper stays white and inked areas get an even texture. A first version thresholded every channel against a coarse fibrous noise; it read like distressed concrete with colored specks.
+- **Xerox (high end, blended in over 0.5–1):** lightness thresholded to 3 tones against the tooth, the color rescaled to it, so hue holds and the grain is light and dark rather than confetti. Black and white stay exact.
+- **Copier marks:** toner specks (0.4% of pixels at 1) and uneven darkening toward the frame edges (up to 35%).
+- **Resolution:** like grain (D4 exception) it is defined per output pixel, so preview and export match at the same size; the export harness runs with every finish on to hold that.

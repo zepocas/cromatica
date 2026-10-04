@@ -27,6 +27,8 @@ const testDesign: Design = {
   engineVersion: 1,
   warp: { shape: 'waves', amount: 0.45, size: 0.4, seed: 7 },
   grain: { amount: 0.5, size: 0.6 },
+  // Every finish on: preview, tiles and export must agree with them too.
+  finish: { vignette: 0.6, bands: 0.4, bandEdge: 0.3, print: 0.5 },
   base: {
     kind: 'linear',
     angle: 37,
@@ -45,6 +47,7 @@ const meshDesign: Design = {
   engineVersion: 1,
   warp: { shape: 'domain', amount: 0.5, size: 0.35, seed: 0x9e3779b9 },
   grain: { amount: 0.35, size: 0.2 },
+  finish: { vignette: 0.6, bands: 0.4, bandEdge: 0.3, print: 0.5 },
   base: {
     kind: 'mesh',
     sharpness: 0.6,

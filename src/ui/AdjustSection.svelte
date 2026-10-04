@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { noFinish } from '../design/design';
   import { prepareFinish } from '../engine/finish';
   import SliderRow from './controls/SliderRow.svelte';
   import type { EditorState } from './editor.svelte';
@@ -12,8 +13,7 @@
   let { editor = $bindable() }: Props = $props();
 
   const fixed2 = (v: number) => v.toFixed(2);
-  const bandSteps = (bands: number) =>
-    prepareFinish({ vignette: 0, bands, bandEdge: 0 }, { width: 1, height: 1 }).bandSteps;
+  const bandSteps = (bands: number) => prepareFinish({ ...noFinish, bands }, { width: 1, height: 1 }).bandSteps;
   const degrees = (v: number) => `${Math.round(v)}°`;
   const warpOff = $derived(editor.warp.shape === 'none');
 </script>
@@ -80,6 +80,15 @@
   />
 
   {#snippet more()}
+    <SliderRow
+      label="print"
+      title="Print texture: lithograph ↔ xerox (paper tooth, toner specks, darker edges)"
+      min={0}
+      max={1}
+      step={0.01}
+      bind:value={editor.finish.print}
+      display={(v) => (v === 0 ? 'off' : v.toFixed(2))}
+    />
     <SliderRow
       label="vignette"
       title="Darken toward the corners"

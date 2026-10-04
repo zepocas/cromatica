@@ -8,6 +8,17 @@ import type { OutputSize } from './types';
 const VIGNETTE_MAX = 0.75;
 /** Where the vignette starts, as a fraction of the half diagonal. */
 export const VIGNETTE_INNER = 0.35;
+/** Print texture: tooth modulation of the ink at print 1, and the screen's tones per channel. */
+const PRINT_INK = 0.6;
+const PRINT_LEVELS = 3;
+/** Print range over which the thresholded screen (xerox) is blended in. */
+const PRINT_SCREEN: [from: number, to: number] = [0.5, 1];
+/** Print amount over which the effect fades in, so the slider starts gently. */
+const PRINT_FADE_IN = 0.25;
+/** Fraction of pixels that get a toner speck at print 1. */
+const PRINT_SPECKLE = 0.004;
+/** Darkening at the frame edges at print 1. */
+const PRINT_EDGE = 0.35;
 /** Band steps at bands just above 0 and at 1. */
 const BAND_STEPS: [many: number, few: number] = [24, 3];
 
@@ -20,15 +31,34 @@ export interface PreparedFinish {
   bandSteps: number;
   /** Fraction of each step over which it rises into the next; 0 = hard. */
   bandEdge: number;
+  /** Print texture: how much of the printed look is mixed in; 0 = off. */
+  printMix: number;
+  /** How strongly the paper tooth modulates the ink (litho). */
+  printInk: number;
+  /** How much of the thresholded screen is mixed in (xerox). */
+  printScreen: number;
+  /** Tones per channel of the screen. */
+  printLevels: number;
+  /** Fraction of pixels with a toner speck. */
+  printSpeckle: number;
+  /** Darkening at the frame edges. */
+  printEdge: number;
 }
 
 export function prepareFinish(finish: Finish | undefined, output: OutputSize): PreparedFinish {
   const bands = clamp01(finish?.bands ?? 0);
+  const print = clamp01(finish?.print ?? 0);
   return {
     vignette: VIGNETTE_MAX * clamp01(finish?.vignette ?? 0),
     vignetteScale: 1 / (0.5 * Math.hypot(output.width / output.height, 1)),
     bandSteps: bands > 0 ? Math.round(BAND_STEPS[0] + (BAND_STEPS[1] - BAND_STEPS[0]) * bands) : 0,
     bandEdge: clamp01(finish?.bandEdge ?? 0),
+    printMix: smoothstep(0, PRINT_FADE_IN, print),
+    printInk: PRINT_INK * print,
+    printScreen: smoothstep(PRINT_SCREEN[0], PRINT_SCREEN[1], print),
+    printLevels: PRINT_LEVELS,
+    printSpeckle: PRINT_SPECKLE * print * print,
+    printEdge: PRINT_EDGE * print,
   };
 }
 

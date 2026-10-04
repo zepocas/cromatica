@@ -152,9 +152,9 @@ test.describe('radial and conic gradients', () => {
 });
 
 test.describe('finish: vignette and bands', () => {
-  const withFinish = (d: Design, vignette: number, bands: number, bandEdge = 0): Design => ({
+  const withFinish = (d: Design, vignette: number, bands: number, bandEdge = 0, print = 0): Design => ({
     ...d,
-    finish: { vignette, bands, bandEdge },
+    finish: { vignette, bands, bandEdge, print },
   });
 
   test('vignette matches the CPU reference on linear and mesh', async ({ page }) => {
@@ -175,14 +175,21 @@ test.describe('finish: vignette and bands', () => {
 
   test('single pass equals 256 px tiles with both on', async ({ page }) => {
     for (const d of [threeStops(75), meshDefault]) {
-      const r = await engineHarness(page, 'compareTiled', withFinish(d, 0.7, 0.5, 0.3), 1531, 917, 256, true);
+      const r = await engineHarness(page, 'compareTiled', withFinish(d, 0.7, 0.5, 0.3, 0.8), 1531, 917, 256, true);
       expect(r.identical).toBe(true);
     }
   });
 
   test('zero is bit-identical to no finish', async ({ page }) => {
+    for (const d of [threeStops(30), meshDefault]) {
+      const r = await engineHarness(page, 'compareDesigns', d, withFinish(d, 0, 0, 0.5, 0), 480, 270);
+      expect(r.identical).toBe(true);
+    }
+  });
+
+  test('print texture changes the image', async ({ page }) => {
     const d = threeStops(30);
-    const r = await engineHarness(page, 'compareDesigns', d, withFinish(d, 0, 0), 480, 270);
-    expect(r.identical).toBe(true);
+    const r = await engineHarness(page, 'compareDesigns', d, withFinish(d, 0, 0, 0, 0.6), 480, 270);
+    expect(r.identical).toBe(false);
   });
 });
