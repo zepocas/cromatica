@@ -43,6 +43,8 @@
     worley: 'worley',
     voronoi: 'facets',
     curl: 'flow',
+    ridged: 'silk',
+    marble: 'marble',
   };
 
   /** Typing a size switches to custom, starting from the current size. */

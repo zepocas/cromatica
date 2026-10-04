@@ -51,7 +51,7 @@ test('warp controls: shape, amount, size, new variation and [ ] cycling', async 
   await expect(shape).toHaveValue('none');
   await expect(page.getByLabel('Warp size')).toBeDisabled();
   await page.keyboard.press('[');
-  await expect(shape).toHaveValue('curl');
+  await expect(shape).toHaveValue(WARP_SHAPES[WARP_SHAPES.length - 1]);
   await page.keyboard.press(']');
   await expect(shape).toHaveValue('none');
 });

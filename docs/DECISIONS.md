@@ -195,3 +195,10 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Generalized rules:** the lightness span a palette needs is half its band when the band is narrower than 0.5 (`minLSpan(band)`), and anchors follow the band (cream where it reaches 0.85, near-black where it reaches 0.3). Both reproduce the earlier natural, vivid, high and low behaviour exactly.
 - **"any":** natural 45%, vivid 20%, muted 20%, earthy 15%. Pastel mostly repeats natural + high key and neon is too loud to appear at random, so both are explicit picks.
 - **Limits:** every mood meets spacing and spread up to 5 colors; pastel's narrow, soft band misses spacing 12–16% of the time at 6–8 colors and keeps the closest attempt.
+
+## D31. M4.5 warp shapes: silk and marble kept, kaleidoscope pruned
+
+- **Silk** (`ridged` in code): a single-channel displacement across a seeded direction by ridged fBm (`(1 - |n|)²` per octave, 2 octaves) sampled 4× slower along the direction than across it. A first isotropic version (two ridged channels) looked like fbm; the anisotropy is what makes folds.
+- **Marble:** displacement along the band normal by `sin(2π·f·(d·p) + 4.5·fbm)`, with amplitude ∝ band spacing. At a first, weaker strength it also read as fbm; it needs displacement comparable to the gradient's color features for the veins to show.
+- **Kaleidoscope pruned:** a mirror fold (N segments, then a twist instead of a ghosting blend) was correct and seamless, but a wedge of a soft gradient holds one or two colors, so it showed as a single color or a radial smudge on both base patterns.
+- **Shared constants** (octaves, stretch, turbulence) are injected into the shaders from warp.ts like the others.

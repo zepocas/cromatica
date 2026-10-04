@@ -20,6 +20,8 @@ import warpOval from './warp/oval.glsl?raw';
 import warpWorley from './warp/worley.glsl?raw';
 import warpVoronoi from './warp/voronoi.glsl?raw';
 import warpCurl from './warp/curl.glsl?raw';
+import warpRidged from './warp/ridged.glsl?raw';
+import warpMarble from './warp/marble.glsl?raw';
 import warp from './warp/warp.glsl?raw';
 
 /** Compile-time switches for a program variant; values become #defines. */
@@ -42,6 +44,8 @@ const WARP_CHUNKS = [
   warpWorley,
   warpVoronoi,
   warpCurl,
+  warpRidged,
+  warpMarble,
   warp,
 ];
 const FRAGMENT_CHUNKS = [coords, hash, ...WARP_CHUNKS, linear, mesh, ramp, oklab, srgb, grain, dither, fragMain];

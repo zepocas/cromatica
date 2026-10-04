@@ -5,7 +5,7 @@
 // (WARP_SHADER_CONSTANTS), so CPU and GPU can't drift apart.
 import { type Warp, WARP_SHAPES, type WarpShape } from '../design/design';
 import { clamp, clamp01 } from '../math';
-import { clampCoord, fbm, hash1, hash2, hashKey, pcg, simplex, TAU, type Vec2 } from './noise';
+import { clampCoord, fbm, hash1, hash2, hashKey, pcg, ridged, simplex, TAU, type Vec2 } from './noise';
 
 /** vec4 slots of seeded per-shape parameters (u_warpParam). */
 export const WARP_PARAM_SLOTS = 6;
@@ -23,6 +23,13 @@ const FBM_OCTAVES = 5;
 const CURL_STEPS = 8;
 /** Border distance (cell units) over which a worley bubble ramps to full strength. */
 const WORLEY_RIM = 0.2;
+/** fBm octaves of the ridged (silk) warp, and how much slower its noise runs along the folds than across them. */
+const RIDGED_OCTAVES = 2;
+const SILK_ALONG = 0.25;
+/** fBm octaves and phase turbulence (radians at amount-independent strength) of the marble warp. */
+const MARBLE_OCTAVES = 4;
+const MARBLE_TURBULENCE = 4.5;
+
 /** Squared radius added under the circular warp's 1 / r, so the center doesn't tear. */
 const CIRCULAR_SOFTENING = 0.0004;
 /** Hash-key salts, one per independent noise channel of a shape. */
@@ -36,6 +43,10 @@ export const WARP_SHADER_CONSTANTS = {
   DOMAIN_OCTAVES,
   DOMAIN_K: glslFloat(DOMAIN_K),
   FBM_OCTAVES,
+  RIDGED_OCTAVES,
+  SILK_ALONG: glslFloat(SILK_ALONG),
+  MARBLE_OCTAVES,
+  MARBLE_TURBULENCE: glslFloat(MARBLE_TURBULENCE),
   CURL_STEPS,
   WORLEY_RIM: glslFloat(WORLEY_RIM),
   CIRCULAR_SOFTENING: glslFloat(CIRCULAR_SOFTENING),
@@ -69,6 +80,8 @@ const TUNING: Record<Exclude<WarpShape, 'none'>, ShapeTuning> = {
   worley: { gain: 1.6, density: 1.4, coupling: 0 }, // fraction of the pull onto the feature
   voronoi: { gain: 0.25, density: 2, coupling: 0.5 },
   curl: { gain: 0.6, density: 1, coupling: 0.5 },
+  ridged: { gain: 0.6, density: 0.6, coupling: 0.5 },
+  marble: { gain: 0.8, density: 2, coupling: 1 }, // displacement ∝ band spacing
 };
 
 /** The warp as the shader sees it. */
@@ -111,6 +124,13 @@ function seededParams(shape: WarpShape, seed: number): Float64Array {
     case 'circular':
       set(0, (r(0) - 0.5) * 0.7, (r(1) - 0.5) * 0.4, r(2) * TAU, Math.sin(r(2) * TAU));
       break;
+    case 'ridged':
+    case 'marble': {
+      // Folds (silk) or bands (marble) along a seeded direction.
+      const a = r(0) * Math.PI;
+      set(0, Math.cos(a), Math.sin(a), 0, 0);
+      break;
+    }
     case 'oval': {
       const a = r(2) * Math.PI;
       const q = 0.4 + 0.3 * r(3);
@@ -325,6 +345,25 @@ function oval(x: number, y: number, w: PreparedWarp): Vec2 {
   return [cx + ca * lx - sa * ly, cy + sa * lx + ca * ly];
 }
 
+function silk(x: number, y: number, w: PreparedWarp): Vec2 {
+  // Long folds along a seeded direction d: ridged noise that runs slowly
+  // along d and fast across it, displacing across d like draped satin.
+  const [dx, dy] = w.params;
+  const along = (dx * x + dy * y) * SILK_ALONG * w.freq;
+  const across = (-dy * x + dx * y) * w.freq;
+  const s = w.amp * ridged(along, across, saltKey(w, 0), RIDGED_OCTAVES);
+  return [x - s * dy, y + s * dx];
+}
+
+function marble(x: number, y: number, w: PreparedWarp): Vec2 {
+  // Displace along the band normal by a sine of the band phase, the phase
+  // stirred by fBm: the color ramp veins like stone.
+  const [dx, dy] = w.params;
+  const turbulence = MARBLE_TURBULENCE * fbm(x * w.freq, y * w.freq, saltKey(w, 0), MARBLE_OCTAVES);
+  const s = w.amp * Math.sin(TAU * w.freq * (dx * x + dy * y) + turbulence);
+  return [x + s * dx, y + s * dy];
+}
+
 const SHAPES: Record<Exclude<WarpShape, 'none'>, (x: number, y: number, w: PreparedWarp) => Vec2> = {
   domain,
   fbm: fbmWarp,
@@ -337,6 +376,8 @@ const SHAPES: Record<Exclude<WarpShape, 'none'>, (x: number, y: number, w: Prepa
   worley,
   voronoi,
   curl,
+  ridged: silk,
+  marble,
 };
 
 /** Warped composition coords of (x, y) under a prepared warp. */

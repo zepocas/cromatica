@@ -219,6 +219,8 @@ Each milestone uses the same structure:
   - **Reaction-diffusion and other iterative or stateful algorithms:** they break the stateless, tile-independent render rule (D4).
   - **Fractals, Truchet and quasi-periodic tilings:** too graphic for gradient wallpapers.
   - **User-facing layers:** the product stays one pattern, one warp and a few finishes.
+- **Progress:**
+  - ✅ Step 1, warp shapes: **silk** (`ridged`: long draped folds, ridged noise run slowly along a seeded direction and fast across it) and **marble** (turbulent sine bands across a seeded direction: veins that fold the colors into each other). **Kaleidoscope** was built and pruned after the contact-sheet review: mirroring a wedge of a soft gradient repeats one or two colors or smudges (D31). Flow/brushed and Voronoi edges stay optional.
 - **Open questions:**
   - Does conic need a seam control, or is a smooth seam enough?
   - Should Vignette and Bands be in the main view or behind "+ more"?

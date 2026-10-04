@@ -76,7 +76,9 @@ export type WarpShape =
   | 'oval' // elliptical swirl/pinch around the center
   | 'worley'
   | 'voronoi'
-  | 'curl'; // stateless curl-noise flow, integrated in-shader
+  | 'curl' // stateless curl-noise flow, integrated in-shader
+  | 'ridged' // ridged fBm: veined, folded-satin creases
+  | 'marble'; // noise-turbulent sine bands
 
 export const WARP_SHAPES: readonly WarpShape[] = [
   'none',
@@ -91,6 +93,8 @@ export const WARP_SHAPES: readonly WarpShape[] = [
   'worley',
   'voronoi',
   'curl',
+  'ridged',
+  'marble',
 ];
 
 export interface Warp {
