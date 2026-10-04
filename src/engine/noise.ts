@@ -95,6 +95,25 @@ export function simplex(px: number, py: number, key: number): [number, number, n
   return [70 * out[0], 70 * out[1], 70 * out[2]];
 }
 
+/**
+ * Ridged simplex fBm, ≈ [-1, 1]: each octave is (1 - |n|)², sharp creases
+ * where the noise crosses zero. Same octave rotation and gains as fbm.
+ */
+export function ridged(px: number, py: number, key: number, octaves: number): number {
+  let sum = 0;
+  let amp = 1;
+  for (let i = 0; i < octaves; i++) {
+    const n = 1 - Math.abs(simplex(px, py, octaveKey(key, i))[0]);
+    sum += amp * n * n;
+    const nx = (0.8 * px - 0.6 * py) * 2;
+    const ny = (0.6 * px + 0.8 * py) * 2;
+    px = nx;
+    py = ny;
+    amp *= 0.5;
+  }
+  return sum * (2 / (2 - Math.pow(0.5, octaves - 1))) - 1;
+}
+
 /** Simplex fBm, lacunarity 2, gain 0.5, rotated per octave; ≈ [-1, 1]. */
 export function fbm(px: number, py: number, key: number, octaves: number): number {
   let sum = 0;

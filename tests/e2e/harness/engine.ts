@@ -6,8 +6,10 @@ import { gamutMapToLinearSrgb } from '../../../src/color/gamut';
 import { linearSrgbToOklab, oklabToLinearSrgb, oklabToOklch, srgbDecode } from '../../../src/color/oklab';
 import { bakeRamp, RAMP_SIZE } from '../../../src/color/ramp';
 import type { Rgb } from '../../../src/color/types';
-import { type Design, type LinearGradient, noGrain, noWarp, type PointMesh } from '../../../src/design/design';
-import { applyMat2, orientationMatrix, transformMatrix } from '../../../src/engine/transform';
+import { type Design, type RampGradient, noGrain, noWarp, type PointMesh } from '../../../src/design/design';
+import { applyMat2, transformMatrix } from '../../../src/engine/transform';
+import { bandLevel, prepareFinish, vignetteFactor } from '../../../src/engine/finish';
+import { prepareRampShape, rampT } from '../../../src/engine/ramp-shape';
 import { createRenderer } from '../../../src/engine/renderer';
 import { createWarp } from '../../../src/engine/warp';
 import { CONTEXT_ATTRIBUTES, type OutputSize, type RenderOptions, type Tile } from '../../../src/engine/types';
@@ -99,21 +101,17 @@ function createReference(design: Design, output: OutputSize, halfFloat = false) 
   const m = transformMatrix(design.transform);
   const { width: w, height: h } = output;
   const at = (px: number, py: number) => warp(...applyMat2(m, ...compositionCoord(px, py, w, h)));
-  if (design.base.kind === 'mesh') return createMeshReference(design.base, at);
+  const finish = prepareFinish(design.finish, output);
+  const dimAt = (px: number, py: number) => vignetteFactor(finish, ...compositionCoord(px, py, w, h));
+  if (design.base.kind === 'mesh') return createMeshReference(design.base, at, dimAt, (r) => bandLevel(finish, r));
   const base = design.base;
   const ramp = bakeRamp(base.stops, RAMP_SIZE);
   if (halfFloat && f16round) for (let i = 0; i < ramp.length; i++) ramp[i] = f16round(ramp[i]);
   const n = RAMP_SIZE;
-  const a = (base.angle * Math.PI) / 180;
-  const dx = Math.cos(a);
-  const dy = Math.sin(a);
-  // The ramp spans the rotated/flipped frame (see linearGradientUniforms).
-  const o = orientationMatrix(design.transform);
-  const [ex, ey] = applyMat2([o[0], o[2], o[1], o[3]], dx, dy);
-  const extent = Math.abs(ex) * (w / h) + Math.abs(ey);
+  const shape = prepareRampShape(base, output, design.transform);
   return (px: number, py: number): Triple => {
-    const [u, v] = at(px, py);
-    const t = Math.min(1, Math.max(0, (u * dx + v * dy) / extent + 0.5));
+    const t = bandLevel(finish, rampT(shape, ...at(px, py)));
+    const dim = dimAt(px, py);
     // Sampling at (t·(n-1) + 0.5) / n with LINEAR filtering = lerp at t·(n-1).
     const s = t * (n - 1);
     const i0 = Math.min(n - 1, Math.floor(s));
@@ -121,7 +119,7 @@ function createReference(design: Design, output: OutputSize, halfFloat = false) 
     const f = s - i0;
     const out: Triple = [0, 0, 0];
     for (let k = 0; k < 3; k++) {
-      const c = ramp[i0 * 4 + k] * (1 - f) + ramp[i1 * 4 + k] * f;
+      const c = (ramp[i0 * 4 + k] * (1 - f) + ramp[i1 * 4 + k] * f) * dim;
       out[k] = srgbEncode(c) * 255;
     }
     return out;
@@ -133,11 +131,17 @@ const compositionCoord = (px: number, py: number, w: number, h: number) =>
   [(px + 0.5 - w / 2) / h, (h / 2 - (py + 0.5)) / h] as const;
 
 /** CPU reference of the mesh: Oklab blend → the shader's gamut clip → sRGB, 0..255 unrounded. */
-function createMeshReference(mesh: PointMesh, at: (px: number, py: number) => readonly [number, number]) {
-  const evaluate = createMeshEvaluator(mesh);
+function createMeshReference(
+  mesh: PointMesh,
+  at: (px: number, py: number) => readonly [number, number],
+  dimAt: (px: number, py: number) => number,
+  band: (relative: number) => number,
+) {
+  const evaluate = createMeshEvaluator(mesh, band);
   return (px: number, py: number): Triple => {
     const rgb = meshGamutClip(evaluate(...at(px, py)));
-    return [srgbEncode(rgb[0]) * 255, srgbEncode(rgb[1]) * 255, srgbEncode(rgb[2]) * 255];
+    const dim = dimAt(px, py);
+    return [srgbEncode(rgb[0] * dim) * 255, srgbEncode(rgb[1] * dim) * 255, srgbEncode(rgb[2] * dim) * 255];
   };
 }
 
@@ -320,7 +324,7 @@ const harness = {
     const frames: Uint8Array[] = [];
     try {
       for (const d of [a, b, a, mutated]) {
-        if (d === mutated) (mutated.base as LinearGradient).stops[0].color[0] += 0.2;
+        if (d === mutated) (mutated.base as RampGradient).stops[0].color[0] += 0.2;
         renderer.render(d, output, tile, { dither: false });
         frames.push(renderer.readPixels(width, height));
       }
@@ -395,7 +399,7 @@ const harness = {
    */
   edgeColumns(design: Design, width: number, height: number) {
     const image = render(design, { width, height }, false);
-    const ramp = bakeRamp((design.base as LinearGradient).stops, RAMP_SIZE);
+    const ramp = bakeRamp((design.base as RampGradient).stops, RAMP_SIZE);
     const at = (t: number) => {
       const s = t * (RAMP_SIZE - 1);
       const i0 = Math.floor(s);

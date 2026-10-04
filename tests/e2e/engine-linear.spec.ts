@@ -1,7 +1,7 @@
 // Renderer: linear gradients — tiling, CPU reference, dither, aspect.
 import { expect, test } from '@playwright/test';
-import type { BlendMode } from '../../src/design/design';
-import { linear, threeStops, midTones, type StopSpec } from './support/designs';
+import type { BlendMode, Design, RampGradient } from '../../src/design/design';
+import { linear, meshDefault, threeStops, midTones, type StopSpec } from './support/designs';
 import { engineHarness, openEngineHarness, logBench } from './support/harness';
 
 test.beforeEach(async ({ page }) => {
@@ -125,4 +125,71 @@ test.describe('aspect behavior', () => {
       expect(r.right).toBeLessThanOrEqual(1);
     });
   }
+});
+
+test.describe('radial and conic gradients', () => {
+  for (const kind of ['radial', 'conic'] as const) {
+    const design = (angle: number): Design => {
+      const d = threeStops(angle);
+      return { ...d, base: { ...(d.base as RampGradient), kind } };
+    };
+    test(`${kind}: matches the CPU reference`, async ({ page }) => {
+      for (const [w, h] of [
+        [640, 360],
+        [480, 777],
+      ]) {
+        const r = await engineHarness(page, 'compareReference', design(40), w, h);
+        expect(r.maxDiff, `${w}×${h} ${JSON.stringify(r.worst)}`).toBeLessThanOrEqual(1);
+      }
+    });
+
+    test(`${kind}: single pass equals 256 px tiles`, async ({ page }) => {
+      const r = await engineHarness(page, 'compareTiled', design(110), 1531, 917, 256, true);
+      expect(r.first).toBeNull();
+      expect(r.identical).toBe(true);
+    });
+  }
+});
+
+test.describe('finish: vignette and bands', () => {
+  const withFinish = (d: Design, vignette: number, bands: number, bandEdge = 0, print = 0): Design => ({
+    ...d,
+    finish: { vignette, bands, bandEdge, print },
+  });
+
+  test('vignette matches the CPU reference on linear and mesh', async ({ page }) => {
+    for (const d of [threeStops(30), meshDefault]) {
+      const r = await engineHarness(page, 'compareReference', withFinish(d, 0.8, 0), 640, 360);
+      expect(r.maxDiff, JSON.stringify(r.worst)).toBeLessThanOrEqual(1);
+    }
+  });
+
+  test('bands, crisp and soft, match the CPU reference on linear and mesh', async ({ page }) => {
+    for (const d of [threeStops(30), meshDefault]) {
+      for (const edge of [0, 0.5]) {
+        const r = await engineHarness(page, 'compareReference', withFinish(d, 0, 0.6, edge), 640, 360);
+        expect(r.maxDiff, `edge ${edge} ${JSON.stringify(r.worst)}`).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  test('single pass equals 256 px tiles with both on', async ({ page }) => {
+    for (const d of [threeStops(75), meshDefault]) {
+      const r = await engineHarness(page, 'compareTiled', withFinish(d, 0.7, 0.5, 0.3, 0.8), 1531, 917, 256, true);
+      expect(r.identical).toBe(true);
+    }
+  });
+
+  test('zero is bit-identical to no finish', async ({ page }) => {
+    for (const d of [threeStops(30), meshDefault]) {
+      const r = await engineHarness(page, 'compareDesigns', d, withFinish(d, 0, 0, 0.5, 0), 480, 270);
+      expect(r.identical).toBe(true);
+    }
+  });
+
+  test('print texture changes the image', async ({ page }) => {
+    const d = threeStops(30);
+    const r = await engineHarness(page, 'compareDesigns', d, withFinish(d, 0, 0, 0, 0.6), 480, 270);
+    expect(r.identical).toBe(false);
+  });
 });

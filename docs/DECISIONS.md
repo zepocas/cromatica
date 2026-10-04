@@ -195,3 +195,44 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Generalized rules:** the lightness span a palette needs is half its band when the band is narrower than 0.5 (`minLSpan(band)`), and anchors follow the band (cream where it reaches 0.85, near-black where it reaches 0.3). Both reproduce the earlier natural, vivid, high and low behaviour exactly.
 - **"any":** natural 45%, vivid 20%, muted 20%, earthy 15%. Pastel mostly repeats natural + high key and neon is too loud to appear at random, so both are explicit picks.
 - **Limits:** every mood meets spacing and spread up to 5 colors; pastel's narrow, soft band misses spacing 12–16% of the time at 6–8 colors and keeps the closest attempt.
+
+## D31. M4.5 warp shapes: silk and marble kept, kaleidoscope pruned
+
+- **Silk** (`ridged` in code): a single-channel displacement across a seeded direction by ridged fBm (`(1 - |n|)²` per octave, 2 octaves) sampled 4× slower along the direction than across it. A first isotropic version (two ridged channels) looked like fbm; the anisotropy is what makes folds.
+- **Marble:** displacement along the band normal by `sin(2π·f·(d·p) + 4.5·fbm)`, with amplitude ∝ band spacing. At a first, weaker strength it also read as fbm; it needs displacement comparable to the gradient's color features for the veins to show.
+- **Kaleidoscope pruned:** a mirror fold (N segments, then a twist instead of a ghosting blend) was correct and seamless, but a wedge of a soft gradient holds one or two colors, so it showed as a single color or a radial smudge on both base patterns.
+- **Shared constants** (octaves, stretch, turbulence) are injected into the shaders from warp.ts like the others.
+
+## D32. Linear, radial and conic are one ramp gradient
+
+- **Model:** `RampGradient { kind: 'linear' | 'radial' | 'conic', angle, stops }`. The editor keeps one ramp for all three, so switching shape keeps stops and blends, and palette state (rule, seed, adjustments) is per color owner (mesh or ramp), not per kind.
+- **t per shape** (`src/engine/ramp-shape.ts`, mirrored in `ramp-shape.glsl` from the same prepared uniforms): linear as before (spans the rotated frame); radial `|p| / (half frame diagonal)`, so corners reach the last stop; conic `(1 − cos θ)/2`, θ from the angle: the first stop at the angle, the last opposite, smooth everywhere with no seam and no atan.
+- **Conic core:** within 0.15 of the center, conic eases toward mid-ramp. Every color meets at the center, and a warp otherwise shreds it into a pinched knot.
+- **Palette from image** orders stops by each color's t in the active shape, so they follow the gradient however it runs.
+- **Center** is the frame's center; zoom magnifies around it. A movable center would need a pan in the transform (not built).
+
+## D33. Finishes: vignette on the frame, bands on the ramp
+
+- **Order:** base pattern (with bands) → vignette in linear light → sRGB transfer → grain → dither. `Design.finish = { vignette, bands }`, missing = none; shuffles keep it like grain.
+- **Vignette:** multiplies linear RGB by `1 − 0.75·amount·smoothstep(0.35, 1, |p| / half diagonal)` in composition coords, before transform and warp, so it frames the image and stays put while the image turns, zooms or warps. Black stays black. "Leaves pure white exact" from the M4.5 done list can't hold for a vignette, which darkens corners by design; what holds is that 0 is bit-identical to off.
+- **Bands:** `bandLevel(x) = (k + rise)/(n−1)` with `k = floor(x·n)` and `rise` a smoothstep over the last `edge` of each step (0 = hard): n flat levels from 0 to 1, both ends exact, n from 24 (just above 0) to 3 (at 1). Ramp gradients band their position t. The mesh bands each point's weight relative to the strongest (which is exactly 1 before normalizing, so it stays 1 and a pixel never loses all its color); that gives terraces of each point's reach, subtler than ramp bands because the mix averages the steps. The edge slider softens the step edges for both. A user request moved bands and edge to the main controls for every style.
+- **All three** are uniforms, not shader variants, so dragging them never recompiles. The finish chunk comes before the base patterns in the shader, since the mesh calls `bandLevel`.
+
+## D34. Blend reaches near-hard edges at the top
+
+- **Change:** the mesh exponent is `k = 1.5 · 12^s · (1 + 4·s⁶)`. The extra factor is ×1.007 at s = 0.35, ×1.06 at 0.5, ×1.47 at 0.7 and ×5 at 1, so k tops out at 90 instead of 18. Low and mid blends (shuffles stay in 0.1–0.5) look as before; the far end gives near-hard, Voronoi-like edges.
+- **Safe:** weights are computed in the log domain normalized by the largest, so k = 90 is fine in fp32; CPU and GPU still match. The continuity test bound scales with k, since steeper (still continuous) transitions change faster per sample.
+
+## D35. Brushed strokes along a seeded direction; smudge dropped
+
+- **Brushed** (`bristle`): in coordinates along and across a seeded stroke direction, simplex noise at 0.15× along and 14× across gives fine, long bristle lines; it displaces along the stroke by up to 0.7 (gain) times a soft mask (0.4–1, from coarse simplex), so colors drag across the frame in streaks. The first tuning (gain 0.18, a mask that cut strokes off fully) was barely visible: a warp only moves colors, and soft colors smeared into soft colors look the same.
+- **Smudge dropped:** a smooth one-way drag was invisible on soft gradients; finger-width trails with a hard start (hashed per trail) turned into rectangular blocks with straight cuts, a digital, glitchy look rather than a smear. That look is noted for M5 as a "digital / glitch" item.
+
+## D36. Print texture: litho ink modulation to xerox lightness screen
+
+- **One slider** (`finish.print`), applied per output pixel after the sRGB transfer, before grain and dither; 0 is an exact passthrough. It fades in over 0–0.25.
+- **Paper tooth:** smooth value noise over output pixels, mostly a fine tooth (0.9 px⁻¹) plus two faint fiber layers at different angles, stretched toward a uniform distribution.
+- **Litho (low end):** the tooth modulates the ink, `ink = 1 − e` scaled by `1 ± 0.6·print`: bare paper stays white and inked areas get an even texture. A first version thresholded every channel against a coarse fibrous noise; it read like distressed concrete with colored specks.
+- **Xerox (high end, blended in over 0.5–1):** lightness thresholded to 3 tones against the tooth, the color rescaled to it, so hue holds and the grain is light and dark rather than confetti. Black and white stay exact.
+- **Copier marks:** toner specks (0.4% of pixels at 1) and uneven darkening toward the frame edges (up to 35%).
+- **Resolution:** like grain (D4 exception) it is defined per output pixel, so preview and export match at the same size; the export harness runs with every finish on to hold that.

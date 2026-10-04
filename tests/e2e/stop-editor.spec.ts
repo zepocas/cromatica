@@ -69,3 +69,26 @@ test('stop editor: add, drag, blend mode and delete update the preview', async (
   await expect(handles).toHaveCount(2);
   await expect(page.getByRole('button', { name: 'Remove color 1' })).toBeDisabled();
 });
+
+test('radial and conic share the stops with linear; radial has no angle', async ({ page }) => {
+  await openApp(page);
+  const { settled, expectPreviewChanged } = previewProbe(page);
+  const gradient = page.getByLabel('Gradient', { exact: true });
+  const handles = page.getByRole('slider', { name: /^Stop \d+$/ });
+  await gradient.selectOption('linear');
+  await expect(handles).toHaveCount(3);
+  const stops = await handles.evaluateAll((els) => els.map((el) => el.getAttribute('aria-valuenow')));
+
+  for (const kind of ['radial', 'conic']) {
+    const before = await settled();
+    await gradient.selectOption(kind);
+    await expectPreviewChanged(before);
+    await expect(handles).toHaveCount(3);
+    expect(await handles.evaluateAll((els) => els.map((el) => el.getAttribute('aria-valuenow')))).toEqual(stops);
+    await expect(page.getByLabel('Angle')).toHaveCount(kind === 'radial' ? 0 : 1);
+  }
+
+  // Shuffling keeps the shape.
+  await page.getByRole('button', { name: /^Shuffle( Space)?$/ }).click();
+  await expect(gradient).toHaveValue('conic');
+});

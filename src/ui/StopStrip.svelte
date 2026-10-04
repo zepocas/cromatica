@@ -22,7 +22,7 @@
   let dragging = $state<number | null>(null);
 
   /** Stops in user order (not necessarily sorted). Mutated in place. */
-  const stops = $derived(editor.linear.stops);
+  const stops = $derived(editor.ramp.stops);
   // Indices into `stops`, in position order (stable, same as the design's sort).
   const order = $derived(stops.map((_, i) => i).sort((a, b) => stops[a].position - stops[b].position));
 

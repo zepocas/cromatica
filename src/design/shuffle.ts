@@ -6,7 +6,7 @@ import { clamp } from '../math';
 import {
   type ColorStop,
   type Design,
-  type LinearGradient,
+  type RampGradient,
   MAX_MESH_POINTS,
   MAX_STOPS,
   type MeshPoint,
@@ -34,7 +34,7 @@ export interface ShuffleResult {
   palette: PaletteInfo | null;
 }
 
-/** What shuffleMesh and shuffleLinear draw from. */
+/** What shuffleMesh and shuffleRamp draw from. */
 interface ShuffleContext {
   opts: ShuffleOptions;
   aspect: number;
@@ -63,6 +63,9 @@ export const WARP_SHUFFLE_TABLE: Record<WarpShape, { weight: number; amount: Ran
   worley: { weight: 0.8, amount: [0.15, 0.45], size: [0.2, 0.5] },
   voronoi: { weight: 0.8, amount: [0.2, 0.55], size: [0.2, 0.5] },
   curl: { weight: 1, amount: [0.2, 0.55], size: [0.2, 0.5] },
+  ridged: { weight: 1, amount: [0.2, 0.5], size: [0.2, 0.5] },
+  marble: { weight: 0.8, amount: [0.3, 0.7], size: [0.2, 0.5] },
+  bristle: { weight: 0.8, amount: [0.3, 0.7], size: [0.2, 0.5] },
 };
 
 export const MESH_SHUFFLE = {
@@ -80,7 +83,7 @@ export const MESH_SHUFFLE = {
   edgeSlack: 0.55,
 };
 
-export const LINEAR_SHUFFLE = {
+export const RAMP_SHUFFLE = {
   /** Minimum gap between adjacent stop positions. */
   minGap: 0.08,
   /** Ranges of the first and last stop positions. */
@@ -105,7 +108,7 @@ const copyColor = (c: Oklch): Oklch => [c[0], c[1], c[2]];
 
 /**
  * Pure: a new design with fresh colors and/or layout, deterministic for
- * (design, opts, aspect). Keeps the pattern kind and grain. Mesh layouts keep
+ * (design, opts, aspect). Keeps the pattern kind, grain and finish. Mesh layouts keep
  * points mostly inside the frame of the given aspect and avoid clumping; when
  * both colors and layout are shuffled, the point count may change by ±1.
  */
@@ -119,12 +122,13 @@ export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 
     layoutRng: createRng((seed ^ LAYOUT_STREAM) >>> 0),
     makePalette: (n) => generatePalette(colorRng, n, opts.palette),
   };
-  const shuffled = design.base.kind === 'mesh' ? shuffleMesh(design.base, ctx) : shuffleLinear(design.base, ctx);
+  const shuffled = design.base.kind === 'mesh' ? shuffleMesh(design.base, ctx) : shuffleRamp(design.base, ctx);
   let base = shuffled.pattern;
   if (base.kind === 'mesh' && opts.layout && design.transform) base = toPatternSpace(base, design.transform);
   const warp = opts.layout ? shuffleWarp(ctx.layoutRng) : { ...design.warp };
   const out: Design = { engineVersion: design.engineVersion, base, warp, grain: { ...design.grain } };
   if (design.transform) out.transform = { ...design.transform };
+  if (design.finish) out.finish = { ...design.finish };
   return { design: out, palette: shuffled.palette };
 }
 
@@ -234,21 +238,18 @@ function toPatternSpace(mesh: PointMesh, transform: Transform): PointMesh {
 }
 
 function stopPositions(rng: Rng, n: number): number[] {
-  const first = rng.range(LINEAR_SHUFFLE.first[0], LINEAR_SHUFFLE.first[1]);
-  const last = rng.range(LINEAR_SHUFFLE.last[0], LINEAR_SHUFFLE.last[1]);
+  const first = rng.range(RAMP_SHUFFLE.first[0], RAMP_SHUFFLE.first[1]);
+  const last = rng.range(RAMP_SHUFFLE.last[0], RAMP_SHUFFLE.last[1]);
   if (n === 1) return [first];
   const step = (last - first) / (n - 1);
   // Jitter interior stops by at most this much so that gaps stay >= minGap.
-  const jitter = Math.max(0, (step - LINEAR_SHUFFLE.minGap) / 2);
+  const jitter = Math.max(0, (step - RAMP_SHUFFLE.minGap) / 2);
   return Array.from({ length: n }, (_, i) =>
     round4(i === 0 || i === n - 1 ? first + i * step : first + i * step + rng.range(-jitter, jitter)),
   );
 }
 
-function shuffleLinear(
-  base: LinearGradient,
-  ctx: ShuffleContext,
-): { pattern: LinearGradient; palette: PaletteInfo | null } {
+function shuffleRamp(base: RampGradient, ctx: ShuffleContext): { pattern: RampGradient; palette: PaletteInfo | null } {
   const { opts, colorRng, layoutRng } = ctx;
   const n = Math.min(base.stops.length, MAX_STOPS);
   const stops = base.stops.slice(0, n);
@@ -266,5 +267,5 @@ function shuffleLinear(
   }
 
   const out: ColorStop[] = stops.map((s, i) => ({ position: positions[i], color: colors[i], blend: s.blend }));
-  return { pattern: { kind: 'linear', angle, stops: out }, palette: palette && paletteInfo(palette) };
+  return { pattern: { kind: base.kind, angle, stops: out }, palette: palette && paletteInfo(palette) };
 }

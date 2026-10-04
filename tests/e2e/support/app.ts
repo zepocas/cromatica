@@ -50,7 +50,7 @@ export function readPoints(page: Page): Promise<{ pos: string; color: string }[]
   );
 }
 
-/** Warp controls' values. Warp size is under "+ more", so open it first. */
+/** Warp controls' values. */
 export async function readWarp(page: Page) {
   return {
     shape: await page.getByLabel('Warp shape').inputValue(),

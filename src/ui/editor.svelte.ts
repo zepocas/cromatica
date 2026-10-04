@@ -11,26 +11,29 @@ import {
   identityTransform,
   MAX_MESH_POINTS,
   MAX_STOPS,
+  noFinish,
   WARP_SHAPES,
   type BasePattern,
   type ColorStop,
   type Design,
+  type Finish,
   type Grain,
-  type LinearGradient,
+  type RampGradient,
   type PointMesh,
   type Transform,
   type Warp,
 } from '../design/design';
 import { randomSeed } from '../design/random';
 import { shuffleDesign } from '../design/shuffle';
+import { prepareRampShape, rampT } from '../engine/ramp-shape';
 import { applyMat2, clampZoom, inverseTransformMatrix, transformMatrix } from '../engine/transform';
 import { warpPoint } from '../engine/warp';
 import { clamp, normalizeDegrees } from '../math';
 import { paletteFromImage, type ImagePalette } from './image-palette';
-import { PaletteEditor, type PatternKind } from './palette.svelte';
+import { PaletteEditor } from './palette.svelte';
 import { emptiestSpot, median, widestGapCenter } from './placement';
 
-export type { PatternKind };
+export type PatternKind = BasePattern['kind'];
 
 /** Point size limits, in screen (composition) units: radius × zoom. */
 export const MIN_RADIUS = 0.05;
@@ -52,10 +55,11 @@ const MIN_STOPS = 2;
  */
 export class EditorState {
   kind = $state<PatternKind>('mesh');
-  linear = $state<LinearGradient>(structuredClone(defaultDesign.base as LinearGradient));
+  ramp = $state<RampGradient>(structuredClone(defaultDesign.base as RampGradient));
   mesh = $state<PointMesh>(structuredClone(defaultMesh));
   warp = $state<Warp>({ ...defaultWarp });
   grain = $state<Grain>({ ...defaultGrain });
+  finish = $state<Finish>({ ...noFinish });
   transform = $state<Transform>({ ...identityTransform });
   /** Shuffle locks: a locked part is kept as is. */
   colorsLocked = $state(false);
@@ -70,7 +74,7 @@ export class EditorState {
   aspect = $state(16 / 9);
 
   readonly palette = new PaletteEditor({
-    kind: () => this.kind,
+    kind: () => (this.kind === 'mesh' ? 'mesh' : 'ramp'),
     colorItems: () => this.colorItems,
     regenerate: (options, seed) => this.applyShuffle(true, false, options, seed),
   });
@@ -82,13 +86,20 @@ export class EditorState {
 
   /** Plain (non-proxy) design with stops sorted, as the renderer and worker expect. */
   get design(): Design {
-    const base = $state.snapshot(this.kind === 'mesh' ? this.mesh : this.linear) as BasePattern;
-    if (base.kind === 'linear') base.stops.sort((a, b) => a.position - b.position);
+    let base: BasePattern;
+    if (this.kind === 'mesh') {
+      base = $state.snapshot(this.mesh) as PointMesh;
+    } else {
+      // Linear, radial and conic share one ramp: same stops and angle.
+      const ramp = $state.snapshot(this.ramp) as RampGradient;
+      base = { ...ramp, kind: this.kind, stops: ramp.stops.sort((a, b) => a.position - b.position) };
+    }
     return {
       engineVersion: 1,
       base,
       warp: { ...this.warp },
       grain: { ...this.grain },
+      finish: { ...this.finish },
       transform: { ...this.transform },
     };
   }
@@ -122,7 +133,7 @@ export class EditorState {
       this.mesh = base;
       this.selectedPoint = Math.min(this.selectedPoint, base.points.length - 1);
     } else {
-      this.linear = base;
+      this.ramp = base;
     }
     this.warp = next.design.warp;
     // Built around the base hue already; temperature carries over.
@@ -189,16 +200,16 @@ export class EditorState {
   // ---- Colors: mesh points or linear stops, whichever is active --------------
 
   get canAddColor(): boolean {
-    return this.kind === 'mesh' ? this.canAddPoint : this.linear.stops.length < MAX_STOPS;
+    return this.kind === 'mesh' ? this.canAddPoint : this.ramp.stops.length < MAX_STOPS;
   }
 
   get canRemoveColor(): boolean {
-    return this.kind === 'mesh' ? this.canRemovePoint : this.linear.stops.length > MIN_STOPS;
+    return this.kind === 'mesh' ? this.canRemovePoint : this.ramp.stops.length > MIN_STOPS;
   }
 
   /** Points or stops of the active pattern, each with a `color`. */
   private get colorItems(): { color: Oklch }[] {
-    return this.kind === 'mesh' ? this.mesh.points : this.linear.stops;
+    return this.kind === 'mesh' ? this.mesh.points : this.ramp.stops;
   }
 
   /** Mesh: a point in the emptiest spot of the frame. Linear: a stop in the widest gap. */
@@ -208,7 +219,7 @@ export class EditorState {
       const points = this.mesh.points.map((p) => this.toScreen(p.x, p.y));
       this.addPoint(...emptiestSpot(points, this.aspect));
     } else {
-      this.addStop(widestGapCenter(this.linear.stops.map((s) => s.position)));
+      this.addStop(widestGapCenter(this.ramp.stops.map((s) => s.position)));
     }
   }
 
@@ -248,15 +259,16 @@ export class EditorState {
       });
       this.selectedPoint = 0;
     } else {
-      const a = (this.linear.angle * Math.PI) / 180;
-      const along = geo.map((g) => {
-        const [x, y] = this.toPattern(g.x, g.y);
-        return x * Math.cos(a) + y * Math.sin(a);
-      });
+      const shape = prepareRampShape(
+        { ...this.ramp, kind: this.kind },
+        { width: this.aspect, height: 1 },
+        this.transform,
+      );
+      const along = geo.map((g) => rampT(shape, ...this.toPattern(g.x, g.y)));
       const order = colors.map((_, i) => i).sort((i, j) => along[i] - along[j]);
       if (order.length === 1) order.push(order[0]);
-      const blend = this.linear.stops[0]?.blend ?? 'oklab';
-      this.linear.stops = order.map((i, k) => ({ position: k / (order.length - 1), color: [...colors[i]], blend }));
+      const blend = this.ramp.stops[0]?.blend ?? 'oklab';
+      this.ramp.stops = order.map((i, k) => ({ position: k / (order.length - 1), color: [...colors[i]], blend }));
       this.selectedStop = 0;
     }
     this.palette.adopt(null);
@@ -266,7 +278,7 @@ export class EditorState {
 
   /** A stop at position t, colored like the ramp there, with the blend of the segment it splits. */
   addStop(t: number): number | null {
-    const stops = this.linear.stops;
+    const stops = this.ramp.stops;
     if (stops.length >= MAX_STOPS) return null;
     const sorted = ($state.snapshot(stops) as ColorStop[]).sort((a, b) => a.position - b.position);
     const left = sorted.findLast((s) => s.position <= t) ?? sorted[0];
@@ -276,7 +288,7 @@ export class EditorState {
   }
 
   removeStop(i = this.selectedStop): void {
-    const stops = this.linear.stops;
+    const stops = this.ramp.stops;
     if (stops.length <= MIN_STOPS || i < 0 || i >= stops.length) return;
     stops.splice(i, 1);
     if (this.selectedStop >= i && this.selectedStop > 0) this.selectedStop--;

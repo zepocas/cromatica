@@ -1,5 +1,5 @@
 // Shuffle: the button, Space, the color and layout locks, and the opening shuffle.
-import { blur, expect, openApp, openMore, previewProbe, readPoints, readWarp, test } from './support/app';
+import { blur, expect, openApp, previewProbe, readPoints, readWarp, test } from './support/app';
 
 test('shuffle: button, Space, color and layout locks', async ({ page }) => {
   await openApp(page);
@@ -8,8 +8,6 @@ test('shuffle: button, Space, color and layout locks', async ({ page }) => {
   const lockColors = page.getByRole('button', { name: 'Lock colors' });
   const lockLayout = page.getByRole('button', { name: 'Lock layout' });
   await expect(page.locator('[data-point]')).toHaveCount(5);
-  // readWarp reads the warp size, which is under "more".
-  await openMore(page, 'adjust');
 
   // A plain shuffle changes the image.
   let before = await settled();

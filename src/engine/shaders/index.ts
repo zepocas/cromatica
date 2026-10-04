@@ -2,13 +2,15 @@ import vertMain from './fullscreen.vert.glsl?raw';
 import fragMain from './main.frag.glsl?raw';
 import coords from './common/coords.glsl?raw';
 import hash from './common/hash.glsl?raw';
-import linear from './gradient/linear.glsl?raw';
+import rampShape from './gradient/ramp-shape.glsl?raw';
 import mesh from './gradient/mesh.glsl?raw';
 import oklab from './color/oklab.glsl?raw';
 import ramp from './color/ramp.glsl?raw';
 import srgb from './color/srgb.glsl?raw';
 import dither from './color/dither.glsl?raw';
 import grain from './color/grain.glsl?raw';
+import finish from './color/finish.glsl?raw';
+import print from './color/print.glsl?raw';
 import warpNoise from './warp/noise.glsl?raw';
 import warpDomain from './warp/domain.glsl?raw';
 import warpFbm from './warp/fbm.glsl?raw';
@@ -20,6 +22,9 @@ import warpOval from './warp/oval.glsl?raw';
 import warpWorley from './warp/worley.glsl?raw';
 import warpVoronoi from './warp/voronoi.glsl?raw';
 import warpCurl from './warp/curl.glsl?raw';
+import warpRidged from './warp/ridged.glsl?raw';
+import warpMarble from './warp/marble.glsl?raw';
+import warpBristle from './warp/bristle.glsl?raw';
 import warp from './warp/warp.glsl?raw';
 
 /** Compile-time switches for a program variant; values become #defines. */
@@ -42,9 +47,27 @@ const WARP_CHUNKS = [
   warpWorley,
   warpVoronoi,
   warpCurl,
+  warpRidged,
+  warpMarble,
+  warpBristle,
   warp,
 ];
-const FRAGMENT_CHUNKS = [coords, hash, ...WARP_CHUNKS, linear, mesh, ramp, oklab, srgb, grain, dither, fragMain];
+const FRAGMENT_CHUNKS = [
+  coords,
+  hash,
+  ...WARP_CHUNKS,
+  // Before the base patterns: the mesh bands its weights with bandLevel.
+  finish,
+  rampShape,
+  mesh,
+  ramp,
+  oklab,
+  srgb,
+  print,
+  grain,
+  dither,
+  fragMain,
+];
 
 /** Stable cache key for a variant. */
 export function variantKey(defines: Defines): string {

@@ -48,6 +48,21 @@ vec3 simplex(vec2 p, uint key) {
   return 70.0 * n;
 }
 
+#ifdef WARP_RIDGED
+// Ridged simplex fBm, ≈ [-1, 1]: each octave is (1 - |n|)² (src/engine/noise.ts ridged).
+float ridged(vec2 p, uint key, int octaves) {
+  float sum = 0.0;
+  float amp = 1.0;
+  for (int i = 0; i < octaves; i++) {
+    float n = 1.0 - abs(simplex(p, octaveKey(key, i)).x);
+    sum += amp * n * n;
+    p = mat2(0.8, 0.6, -0.6, 0.8) * p * 2.0;
+    amp *= 0.5;
+  }
+  return sum * (2.0 / (2.0 - pow(0.5, float(octaves - 1)))) - 1.0;
+}
+#endif
+
 // Simplex fBm, lacunarity 2, gain 0.5, rotated per octave; ≈ [-1, 1].
 float fbm(vec2 p, uint key, int octaves) {
   float sum = 0.0;

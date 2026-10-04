@@ -28,6 +28,8 @@
   const PATTERNS = [
     { kind: 'mesh', label: 'mesh' },
     { kind: 'linear', label: 'linear' },
+    { kind: 'radial', label: 'radial' },
+    { kind: 'conic', label: 'conic' },
   ] as const;
 
   const WARP_LABELS: Record<WarpShape, string> = {
@@ -43,6 +45,9 @@
     worley: 'worley',
     voronoi: 'facets',
     curl: 'flow',
+    ridged: 'silk',
+    marble: 'marble',
+    bristle: 'brushed',
   };
 
   /** Typing a size switches to custom, starting from the current size. */

@@ -18,7 +18,6 @@ test('warp controls: shape, amount, size, new variation and [ ] cycling', async 
   const shape = page.getByLabel('Warp shape');
   await expect(shape).toHaveValue('domain');
   await expect(shape.locator('option')).toHaveCount(WARP_SHAPES.length);
-  await openMore(page, 'adjust');
 
   let before = await settled();
   await shape.selectOption('fbm');
@@ -51,7 +50,7 @@ test('warp controls: shape, amount, size, new variation and [ ] cycling', async 
   await expect(shape).toHaveValue('none');
   await expect(page.getByLabel('Warp size')).toBeDisabled();
   await page.keyboard.press('[');
-  await expect(shape).toHaveValue('curl');
+  await expect(shape).toHaveValue(WARP_SHAPES[WARP_SHAPES.length - 1]);
   await page.keyboard.press(']');
   await expect(shape).toHaveValue('none');
 });
@@ -113,4 +112,27 @@ test('transform: rotate, flip, zoom and reset move the image and the handles tog
   [x, y] = await onScreen();
   expect(x).toBeCloseTo(x0, 2);
   expect(y).toBeCloseTo(y0, 2);
+});
+
+test('vignette darkens the image; bands and edge work on every style', async ({ page }) => {
+  await openApp(page);
+  const { settled, expectPreviewChanged } = previewProbe(page);
+  // Bands and edge are main controls; edge waits for bands.
+  await expect(page.getByLabel('Edge')).toBeDisabled();
+  for (const kind of ['mesh', 'linear']) {
+    await page.getByLabel('Gradient', { exact: true }).selectOption(kind);
+    let before = await settled();
+    await page.getByLabel('Bands').fill('0.5');
+    await expectPreviewChanged(before);
+    before = await settled();
+    await page.getByLabel('Edge').fill('0.6');
+    await expectPreviewChanged(before);
+    await page.getByLabel('Edge').fill('0');
+    await page.getByLabel('Bands').fill('0');
+  }
+
+  await openMore(page, 'adjust');
+  const before = await settled();
+  await page.getByLabel('Vignette').fill('0.8');
+  await expectPreviewChanged(before);
 });

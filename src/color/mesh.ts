@@ -7,7 +7,7 @@ import type { Oklab, Rgb } from './types';
  * Mesh weight function (D20). For pixel p and point i with center c_i and
  * radius r_i:
  *
- *   w_i(p) = (1 + |p - c_i|² / r_i²)^(-k),   k = 1.5 · 12^sharpness
+ *   w_i(p) = (1 + |p - c_i|² / r_i²)^(-k),   k = 1.5 · 12^s · (1 + 4·s⁶)
  *   color(p) = Σ w_i · lab_i / Σ w_i                     (blended in Oklab)
  *
  * A normalized rational-quadratic (Student-t / Cauchy-family) kernel. It is
@@ -17,7 +17,7 @@ import type { Oklab, Rgb } from './types';
  * gives hard Voronoi-like seams and lets tiny points swallow the frame when
  * the others are far; softened Shepard IDW shows bullseyes around points at
  * low sharpness. k scales every log ratio, so sharpness goes from haze (k=1.5)
- * to distinct blobs (k=18), and r_i sets each point's reach relative to its
+ * through distinct blobs (k≈18 at 0.9) to near-hard edges (k=90), and r_i sets each point's reach relative to its
  * neighbors.
  *
  * Evaluated in the log domain: e_i = -k · log(1 + d² / r²), normalized by the
@@ -38,7 +38,10 @@ const sanitize = (x: number, lo: number, hi: number, fallback: number) =>
 
 /** Sharpness in [0, 1] → kernel exponent k. */
 export function meshExponent(sharpness: number): number {
-  return 1.5 * Math.pow(12, sanitize(sharpness, 0, 1, 0));
+  const s = sanitize(sharpness, 0, 1, 0);
+  // The extra factor only lifts the top of the range (×5 at 1, ×1.06 at 0.5),
+  // so the far end gives near-hard edges.
+  return 1.5 * Math.pow(12, s) * (1 + 4 * Math.pow(s, 6));
 }
 
 /**
@@ -71,7 +74,10 @@ export function prepareMesh(mesh: PointMesh): PreparedMesh {
   return { count, exponent: meshExponent(mesh.sharpness), geometry, colors };
 }
 
-function preparedWeights(m: PreparedMesh, x: number, y: number, out: number[]): number[] {
+/** Optional banding of each point's weight relative to the strongest (finish bands, D33). */
+type BandWeight = (relative: number) => number;
+
+function preparedWeights(m: PreparedMesh, x: number, y: number, out: number[], band?: BandWeight): number[] {
   let max = -Infinity;
   for (let i = 0; i < m.count; i++) {
     const dx = x - m.geometry[i * 3];
@@ -82,19 +88,20 @@ function preparedWeights(m: PreparedMesh, x: number, y: number, out: number[]): 
   }
   let sum = 0;
   for (let i = 0; i < m.count; i++) {
-    out[i] = Math.exp(out[i] - max);
+    // Relative weight: the strongest is exactly 1, and band(1) = 1, so sum >= 1.
+    out[i] = band ? band(Math.exp(out[i] - max)) : Math.exp(out[i] - max);
     sum += out[i];
   }
   for (let i = 0; i < m.count; i++) out[i] /= sum;
   return out;
 }
 
-/** Returns a fast evaluator of the blended Oklab color at composition (x, y). */
-export function createMeshEvaluator(mesh: PointMesh): (x: number, y: number) => Oklab {
+/** Returns a fast evaluator of the blended Oklab color at composition (x, y), optionally in bands. */
+export function createMeshEvaluator(mesh: PointMesh, band?: BandWeight): (x: number, y: number) => Oklab {
   const m = prepareMesh(mesh);
   const w: number[] = new Array(m.count);
   return (x, y) => {
-    preparedWeights(m, x, y, w);
+    preparedWeights(m, x, y, w, band);
     const lab: Oklab = [0, 0, 0];
     for (let i = 0; i < m.count; i++) {
       for (let k = 0; k < 3; k++) lab[k] += w[i] * m.colors[i * 3 + k];

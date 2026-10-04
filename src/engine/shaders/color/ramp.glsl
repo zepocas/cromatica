@@ -1,4 +1,4 @@
-#if BASE_LINEAR
+#if BASE_RAMP
 // Gradient ramp lookup: u_ramp is a RAMP_SIZE×1 RGBA16F texture of LINEAR
 // sRGB, baked on the CPU from the Oklch stops. Entry i holds t = i / (N - 1),
 // so t maps to texel centers: (t·(N - 1) + 0.5) / N.

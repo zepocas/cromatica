@@ -22,9 +22,16 @@ export interface ColorStop {
   blend: BlendMode;
 }
 
-export interface LinearGradient {
-  kind: 'linear';
-  /** Direction in degrees. 0 = left→right, 90 = bottom→top (counter-clockwise). */
+/** How a ramp gradient maps the frame to the ramp (src/engine/ramp-shape.ts). */
+export type RampShape = 'linear' | 'radial' | 'conic';
+
+/** Stops along a ramp, laid over the frame as a linear, radial or conic gradient. */
+export interface RampGradient {
+  kind: RampShape;
+  /**
+   * Degrees, counter-clockwise. Linear: the direction (0 = left→right, 90 =
+   * bottom→top). Conic: where the sweep starts. Radial: unused.
+   */
   angle: number;
   /** Sorted by position. At least 2 stops in the editor (the renderer accepts 1), at most MAX_STOPS. */
   stops: ColorStop[];
@@ -58,7 +65,7 @@ export interface PointMesh {
   sharpness: number;
 }
 
-export type BasePattern = LinearGradient | PointMesh;
+export type BasePattern = RampGradient | PointMesh;
 
 /**
  * Coordinate distortion applied before the base pattern (D23). Experimental
@@ -76,7 +83,10 @@ export type WarpShape =
   | 'oval' // elliptical swirl/pinch around the center
   | 'worley'
   | 'voronoi'
-  | 'curl'; // stateless curl-noise flow, integrated in-shader
+  | 'curl' // stateless curl-noise flow, integrated in-shader
+  | 'ridged' // ridged fBm: veined, folded-satin creases
+  | 'marble' // noise-turbulent sine bands
+  | 'bristle'; // dry-brush streaks along a stroke direction
 
 export const WARP_SHAPES: readonly WarpShape[] = [
   'none',
@@ -91,6 +101,9 @@ export const WARP_SHAPES: readonly WarpShape[] = [
   'worley',
   'voronoi',
   'curl',
+  'ridged',
+  'marble',
+  'bristle',
 ];
 
 export interface Warp {
@@ -112,6 +125,23 @@ export interface Grain {
   amount: number;
   /** [0, 1]; 0 = finest (≈1 px), 1 = coarse (≈3 px). */
   size: number;
+}
+
+/**
+ * Finishing effects (M4.5, D33), after the base pattern. Vignette is defined
+ * on the frame (composition coords, before transform and warp), so it stays
+ * put while the image turns. Bands steps ramp gradients along their ramp and
+ * meshes along each point's influence.
+ */
+export interface Finish {
+  /** Darkening toward the frame corners, [0, 1]; 0 = off. */
+  vignette: number;
+  /** The image in flat steps, [0, 1] (more = fewer, wider steps); 0 = off. */
+  bands: number;
+  /** Softness of the band edges, [0, 1]: 0 = crisp lines, 1 = soft terraces. */
+  bandEdge: number;
+  /** Print texture, [0, 1]: lithograph at the low end, xerox at the high end; 0 = off. */
+  print: number;
 }
 
 /**
@@ -138,12 +168,15 @@ export interface Design {
   grain: Grain;
   /** Missing (designs saved before transforms existed) = identity. */
   transform?: Transform;
+  /** Missing = no finish. */
+  finish?: Finish;
 }
 
 export const defaultWarp: Warp = { shape: 'domain', amount: 0.3, size: 0.35, seed: 1 };
 export const noWarp: Warp = { shape: 'none', amount: 0, size: 0.5, seed: 1 };
 export const defaultGrain: Grain = { amount: 0.35, size: 0 };
 export const noGrain: Grain = { amount: 0, size: 0 };
+export const noFinish: Finish = { vignette: 0, bands: 0, bandEdge: 0, print: 0 };
 export const identityTransform: Transform = { rotate: 0, zoom: 1, flipX: false, flipY: false };
 export const MIN_ZOOM = 0.5;
 export const MAX_ZOOM = 4;

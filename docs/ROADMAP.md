@@ -195,6 +195,45 @@ Each milestone uses the same structure:
   - No curated palette library: the harmony generator with its controls covers it. This also removes the curation and licensing questions.
 - **Settled:** palette from image takes up to 6 colors, leaning distinct (D25). Weighting colorful pixels so small accents survive is noted under step 6 for later.
 
+### M4.5 — More shapes, base patterns and finishes
+
+- **Goal:** widen the range of looks cheaply, using the slots the product already has: warp shapes, base patterns and finishing effects. No layers and no new editors.
+- **Background:** from the R&D review of other shape and noise algorithms. These items were approved because each one fits the existing model (base pattern, then warp, then grain, then transform) and adds little or no UI. Bigger ideas stay in M5 and the backlog.
+- **Scope, in build order:**
+  1. **New warp shapes.** They appear in the existing shape select and reuse Warp, Warp size and Seed, so there is no new UI. Each needs a GLSL chunk, its CPU mirror in `warp.ts` and a golden test, and goes through the same contact-sheet review and pruning as M3 (D22).
+     - **Ridged / silk:** veined, folded-satin flows (`1 - |n|` fBm).
+     - **Marble:** sine bands with noise turbulence.
+     - **Kaleidoscope / mirror fold:** polar N-fold symmetry. N comes from the seed. It works on both base patterns.
+     - **Flow / brushed** (promoted from optional, for the dry-brush look): anisotropic streaks along a flow direction, an extension of curl, with a bristle variant (elongated noise with broken edges). A smudge variant (a directional smear) is worth trying in the same chunk.
+     - _Optional, lowest priority:_ **Voronoi edges** (F2−F1, crackle and cell walls).
+  2. **Radial and conic base patterns.** They reuse the existing ramp and stops. The center defaults to the middle of the frame, and the pattern select gains two entries. The stop editor, blend modes and shuffle work as they do for linear.
+  3. **Finishes**, one slider each, next to Noise (grain):
+     - **Vignette.**
+     - **Bands / contours:** quantizes the ramp into steps for a topographic or posterized look.
+     - **Print texture** (lithograph and xerox grain, for a zine or print feel): thresholds the image against a fibrous, paper-tooth noise instead of blue noise, with an optional toner speckle and uneven darkening toward the edges. It is defined per output pixel like grain (D4 exception) and applied before dither. Decided while building: one slider, litho at the low end and xerox at the high end (D36).
+- **UI:** stays lean, following the terminal panel. New warp shapes are dropdown entries only. Radial and conic are entries in the pattern select. Vignette and Bands are one slider each, behind "+ more" unless they prove central.
+- **Done when:**
+  - Every new warp shape renders tile-identically on both base patterns and in the export, and the GPU matches the CPU reference within the M3 tolerance.
+  - Radial and conic work with shuffle, palette from image (stops follow the gradient direction) and the stop editor.
+  - A contact sheet of the new shapes has been reviewed and pruned.
+  - Vignette and Bands leave pure black and white exact and are unaffected by tiling.
+  - Print texture matches between the preview and the export, and a flat palette plus print texture plus a muted mood reads as a printed zine page.
+- **Not doing:**
+  - **Figurative marks and linework** (faces, scrawls, expressive drawing): there is no good procedural way to draw them.
+  - **Painterly filters** (Kuwahara, oil paint): they sample neighbors, which breaks the rule that a pixel depends only on its own coordinates (D4).
+  - **Reaction-diffusion and other iterative or stateful algorithms:** they break the stateless, tile-independent render rule (D4).
+  - **Fractals, Truchet and quasi-periodic tilings:** too graphic for gradient wallpapers.
+  - **User-facing layers:** the product stays one pattern, one warp and a few finishes.
+- **Progress:**
+  - ✅ Step 1, warp shapes: **silk** (`ridged`: long draped folds, ridged noise run slowly along a seeded direction and fast across it) and **marble** (turbulent sine bands across a seeded direction: veins that fold the colors into each other). **Kaleidoscope** was built and pruned after the contact-sheet review: mirroring a wedge of a soft gradient repeats one or two colors or smudges (D31). Flow/brushed is now planned (with bristle and smudge variants); Voronoi edges stays optional.
+  - ✅ Step 2, radial and conic: two more entries in the gradient select. Linear, radial and conic share one ramp (stops, blends, angle), so switching keeps the colors; the stop editor, shuffle and palette from image work on all three. Radial runs from the center to the frame corners and has no angle; conic sweeps from its angle to the opposite side and back, smooth all the way round, with a soft core so warps can't pinch the center (D32).
+  - ✅ Step 3, finishes: **bands** and **edge** in the main adjust controls, for every style (ramps step their position; the mesh steps each point's influence relative to the strongest, a subtler terrace), edge from crisp lines to soft terraces; **vignette** behind "+ more" (darkens toward the frame corners, up to 75%, fixed to the frame while the image turns). All tile-identical, matching the CPU reference, and at 0 bit-identical to off (D33).
+  - ✅ Flow / brushed: **brushed** (`bristle`): long bristle streaks along a seeded stroke direction (noise fine across the stroke and long along it, displacing along it), dragging colors across the frame like a dry brush. A first, gentler tuning was barely visible on soft gradients. **Smudge** was built and dropped: as a smooth drag it was invisible, and with stroke-shaped trails it turned into rectangular blocks, a digital look rather than a smear (D35). Brushed stays for now; the user may cut it later.
+  - ✅ Print texture: one "print" slider behind "+ more" in adjust, from lithograph (the paper tooth modulates the ink: clean paper, textured ink) to xerox (lightness thresholded to 3 tones against the tooth, hue kept), with toner specks and uneven darkening toward the frame edges. Per output pixel; preview and export match, and tiling is exact (D36).
+- **Open questions:**
+  - ~~Does conic need a seam control?~~ Smooth seam for now (D32); to be checked by eye.
+  - Should Vignette and Bands be in the main view or behind "+ more"? Behind "+ more" for now; promote either if it proves central, as warp size was.
+
 ### M5 — Pattern variety
 
 - **Goal:** widen the range of looks beyond gradients and meshes.
@@ -203,6 +242,8 @@ Each milestone uses the same structure:
   - Worley cells.
   - Aurora ribbons.
   - A **grid Bézier mesh** style (photogradient's core style; revisits D11).
+  - **Planes** (collage, after synthetic cubism and the King Krule sleeve art): N seeded, rotated polygons or Voronoi-style cells, each a flat palette color, with noise-roughened edges (torn paper), overlap order for the layered look and a subtle paper grain. Evaluated per pixel with no state, so it stays tile-independent. Controls: plane count and edge roughness. Pairs with the print texture finish from M4.5 and the muted and earthy moods.
+  - **Digital / glitch** (requested after M4.5): a deliberately digital, glitchy look. Candidates: block displacement (rectangles of the image shifted along one axis, the effect the dropped smudge warp hit by accident: hashed trail cells with hard starts), scanline offsets, RGB channel split and pixel-sort-like streaks. Each must stay per pixel and stateless (D4), so true pixel sorting and datamoshing are out; hashed blocks and offsets are in. Likely a warp shape plus a finish (channel split), with a seed for the block pattern.
 - **Done when:** each pattern has golden-image tests and at least 3 good reference designs.
 
 ### M6 — Saving
@@ -258,7 +299,8 @@ Each milestone uses the same structure:
 
 ## Later — Backlog (unordered)
 
-- Blend: sharper at the top of the slider. The mesh exponent is `k = 1.5 · 12^sharpness`, so 1.0 stops at k = 18, which still reads soft; try a higher maximum so the far end gives near-hard edges.
+- ~~Blend: sharper at the top of the slider.~~ Done in M4.5: the far end now reaches near-hard edges (D34).
+- Bands on the mesh, if they should ever be bolder (D33): step the lightness (strong topographic look, but no line between colors of similar lightness), step the blend between the two strongest points (closest to ramp bands), or draw contour lines at band boundaries (the only way to show bands between near-identical colors). Kept as is for now: the user likes the current look.
 - Bicubic patch mesh (Figma/SwiftUI-style bendable grid)
 - Display P3 output, as an internal flag with no UI
 - 16-bit PNG export
@@ -266,3 +308,6 @@ Each milestone uses the same structure:
 - WebGPU backend
 - User-saved palettes
 - Mobile authoring
+- **Stipple / halftone finish:** a density-to-dot stage (threshold against the blue-noise tile, as in the prototype) applied to any design with one amount slider. No blob generator and no layers.
+- **Liquid-jazz "ink blobs" look:** seeded smin-capsule blobs rendered as stipple in flat inks (reference: stippled vinyl cover). A prototype exists in `prototype-stipple.html` and `prototype/stipple/` (untracked, not part of the app). Open findings: union all blobs into one silhouette and use per-ink fields only for the color inside it; use a black base with white as an ink; fill more of the frame. Decide later whether it is a style of this product or a separate one.
+- Flow-field advection (LIC) and Gabor noise, if more warp variety is wanted after M4.5
