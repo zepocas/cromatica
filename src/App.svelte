@@ -5,12 +5,12 @@
   import { EditorState } from './ui/editor.svelte';
   import MeshOverlay from './ui/MeshOverlay.svelte';
   import Preview from './ui/Preview.svelte';
-  import { CUSTOM_PRESET_ID, DEVICE_PRESETS } from './ui/presets';
+  import { CUSTOM_PRESET_ID, DEFAULT_PRESET_ID, SIZE_PRESETS } from './ui/presets';
 
   // Class instance (not proxied); $state only so it can be bound down the panel tree.
   // Opens on a shuffled design; `?default` starts from the built-in one (tests).
   let editor = $state(new EditorState({ shuffle: !new URLSearchParams(location.search).has('default') }));
-  let presetId = $state('studio');
+  let presetId = $state(DEFAULT_PRESET_ID);
   let customWidth = $state(1920);
   let customHeight = $state(1080);
   let format = $state<ExportFormat>('png');
@@ -21,7 +21,7 @@
   let abort: AbortController | null = null;
 
   const output = $derived.by(() => {
-    const preset = DEVICE_PRESETS.find((p) => p.id === presetId);
+    const preset = SIZE_PRESETS.find((p) => p.id === presetId);
     return presetId === CUSTOM_PRESET_ID || !preset
       ? { width: customWidth, height: customHeight }
       : { width: preset.width, height: preset.height };

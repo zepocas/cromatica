@@ -2,7 +2,7 @@
   import { WARP_SHAPES, type WarpShape } from '../design/design';
   import { clamp } from '../math';
   import type { EditorState } from './editor.svelte';
-  import { CUSTOM_PRESET_ID, DEVICE_PRESETS } from './presets';
+  import { CUSTOM_PRESET_ID, PRESET_GROUPS, presetLabel, SIZE_PRESETS } from './presets';
   import Section from './Section.svelte';
 
   interface Props {
@@ -87,9 +87,13 @@
   </div>
   <label class="row">
     <span>size</span>
-    <select bind:value={presetId} aria-label="Device preset">
-      {#each DEVICE_PRESETS as p (p.id)}
-        <option value={p.id}>{p.label}</option>
+    <select bind:value={presetId} aria-label="Size preset">
+      {#each PRESET_GROUPS as group (group)}
+        <optgroup label={group}>
+          {#each SIZE_PRESETS.filter((p) => p.group === group) as p (p.id)}
+            <option value={p.id}>{presetLabel(p)}</option>
+          {/each}
+        </optgroup>
       {/each}
       <option value={CUSTOM_PRESET_ID}>custom</option>
     </select>
