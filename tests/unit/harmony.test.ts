@@ -4,6 +4,9 @@ import {
   generatePalette,
   HARMONY_RULES,
   KEY_BANDS,
+  lightnessBand,
+  PALETTE_MOODS,
+  type PaletteMood,
   MIN_L_SPAN,
   minLSpan,
   minPaletteDeltaE,
@@ -135,7 +138,7 @@ describe('generatePalette', () => {
       }
       const auto = generatePalette(createRng(seed), 4);
       expect(HARMONY_RULES).toContain(auto.rule);
-      expect(['natural', 'vivid']).toContain(auto.mood);
+      expect(PALETTE_MOODS).toContain(auto.mood);
     }
   });
 
@@ -191,7 +194,7 @@ describe('value key', () => {
               }
               const ls = pal.map((c) => c[0]);
               if (count >= 3 && rule !== 'monochrome') {
-                expect(Math.max(...ls) - Math.min(...ls)).toBeGreaterThanOrEqual(minLSpan(key));
+                expect(Math.max(...ls) - Math.min(...ls)).toBeGreaterThanOrEqual(minLSpan(KEY_BANDS[key]));
               }
             }
           }
@@ -224,5 +227,68 @@ describe('value key', () => {
     expect(seen.full / 300).toBeGreaterThan(0.55);
     expect(seen.high).toBeGreaterThan(15);
     expect(seen.low).toBeGreaterThan(15);
+  });
+});
+
+describe('moods', () => {
+  it('every mood keeps gamut, spacing and spread for up to 5 colors', () => {
+    for (const mood of PALETTE_MOODS) {
+      const band = lightnessBand(mood, 'full');
+      for (const rule of HARMONY_RULES) {
+        for (const count of [2, 3, 4, 5]) {
+          for (let seed = 0; seed < 8; seed++) {
+            const pal = paletteColors(createRng(seed * 7919 + count), count, { rule, mood });
+            for (let i = 0; i < count; i++) {
+              expect(inSrgbGamut(pal[i])).toBe(true);
+              for (let j = i + 1; j < count; j++) {
+                expect(oklchDistance(pal[i], pal[j])).toBeGreaterThanOrEqual(minPaletteDeltaE(count));
+              }
+            }
+            const ls = pal.map((c) => c[0]);
+            if (count >= 3 && rule !== 'monochrome') {
+              expect(Math.max(...ls) - Math.min(...ls)).toBeGreaterThanOrEqual(minLSpan(band));
+            }
+          }
+        }
+      }
+    }
+  });
+
+  it('muted is calmer than natural, and neon louder than vivid', () => {
+    const meanC = (mood: PaletteMood) => {
+      let sum = 0;
+      for (let seed = 0; seed < 60; seed++) for (const c of paletteColors(createRng(seed), 5, { mood })) sum += c[1];
+      return sum / 300;
+    };
+    expect(meanC('muted')).toBeLessThan(meanC('natural') * 0.7);
+    expect(meanC('neon')).toBeGreaterThan(meanC('vivid'));
+  });
+
+  it('earthy keeps colorful hues in the earth band', () => {
+    for (let seed = 0; seed < 60; seed++) {
+      for (const [, c, h] of paletteColors(createRng(seed), 5, { mood: 'earthy' })) {
+        // Near-grays have no hue to speak of; spacing nudges may turn a hue a little.
+        if (c > 0.03) {
+          expect(h).toBeGreaterThanOrEqual(5);
+          expect(h).toBeLessThanOrEqual(135);
+        }
+      }
+    }
+  });
+
+  it('neon anchors on a near-black ground, pastel stays light', () => {
+    let grounds = 0;
+    for (let seed = 0; seed < 60; seed++) {
+      const neon = paletteColors(createRng(seed), 5, { mood: 'neon' });
+      if (Math.min(...neon.map((c) => c[0])) < 0.3) grounds++;
+      for (const [l] of paletteColors(createRng(seed), 5, { mood: 'pastel' })) expect(l).toBeGreaterThan(0.6);
+    }
+    expect(grounds).toBeGreaterThan(40);
+  });
+
+  it('mood any picks natural, vivid, muted or earthy, never pastel or neon', () => {
+    const seen = new Set<string>();
+    for (let seed = 0; seed < 300; seed++) seen.add(generatePalette(createRng(seed), 4).mood);
+    expect([...seen].sort()).toEqual(['earthy', 'muted', 'natural', 'vivid']);
   });
 });

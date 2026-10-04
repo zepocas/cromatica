@@ -151,3 +151,15 @@ test('switching mood or key away and back restores the colors', async ({ page })
   await key.selectOption(startKey);
   await expect.poll(() => readHexes(page)).toEqual(original);
 });
+
+test('every mood can be picked and regenerates the palette in it', async ({ page }) => {
+  await openApp(page);
+  await openMore(page, 'colors');
+  const mood = page.getByLabel('Mood');
+  for (const m of ['muted', 'earthy', 'pastel', 'neon', 'vivid', 'natural']) {
+    const before = await readHexes(page);
+    await mood.selectOption(m);
+    await expect(mood).toHaveValue(m);
+    await expect.poll(() => readHexes(page)).not.toEqual(before);
+  }
+});

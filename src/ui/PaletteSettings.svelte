@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { PaletteMood, ValueKey } from '../color/harmony';
+  import { PALETTE_MOODS, type PaletteMood, type ValueKey } from '../color/harmony';
   import type { Temperature } from '../color/temperature';
   import Choice from './controls/Choice.svelte';
   import Toggle from './controls/Toggle.svelte';
@@ -34,8 +34,9 @@
     onchange={(e) => palette.setMood(e.currentTarget.value as PaletteMood)}
   >
     {#if !palette.info}<option value="" disabled>custom</option>{/if}
-    <option value="natural">natural</option>
-    <option value="vivid">vivid</option>
+    {#each PALETTE_MOODS as m (m)}
+      <option value={m}>{m}</option>
+    {/each}
   </select>
 </label>
 <label class="row">

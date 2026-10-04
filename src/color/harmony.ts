@@ -1,12 +1,12 @@
 // Palette generation (D22, D26): a hue rule around a base hue, a deliberate
 // lightness spread, and chroma relative to the most each (L, h) allows in sRGB.
 import { pickWeighted, type Rng } from '../design/random';
-import { normalizeDegrees } from '../math';
+import { normalizeDegrees, shortestTurn } from '../math';
 import { cuspLightness, maxChroma, oklchDistance } from './gamut';
 import type { Oklch } from './types';
 
 export type HarmonyRule = 'monochrome' | 'analogous' | 'complementary' | 'split-complementary' | 'triadic' | 'tetradic';
-export type PaletteMood = 'natural' | 'vivid';
+export type PaletteMood = 'natural' | 'vivid' | 'muted' | 'earthy' | 'pastel' | 'neon';
 /** Value key: where the palette sits on the lightness scale. */
 export type ValueKey = 'high' | 'full' | 'low';
 
@@ -51,8 +51,21 @@ const RULE_WEIGHTS: Record<HarmonyRule, number> = {
   tetradic: 0.13,
 };
 
-/** Probability that mood 'any' resolves to 'natural'. */
-const NATURAL_SHARE = 0.65;
+export const PALETTE_MOODS: readonly PaletteMood[] = ['natural', 'vivid', 'muted', 'earthy', 'pastel', 'neon'];
+
+/**
+ * How mood 'any' resolves: mostly natural, the photogradient-like look.
+ * Pastel and neon are explicit picks only: pastel repeats natural + high key,
+ * and neon is too loud to come up at random.
+ */
+const MOOD_WEIGHTS: Record<PaletteMood, number> = {
+  natural: 0.45,
+  vivid: 0.2,
+  muted: 0.2,
+  earthy: 0.15,
+  pastel: 0,
+  neon: 0,
+};
 
 /** How key 'any' resolves: mostly full, so shuffles keep their range. */
 const KEY_WEIGHTS: Record<ValueKey, number> = { high: 0.15, low: 0.15, full: 0.7 };
@@ -66,7 +79,7 @@ export const KEY_BANDS: Record<Exclude<ValueKey, 'full'>, [number, number]> = {
 /** Chroma ceiling in the high key: light colors near their cusp read as neon candy. */
 const HIGH_KEY_MAX_CHROMA = 0.13;
 
-/** Minimum lightness span for non-monochrome palettes of 3+ colors, on the full key. */
+/** Minimum lightness span for non-monochrome palettes of 3+ colors; narrow bands need less (minLSpan). */
 export const MIN_L_SPAN = 0.25;
 
 interface MoodTuning {
@@ -88,6 +101,12 @@ interface MoodTuning {
   anchor: number;
   /** Probability of giving lighter slots to hues whose gamut cusp is lighter (yellow light, blue dark). */
   cuspOrder: number;
+  /** Turn yellows below their cusp toward amber, so they don't read olive (vivid moods). */
+  avoidOlive?: boolean;
+  /** All hues are compressed into this band, keeping their order and relative spacing (earthy). */
+  hueBand?: [number, number];
+  /** The anchor is always a near-black ground, even though the band doesn't reach dark (neon). */
+  darkGround?: boolean;
 }
 
 export const MOOD_TUNING: Record<PaletteMood, MoodTuning> = {
@@ -108,6 +127,50 @@ export const MOOD_TUNING: Record<PaletteMood, MoodTuning> = {
     l: [0.3, 0.9],
     anchor: 0.25,
     cuspOrder: 0.8,
+    avoidOlive: true,
+  },
+  /** Desaturated, with a soft grey cast: faded film, Scandinavian rooms. */
+  muted: {
+    rel: [0.12, 0.26],
+    support: null,
+    accent: [0.3, [0.26, 0.38]],
+    maxChroma: 0.06,
+    l: [0.3, 0.9],
+    anchor: 0.5,
+    cuspOrder: 0.5,
+  },
+  /** Ochre, terracotta, olive and clay: hues pulled into the warm earth band. */
+  earthy: {
+    rel: [0.3, 0.55],
+    support: null,
+    accent: [0.3, [0.5, 0.7]],
+    maxChroma: 0.12,
+    l: [0.22, 0.88],
+    anchor: 0.5,
+    cuspOrder: 0.5,
+    hueBand: [25, 115],
+  },
+  /** Light and softly colored. */
+  pastel: {
+    rel: [0.4, 0.7],
+    support: null,
+    accent: [0.3, [0.65, 0.85]],
+    maxChroma: 0.12,
+    l: [0.68, 0.96],
+    anchor: 0.4,
+    cuspOrder: 0.7,
+  },
+  /** Bright colors at as much chroma as sRGB allows, glowing on a near-black ground. */
+  neon: {
+    rel: [0.88, 1],
+    support: [0.7, 0.9],
+    accent: [0, [0, 0]],
+    maxChroma: 0.4,
+    l: [0.55, 0.9],
+    anchor: 0.9,
+    cuspOrder: 0.9,
+    avoidOlive: true,
+    darkGround: true,
   },
 };
 
@@ -120,6 +183,9 @@ const CUSP_ORDER_SWAP = 0.3;
 /** Near-neutral anchors: a cream/off-white in place of the lightest color, or a deep near-black in place of the darkest. */
 const LIGHT_ANCHOR = { share: 0.6, l: [0.93, 0.975], h: [70, 100], c: [0.012, 0.035] } as const;
 const DARK_ANCHOR = { l: [0.17, 0.26], c: [0.01, 0.04] } as const;
+/** A cream anchor needs a band reaching this light; a near-black one a band reaching this dark. */
+const LIGHT_ANCHOR_MIN_BAND_TOP = 0.85;
+const DARK_ANCHOR_MAX_BAND_BOTTOM = 0.3;
 /** Yellow-greens at high chroma read as acid; their chroma is capped at this fraction of max. */
 const ACID_HUES: [number, number] = [100, 140];
 const ACID_REL = 0.55;
@@ -134,11 +200,14 @@ export function minPaletteDeltaE(count: number): number {
   return count <= 6 ? 0.08 : 0.08 * Math.sqrt(6 / count);
 }
 
-/** Lightness span a palette must reach: MIN_L_SPAN on full, scaled to the narrower high and low bands. */
-export function minLSpan(key: ValueKey): number {
-  if (key === 'full') return MIN_L_SPAN;
-  const [lo, hi] = KEY_BANDS[key];
-  return Math.min(MIN_L_SPAN, 0.5 * (hi - lo));
+/** Lightness band a palette is planned in: the key's, or on full the mood's. */
+export function lightnessBand(mood: PaletteMood, key: ValueKey): [number, number] {
+  return key === 'full' ? MOOD_TUNING[mood].l : KEY_BANDS[key];
+}
+
+/** Lightness span a palette must reach: MIN_L_SPAN, or half the band where the band is narrower. */
+export function minLSpan(band: readonly [number, number]): number {
+  return Math.min(MIN_L_SPAN, 0.5 * (band[1] - band[0]));
 }
 
 /** Everything a palette is built from, resolved once. */
@@ -170,7 +239,7 @@ interface Slot {
 export function generatePalette(rng: Rng, count: number, opts: PaletteOptions = {}): GeneratedPalette {
   const spec = resolveSpec(rng, Math.max(1, Math.floor(count)), opts);
   const info: PaletteInfo = { rule: spec.rule, mood: spec.mood, key: spec.key };
-  const needSpan = spec.rule !== 'monochrome' && spec.count >= 3 ? minLSpan(spec.key) : 0;
+  const needSpan = spec.rule !== 'monochrome' && spec.count >= 3 ? minLSpan(spec.band) : 0;
   let best: Oklch[] = [];
   let bestScore = -Infinity;
   for (let attempt = 0; attempt < PALETTE_ATTEMPTS; attempt++) {
@@ -192,7 +261,7 @@ function resolveSpec(rng: Rng, count: number, opts: PaletteOptions): PaletteSpec
   // sequence: the same seed with only the mood changed gives the same
   // palette in the new mood, and changing it back gives the original.
   const randomRule = pickWeighted(rng, RULE_WEIGHTS);
-  const randomMood: PaletteMood = rng.next() < NATURAL_SHARE ? 'natural' : 'vivid';
+  const randomMood = pickWeighted(rng, MOOD_WEIGHTS);
   const randomKey = pickWeighted(rng, KEY_WEIGHTS);
   const rule = opts.rule ?? randomRule;
   const mood = !opts.mood || opts.mood === 'any' ? randomMood : opts.mood;
@@ -207,7 +276,7 @@ function resolveSpec(rng: Rng, count: number, opts: PaletteOptions): PaletteSpec
     count,
     baseHue,
     tuning,
-    band: key === 'full' ? tuning.l : KEY_BANDS[key],
+    band: lightnessBand(mood, key),
     chromaCap: key === 'high' ? Math.min(tuning.maxChroma, HIGH_KEY_MAX_CHROMA) : tuning.maxChroma,
     minDeltaE: minPaletteDeltaE(count),
   };
@@ -268,7 +337,7 @@ function planSlots(rng: Rng, spec: PaletteSpec): Slot[] {
   if (count >= 2 && rng.next() < t.accent[0]) {
     rng.pick(slots).rel = rng.range(t.accent[1][0], t.accent[1][1]);
   }
-  if (count >= 3 && rng.next() < t.anchor) placeAnchor(rng, slots, spec.key);
+  if (count >= 3 && rng.next() < t.anchor) placeAnchor(rng, slots, spec.band, t.darkGround);
   return slots;
 }
 
@@ -281,10 +350,11 @@ function planHues(rng: Rng, spec: PaletteSpec): { hues: { h: number; lead: boole
   const randomBase = rng.range(0, 360);
   const base = spec.baseHue ?? randomBase;
   const offsets = ruleOffsets(rng, spec.rule);
-  const hues = Array.from({ length: spec.count }, (_, i) => ({
-    h: base + offsets[i % offsets.length] + rng.range(-HUE_JITTER, HUE_JITTER),
-    lead: i % offsets.length === 0,
-  }));
+  const band = spec.tuning.hueBand;
+  const hues = Array.from({ length: spec.count }, (_, i) => {
+    const h = base + offsets[i % offsets.length] + rng.range(-HUE_JITTER, HUE_JITTER);
+    return { h: band ? compressHue(h, band) : h, lead: i % offsets.length === 0 };
+  });
   return { hues: shuffleInPlace(rng, hues), offsetCount: offsets.length };
 }
 
@@ -326,10 +396,21 @@ function planLightness(rng: Rng, count: number, mono: boolean, band: [number, nu
   });
 }
 
-/** Turn the lightest or darkest slot into a near-neutral, whichever fits the key. */
-function placeAnchor(rng: Rng, slots: Slot[], key: ValueKey): void {
+/**
+ * Map the whole hue circle into `band`, continuously: the band's middle stays,
+ * and hues further from it land proportionally closer to the band's edges.
+ */
+function compressHue(h: number, [lo, hi]: [number, number]): number {
+  const mid = (lo + hi) / 2;
+  return mid + (shortestTurn(mid, h) * (hi - lo)) / 360;
+}
+
+/** Turn the lightest or darkest slot into a near-neutral, whichever the band reaches. */
+function placeAnchor(rng: Rng, slots: Slot[], band: readonly [number, number], darkGround = false): void {
   const light = rng.next() < LIGHT_ANCHOR.share;
-  if (key === 'high' || (key === 'full' && light)) {
+  const lightFits = !darkGround && band[1] >= LIGHT_ANCHOR_MIN_BAND_TOP;
+  const darkFits = darkGround || band[0] <= DARK_ANCHOR_MAX_BAND_BOTTOM;
+  if (lightFits && (light || !darkFits)) {
     const s = slots[slots.length - 1];
     s.anchor = 'light';
     s.l = rng.range(...LIGHT_ANCHOR.l);
@@ -347,7 +428,7 @@ function slotColor(rng: Rng, slot: Slot, spec: PaletteSpec): Oklch {
     const c = rng.range(lo, hi);
     return [slot.l, Math.min(c, maxChroma(slot.l, slot.h) * GAMUT_MARGIN), normalizeDegrees(slot.h)];
   }
-  const h = spec.mood === 'vivid' ? avoidOlive(slot.l, slot.h) : normalizeDegrees(slot.h);
+  const h = spec.tuning.avoidOlive ? avoidOlive(slot.l, slot.h) : normalizeDegrees(slot.h);
   const rel = h >= ACID_HUES[0] && h <= ACID_HUES[1] ? Math.min(slot.rel, ACID_REL) : slot.rel;
   const c = Math.min(rel * maxChroma(slot.l, h), spec.chromaCap) * GAMUT_MARGIN;
   return [slot.l, c, h];

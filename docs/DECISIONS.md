@@ -183,7 +183,15 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Fresh seeds** still come from ⟳ and shuffle. An imported palette has no seed; steering it builds a new palette.
 
 ## D29. Proportion (60-30-10) was tried and dropped
+
 - **What was built:** the calmest color (lowest `C + 0.1·L`) got 60% of the frame, the most vivid 10%, the rest 30%. Each point's share was measured by averaging its blend weight over a grid on the frame, and the radii fitted to the targets; the fit landed within a percentage point.
 - **Why dropped:** on soft meshes with 4–6 colors, resizing points reshapes the blend far less than the shares suggest, and switching between even and 60-30-10 barely showed. Moving points by hand and steering the palette with key and mood have more effect.
 - **Instead:** more moods (muted, earthy, pastel, neon), which change the look directly.
 
+## D30. Six moods, each a tuning of the same planner
+
+- **Moods:** natural and vivid, plus muted, earthy, pastel and neon. Each is a `MoodTuning`: relative chroma ranges, a chroma ceiling, the lightness band, anchor odds. Two new knobs: `hueBand` (earthy compresses the whole hue circle into 25–115°, continuously, so hue relationships survive as smaller gaps; a fixed base hue is compressed too) and `darkGround` (neon's anchor is always a near-black ground although its colors sit in a bright 0.55–0.9 band, so they glow).
+- **Mood is chroma and hue character; key is lightness.** On high or low key the key's band replaces the mood's, so e.g. pastel + low key gives soft darks.
+- **Generalized rules:** the lightness span a palette needs is half its band when the band is narrower than 0.5 (`minLSpan(band)`), and anchors follow the band (cream where it reaches 0.85, near-black where it reaches 0.3). Both reproduce the earlier natural, vivid, high and low behaviour exactly.
+- **"any":** natural 45%, vivid 20%, muted 20%, earthy 15%. Pastel mostly repeats natural + high key and neon is too loud to appear at random, so both are explicit picks.
+- **Limits:** every mood meets spacing and spread up to 5 colors; pastel's narrow, soft band misses spacing 12–16% of the time at 6–8 colors and keeps the closest attempt.
