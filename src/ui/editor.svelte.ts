@@ -1,3 +1,4 @@
+import { imageLayout } from '../color/extract';
 import { oklabToOklch } from '../color/oklab';
 import { evaluateMesh } from '../color/mesh';
 import {
@@ -31,6 +32,7 @@ import {
   transformMatrix,
 } from '../engine/transform';
 import { warpPoint } from '../engine/warp';
+import { paletteFromImage, type ImagePalette } from './image-palette';
 
 export type PatternKind = BasePattern['kind'];
 export type PaletteHarmony = { rule: HarmonyRule; mood: Exclude<PaletteMood, 'any'> };
@@ -76,6 +78,8 @@ export class EditorState {
   /** Index into linear.stops (user order, not position order). */
   selectedStop = $state(0);
   showHandles = $state(true);
+  /** Palette-from-image progress or failure, shown in the colors section; '' when idle. */
+  imageStatus = $state('');
   /** Frame aspect (width / height), for clamping drags to the frame. */
   aspect = $state(16 / 9);
 
@@ -265,6 +269,49 @@ export class EditorState {
   remix(): void {
     const out = shiftPalette(this.plainColors(), remixShift(createRng(randomSeed())));
     this.colorItems.forEach((x, k) => (x.color = out[k]));
+  }
+
+  /** Take the palette from an image file (picker or drop). */
+  async importImage(file: Blob): Promise<void> {
+    this.imageStatus = 'reading image…';
+    try {
+      this.applyImagePalette(await paletteFromImage(file));
+      this.imageStatus = '';
+    } catch {
+      this.imageStatus = "can't read that image";
+    }
+  }
+
+  /**
+   * Replace the active pattern's colors with an image's palette, one point or
+   * stop per color. Mesh points start where their color sits in the image,
+   * sized by its area; stops follow the image along the gradient's direction.
+   * No rule made the palette, so its harmony becomes custom.
+   */
+  applyImagePalette({ palette, aspect: imageAspect }: ImagePalette): void {
+    if (palette.length === 0) return;
+    const colors = palette.map((c) => oklabToOklch(c.color));
+    const geo = imageLayout(palette, { imageAspect, frameAspect: this.aspect });
+    if (this.kind === 'mesh') {
+      this.mesh.points = geo.map((g, i) => {
+        const [x, y] = this.toPattern(...this.clampPosition(g.x, g.y));
+        const radius = clamp(g.radius, MIN_RADIUS, MAX_RADIUS) / this.transform.zoom;
+        return { x, y, radius, color: colors[i] };
+      });
+      this.selectedPoint = 0;
+    } else {
+      const a = (this.linear.angle * Math.PI) / 180;
+      const along = geo.map((g) => {
+        const [x, y] = this.toPattern(g.x, g.y);
+        return x * Math.cos(a) + y * Math.sin(a);
+      });
+      const order = colors.map((_, i) => i).sort((i, j) => along[i] - along[j]);
+      if (order.length === 1) order.push(order[0]);
+      const blend = this.linear.stops[0]?.blend ?? 'oklab';
+      this.linear.stops = order.map((i, k) => ({ position: k / (order.length - 1), color: [...colors[i]], blend }));
+      this.selectedStop = 0;
+    }
+    this.harmonies[this.kind] = null;
   }
 
   /** Mesh: a point in the emptiest spot of the frame. Linear: a stop in the widest gap. */

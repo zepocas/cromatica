@@ -156,10 +156,11 @@ Each milestone uses the same structure:
   3. **Base hue (optional):** keep the rule but anchor it on a hue you choose, e.g. "triadic around this blue". Could come from the selected color row.
   4. **Remix:** keep how the current colors relate to each other (hue gaps, lightness order, relative chroma) but shift hue, lightness or saturation. Works on hand-edited palettes too, not just generated ones.
   5. ~~**Curated library:**~~ skipped (see Decided).
-  6. **Palette from image (next):**
+  6. **Palette from image:**
      - Fully local in the browser: the image is never uploaded.
-     - Picks dominant colors with k-means in Oklab.
-     - Optionally seeds mesh point positions from where those colors appear in the image.
+     - Picks up to 6 colors with k-means in Oklab, leaning distinct over dominant (D25).
+     - Places mesh points where those colors appear in the image.
+     - Revisit later: weight colorful pixels so small accents (e.g. a face in a busy photo) survive, and give dominant colors more points rather than only larger ones (ties in with step 9).
   7. **Value key** (decided after M4 step 4): high-key (all light, airy), low-key (all dark, for dark-mode desktops) or full range (today). Light and dark structure sets a wallpaper's mood more than hue does. It's a "key" select next to mood that moves the lightness band of the planner, and keep pins it.
   8. **Temperature, or hue shifting:** "warm light, cool shadow". Lighter colors drift toward yellow and darker ones toward blue or violet, as real light does and as illustrators build ramps. The result looks natural rather than synthetic, even when vivid. It's a toggle that applies when palettes are generated.
   9. **Proportion** (Itten's contrast of extension, the 60-30-10 rule): one dominant color, a secondary one and a small accent, expressed through area. On the mesh that means more and larger points for the dominant color and a single small point for the accent. It's an option on the mesh shuffle ("proportion: even or 60-30-10").
@@ -173,6 +174,7 @@ Each milestone uses the same structure:
 - **Progress:**
   - ✅ Steps 1–3: the harmony picker is in the main view; on auto it shows the rule it picked, e.g. "auto (tetradic)". Mood (auto, natural or vivid) and base hue (a hue-wheel slider, ⌖ to take the selected color's hue) are behind "+ more".
   - ✅ Step 4, Remix, became a link mode: with "edit [x] linked", changing one color moves the whole palette by the same shift. Hue rotates every color by the same angle, keeping the harmony. Lightness shifts logit(L), keeping the order without clipping. Intensity scales by the same ratio. Every part reverses exactly when dragged back, except where a color hits the sRGB edge. "Free" edits one color as before. "[ remix ]" applies a random linked shift. It works on hand-edited palettes too (`src/color/linked.ts`).
+  - ✅ Step 6, palette from image: ◩ on the colors rule opens a file picker, or an image can be dropped anywhere on the window. Up to 6 colors, one point or stop each. Mesh points start at the spot where their color is most concentrated in the image, and their size grows with its area, so a mostly dark photo stays mostly dark. Stops follow the image along the gradient's direction. The harmony shows "custom", and ⇄ reshuffles which point gets which color (`src/color/extract.ts`, D25).
   - ✅ Harmony picker reworked after use. The select always shows the current palette's rule (per pattern), and picking a rule gives a new palette in it right away. `[ ] keep` is what pins the rule and mood for ⟳ and shuffle; off means both are random. Before, picking a rule silently pinned it, so ⟳ never left it. Mood works the same way. Remix stays.
   - ✅ **Shuffle color order (⇄):** the same colors, reassigned at random to different points or stops.
   - ✅ Vivid tuning: with 4+ colors and a multi-hue rule, only the base hue's colors and one accent stay vivid; the other hues drop to a supporting chroma (0.3–0.55 of max). Yellow-greens (hue 100–140) are capped at 0.55 of max chroma, so they no longer read as acid. Natural palettes are unchanged.

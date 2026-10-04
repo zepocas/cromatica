@@ -127,3 +127,9 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Linear gradients:** the ramp is refitted to the rotated and flipped frame, so it always spans the frame like the angle does. Zoom is left out of the fit, so it still magnifies the ramp.
 - **Mesh points stay in pattern space:** handles, drags, nudges, "add" and the Size slider convert through the transform. Shuffle lays points out on screen and maps them into pattern space, so they land in view under any transform.
 - **Ranges:** rotation is in [0, 360). Zoom is in [0.5, 4] on a log slider.
+
+## D25. Palette from image: distinct over dominant, laid out like the image
+- **Clustering:** k-means++ in Oklab on the image scaled to 256 px on its long side, 16 clusters, best of 4 restarts by squared error, fixed seed. A single start made busy photos a lottery: which small areas got a cluster of their own changed with the seed. More clusters (24) made it worse.
+- **Pick:** up to 6 colors, greedy. The largest cluster comes first; each next pick maximizes `area^0.25 · distance^0.75` to the colors already picked, skipping anything within ΔE_OK 0.08. Pure dominant gave three shades of the background on most photos. Pure distinct found the accents but flipped between runs in the browser. The near-duplicate floor means a monochrome photo gives fewer colors instead of muddy ones.
+- **Layout:** each mesh point goes to its color's peak (densest spot on a 12×12 grid), not its centroid, which drifts to the middle for spread-out colors. The image covers the frame, cropped and centered. The radius scales with the square root of the area share, so the dominant color fills the frame the way it fills the photo.
+- **Count:** the image decides, up to 6, and it replaces the current number of points or stops. Harmony becomes custom, since no rule made the palette.

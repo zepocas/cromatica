@@ -71,7 +71,19 @@
   function cancelExport() {
     abort?.abort();
   }
+
+  const hasFiles = (e: DragEvent) => e.dataTransfer?.types.includes('Files') ?? false;
+
+  /** An image dropped anywhere on the window becomes the palette. */
+  function onDrop(e: DragEvent) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    const file = [...(e.dataTransfer?.files ?? [])].find((f) => f.type.startsWith('image/'));
+    if (file) editor.importImage(file);
+  }
 </script>
+
+<svelte:window ondragover={(e) => hasFiles(e) && e.preventDefault()} ondrop={onDrop} />
 
 <Preview design={renderDesign} {aspect} paused={exporting} docked={!collapsed}>
   {#snippet overlay()}

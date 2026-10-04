@@ -59,6 +59,15 @@
     editor.baseHue = Math.round(colors[selected][2]);
   }
 
+  let fileInput: HTMLInputElement;
+
+  function onImagePicked(e: Event & { currentTarget: HTMLInputElement }) {
+    const file = e.currentTarget.files?.[0];
+    if (file) editor.importImage(file);
+    // Clear, so picking the same file again still fires change.
+    e.currentTarget.value = '';
+  }
+
   function onHexChange(e: Event & { currentTarget: HTMLInputElement }, i: number) {
     const input = e.currentTarget;
     try {
@@ -81,6 +90,13 @@
       title="Same colors, swapped between {isMesh ? 'points' : 'stops'}"
       onclick={() => editor.shuffleColorOrder()}>⇄</button
     >
+    <button
+      class="icon"
+      aria-label="Colors from image"
+      title="Take the colors from an image (or drop one on the window); it never leaves your browser"
+      onclick={() => fileInput.click()}>◩</button
+    >
+    <input bind:this={fileInput} type="file" accept="image/*" hidden aria-label="Image file" onchange={onImagePicked} />
     <button
       class="icon"
       aria-label="Add color"
@@ -127,6 +143,10 @@
       onclick={() => editor.remix()}>[ remix ]</button
     >
   </div>
+
+  {#if editor.imageStatus}
+    <p class="status" role="status">{editor.imageStatus}</p>
+  {/if}
 
   {#if !isMesh}
     <StopStrip bind:editor />
@@ -324,6 +344,10 @@
   }
   .spacer {
     flex: 1;
+  }
+  .status {
+    margin: 0;
+    color: var(--dim);
   }
   .row button[aria-pressed='true'] {
     color: var(--ink);

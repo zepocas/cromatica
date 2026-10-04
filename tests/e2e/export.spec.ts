@@ -1,5 +1,6 @@
 import { hexToOklch } from '../../src/color/oklab';
 import { expect, test, type Page } from '@playwright/test';
+import { encode } from 'fast-png';
 import { WARP_SHAPES } from '../../src/design/design';
 import type { Harness } from './harness/export';
 
@@ -704,4 +705,44 @@ test('screenshots: six shuffles in a row', async ({ page }) => {
     await settled();
     await page.screenshot({ path: `/tmp/m3-shuffle-${i}.png` });
   }
+});
+
+/** 70% red on the left, 30% blue on the right, as a PNG. */
+function twoTonePng(): Buffer {
+  const w = 40;
+  const h = 20;
+  const data = new Uint8Array(w * h * 3);
+  for (let i = 0; i < w * h; i++) data.set(i % w < 28 ? [0xdc, 0x28, 0x28] : [0x1e, 0x3c, 0xc8], i * 3);
+  return Buffer.from(encode({ width: w, height: h, data, channels: 3 }));
+}
+
+test('palette from image: picker and drop set the colors, laid out like the image', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(err.message));
+  await page.goto('/?default');
+  const hexes = page.locator('li input.hex');
+  const read = () => hexes.evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));
+  const png = twoTonePng();
+
+  // Mesh: one point per color, largest area first, at its place in the image.
+  await page.getByLabel('Image file').setInputFiles({ name: 'two-tone.png', mimeType: 'image/png', buffer: png });
+  await expect(hexes).toHaveCount(2);
+  expect(await read()).toEqual(['#DC2828', '#1E3CC8']);
+  await expect(page.getByLabel('Harmony', { exact: true })).toHaveValue('');
+  const handles = page.getByLabel(/^Point \d$/);
+  await expect(handles).toHaveCount(2);
+  const [red, blue] = await Promise.all([handles.nth(0).boundingBox(), handles.nth(1).boundingBox()]);
+  expect(red!.x).toBeLessThan(blue!.x);
+
+  // Linear, by drop: stops follow the image left to right (default angle 30°).
+  await page.getByLabel('Gradient', { exact: true }).selectOption('linear');
+  const dt = await page.evaluateHandle((bytes) => {
+    const d = new DataTransfer();
+    d.items.add(new File([new Uint8Array(bytes)], 'two-tone.png', { type: 'image/png' }));
+    return d;
+  }, [...png]);
+  await page.dispatchEvent('body', 'drop', { dataTransfer: dt });
+  await expect(hexes).toHaveCount(2);
+  expect(await read()).toEqual(['#DC2828', '#1E3CC8']);
+  expect(errors).toEqual([]);
 });
