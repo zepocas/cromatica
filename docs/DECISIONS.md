@@ -181,3 +181,11 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Bug:** picking a mood, key or rule built a palette from a fresh seed, so switching back never returned the colors you had.
 - **Fix:** the editor keeps each generated palette's seed, and mood, key and rule changes regenerate from it. The generator draws its random rule, mood and key on every call, used or not (as it already did for the base hue), so fixing one option doesn't shift the rest of the sequence. Switching away and back gives the original colors exactly, and "vivid" gives the same palette in vivid rather than an unrelated one.
 - **Fresh seeds** still come from ⟳ and shuffle. An imported palette has no seed; steering it builds a new palette.
+
+## D29. Proportion fits mesh radii to measured area shares
+
+- **Roles:** the calmest color dominates (60%), the most vivid is the accent (10%), the others share 30%. Calm means low chroma, with a small lightness term (`C + 0.1·L`) since a light color of the same chroma reads louder. Two colors split 70/30.
+- **Area, measured:** a point's share is its blend weight averaged over a grid over the visible frame (`meshAreaShares`), so partial blends count as partly that color. Radii are updated multiplicatively, by the square root of target over share, 16 times; that lands every share within a percentage point of its target at soft and sharp blends alike. Positions and colors are not touched, so the layout keeps its character.
+- **Not more points:** the roadmap sketched more points for the dominant color. Fitted radii reach the shares with the same points, without repeating colors or changing the count.
+- **Overrides locked layout sizes:** with proportion on, a shuffle with the layout locked still refits radii, since a new palette changes which point is calm.
+- **Linear gradients** are left alone for now.

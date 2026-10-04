@@ -6,6 +6,8 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [svelte()],
   worker: { format: 'es' },
+  // Unit tests run Svelte's browser build, so rune-based classes behave as in the app.
+  resolve: process.env.VITEST ? { conditions: ['browser'] } : undefined,
   test: {
     include: ['tests/unit/**/*.test.ts'],
     environment: 'node',
