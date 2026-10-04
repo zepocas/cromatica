@@ -60,6 +60,7 @@ export function createPreview(
   let dirty = true;
   let rafId = 0;
   let idleTimer: ReturnType<typeof setTimeout> | undefined;
+  let sharpenPending = false;
   let disposed = false;
 
   function applyLayout(): void {
@@ -96,10 +97,20 @@ export function createPreview(
       fullFrameMs = performance.now() - t0;
     }
     dirty = false;
+    setSettled(scale === 1 && !sharpenPending);
+  }
+
+  /**
+   * data-settled="true" once the full-resolution frame for the current design
+   * is on screen with nothing pending; tests wait on it instead of sleeping.
+   */
+  function setSettled(settled: boolean): void {
+    canvas.dataset.settled = String(settled);
   }
 
   function schedule(): void {
     dirty = true;
+    setSettled(false);
     if (rafId || paused || disposed) return;
     rafId = requestAnimationFrame(() => {
       rafId = 0;
@@ -112,7 +123,9 @@ export function createPreview(
     if (!opts.fixedSize && fullFrameMs > FRAME_BUDGET_MS) {
       scale = INTERACTIVE_SCALE;
       clearTimeout(idleTimer);
+      sharpenPending = true;
       idleTimer = setTimeout(() => {
+        sharpenPending = false;
         scale = 1;
         schedule();
       }, IDLE_MS);

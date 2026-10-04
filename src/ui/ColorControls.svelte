@@ -20,6 +20,7 @@
   <span>lightness</span>
   <input
     type="range"
+    aria-label="Lightness"
     min="0"
     max="1"
     step="0.001"
@@ -31,6 +32,7 @@
   <span>intensity</span>
   <input
     type="range"
+    aria-label="Intensity"
     min="0"
     max="0.37"
     step="0.001"
@@ -43,6 +45,7 @@
   <input
     class="hue"
     type="range"
+    aria-label="Hue"
     min="0"
     max="360"
     step="0.5"

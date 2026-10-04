@@ -1,4 +1,4 @@
-// Test harness: exposes window.harness for tests/e2e/export.spec.ts. All
+// Test harness: exposes window.harness for the export tests (tests/e2e/export.spec.ts). All
 // pixel comparisons happen in-page; only small summaries go back to Node.
 import { decode } from 'fast-png';
 import { defaultDesign, type Design, type WarpShape } from '../../../src/design/design';
