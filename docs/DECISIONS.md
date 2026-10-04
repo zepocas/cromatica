@@ -210,3 +210,10 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Conic core:** within 0.15 of the center, conic eases toward mid-ramp. Every color meets at the center, and a warp otherwise shreds it into a pinched knot.
 - **Palette from image** orders stops by each color's t in the active shape, so they follow the gradient however it runs.
 - **Center** is the frame's center; zoom magnifies around it. A movable center would need a pan in the transform (not built).
+
+## D33. Finishes: vignette on the frame, bands on the ramp
+
+- **Order:** base pattern (with bands) → vignette in linear light → sRGB transfer → grain → dither. `Design.finish = { vignette, bands }`, missing = none; shuffles keep it like grain.
+- **Vignette:** multiplies linear RGB by `1 − 0.75·amount·smoothstep(0.35, 1, |p| / half diagonal)` in composition coords, before transform and warp, so it frames the image and stays put while the image turns, zooms or warps. Black stays black. "Leaves pure white exact" from the M4.5 done list can't hold for a vignette, which darkens corners by design; what holds is that 0 is bit-identical to off.
+- **Bands:** `floor(t·n)/(n−1)` on the ramp parameter, n from 24 (just above 0) to 3 (at 1): n flat steps with the first and last stop colors exact. Ramp gradients only; the mesh has no ramp to step, so the slider hides. Steps are hard edges (no derivative-based antialiasing, which could differ between tiles); grain and dither soften them.
+- **Both** are uniforms, not shader variants, so dragging them never recompiles.

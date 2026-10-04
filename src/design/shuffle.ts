@@ -107,7 +107,7 @@ const copyColor = (c: Oklch): Oklch => [c[0], c[1], c[2]];
 
 /**
  * Pure: a new design with fresh colors and/or layout, deterministic for
- * (design, opts, aspect). Keeps the pattern kind and grain. Mesh layouts keep
+ * (design, opts, aspect). Keeps the pattern kind, grain and finish. Mesh layouts keep
  * points mostly inside the frame of the given aspect and avoid clumping; when
  * both colors and layout are shuffled, the point count may change by ±1.
  */
@@ -127,6 +127,7 @@ export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 
   const warp = opts.layout ? shuffleWarp(ctx.layoutRng) : { ...design.warp };
   const out: Design = { engineVersion: design.engineVersion, base, warp, grain: { ...design.grain } };
   if (design.transform) out.transform = { ...design.transform };
+  if (design.finish) out.finish = { ...design.finish };
   return { design: out, palette: shuffled.palette };
 }
 

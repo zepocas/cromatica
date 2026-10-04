@@ -9,6 +9,7 @@ import ramp from './color/ramp.glsl?raw';
 import srgb from './color/srgb.glsl?raw';
 import dither from './color/dither.glsl?raw';
 import grain from './color/grain.glsl?raw';
+import finish from './color/finish.glsl?raw';
 import warpNoise from './warp/noise.glsl?raw';
 import warpDomain from './warp/domain.glsl?raw';
 import warpFbm from './warp/fbm.glsl?raw';
@@ -48,7 +49,20 @@ const WARP_CHUNKS = [
   warpMarble,
   warp,
 ];
-const FRAGMENT_CHUNKS = [coords, hash, ...WARP_CHUNKS, rampShape, mesh, ramp, oklab, srgb, grain, dither, fragMain];
+const FRAGMENT_CHUNKS = [
+  coords,
+  hash,
+  ...WARP_CHUNKS,
+  rampShape,
+  mesh,
+  ramp,
+  oklab,
+  srgb,
+  finish,
+  grain,
+  dither,
+  fragMain,
+];
 
 /** Stable cache key for a variant. */
 export function variantKey(defines: Defines): string {

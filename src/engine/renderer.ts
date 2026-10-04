@@ -12,6 +12,7 @@ import { mat2Uniform, transformMatrix } from './transform';
 import { CONIC_CORE, prepareRampShape } from './ramp-shape';
 import { GAMUT_CLIP_STEPS, prepareMesh } from '../color/mesh';
 import { BLUE_NOISE_SIZE, DITHER_CHANNEL_OFFSETS, blueNoiseRanks } from './blue-noise';
+import { prepareFinish, VIGNETTE_INNER } from './finish';
 import { GRAIN_CHROMA, prepareGrain } from './grain';
 import { buildShaderSources, variantKey, type Defines } from './shaders';
 import { prepareWarp, WARP_SHADER_CONSTANTS, type PreparedWarp } from './warp';
@@ -118,8 +119,10 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
       const isMesh = base.kind === 'mesh';
       const warp = prepareWarp(design.warp);
       const grain = prepareGrain(design.grain);
+      const finish = prepareFinish(design.finish, output);
       const info = getProgram({
         BLUE_NOISE_SIZE,
+        VIGNETTE_INNER: VIGNETTE_INNER.toFixed(4),
         BASE_RAMP: !isMesh,
         BASE_MESH: isMesh,
         ...(isMesh
@@ -164,6 +167,9 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
         u_grainAmp: grain.sigma,
         u_grainScale: 1 / grain.sizePx,
         u_grainChroma: GRAIN_CHROMA,
+        u_vignette: finish.vignette,
+        u_vignetteScale: finish.vignetteScale,
+        u_bandSteps: isMesh ? 0 : finish.bandSteps,
         u_blueNoise: blueNoiseTexture,
         u_ditherOffset: ditherOffsets,
         u_dither: opts.dither === false ? 0 : 1,

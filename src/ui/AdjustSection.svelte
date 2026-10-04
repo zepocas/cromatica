@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { prepareFinish } from '../engine/finish';
   import SliderRow from './controls/SliderRow.svelte';
   import type { EditorState } from './editor.svelte';
   import Section from './Section.svelte';
@@ -58,6 +59,27 @@
   {/if}
 
   {#snippet more()}
+    <SliderRow
+      label="vignette"
+      title="Darken toward the corners"
+      min={0}
+      max={1}
+      step={0.01}
+      bind:value={editor.finish.vignette}
+      display={fixed2}
+    />
+    {#if editor.kind !== 'mesh'}
+      <SliderRow
+        label="bands"
+        title="The gradient in flat steps, like a topographic map"
+        min={0}
+        max={1}
+        step={0.01}
+        bind:value={editor.finish.bands}
+        display={(v) =>
+          v === 0 ? 'off' : String(prepareFinish({ vignette: 0, bands: v }, { width: 1, height: 1 }).bandSteps)}
+      />
+    {/if}
     <!-- Log scale: the slider moves by doublings. -->
     <SliderRow
       label="zoom"

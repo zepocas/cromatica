@@ -1,7 +1,7 @@
 // Renderer: linear gradients — tiling, CPU reference, dither, aspect.
 import { expect, test } from '@playwright/test';
 import type { BlendMode, Design, RampGradient } from '../../src/design/design';
-import { linear, threeStops, midTones, type StopSpec } from './support/designs';
+import { linear, meshDefault, threeStops, midTones, type StopSpec } from './support/designs';
 import { engineHarness, openEngineHarness, logBench } from './support/harness';
 
 test.beforeEach(async ({ page }) => {
@@ -149,4 +149,33 @@ test.describe('radial and conic gradients', () => {
       expect(r.identical).toBe(true);
     });
   }
+});
+
+test.describe('finish: vignette and bands', () => {
+  const withFinish = (d: Design, vignette: number, bands: number): Design => ({ ...d, finish: { vignette, bands } });
+
+  test('vignette matches the CPU reference on linear and mesh', async ({ page }) => {
+    for (const d of [threeStops(30), meshDefault]) {
+      const r = await engineHarness(page, 'compareReference', withFinish(d, 0.8, 0), 640, 360);
+      expect(r.maxDiff, JSON.stringify(r.worst)).toBeLessThanOrEqual(1);
+    }
+  });
+
+  test('bands match the CPU reference', async ({ page }) => {
+    const r = await engineHarness(page, 'compareReference', withFinish(threeStops(30), 0, 0.6), 640, 360);
+    expect(r.maxDiff, JSON.stringify(r.worst)).toBeLessThanOrEqual(1);
+  });
+
+  test('single pass equals 256 px tiles with both on', async ({ page }) => {
+    for (const d of [threeStops(75), meshDefault]) {
+      const r = await engineHarness(page, 'compareTiled', withFinish(d, 0.7, 0.5), 1531, 917, 256, true);
+      expect(r.identical).toBe(true);
+    }
+  });
+
+  test('zero is bit-identical to no finish', async ({ page }) => {
+    const d = threeStops(30);
+    const r = await engineHarness(page, 'compareDesigns', d, withFinish(d, 0, 0), 480, 270);
+    expect(r.identical).toBe(true);
+  });
 });

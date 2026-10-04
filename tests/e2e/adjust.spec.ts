@@ -113,3 +113,20 @@ test('transform: rotate, flip, zoom and reset move the image and the handles tog
   expect(x).toBeCloseTo(x0, 2);
   expect(y).toBeCloseTo(y0, 2);
 });
+
+test('vignette darkens the image; bands steps ramp gradients only', async ({ page }) => {
+  await openApp(page);
+  const { settled, expectPreviewChanged } = previewProbe(page);
+  await openMore(page, 'adjust');
+  await expect(page.getByLabel('Bands')).toHaveCount(0);
+
+  let before = await settled();
+  await page.getByLabel('Vignette').fill('0.8');
+  await expectPreviewChanged(before);
+
+  await page.getByLabel('Gradient', { exact: true }).selectOption('linear');
+  before = await settled();
+  await page.getByLabel('Bands').fill('0.5');
+  await expectPreviewChanged(before);
+  await expect(page.locator('output', { hasText: /^\d+$/ })).toBeVisible();
+});

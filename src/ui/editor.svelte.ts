@@ -11,10 +11,12 @@ import {
   identityTransform,
   MAX_MESH_POINTS,
   MAX_STOPS,
+  noFinish,
   WARP_SHAPES,
   type BasePattern,
   type ColorStop,
   type Design,
+  type Finish,
   type Grain,
   type RampGradient,
   type PointMesh,
@@ -57,6 +59,7 @@ export class EditorState {
   mesh = $state<PointMesh>(structuredClone(defaultMesh));
   warp = $state<Warp>({ ...defaultWarp });
   grain = $state<Grain>({ ...defaultGrain });
+  finish = $state<Finish>({ ...noFinish });
   transform = $state<Transform>({ ...identityTransform });
   /** Shuffle locks: a locked part is kept as is. */
   colorsLocked = $state(false);
@@ -96,6 +99,7 @@ export class EditorState {
       base,
       warp: { ...this.warp },
       grain: { ...this.grain },
+      finish: { ...this.finish },
       transform: { ...this.transform },
     };
   }
