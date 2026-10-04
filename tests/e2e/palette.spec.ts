@@ -130,3 +130,24 @@ test('"+ add" sits after the last color and adds one', async ({ page }) => {
   await add.click();
   await expect(rows).toHaveCount(count + 1);
 });
+
+test('switching mood or key away and back restores the colors', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'Shuffle colors' }).click();
+  await openMore(page, 'colors');
+  const mood = page.getByLabel('Mood');
+  const key = page.getByLabel('Value key');
+  const original = await readHexes(page);
+  const startMood = await mood.inputValue();
+  const startKey = await key.inputValue();
+
+  await mood.selectOption(startMood === 'vivid' ? 'natural' : 'vivid');
+  await expect.poll(() => readHexes(page)).not.toEqual(original);
+  await mood.selectOption(startMood);
+  await expect.poll(() => readHexes(page)).toEqual(original);
+
+  await key.selectOption(startKey === 'low' ? 'high' : 'low');
+  await expect.poll(() => readHexes(page)).not.toEqual(original);
+  await key.selectOption(startKey);
+  await expect.poll(() => readHexes(page)).toEqual(original);
+});

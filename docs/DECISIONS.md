@@ -164,8 +164,8 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Bands:** high is L 0.70–0.96, low is L 0.12–0.55, and full keeps the mood's band. Low reaches into the mid-tones so a few colors can glow; with a lower ceiling, natural low-key palettes read as mud.
 - **High key caps chroma at 0.13.** Light colors near their gamut cusp turned vivid palettes into neon candy; capped, they read as bright pastels.
 - **Anchors follow the key:** high only gets the cream anchor, low only the near-black one.
-- **Spread:** the minimum lightness span scales to the band (half its width, at most `MIN_L_SPAN`). Up to 5 colors always meet the spacing rules; at 6 or more the narrow bands miss about 5% of the time and take the closest attempt.
-- **Like mood, not like base hue:** the select shows the current palette's key and "keep" pins it. Unpinned, a shuffle picks full 70% of the time and high or low 15% each, for variety. Without a key the generator stays on full and draws nothing extra, so existing seeds give the same palettes.
+- **Spread:** the minimum lightness span scales to the band (half its width, at most `MIN_L_SPAN`). Up to 5 colors meet the spacing rules, except a rare 5-color monochrome high-key palette (3 in 19,200 sampled) that lands up to 5% short; at 6 or more the narrow bands miss about 5% of the time. Either way the closest attempt is kept.
+- **Like mood, not like base hue:** the select shows the current palette's key and "keep" pins it. Unpinned, a shuffle picks full 70% of the time and high or low 15% each, for variety. Without a key the generator stays on full.
 
 ## D27. Temperature and base hue are adjustments over the original colors
 
@@ -175,3 +175,9 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Adjustment layer:** per pattern, the editor keeps the original colors plus a hue turn and a temperature, and renders `temperature(turn(original, hue))` onto the points or stops. Changing either re-renders from the originals, so nothing accumulates and going back is exact. The panel shows "~ hue … · temp …" with a reset, and marks each changed color.
 - **Direct edits bake it in:** once the colors differ from the last render (hex, picker, linked edit, remix, ⇄, add or remove), the adjusted colors become the new originals and the controls read zero again. An edit is never silently changed by an adjustment afterwards. Detection compares colors rather than hooking every edit path.
 - **Shuffles and imports:** a new palette is a new original. Temperature carries over to it; base hue already built it, so its turn starts at zero. An image import starts with no adjustment, true to the photo.
+
+## D28. Steering a palette regenerates it from the same seed
+
+- **Bug:** picking a mood, key or rule built a palette from a fresh seed, so switching back never returned the colors you had.
+- **Fix:** the editor keeps each generated palette's seed, and mood, key and rule changes regenerate from it. The generator draws its random rule, mood and key on every call, used or not (as it already did for the base hue), so fixing one option doesn't shift the rest of the sequence. Switching away and back gives the original colors exactly, and "vivid" gives the same palette in vivid rather than an unrelated one.
+- **Fresh seeds** still come from ⟳ and shuffle. An imported palette has no seed; steering it builds a new palette.

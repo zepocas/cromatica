@@ -72,7 +72,7 @@ export class EditorState {
   readonly palette = new PaletteEditor({
     kind: () => this.kind,
     colorItems: () => this.colorItems,
-    regenerate: (options) => this.applyShuffle(true, false, options),
+    regenerate: (options, seed) => this.applyShuffle(true, false, options, seed),
   });
 
   /** Opens on a full shuffle of the mesh (palette, layout and warp). */
@@ -109,9 +109,14 @@ export class EditorState {
     this.applyShuffle(true, false);
   }
 
-  private applyShuffle(colors: boolean, layout: boolean, palette = this.palette.shuffleOptions()): void {
+  private applyShuffle(
+    colors: boolean,
+    layout: boolean,
+    palette = this.palette.shuffleOptions(),
+    seed = randomSeed(),
+  ): void {
     const temperature = this.palette.temperature;
-    const next = shuffleDesign(this.design, { colors, layout, palette, seed: randomSeed() }, this.aspect);
+    const next = shuffleDesign(this.design, { colors, layout, palette, seed }, this.aspect);
     const base = next.design.base;
     if (base.kind === 'mesh') {
       this.mesh = base;
@@ -121,7 +126,7 @@ export class EditorState {
     }
     this.warp = next.design.warp;
     // Built around the base hue already; temperature carries over.
-    if (next.palette) this.palette.adopt(next.palette, temperature);
+    if (next.palette) this.palette.adopt({ info: next.palette, seed }, temperature);
   }
 
   // ---- Warp -----------------------------------------------------------------

@@ -178,7 +178,10 @@ describe('value key', () => {
           for (const count of [2, 3, 4, 5]) {
             for (let seed = 0; seed < 8; seed++) {
               const pal = paletteColors(createRng(seed * 104729 + count), count, { rule, mood, key });
-              const min = minPaletteDeltaE(count);
+              // Five shades of one hue in the narrow, chroma-capped high key barely fit:
+              // a rare palette lands up to 5% short and the closest attempt is kept (D26).
+              const crowded = key === 'high' && rule === 'monochrome' && count === 5;
+              const min = minPaletteDeltaE(count) * (crowded ? 0.95 : 1);
               for (let i = 0; i < count; i++) {
                 expect(inSrgbGamut(pal[i])).toBe(true);
                 // Spacing nudges may step just outside the band.

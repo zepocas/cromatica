@@ -188,13 +188,17 @@ export function generatePalette(rng: Rng, count: number, opts: PaletteOptions = 
 }
 
 function resolveSpec(rng: Rng, count: number, opts: PaletteOptions): PaletteSpec {
-  const rule = opts.rule ?? pickWeighted(rng, RULE_WEIGHTS);
-  const wantMood = opts.mood ?? 'any';
-  const mood = wantMood === 'any' ? (rng.next() < NATURAL_SHARE ? 'natural' : 'vivid') : wantMood;
+  // Drawn either way, so fixing an option doesn't shift the rest of the
+  // sequence: the same seed with only the mood changed gives the same
+  // palette in the new mood, and changing it back gives the original.
+  const randomRule = pickWeighted(rng, RULE_WEIGHTS);
+  const randomMood: PaletteMood = rng.next() < NATURAL_SHARE ? 'natural' : 'vivid';
+  const randomKey = pickWeighted(rng, KEY_WEIGHTS);
+  const rule = opts.rule ?? randomRule;
+  const mood = !opts.mood || opts.mood === 'any' ? randomMood : opts.mood;
+  const key = opts.key === 'any' ? randomKey : (opts.key ?? 'full');
   const baseHue =
     opts.baseHue !== undefined && Number.isFinite(opts.baseHue) ? normalizeDegrees(opts.baseHue) : undefined;
-  // Drawn only for 'any', so palettes without a key keep their sequence.
-  const key = opts.key === 'any' ? pickWeighted(rng, KEY_WEIGHTS) : (opts.key ?? 'full');
   const tuning = MOOD_TUNING[mood];
   return {
     rule,

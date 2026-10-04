@@ -14,8 +14,8 @@ export interface PaletteHost {
   kind(): PatternKind;
   /** The active pattern's points or stops, each with a mutable color. */
   colorItems(): { color: Oklch }[];
-  /** Give the active pattern a freshly generated palette, keeping its layout. */
-  regenerate(options: PaletteOptions): void;
+  /** Give the active pattern a generated palette from this seed (fresh when omitted), keeping its layout. */
+  regenerate(options: PaletteOptions, seed?: number): void;
 }
 
 /**
@@ -51,6 +51,8 @@ export class PaletteEditor {
   baseHue = $state<number | null>(null);
   /** What each pattern's palette was generated with; null = custom (imported, or not generated yet). */
   private infos = $state<Record<PatternKind, PaletteInfo | null>>({ mesh: null, linear: null });
+  /** The seed each pattern's palette was generated from, so steering it regenerates the same palette. */
+  private seeds: Record<PatternKind, number | null> = { mesh: null, linear: null };
   private adjustments = $state.raw<Record<PatternKind, Adjustment | null>>({ mesh: null, linear: null });
 
   constructor(private readonly host: PaletteHost) {}
@@ -88,24 +90,29 @@ export class PaletteEditor {
     this.regenerate({ key });
   }
 
+  /** The same palette (same seed) steered by `change`; switching back gives the original colors. */
   private regenerate(change: { rule?: HarmonyRule; mood?: PaletteMood; key?: ValueKey }): void {
     const current = this.info;
-    this.host.regenerate({
-      rule: change.rule ?? current?.rule,
-      mood: change.mood ?? current?.mood ?? 'any',
-      key: change.key ?? current?.key ?? 'any',
-      baseHue: this.baseHue ?? undefined,
-    });
+    this.host.regenerate(
+      {
+        rule: change.rule ?? current?.rule,
+        mood: change.mood ?? current?.mood ?? 'any',
+        key: change.key ?? current?.key ?? 'any',
+        baseHue: this.baseHue ?? undefined,
+      },
+      this.seeds[this.host.kind()] ?? undefined,
+    );
   }
 
   /**
    * The editor just gave the active pattern new colors. They are the new
-   * originals; generated ones remember what made them (null = custom), and a
-   * temperature carries over.
+   * originals; generated ones remember what made them and their seed (null =
+   * custom), and a temperature carries over.
    */
-  adopt(info: PaletteInfo | null, temperature: Temperature = 'off'): void {
+  adopt(generated: { info: PaletteInfo; seed: number } | null, temperature: Temperature = 'off'): void {
     const kind = this.host.kind();
-    this.infos[kind] = info;
+    this.infos[kind] = generated?.info ?? null;
+    this.seeds[kind] = generated?.seed ?? null;
     this.adjustments = { ...this.adjustments, [kind]: null };
     if (temperature !== 'off') this.adjust({ temperature });
   }

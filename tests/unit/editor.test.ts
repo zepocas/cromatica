@@ -95,6 +95,23 @@ describe('palette steering and edits', () => {
     expect(e.palette.info).toEqual({ rule: 'triadic', mood, key });
   });
 
+  it('switching mood, key or rule away and back returns the same colors', () => {
+    const e = fresh();
+    e.shuffleColors();
+    const original = colorsOf(e);
+    const { rule, mood, key } = e.palette.info!;
+    e.palette.setMood(mood === 'vivid' ? 'natural' : 'vivid');
+    expect(colorsOf(e)).not.toEqual(original);
+    e.palette.setMood(mood);
+    expect(colorsOf(e)).toEqual(original);
+    e.palette.setKey(key === 'low' ? 'high' : 'low');
+    e.palette.setKey(key);
+    expect(colorsOf(e)).toEqual(original);
+    e.palette.setRule(rule === 'triadic' ? 'analogous' : 'triadic');
+    e.palette.setRule(rule);
+    expect(colorsOf(e)).toEqual(original);
+  });
+
   it('keep pins rule, mood and key for shuffles', () => {
     const e = fresh();
     e.palette.setRule('complementary');
