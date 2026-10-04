@@ -52,12 +52,7 @@ export interface Renderer {
   dispose(): void;
 }
 
-/**
- * Implemented in src/engine/renderer.ts:
- *   export function createRenderer(gl: WebGL2RenderingContext): Renderer
- * Context must be created with { alpha: false, premultipliedAlpha: false,
- * antialias: false, preserveDrawingBuffer: true } — use CONTEXT_ATTRIBUTES.
- */
+/** Attributes every renderer context is created with (createRenderer expects them). */
 export const CONTEXT_ATTRIBUTES: WebGLContextAttributes = {
   alpha: false,
   premultipliedAlpha: false,

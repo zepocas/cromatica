@@ -5,8 +5,8 @@ vec2 warpShape(vec2 p) {
   vec2 s = clampCoord(p * u_warpFreq);
   ivec2 c1, c2;
   vec2 p1;
-  float edge = voronoiCells(s, warpKey(0x51u), c1, p1, c2);
-  uint ko = warpKey(0x52u);
+  float edge = voronoiCells(s, warpKey(WARP_SALT0), c1, p1, c2);
+  uint ko = warpKey(WARP_SALT1);
   vec2 o1 = hash2(c1, ko);
   vec2 m = (o1 + hash2(c2, ko)) * 0.5;
   float t = smoothstep(0.0, WARP_EDGE * u_warpFreq, edge);

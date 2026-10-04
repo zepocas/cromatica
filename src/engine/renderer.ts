@@ -8,15 +8,15 @@ import {
   MAX_STOPS,
   type PointMesh,
 } from '../design/design';
-import { applyMat2, mat2Uniform, orientationMatrix, transformMatrix } from './transform';
+import { applyMat2, mat2Uniform, orientationMatrix, transformMatrix, transpose } from './transform';
 import { GAMUT_CLIP_STEPS, prepareMesh } from '../color/mesh';
 import { BLUE_NOISE_SIZE, DITHER_CHANNEL_OFFSETS, blueNoiseRanks } from './blue-noise';
-import { prepareGrain } from './grain';
+import { GRAIN_CHROMA, prepareGrain } from './grain';
 import { buildShaderSources, variantKey, type Defines } from './shaders';
-import { CURL_STEPS, MAX_WARP_COORD, WARP_EDGE, WARP_PARAM_SLOTS, prepareWarp, type PreparedWarp } from './warp';
+import { prepareWarp, WARP_SHADER_CONSTANTS, type PreparedWarp } from './warp';
 import type { OutputSize, RenderOptions, Renderer, Tile } from './types';
 
-/** Uniforms shared by every pixel of an output; independent of the tile. */
+/** The linear gradient's axis, scaled so the ramp spans the (rotated, flipped) frame. */
 function linearGradientUniforms(g: LinearGradient, output: OutputSize, transform: Design['transform']) {
   // Frame is aspect × 1 centered at the origin. Rotated and flipped by the
   // transform's orientation O, its extent along the unit direction d is
@@ -27,7 +27,7 @@ function linearGradientUniforms(g: LinearGradient, output: OutputSize, transform
   const dx = Math.cos(a);
   const dy = Math.sin(a);
   const o = orientationMatrix(transform);
-  const [ex, ey] = applyMat2([o[0], o[2], o[1], o[3]], dx, dy);
+  const [ex, ey] = applyMat2(transpose(o), dx, dy);
   const extent = Math.abs(ex) * (output.width / output.height) + Math.abs(ey);
   return { u_linearAxis: [dx / extent, dy / extent] };
 }
@@ -45,14 +45,7 @@ function meshUniforms(mesh: PointMesh) {
 /** Warp variant defines: none for 'none' (identity), else WARP_ANY + WARP_<SHAPE>. */
 function warpDefines(w: PreparedWarp): Defines {
   if (w.shape === 'none') return {};
-  return {
-    WARP_ANY: true,
-    [`WARP_${w.shape.toUpperCase()}`]: true,
-    WARP_PARAM_SLOTS,
-    MAX_WARP_COORD,
-    WARP_EDGE,
-    ...(w.shape === 'curl' ? { CURL_STEPS } : {}),
-  };
+  return { WARP_ANY: true, [`WARP_${w.shape.toUpperCase()}`]: true, ...WARP_SHADER_CONSTANTS };
 }
 
 function warpUniforms(w: PreparedWarp) {
@@ -94,7 +87,7 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
   function updateRamp(stops: ColorStop[]) {
     const count = stops.length;
     if (count < 1 || count > MAX_STOPS) {
-      throw new RangeError(`gradient needs 1..${MAX_STOPS} stops, got ${count}`);
+      throw new RangeError(`A gradient needs 1 to ${MAX_STOPS} stops, got ${count}.`);
     }
     const key = stopsKey(stops);
     if (key === rampKey) return;
@@ -122,7 +115,7 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
       const created = twgl.createProgramInfo(gl, [src.vertex, src.fragment], (msg) => {
         error += msg + '\n';
       });
-      if (!created) throw new Error(`shader compile failed (${key || 'default'}):\n${error}`);
+      if (!created) throw new Error(`Shader compile failed (${key || 'default'}):\n${error}`);
       info = created;
       programs.set(key, info);
     }
@@ -133,7 +126,6 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
     render(design: Design, output: OutputSize, tile: Tile, opts: RenderOptions = {}) {
       const base = design.base;
       const isMesh = base.kind === 'mesh';
-      // Designs from before M3 have no warp/grain: treat as off.
       const warp = prepareWarp(design.warp);
       const grain = prepareGrain(design.grain);
       const info = getProgram({
@@ -174,7 +166,7 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
         ...warpUniforms(warp),
         u_grainAmp: grain.sigma,
         u_grainScale: 1 / grain.sizePx,
-        u_grainChroma: grain.chroma,
+        u_grainChroma: GRAIN_CHROMA,
         u_blueNoise: blueNoiseTexture,
         u_ditherOffset: ditherOffsets,
         u_dither: opts.dither === false ? 0 : 1,

@@ -37,7 +37,7 @@ export function hashKey(seed: number, salt: number): number {
 }
 
 /** Key of octave i of a key. */
-export function octaveKey(key: number, i: number): number {
+function octaveKey(key: number, i: number): number {
   return (key + imul(i, 0x632be5ab)) >>> 0;
 }
 
@@ -55,12 +55,12 @@ export function hash1(cx: number, cy: number, key: number): number {
 }
 
 /** Cell coordinates are clamped so int conversion stays defined (and fp32 sane). */
-export const MAX_NOISE_COORD = 1e4;
+const MAX_NOISE_COORD = 1e4;
 export const clampCoord = (x: number) => Math.min(MAX_NOISE_COORD, Math.max(-MAX_NOISE_COORD, x));
 
 const F2 = 0.3660254037844386; // (√3 - 1) / 2
 const G2 = 0.21132486540518713; // (3 - √3) / 6
-const TAU = 6.283185307179586;
+export const TAU = 2 * Math.PI;
 
 function corner(x: number, y: number, cx: number, cy: number, key: number, out: number[]) {
   const t = 0.5 - (x * x + y * y);
@@ -93,25 +93,6 @@ export function simplex(px: number, py: number, key: number): [number, number, n
   corner(x0 - ox + G2, y0 - oy + G2, ix + ox, iy + oy, key, out);
   corner(x0 - 1 + 2 * G2, y0 - 1 + 2 * G2, ix + 1, iy + 1, key, out);
   return [70 * out[0], 70 * out[1], 70 * out[2]];
-}
-
-/** Value noise in [-1, 1], cubic (smoothstep) interpolation: soft but visibly grid-aligned. */
-export function valueNoise(px: number, py: number, key: number): number {
-  px = clampCoord(px);
-  py = clampCoord(py);
-  const ix = Math.floor(px);
-  const iy = Math.floor(py);
-  const fx = px - ix;
-  const fy = py - iy;
-  const ux = fx * fx * (3 - 2 * fx);
-  const uy = fy * fy * (3 - 2 * fy);
-  const a = hash1(ix, iy, key);
-  const b = hash1(ix + 1, iy, key);
-  const c = hash1(ix, iy + 1, key);
-  const d = hash1(ix + 1, iy + 1, key);
-  const lo = a + (b - a) * ux;
-  const hi = c + (d - c) * ux;
-  return (lo + (hi - lo) * uy) * 2 - 1;
 }
 
 /** Simplex fBm, lacunarity 2, gain 0.5, rotated per octave; ≈ [-1, 1]. */

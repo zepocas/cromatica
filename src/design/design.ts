@@ -136,7 +136,7 @@ export interface Design {
   base: BasePattern;
   warp: Warp;
   grain: Grain;
-  /** Missing (designs from before M3.5) = identity. */
+  /** Missing (designs saved before transforms existed) = identity. */
   transform?: Transform;
 }
 

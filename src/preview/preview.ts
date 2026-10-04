@@ -44,8 +44,9 @@ export function createPreview(
 ): PreviewController {
   // The preview never needs its buffer to survive compositing; skipping
   // preservation avoids a per-frame copy. readPixels() redraws first instead.
-  const gl = canvas.getContext('webgl2', { ...CONTEXT_ATTRIBUTES, preserveDrawingBuffer: false });
-  if (!gl) throw new Error('WebGL2 is not available');
+  const context = canvas.getContext('webgl2', { ...CONTEXT_ATTRIBUTES, preserveDrawingBuffer: false });
+  if (!context) throw new Error('WebGL2 is not available');
+  const gl: WebGL2RenderingContext = context;
 
   const container = opts.container ?? canvas.parentElement;
   let design = initialDesign;
@@ -84,14 +85,14 @@ export function createPreview(
   }
 
   function draw(): void {
-    if (!renderer || gl!.isContextLost()) return;
+    if (!renderer || gl.isContextLost()) return;
     applyLayout();
     const output = { width: canvas.width, height: canvas.height };
     const t0 = performance.now();
     renderer.render(design, output, { x: 0, y: 0, ...output }, { dither: true });
     if (scale === 1) {
       // A 1-pixel read waits for the GPU, so the time covers the whole frame.
-      gl!.readPixels(0, 0, 1, 1, gl!.RGBA, gl!.UNSIGNED_BYTE, syncPixel);
+      gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, syncPixel);
       fullFrameMs = performance.now() - t0;
     }
     dirty = false;

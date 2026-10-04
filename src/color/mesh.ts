@@ -57,7 +57,7 @@ export interface PreparedMesh {
 export function prepareMesh(mesh: PointMesh): PreparedMesh {
   const count = mesh.points.length;
   if (count < 1 || count > MAX_MESH_POINTS) {
-    throw new RangeError(`mesh needs 1..${MAX_MESH_POINTS} points, got ${count}`);
+    throw new RangeError(`A mesh needs 1 to ${MAX_MESH_POINTS} points, got ${count}.`);
   }
   const geometry = new Float64Array(count * 3);
   const colors = new Float64Array(count * 3);

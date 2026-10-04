@@ -1,4 +1,4 @@
-// Linked palette edits (M4 "Remix"): move every color together so the
+// Linked palette edits and remix: move every color together so the
 // relationships between them survive. Each part of the shift is a group
 // operation, so dragging a slider away and back restores the palette (except
 // where a color hit the sRGB gamut edge and had its chroma capped):

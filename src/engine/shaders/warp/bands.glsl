@@ -6,7 +6,7 @@ float bandOffset(float across) {
   float y = clamp(across * n, -NOISE_MAX, NOISE_MAX);
   float b = floor(y);
   float fr = y - b;
-  uint key = warpKey(0x51u);
+  uint key = warpKey(WARP_SALT0);
   int bi = int(b);
   float o0 = hash1(ivec2(bi, 0), key) * 2.0 - 1.0;
   float o1 = hash1(ivec2(bi + 1, 0), key) * 2.0 - 1.0;

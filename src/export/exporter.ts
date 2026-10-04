@@ -14,6 +14,10 @@ function abortError(): DOMException {
   return new DOMException('Export aborted', 'AbortError');
 }
 
+/**
+ * Render and encode `req` in a worker (D3), tile by tile. Rejects with a
+ * DOMException 'AbortError' when opts.signal aborts.
+ */
 export function exportImage(req: ExportRequest, opts: ExportOptions = {}): Promise<Blob> {
   const { onProgress, signal } = opts;
   if (signal?.aborted) return Promise.reject(abortError());

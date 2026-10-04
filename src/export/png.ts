@@ -63,10 +63,13 @@ function ihdr(width: number, height: number): Blob {
   return chunk('IHDR', [data]);
 }
 
+const abortError = () => new DOMException('PNG encoder was aborted', 'AbortError');
+
 /**
- * Streaming PNG encoder: RGBA8 rows in, 8-bit RGB PNG out. Rows are
- * filtered (Up) and fed to CompressionStream in ~1 MiB batches; only the
- * previous row and the compressed output are retained.
+ * Streaming PNG encoder: RGBA8 rows in, 8-bit RGB PNG out (color type 2,
+ * alpha dropped, sRGB chunk). Rows are filtered (Up, D17) and fed to
+ * CompressionStream('deflate') in ~1 MiB batches; only the previous row and
+ * the compressed output are retained.
  */
 export function createPngEncoder(size: OutputSize): PngEncoder {
   const { width, height } = size;
@@ -124,7 +127,7 @@ export function createPngEncoder(size: OutputSize): PngEncoder {
   let queue: Promise<void> = Promise.resolve();
 
   const checkUsable = () => {
-    if (state === 'aborted') throw new DOMException('PNG encoder was aborted', 'AbortError');
+    if (state === 'aborted') throw abortError();
     if (failure !== null) throw failure;
   };
 
@@ -211,7 +214,7 @@ export function createPngEncoder(size: OutputSize): PngEncoder {
     abort() {
       if (state === 'done' || state === 'aborted') return;
       state = 'aborted';
-      const reason = new DOMException('PNG encoder was aborted', 'AbortError');
+      const reason = abortError();
       writer.abort(reason).catch(() => {});
       reader.cancel(reason).catch(() => {});
       parts.length = 0;
