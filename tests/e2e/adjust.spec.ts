@@ -18,7 +18,6 @@ test('warp controls: shape, amount, size, new variation and [ ] cycling', async 
   const shape = page.getByLabel('Warp shape');
   await expect(shape).toHaveValue('domain');
   await expect(shape.locator('option')).toHaveCount(WARP_SHAPES.length);
-  await openMore(page, 'adjust');
 
   let before = await settled();
   await shape.selectOption('fbm');

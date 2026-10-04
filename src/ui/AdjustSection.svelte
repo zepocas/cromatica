@@ -25,6 +25,15 @@
     bind:value={editor.warp.amount}
     display={fixed2}
   />
+  <SliderRow
+    label="warp size"
+    min={0}
+    max={1}
+    step={0.01}
+    disabled={warpOff}
+    bind:value={editor.warp.size}
+    display={fixed2}
+  />
   <SliderRow label="noise" min={0} max={1} step={0.01} bind:value={editor.grain.amount} display={fixed2} />
   {#if editor.kind === 'mesh'}
     <SliderRow
@@ -41,15 +50,6 @@
   {/if}
 
   {#snippet more()}
-    <SliderRow
-      label="warp size"
-      min={0}
-      max={1}
-      step={0.01}
-      disabled={warpOff}
-      bind:value={editor.warp.size}
-      display={fixed2}
-    />
     <!-- Log scale: the slider moves by doublings. -->
     <SliderRow
       label="zoom"
