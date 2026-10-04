@@ -33,6 +33,7 @@ import {
 import { warpPoint } from '../engine/warp';
 
 export type PatternKind = BasePattern['kind'];
+export type PaletteHarmony = { rule: HarmonyRule; mood: Exclude<PaletteMood, 'any'> };
 
 /** Point size limits, in screen (composition) units: radius × zoom. */
 export const MIN_RADIUS = 0.05;
@@ -60,12 +61,12 @@ export class EditorState {
   grain = $state<Grain>({ ...defaultGrain });
   transform = $state<Transform>({ ...identityTransform });
   /** Palette steering for shuffles (UI only, not part of the design). */
-  harmony = $state<HarmonyRule | 'auto'>('auto');
-  mood = $state<PaletteMood>('any');
+  /** Keep the current palette's rule and mood for ⟳ and shuffle; off = both random. */
+  keepHarmony = $state(false);
   /** Hue the harmony is built around; null = random each shuffle. */
   baseHue = $state<number | null>(null);
-  /** Rule and mood of the last generated palette; null until the first color shuffle. */
-  lastHarmony = $state<{ rule: HarmonyRule; mood: Exclude<PaletteMood, 'any'> } | null>(null);
+  /** Rule and mood each pattern's palette was last generated with; null before its first color shuffle. */
+  private harmonies = $state<Record<PatternKind, PaletteHarmony | null>>({ mesh: null, linear: null });
   /** Linked: editing one color moves the whole palette with it (keeps the harmony). */
   linkColors = $state(false);
   /** Shuffle locks: a locked part is kept as is. */
@@ -111,18 +112,56 @@ export class EditorState {
     this.applyShuffle(true, false);
   }
 
-  private applyShuffle(colors: boolean, layout: boolean): void {
+  /** Rule and mood of the active pattern's palette. */
+  get harmony(): PaletteHarmony | null {
+    return this.harmonies[this.kind];
+  }
+
+  /** A new palette in this rule, keeping the current mood. */
+  setHarmonyRule(rule: HarmonyRule): void {
+    this.applyShuffle(true, false, { rule, mood: this.harmony?.mood ?? 'any' });
+  }
+
+  /** A new palette in this mood, keeping the current rule. */
+  setHarmonyMood(mood: Exclude<PaletteMood, 'any'>): void {
+    this.applyShuffle(true, false, { rule: this.harmony?.rule, mood });
+  }
+
+  /** Same colors, reassigned to different points or stops. */
+  shuffleColorOrder(): void {
+    const items = this.colorItems;
+    const colors = this.plainColors();
+    if (colors.length < 2) return;
+    const rng = createRng(randomSeed());
+    const key = (cs: Oklch[]) => cs.map((c) => c.join(',')).join('|');
+    const start = key(colors);
+    if (new Set(colors.map((c) => c.join(','))).size < 2) return;
+    let order = colors;
+    // Retry until the arrangement actually changes (cheap: n <= 16).
+    for (let attempt = 0; attempt < 20 && key(order) === start; attempt++) {
+      order = colors.slice();
+      for (let i = order.length - 1; i > 0; i--) {
+        const j = rng.int(i + 1);
+        [order[i], order[j]] = [order[j], order[i]];
+      }
+    }
+    items.forEach((x, k) => (x.color = order[k]));
+  }
+
+  private applyShuffle(colors: boolean, layout: boolean, force?: { rule?: HarmonyRule; mood: PaletteMood }): void {
+    const kept = this.keepHarmony ? this.harmony : null;
     const palette = {
-      rule: this.harmony === 'auto' ? undefined : this.harmony,
-      mood: this.mood,
+      rule: force ? force.rule : kept?.rule,
+      mood: force ? force.mood : (kept?.mood ?? 'any'),
       baseHue: this.baseHue ?? undefined,
     };
+    const kind = this.kind;
     const { design: next, harmony } = shuffleWithHarmony(
       this.design,
       { colors, layout, palette, seed: randomSeed() },
       this.aspect,
     );
-    if (harmony) this.lastHarmony = harmony;
+    if (harmony) this.harmonies[kind] = harmony;
     if (next.base.kind === 'mesh') {
       this.mesh = next.base;
       this.selectedPoint = Math.min(this.selectedPoint, next.base.points.length - 1);

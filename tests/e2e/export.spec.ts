@@ -495,31 +495,63 @@ test('noise slider changes the preview', async ({ page }) => {
   await expectPreviewChanged(before);
 });
 
-test('harmony, mood and base hue steer the color shuffle', async ({ page }) => {
+test('harmony: picking a rule regenerates, keep pins it, unpinned is fully random', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (err) => errors.push(err.message));
   await page.goto('/');
-  const harmony = page.getByLabel('Harmony');
-  // On auto, the label names the rule the current palette was built with.
-  await expect(harmony.locator('option[value="auto"]')).toHaveText(/^auto \((monochrome|analogous|complementary|split complementary|triadic|tetradic)\)$/);
+  const harmony = page.getByLabel('Harmony', { exact: true });
+  const hexes = page.locator('li input.hex');
+  const read = () => hexes.evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));
+  // The select names the rule the current palette was built with.
+  await expect(harmony).toHaveValue(/^(monochrome|analogous|complementary|split-complementary|triadic|tetradic)$/);
 
+  // Picking a rule gives a palette in that rule right away.
   await page.getByRole('button', { name: 'More colors settings' }).click();
-  await harmony.selectOption('monochrome');
-  await page.getByLabel('Mood').selectOption('vivid');
   await page.getByRole('button', { name: 'Fix base hue' }).click();
   await page.getByLabel('Base hue', { exact: true }).fill('250');
-  const hexes = page.locator('li input.hex');
+  let before = await read();
+  await harmony.selectOption('monochrome');
+  await expect.poll(read).not.toEqual(before);
+  await page.getByLabel('Mood').selectOption('vivid');
+  await expect(harmony).toHaveValue('monochrome');
+
+  // Kept: ⟳ stays monochrome vivid around 250° (every colorful swatch is a blue).
+  await page.getByRole('button', { name: 'Keep harmony' }).click();
   for (let i = 0; i < 3; i++) {
-    const before = await hexes.evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));
+    before = await read();
     await page.getByRole('button', { name: 'Shuffle colors' }).click();
-    await expect.poll(() => hexes.evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value))).not.toEqual(before);
-    // Monochrome around 250°: every colorful swatch is a blue.
-    for (const hex of await hexes.evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value))) {
+    await expect.poll(read).not.toEqual(before);
+    await expect(harmony).toHaveValue('monochrome');
+    await expect(page.getByLabel('Mood')).toHaveValue('vivid');
+    for (const hex of await read()) {
       const [, c, h] = hexToOklch(hex);
       if (c > 0.045) expect(Math.abs(((h - 250 + 540) % 360) - 180), hex).toBeLessThanOrEqual(30);
     }
   }
+
+  // Not kept: rules vary again.
+  await page.getByRole('button', { name: 'Keep harmony' }).click();
+  const rules = new Set<string>();
+  for (let i = 0; i < 12; i++) {
+    await page.getByRole('button', { name: 'Shuffle colors' }).click();
+    rules.add(await harmony.inputValue());
+  }
+  expect(rules.size).toBeGreaterThan(1);
   expect(errors).toEqual([]);
+});
+
+test('shuffle color order keeps the colors and swaps where they go', async ({ page }) => {
+  await page.goto('/?default');
+  const hexes = page.locator('li input.hex');
+  const read = () => hexes.evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));
+  for (const pattern of ['mesh', 'linear']) {
+    await page.getByLabel('Gradient', { exact: true }).selectOption(pattern);
+    const before = await read();
+    await page.getByRole('button', { name: 'Shuffle color order' }).click();
+    const after = await read();
+    expect(after).not.toEqual(before);
+    expect([...after].sort()).toEqual([...before].sort());
+  }
 });
 
 test('linked editing moves the whole palette; free edits one color; remix shifts all', async ({ page }) => {

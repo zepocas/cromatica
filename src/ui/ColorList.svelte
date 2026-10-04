@@ -2,6 +2,7 @@
   import { HARMONY_RULES } from '../color/harmony';
   import { hexToOklch, inSrgbGamut, oklchToHex } from '../color/oklab';
   import type { BlendMode, Oklch } from '../design/design';
+  import type { HarmonyRule } from '../design/shuffle.types';
   import ColorControls from './ColorControls.svelte';
   import { MAX_RADIUS, MIN_RADIUS, type EditorState } from './editor.svelte';
   import Section from './Section.svelte';
@@ -76,6 +77,12 @@
     >
     <button
       class="icon"
+      aria-label="Shuffle color order"
+      title="Same colors, swapped between {isMesh ? 'points' : 'stops'}"
+      onclick={() => editor.shuffleColorOrder()}>⇄</button
+    >
+    <button
+      class="icon"
       aria-label="Add color"
       title={isMesh ? 'Add a point (or double-click the image)' : 'Add a stop (or click the strip)'}
       disabled={!editor.canAddColor}
@@ -83,15 +90,27 @@
     >
   {/snippet}
 
-  <label class="row">
-    <span>harmony</span>
-    <select aria-label="Harmony" title="Steers ⟳ and shuffle" bind:value={editor.harmony}>
-      <option value="auto">auto{editor.lastHarmony ? ` (${RULE_LABELS[editor.lastHarmony.rule]})` : ''}</option>
+  <div class="row">
+    <label for="harmony">harmony</label>
+    <select
+      id="harmony"
+      aria-label="Harmony"
+      title="The palette's color rule; pick one for a new palette in that rule"
+      value={editor.harmony?.rule ?? ''}
+      onchange={(e) => editor.setHarmonyRule(e.currentTarget.value as HarmonyRule)}
+    >
+      {#if !editor.harmony}<option value="" disabled>custom</option>{/if}
       {#each HARMONY_RULES as r (r)}
         <option value={r}>{RULE_LABELS[r]}</option>
       {/each}
     </select>
-  </label>
+    <button
+      aria-label="Keep harmony"
+      aria-pressed={editor.keepHarmony}
+      title="Keep this rule and mood when shuffling (off: both random)"
+      onclick={() => (editor.keepHarmony = !editor.keepHarmony)}>{editor.keepHarmony ? '[x]' : '[ ]'} keep</button
+    >
+  </div>
 
   <div class="row">
     <span>edit</span>
@@ -157,8 +176,12 @@
   {#snippet more()}
     <label class="row">
       <span>mood</span>
-      <select aria-label="Mood" bind:value={editor.mood}>
-        <option value="any">auto{editor.lastHarmony ? ` (${editor.lastHarmony.mood})` : ''}</option>
+      <select
+        aria-label="Mood"
+        value={editor.harmony?.mood ?? ''}
+        onchange={(e) => editor.setHarmonyMood(e.currentTarget.value as 'natural' | 'vivid')}
+      >
+        {#if !editor.harmony}<option value="" disabled>custom</option>{/if}
         <option value="natural">natural</option>
         <option value="vivid">vivid</option>
       </select>
