@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { WARP_SHAPES, defaultWarp, noWarp, type Warp, type WarpShape } from '../../src/design/design';
+import { defaultWarp, noWarp, type Warp, WARP_SHAPES, type WarpShape } from '../../src/design/design';
 import { pcg3d } from '../../src/engine/noise';
 import { createWarp, prepareWarp, warpPoint } from '../../src/engine/warp';
 
@@ -89,7 +89,11 @@ describe('warpPoint', () => {
               const a = w(x, y);
               const b = w(x + h, y);
               const c = w(x, y + h);
-              maxRatio = Math.max(maxRatio, Math.hypot(b[0] - a[0], b[1] - a[1]) / h, Math.hypot(c[0] - a[0], c[1] - a[1]) / h);
+              maxRatio = Math.max(
+                maxRatio,
+                Math.hypot(b[0] - a[0], b[1] - a[1]) / h,
+                Math.hypot(c[0] - a[0], c[1] - a[1]) / h,
+              );
             }
             expect(maxRatio).toBeLessThan(500);
           }

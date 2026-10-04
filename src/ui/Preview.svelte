@@ -22,10 +22,14 @@
 
   $effect(() => {
     try {
-      controller = createPreview(canvas, untrack(() => design), {
-        container,
-        aspect: untrack(() => aspect),
-      });
+      controller = createPreview(
+        canvas,
+        untrack(() => design),
+        {
+          container,
+          aspect: untrack(() => aspect),
+        },
+      );
     } catch (err) {
       error = err instanceof Error ? err.message : String(err);
     }

@@ -1,13 +1,11 @@
 import { converter, formatHex, toGamut } from 'culori';
 import { describe, expect, it } from 'vitest';
+import { gamutMapSrgb, inSrgbGamut } from '../../src/color/gamut';
+import { hexToOklch, oklchToHex } from '../../src/color/hex';
 import {
-  gamutMapSrgb,
-  hexToOklch,
-  inSrgbGamut,
   linearSrgbToOklab,
   oklabToLinearSrgb,
   oklabToOklch,
-  oklchToHex,
   oklchToOklab,
   srgbDecode,
   srgbEncode,
@@ -36,12 +34,25 @@ const hueDiff = (a: number, b: number) => Math.abs(((a - b + 540) % 360) - 180);
 
 const rand = rng(42);
 const edgeRgb: Rgb[] = [
-  [0, 0, 0], [1, 1, 1], [1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 0], [0, 1, 1], [1, 0, 1],
-  [0.5, 0.5, 0.5], [0.18, 0.18, 0.18], [0.001, 0.001, 0.001], [1e-6, 0, 0],
+  [0, 0, 0],
+  [1, 1, 1],
+  [1, 0, 0],
+  [0, 1, 0],
+  [0, 0, 1],
+  [1, 1, 0],
+  [0, 1, 1],
+  [1, 0, 1],
+  [0.5, 0.5, 0.5],
+  [0.18, 0.18, 0.18],
+  [0.001, 0.001, 0.001],
+  [1e-6, 0, 0],
 ];
 const randomRgb: Rgb[] = Array.from({ length: 500 }, () => [rand(), rand(), rand()] as Rgb);
 // Out-of-sRGB (roughly P3 / beyond) linear values.
-const wideRgb: Rgb[] = Array.from({ length: 200 }, () => [rand() * 1.4 - 0.2, rand() * 1.4 - 0.2, rand() * 1.4 - 0.2] as Rgb);
+const wideRgb: Rgb[] = Array.from(
+  { length: 200 },
+  () => [rand() * 1.4 - 0.2, rand() * 1.4 - 0.2, rand() * 1.4 - 0.2] as Rgb,
+);
 const allRgb = [...edgeRgb, ...randomRgb, ...wideRgb];
 
 describe('Oklab <-> linear sRGB vs culori', () => {
@@ -162,8 +173,17 @@ describe('gamut mapping', () => {
   const samples: Oklch[] = [
     ...Array.from({ length: 3000 }, () => [rand(), rand() * 0.4, rand() * 360] as Oklch),
     // Extreme chroma, P3-ish and beyond.
-    [0.7, 0.35, 145], [0.6, 0.3, 30], [0.45, 0.32, 264], [0.9, 0.25, 110], [0.5, 0.4, 330],
-    [0.99, 0.1, 200], [0.01, 0.1, 20], [1, 0.3, 0], [1.2, 0.1, 0], [0, 0.2, 0], [-0.1, 0, 0],
+    [0.7, 0.35, 145],
+    [0.6, 0.3, 30],
+    [0.45, 0.32, 264],
+    [0.9, 0.25, 110],
+    [0.5, 0.4, 330],
+    [0.99, 0.1, 200],
+    [0.01, 0.1, 20],
+    [1, 0.3, 0],
+    [1.2, 0.1, 0],
+    [0, 0.2, 0],
+    [-0.1, 0, 0],
   ];
 
   it('returns in-gamut colors unchanged', () => {

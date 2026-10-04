@@ -2,8 +2,8 @@
 // Stateless curl-noise flow: CURL_STEPS Euler steps along the curl of a
 // two-octave simplex stream function, integrated per pixel (D2).
 vec2 warpShape(vec2 p) {
-  uint k0 = warpKey(0x51u);
-  uint k1 = warpKey(0x52u);
+  uint k0 = warpKey(WARP_SALT0);
+  uint k1 = warpKey(WARP_SALT1);
   float h = u_warpAmp * 0.25 / float(CURL_STEPS);
   for (int i = 0; i < CURL_STEPS; i++) {
     vec2 s = p * u_warpFreq;

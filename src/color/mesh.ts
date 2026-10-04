@@ -1,9 +1,10 @@
 import { MAX_MESH_POINTS, type PointMesh } from '../design/design';
-import { gamutMapSrgb, linearSrgbToOklab, oklabToLinearSrgb, oklchToOklab } from './oklab';
+import { clipRgb, gamutMapSrgb, JND, oklabDistance, rgbInGamut } from './gamut';
+import { linearSrgbToOklab, oklabToLinearSrgb, oklchToOklab } from './oklab';
 import type { Oklab, Rgb } from './types';
 
 /*
- * Mesh weight function (M2). For pixel p and point i with center c_i and
+ * Mesh weight function (D20). For pixel p and point i with center c_i and
  * radius r_i:
  *
  *   w_i(p) = (1 + |p - c_i|² / r_i²)^(-k),   k = 1.5 · 12^sharpness
@@ -31,12 +32,13 @@ const MAX_RADIUS = 1e4;
 /** Chroma-scale bisection steps of the gamut clip (resolution 2^-16). */
 export const GAMUT_CLIP_STEPS = 16;
 
-const clamp = (x: number, lo: number, hi: number, fallback: number) =>
+/** Clamp, with non-finite input replaced by `fallback`: mesh inputs come from saved designs and drags. */
+const sanitize = (x: number, lo: number, hi: number, fallback: number) =>
   Number.isFinite(x) ? Math.min(hi, Math.max(lo, x)) : fallback;
 
 /** Sharpness in [0, 1] → kernel exponent k. */
 export function meshExponent(sharpness: number): number {
-  return 1.5 * Math.pow(12, clamp(sharpness, 0, 1, 0));
+  return 1.5 * Math.pow(12, sanitize(sharpness, 0, 1, 0));
 }
 
 /**
@@ -55,14 +57,14 @@ export interface PreparedMesh {
 export function prepareMesh(mesh: PointMesh): PreparedMesh {
   const count = mesh.points.length;
   if (count < 1 || count > MAX_MESH_POINTS) {
-    throw new RangeError(`mesh needs 1..${MAX_MESH_POINTS} points, got ${count}`);
+    throw new RangeError(`A mesh needs 1 to ${MAX_MESH_POINTS} points, got ${count}.`);
   }
   const geometry = new Float64Array(count * 3);
   const colors = new Float64Array(count * 3);
   mesh.points.forEach((p, i) => {
-    const r = clamp(p.radius, MIN_RADIUS, MAX_RADIUS, 1);
-    geometry[i * 3] = clamp(p.x, -MAX_COORD, MAX_COORD, 0);
-    geometry[i * 3 + 1] = clamp(p.y, -MAX_COORD, MAX_COORD, 0);
+    const r = sanitize(p.radius, MIN_RADIUS, MAX_RADIUS, 1);
+    geometry[i * 3] = sanitize(p.x, -MAX_COORD, MAX_COORD, 0);
+    geometry[i * 3 + 1] = sanitize(p.y, -MAX_COORD, MAX_COORD, 0);
     geometry[i * 3 + 2] = 1 / (r * r);
     colors.set(oklchToOklab(gamutMapSrgb(p.color)), i * 3);
   });
@@ -115,13 +117,7 @@ export function evaluateMesh(mesh: PointMesh, x: number, y: number): Oklab {
   return createMeshEvaluator(mesh)(x, y);
 }
 
-const inUnitCube = (c: Rgb) => c.every((v) => v >= 0 && v <= 1);
-const clip01 = (c: Rgb) => c.map((v) => Math.min(1, Math.max(0, v))) as Rgb;
-const JND = 0.02;
-
-function deltaEOK(a: Oklab, b: Oklab): number {
-  return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
-}
+const inUnitCube = (c: Rgb) => rgbInGamut(c, 0);
 
 /**
  * The shader's gamut clip, in doubles. CSS Color 4 gamut mapping (as in
@@ -136,8 +132,8 @@ export function meshGamutClip(lab: Oklab): Rgb {
   if (l <= 0) return [0, 0, 0];
   const rgb = oklabToLinearSrgb(lab);
   if (inUnitCube(rgb)) return rgb;
-  const clipped = clip01(rgb);
-  if (deltaEOK(linearSrgbToOklab(clipped), lab) < JND) return clipped;
+  const clipped = clipRgb(rgb);
+  if (oklabDistance(linearSrgbToOklab(clipped), lab) < JND) return clipped;
   let lo = 0;
   let hi = 1;
   let loInGamut = true;
@@ -147,12 +143,12 @@ export function meshGamutClip(lab: Oklab): Rgb {
     const c = oklabToLinearSrgb(cur);
     if (loInGamut && inUnitCube(c)) {
       lo = k;
-    } else if (deltaEOK(linearSrgbToOklab(clip01(c)), cur) < JND) {
+    } else if (oklabDistance(linearSrgbToOklab(clipRgb(c)), cur) < JND) {
       loInGamut = false;
       lo = k;
     } else {
       hi = k;
     }
   }
-  return clip01(oklabToLinearSrgb([l, lab[1] * lo, lab[2] * lo]));
+  return clipRgb(oklabToLinearSrgb([l, lab[1] * lo, lab[2] * lo]));
 }

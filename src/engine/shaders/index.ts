@@ -31,8 +31,18 @@ const HEADER = '#version 300 es\nprecision highp float;\nprecision highp int;\n'
 // Base-pattern chunks are compiled in only under their BASE_* define, warp
 // chunks under WARP_ANY + WARP_<SHAPE> (no warp define = identity).
 const WARP_CHUNKS = [
-  warpNoise, warpDomain, warpFbm, warpSimplex, warpWaves, warpBands,
-  warpCircular, warpOval, warpWorley, warpVoronoi, warpCurl, warp,
+  warpNoise,
+  warpDomain,
+  warpFbm,
+  warpSimplex,
+  warpWaves,
+  warpBands,
+  warpCircular,
+  warpOval,
+  warpWorley,
+  warpVoronoi,
+  warpCurl,
+  warp,
 ];
 const FRAGMENT_CHUNKS = [coords, hash, ...WARP_CHUNKS, linear, mesh, ramp, oklab, srgb, grain, dither, fragMain];
 

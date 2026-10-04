@@ -1,5 +1,5 @@
 import type { Design } from '../design/design';
-import type { OutputSize, Tile } from '../engine/types';
+import type { OutputSize } from '../engine/types';
 
 export type ExportFormat = 'png' | 'jpeg';
 
@@ -25,21 +25,7 @@ export interface ExportOptions {
 
 export const DEFAULT_TILE_SIZE = 2048;
 
-/**
- * Implemented in src/export/tiles.ts:
- *   export function planTiles(output: OutputSize, tileSize: number): Tile[][]
- * Returns bands (tile rows) top→bottom; each band's tiles left→right.
- * All tiles in a band share y and height. Tiles cover the output exactly,
- * no overlap. Edge tiles are smaller.
- */
-export type TileBands = Tile[][];
-
-/**
- * Implemented in src/export/png.ts — streaming PNG encoder.
- *   export function createPngEncoder(size: OutputSize): PngEncoder
- * Output: 8-bit RGB (color type 2, alpha dropped), sRGB chunk
- * (rendering intent 0), zlib IDAT via CompressionStream('deflate').
- */
+/** Streaming PNG encoder (createPngEncoder in src/export/png.ts). */
 export interface PngEncoder {
   /**
    * Append `rowCount` full-width rows, top-down, as tightly packed RGBA8
@@ -53,10 +39,3 @@ export interface PngEncoder {
   /** Abort and release resources. */
   abort(): void;
 }
-
-/**
- * Implemented in src/export/exporter.ts (main-thread API, runs work in
- * src/export/export.worker.ts):
- *   export function exportImage(req: ExportRequest, opts?: ExportOptions): Promise<Blob>
- * Rejects with DOMException 'AbortError' when opts.signal aborts.
- */

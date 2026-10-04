@@ -4,7 +4,7 @@
 vec2 warpShape(vec2 p) {
   vec2 d = p - u_warpParam[0].xy;
   float r2 = dot(d, d);
-  float s = u_warpAmp * (sin(TAU * u_warpFreq * sqrt(r2) + u_warpParam[0].z) - u_warpParam[0].w) / sqrt(r2 + 0.0004);
+  float s = u_warpAmp * (sin(TAU * u_warpFreq * sqrt(r2) + u_warpParam[0].z) - u_warpParam[0].w) / sqrt(r2 + CIRCULAR_SOFTENING);
   return p + s * d;
 }
 #endif

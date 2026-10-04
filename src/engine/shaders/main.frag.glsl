@@ -11,7 +11,7 @@ void main() {
   vec3 rgb = rampColor(linearGradientT(uv));
 #endif
   vec3 encoded = srgbEncode(rgb);
-  // Uniform branch: grain off is an exact passthrough (same bits as M2).
+  // Uniform branch: grain off is an exact passthrough (bit-identical to no grain stage).
   if (u_grainAmp > 0.0) encoded = grain(encoded, px);
   fragColor = vec4(dither(encoded, px), 1.0);
 }

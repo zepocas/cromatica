@@ -1,5 +1,8 @@
-import { oklabToOklch } from '../color/oklab';
+import { imageLayout } from '../color/extract';
 import { evaluateMesh } from '../color/mesh';
+import { oklabToOklch } from '../color/oklab';
+import { evaluateRamp } from '../color/ramp';
+import type { Oklch } from '../color/types';
 import {
   defaultDesign,
   defaultGrain,
@@ -10,6 +13,7 @@ import {
   MAX_STOPS,
   WARP_SHAPES,
   type BasePattern,
+  type ColorStop,
   type Design,
   type Grain,
   type LinearGradient,
@@ -17,37 +21,34 @@ import {
   type Transform,
   type Warp,
 } from '../design/design';
-import { evaluateRamp } from '../color/ramp';
 import { randomSeed } from '../design/random';
 import { shuffleDesign } from '../design/shuffle';
-import {
-  applyMat2,
-  clampZoom,
-  inverseTransformMatrix,
-  normalizeAngle,
-  transformMatrix,
-} from '../engine/transform';
+import { applyMat2, clampZoom, inverseTransformMatrix, transformMatrix } from '../engine/transform';
 import { warpPoint } from '../engine/warp';
+import { clamp, normalizeDegrees } from '../math';
+import { paletteFromImage, type ImagePalette } from './image-palette';
+import { PaletteEditor, type PatternKind } from './palette.svelte';
+import { emptiestSpot, median, widestGapCenter } from './placement';
 
-export type PatternKind = BasePattern['kind'];
+export type { PatternKind };
 
 /** Point size limits, in screen (composition) units: radius × zoom. */
 export const MIN_RADIUS = 0.05;
 export const MAX_RADIUS = 1.2;
 /** How far outside the frame (composition units) a point may be dragged. */
 const OUTSIDE_MARGIN = 0.5;
-
-function clamp(x: number, lo: number, hi: number): number {
-  return Math.min(hi, Math.max(lo, x));
-}
+/** Fewest stops a linear gradient keeps in the editor. */
+const MIN_STOPS = 2;
 
 /**
- * UI editing state. Both pattern configs are kept so switching back and
- * forth doesn't lose edits; only the active one goes into the design.
+ * UI editing state: the design being edited, plus selection and UI-only
+ * settings. Both pattern configs are kept so switching back and forth doesn't
+ * lose edits; only the active one goes into the design. Palette steering,
+ * color edits and adjustments live in `palette`.
  *
  * Mesh points are stored in pattern space. The UI works in screen
- * (composition) coords, so everything that takes or shows a position or
- * size goes through the transform (toScreen / toPattern, pointSize).
+ * (composition) coords, so everything that takes or shows a position or size
+ * goes through the transform (toScreen / toPattern, pointSize).
  */
 export class EditorState {
   kind = $state<PatternKind>('mesh');
@@ -63,8 +64,16 @@ export class EditorState {
   /** Index into linear.stops (user order, not position order). */
   selectedStop = $state(0);
   showHandles = $state(true);
+  /** Palette-from-image progress or failure, shown in the colors section; '' when idle. */
+  imageStatus = $state('');
   /** Frame aspect (width / height), for clamping drags to the frame. */
   aspect = $state(16 / 9);
+
+  readonly palette = new PaletteEditor({
+    kind: () => this.kind,
+    colorItems: () => this.colorItems,
+    regenerate: (options, seed) => this.applyShuffle(true, false, options, seed),
+  });
 
   /** Opens on a full shuffle of the mesh (palette, layout and warp). */
   constructor(opts: { shuffle?: boolean } = {}) {
@@ -84,14 +93,15 @@ export class EditorState {
     };
   }
 
+  // ---- Shuffle --------------------------------------------------------------
+
   get canShuffle(): boolean {
     return !(this.colorsLocked && this.layoutLocked);
   }
 
   /** Shuffle the active pattern (and warp) except for the locked parts. */
   shuffle(): void {
-    if (!this.canShuffle) return;
-    this.applyShuffle(!this.colorsLocked, !this.layoutLocked);
+    if (this.canShuffle) this.applyShuffle(!this.colorsLocked, !this.layoutLocked);
   }
 
   /** New palette only, whatever the locks say. */
@@ -99,16 +109,27 @@ export class EditorState {
     this.applyShuffle(true, false);
   }
 
-  private applyShuffle(colors: boolean, layout: boolean): void {
-    const next = shuffleDesign(this.design, { colors, layout, seed: randomSeed() }, this.aspect);
-    if (next.base.kind === 'mesh') {
-      this.mesh = next.base;
-      this.selectedPoint = Math.min(this.selectedPoint, next.base.points.length - 1);
+  private applyShuffle(
+    colors: boolean,
+    layout: boolean,
+    palette = this.palette.shuffleOptions(),
+    seed = randomSeed(),
+  ): void {
+    const temperature = this.palette.temperature;
+    const next = shuffleDesign(this.design, { colors, layout, palette, seed }, this.aspect);
+    const base = next.design.base;
+    if (base.kind === 'mesh') {
+      this.mesh = base;
+      this.selectedPoint = Math.min(this.selectedPoint, base.points.length - 1);
     } else {
-      this.linear = next.base;
+      this.linear = base;
     }
-    this.warp = next.warp;
+    this.warp = next.design.warp;
+    // Built around the base hue already; temperature carries over.
+    if (next.palette) this.palette.adopt({ info: next.palette, seed }, temperature);
   }
+
+  // ---- Warp -----------------------------------------------------------------
 
   /** Step through WARP_SHAPES (wrapping), e.g. with the [ and ] keys. */
   cycleWarpShape(step: 1 | -1): void {
@@ -125,11 +146,11 @@ export class EditorState {
 
   /** Rotate the image on screen by `deg` (counter-clockwise). */
   rotateBy(deg: number): void {
-    this.transform.rotate = normalizeAngle(Math.round(this.transform.rotate + deg));
+    this.transform.rotate = normalizeDegrees(Math.round(this.transform.rotate + deg));
   }
 
   setRotate(deg: number): void {
-    this.transform.rotate = normalizeAngle(deg);
+    this.transform.rotate = normalizeDegrees(deg);
   }
 
   setZoom(zoom: number): void {
@@ -143,7 +164,7 @@ export class EditorState {
   flip(axis: 'x' | 'y'): void {
     if (axis === 'x') this.transform.flipX = !this.transform.flipX;
     else this.transform.flipY = !this.transform.flipY;
-    this.transform.rotate = normalizeAngle(-this.transform.rotate);
+    this.transform.rotate = normalizeDegrees(-this.transform.rotate);
   }
 
   resetTransform(): void {
@@ -165,27 +186,29 @@ export class EditorState {
     return applyMat2(transformMatrix(this.transform), x, y);
   }
 
-  // ---- Colors (mesh points or linear stops) -----------------------------------
-
-  get colorCount(): number {
-    return this.kind === 'mesh' ? this.mesh.points.length : this.linear.stops.length;
-  }
+  // ---- Colors: mesh points or linear stops, whichever is active --------------
 
   get canAddColor(): boolean {
     return this.kind === 'mesh' ? this.canAddPoint : this.linear.stops.length < MAX_STOPS;
   }
 
   get canRemoveColor(): boolean {
-    return this.kind === 'mesh' ? this.canRemovePoint : this.linear.stops.length > 2;
+    return this.kind === 'mesh' ? this.canRemovePoint : this.linear.stops.length > MIN_STOPS;
+  }
+
+  /** Points or stops of the active pattern, each with a `color`. */
+  private get colorItems(): { color: Oklch }[] {
+    return this.kind === 'mesh' ? this.mesh.points : this.linear.stops;
   }
 
   /** Mesh: a point in the emptiest spot of the frame. Linear: a stop in the widest gap. */
   addColor(): void {
     if (this.kind === 'mesh') {
-      const at = this.emptiestSpot();
-      if (at) this.addPoint(...at);
+      if (!this.canAddPoint) return;
+      const points = this.mesh.points.map((p) => this.toScreen(p.x, p.y));
+      this.addPoint(...emptiestSpot(points, this.aspect));
     } else {
-      this.addStop();
+      this.addStop(widestGapCenter(this.linear.stops.map((s) => s.position)));
     }
   }
 
@@ -194,23 +217,59 @@ export class EditorState {
     else this.removeStop(i);
   }
 
-  /** Middle of the widest gap between stops, colored like the ramp there. */
-  addStop(): number | null {
+  // ---- Palette from image ---------------------------------------------------
+
+  /** Take the palette from an image file (picker or drop). */
+  async importImage(file: Blob): Promise<void> {
+    this.imageStatus = 'reading image…';
+    try {
+      this.applyImagePalette(await paletteFromImage(file));
+      this.imageStatus = '';
+    } catch {
+      this.imageStatus = "can't read that image";
+    }
+  }
+
+  /**
+   * Replace the active pattern's colors with an image's palette, one point or
+   * stop per color (D25). Mesh points start where their color sits in the
+   * image, sized by its area; stops follow the image along the gradient's
+   * direction. No rule made the palette, so it is custom, with no adjustment.
+   */
+  applyImagePalette({ palette, aspect: imageAspect }: ImagePalette): void {
+    if (palette.length === 0) return;
+    const colors = palette.map((c) => oklabToOklch(c.color));
+    const geo = imageLayout(palette, { imageAspect, frameAspect: this.aspect });
+    if (this.kind === 'mesh') {
+      this.mesh.points = geo.map((g, i) => {
+        const [x, y] = this.toPattern(...this.clampPosition(g.x, g.y));
+        const radius = clamp(g.radius, MIN_RADIUS, MAX_RADIUS) / this.transform.zoom;
+        return { x, y, radius, color: colors[i] };
+      });
+      this.selectedPoint = 0;
+    } else {
+      const a = (this.linear.angle * Math.PI) / 180;
+      const along = geo.map((g) => {
+        const [x, y] = this.toPattern(g.x, g.y);
+        return x * Math.cos(a) + y * Math.sin(a);
+      });
+      const order = colors.map((_, i) => i).sort((i, j) => along[i] - along[j]);
+      if (order.length === 1) order.push(order[0]);
+      const blend = this.linear.stops[0]?.blend ?? 'oklab';
+      this.linear.stops = order.map((i, k) => ({ position: k / (order.length - 1), color: [...colors[i]], blend }));
+      this.selectedStop = 0;
+    }
+    this.palette.adopt(null);
+  }
+
+  // ---- Linear stops ---------------------------------------------------------
+
+  /** A stop at position t, colored like the ramp there, with the blend of the segment it splits. */
+  addStop(t: number): number | null {
     const stops = this.linear.stops;
     if (stops.length >= MAX_STOPS) return null;
-    const sorted = ($state.snapshot(stops) as LinearGradient['stops']).sort((a, b) => a.position - b.position);
-    let t = 0.5;
-    let widest = -1;
-    let left = sorted[0];
-    const edges = [{ position: 0 }, ...sorted, { position: 1 }];
-    for (let k = 0; k + 1 < edges.length; k++) {
-      const gap = edges[k + 1].position - edges[k].position;
-      if (gap > widest) {
-        widest = gap;
-        t = (edges[k].position + edges[k + 1].position) / 2;
-        left = sorted[Math.max(0, k - 1)];
-      }
-    }
+    const sorted = ($state.snapshot(stops) as ColorStop[]).sort((a, b) => a.position - b.position);
+    const left = sorted.findLast((s) => s.position <= t) ?? sorted[0];
     stops.push({ position: t, color: oklabToOklch(evaluateRamp(sorted, t)), blend: left.blend });
     this.selectedStop = stops.length - 1;
     return this.selectedStop;
@@ -218,38 +277,15 @@ export class EditorState {
 
   removeStop(i = this.selectedStop): void {
     const stops = this.linear.stops;
-    if (stops.length <= 2 || i < 0 || i >= stops.length) return;
+    if (stops.length <= MIN_STOPS || i < 0 || i >= stops.length) return;
     stops.splice(i, 1);
     if (this.selectedStop >= i && this.selectedStop > 0) this.selectedStop--;
     this.selectedStop = Math.min(this.selectedStop, stops.length - 1);
   }
 
-  /** Screen spot inside the frame farthest from every point (coarse grid search). */
-  private emptiestSpot(): [number, number] | null {
-    if (!this.canAddPoint) return null;
-    const pts = this.mesh.points.map((p) => this.toScreen(p.x, p.y));
-    const hw = this.aspect / 2;
-    const n = 12;
-    let best: [number, number] = [0, 0];
-    let bestD = -1;
-    for (let i = 0; i < n; i++) {
-      for (let j = 0; j < n; j++) {
-        // Cell centers, kept off the very edge.
-        const x = (((i + 0.5) / n) * 2 - 1) * hw * 0.85;
-        const y = (((j + 0.5) / n) * 2 - 1) * 0.5 * 0.85;
-        let d = Infinity;
-        for (const [px, py] of pts) d = Math.min(d, Math.hypot(x - px, y - py));
-        if (d > bestD) {
-          bestD = d;
-          best = [x, y];
-        }
-      }
-    }
-    return best;
-  }
+  // ---- Mesh points ----------------------------------------------------------
 
-  // ---- Mesh points --------------------------------------------------------------
-
+  /** The selected point. */
   get point() {
     return this.mesh.points[Math.min(this.selectedPoint, this.mesh.points.length - 1)];
   }
@@ -279,16 +315,14 @@ export class EditorState {
     if (p) p.radius = clamp(size, MIN_RADIUS, MAX_RADIUS) / this.transform.zoom;
   }
 
-  /** Add a point at screen (x, y) colored like the (warped) image there, with the median radius. */
+  /** Add a point at screen (x, y), colored like the (warped) image there, with the median radius. */
   addPoint(x: number, y: number): number | null {
     if (!this.canAddPoint) return null;
-    const plain = $state.snapshot(this.mesh) as PointMesh;
-    const radii = plain.points.map((p) => p.radius).sort((a, b) => a - b);
-    const mid = radii.length >> 1;
-    const radius = radii.length % 2 ? radii[mid] : (radii[mid - 1] + radii[mid]) / 2;
-    const [cx, cy] = this.toPattern(...this.clampPosition(x, y));
-    const [wx, wy] = warpPoint($state.snapshot(this.warp), cx, cy);
-    this.mesh.points.push({ x: cx, y: cy, color: oklabToOklch(evaluateMesh(plain, wx, wy)), radius });
+    const mesh = $state.snapshot(this.mesh) as PointMesh;
+    const [px, py] = this.toPattern(...this.clampPosition(x, y));
+    const [wx, wy] = warpPoint($state.snapshot(this.warp), px, py);
+    const color = oklabToOklch(evaluateMesh(mesh, wx, wy));
+    this.mesh.points.push({ x: px, y: py, color, radius: median(mesh.points.map((p) => p.radius)) });
     this.selectedPoint = this.mesh.points.length - 1;
     return this.selectedPoint;
   }
@@ -303,7 +337,6 @@ export class EditorState {
   /** Move point i to screen (x, y). */
   movePoint(i: number, x: number, y: number): void {
     const p = this.mesh.points[i];
-    if (!p) return;
-    [p.x, p.y] = this.toPattern(...this.clampPosition(x, y));
+    if (p) [p.x, p.y] = this.toPattern(...this.clampPosition(x, y));
   }
 }

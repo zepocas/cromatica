@@ -1,4 +1,15 @@
-import type { Rng } from './shuffle.types';
+/** Seeded PRNG: the same seed gives the same sequence on every platform. */
+export interface Rng {
+  /** Uniform in [0, 1). */
+  next(): number;
+  /** Uniform in [min, max). */
+  range(min: number, max: number): number;
+  /** Integer in [0, n). */
+  int(n: number): number;
+  pick<T>(items: readonly T[]): T;
+  /** Fresh uint32, e.g. to seed a warp. */
+  uint32(): number;
+}
 
 // splitmix32: one step of a strong integer mixer, used to spread the user seed
 // across sfc32's 128-bit state so that adjacent seeds give unrelated sequences.
@@ -48,4 +59,19 @@ export function randomSeed(): number {
   const buf = new Uint32Array(1);
   crypto.getRandomValues(buf);
   return buf[0];
+}
+
+/**
+ * One key, drawn with probability proportional to its weight. Uses a single
+ * draw; keys are tried in the record's order.
+ */
+export function pickWeighted<K extends string>(rng: Rng, weights: Readonly<Record<K, number>>): K {
+  const keys = Object.keys(weights) as K[];
+  const total = keys.reduce((sum, k) => sum + weights[k], 0);
+  let r = rng.next() * total;
+  for (const k of keys) {
+    r -= weights[k];
+    if (r < 0) return k;
+  }
+  return keys[keys.length - 1];
 }

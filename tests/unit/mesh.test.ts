@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { createMeshEvaluator, evaluateMesh, meshGamutClip, meshWeights } from '../../src/color/mesh';
-import { gamutMapSrgb, gamutMapToLinearSrgb, linearSrgbToOklab, oklabToOklch, oklchToOklab } from '../../src/color/oklab';
-import type { Oklab } from '../../src/color/types';
-import { defaultMesh, type MeshPoint, type Oklch, type PointMesh } from '../../src/design/design';
+import { gamutMapSrgb, gamutMapToLinearSrgb } from '../../src/color/gamut';
+import { linearSrgbToOklab, oklabToOklch, oklchToOklab } from '../../src/color/oklab';
+import type { Oklab, Oklch } from '../../src/color/types';
+import { defaultMesh, type MeshPoint, type PointMesh } from '../../src/design/design';
 
 type PointSpec = [x: number, y: number, color: Oklch, radius: number];
 
@@ -57,7 +58,13 @@ describe('evaluateMesh', () => {
       [0.1, 0, [0.6, 0.1, 100], 1e-3],
       [1e6, -1e6, [0.7, 0.1, 200], 1e4],
     ]);
-    for (const m of [defaultMesh, primaries, tiny, { ...defaultMesh, sharpness: 0 }, { ...defaultMesh, sharpness: 1 }]) {
+    for (const m of [
+      defaultMesh,
+      primaries,
+      tiny,
+      { ...defaultMesh, sharpness: 0 },
+      { ...defaultMesh, sharpness: 1 },
+    ]) {
       for (const d of [0, 1, 1e3, 1e6, 1e9]) {
         for (const a of [0, 1, 2, 3, 4, 5]) {
           const w = meshWeights(m, d * Math.cos(a), d * Math.sin(a));
@@ -181,6 +188,8 @@ describe('meshGamutClip', () => {
     const src = oklabToOklch(lab);
     expect(out[1]).toBeLessThan(src[1]);
     // Within the JND that CSS mapping allows for the final channel clip.
-    expect(dist(linearSrgbToOklab(meshGamutClip(lab)), [0.5, ...(oklchToOklab([0.5, out[1], src[2]]).slice(1))])).toBeLessThan(0.02);
+    expect(
+      dist(linearSrgbToOklab(meshGamutClip(lab)), [0.5, ...oklchToOklab([0.5, out[1], src[2]]).slice(1)]),
+    ).toBeLessThan(0.02);
   });
 });

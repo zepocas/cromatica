@@ -3,6 +3,7 @@
 > **Status: WIP.** This is a skeleton to fill in as we go. Scope, criteria and open questions will change as milestones are worked through. Decisions that get made should move into [DECISIONS.md](DECISIONS.md).
 
 Each milestone uses the same structure:
+
 - **Goal:** why the milestone exists
 - **Scope:** what gets built
 - **Done when:** exit criteria
@@ -13,6 +14,7 @@ Each milestone uses the same structure:
 ## Phase 1 — Single-monitor generator
 
 ### M0 — Export pipeline spike ✅
+
 - **Goal:** prove the riskiest part first. A render must look the same in preview and export, tile without seams, and export at 5K+ without freezing the UI.
 - **Scope:**
   - Vite + TypeScript + Svelte 5 project setup
@@ -37,6 +39,7 @@ Each milestone uses the same structure:
   - Not yet checked in Photoshop/GIMP.
 
 ### M1 — Color system ✅
+
 - **Goal:** blend colors perceptually, with no gray midpoints and no banding.
 - **Scope:**
   - Oklab/Oklch conversion
@@ -61,6 +64,7 @@ Each milestone uses the same structure:
   - The ramp size differs slightly on GPUs whose MAX_TEXTURE_SIZE is below 4096.
 
 ### M2 — Color-point mesh ✅
+
 - **Goal:** the headline feature, a mesh gradient you edit by dragging colored points.
 - **Scope:**
   - Radial-basis-function point field blended in Oklab
@@ -83,10 +87,11 @@ Each milestone uses the same structure:
 > **Re-plan (after M2):** a comparison with photogradient.com showed that most of its look comes from three things: strong film grain, a menu of warp shapes, and shuffled, natural-looking palettes. Those moved forward into M3. Curated palettes and palette-from-image are now M4, and the remaining patterns are M5. See D22.
 
 ### M3 — The look: warp, grain, shuffle ✅
+
 - **Goal:** match photogradient's look, then go beyond it.
 - **Scope:**
   - **Warp stage** (coordinate distortion before the base pattern, for both gradient and mesh).
-    - An *experimental catalogue* of shapes: domain warp, FBM, simplex, value noise, waves, rows, columns, circular, oval, Worley, Voronoi, gravity, curl flow.
+    - An _experimental catalogue_ of shapes: domain warp, FBM, simplex, value noise, waves, rows, columns, circular, oval, Worley, Voronoi, gravity, curl flow.
     - Controls: Warp (strength), Warp size (scale), and a seed ("new variation").
     - We expect to prune shapes that don't earn their place.
   - **Film grain** (finish stage): amount and size, stronger in midtones, defined per output pixel, applied before dither.
@@ -116,6 +121,7 @@ Each milestone uses the same structure:
   - `warpPoint` ignores aspect (seeded centers sit in a 16:9 box).
 
 ### M3.5 — UI refinement (photogradient-style panel) and transforms ✅
+
 - **Goal:** a simpler panel organized like photogradient's, plus the basic whole-image transforms that are missing.
 - **Scope:**
   - **Panel order:**
@@ -147,24 +153,50 @@ Each milestone uses the same structure:
 - **Still open:**
   - On slow GPUs the grain still coarsens while dragging (the half-resolution fallback).
 
-### M4 — Palettes: curated library, Remix, palette from image
-- **Goal:** better colors with less effort.
-- **Scope:**
-  - Curated palette library: 50–100 palettes, tagged, stored as Oklch.
-  - Shuffle modes Curated, Remix and Generate.
-  - **Palette from image (new):**
-    - Fully local in the browser: the image is never uploaded.
-    - Picks dominant colors with k-means in Oklab.
-    - Optionally seeds mesh point positions from where those colors appear in the image.
+### M4 — Color: harmony controls, curated palettes, Remix, palette from image ✅
+
+- **Goal:** make the color theory visible and steerable, and get good colors with less effort.
+- **Background:** since M3, every shuffle builds its palette from a harmony rule (monochrome, analogous, complementary, split-complementary, triadic or tetradic) in Oklch. Lightness is spread evenly, chroma is set relative to the maximum in-gamut chroma for each hue, and near-duplicates are rejected. `generatePalette` already accepts `rule` and `mood`, but the UI exposes neither.
+- **Scope, in build order:**
+  1. **Harmony picker** in the colors section: auto (today's weighted random), monochrome, analogous, complementary, split-complementary, triadic, tetradic. It steers ⟳ and the main shuffle. On auto, show which rule the current palette came from, so a result you like can be pinned.
+  2. **Mood toggle:** natural or vivid (today: natural-leaning random). Tune vivid with 5–6 colors first: it currently looks garish (open since M3).
+  3. **Base hue (optional):** keep the rule but anchor it on a hue you choose, e.g. "triadic around this blue". Could come from the selected color row.
+  4. **Remix:** keep how the current colors relate to each other (hue gaps, lightness order, relative chroma) but shift hue, lightness or saturation. Works on hand-edited palettes too, not just generated ones.
+  5. ~~**Curated library:**~~ skipped (see Decided).
+  6. **Palette from image:**
+     - Fully local in the browser: the image is never uploaded.
+     - Picks up to 6 colors with k-means in Oklab, leaning distinct over dominant (D25).
+     - Places mesh points where those colors appear in the image.
+     - Revisit later: weight colorful pixels so small accents (e.g. a face in a busy photo) survive, and give dominant colors more points rather than only larger ones (ties in with step 9).
+  7. **Value key** (decided after M4 step 4): high-key (all light, airy), low-key (all dark, for dark-mode desktops) or full range (today). Light and dark structure sets a wallpaper's mood more than hue does. It's a "key" select next to mood that moves the lightness band of the planner, and keep pins it.
+  8. **Temperature, or hue shifting:** "warm light, cool shadow". Lighter colors drift toward yellow and darker ones toward blue or violet, as real light does and as illustrators build ramps. The result looks natural rather than synthetic, even when vivid. It's a toggle that applies when palettes are generated.
+  9. **Proportion** (Itten's contrast of extension, the 60-30-10 rule): one dominant color, a secondary one and a small accent, expressed through area. On the mesh that means more and larger points for the dominant color and a single small point for the accent. It's an option on the mesh shuffle ("proportion: even or 60-30-10"). Decided: a calm color (muted or dark) dominates and the most vivid one is the accent; mesh only, linear gradients stay as they are for now.
+  - **Not doing:** extra hue schemes such as compound or double-split, which differ little from split-complementary and tetradic. Also simultaneous contrast, which is a perception effect rather than a palette rule. Saturation contrast is already covered by mood and the dominant/accent chroma.
+- **UI:** stays lean, following the terminal panel. The harmony picker and the ⟳ source are in the main view; mood, base hue and Remix go behind "+ more".
 - **Done when:**
-  - Palettes extracted from photos look natural, with no muddy duplicates.
+  - Every rule produces palettes that visibly read as that rule.
+  - Vivid palettes with 5–6 colors are no longer garish.
   - Remix keeps how the current colors relate to each other.
-- **Open questions:**
-  - Who curates the palettes, and from what sources (licensing)?
-  - Tag vocabulary.
-  - How many colors to extract, and how to weight colorful areas against large dull ones.
+  - Palettes extracted from photos look natural, with no muddy duplicates.
+- **Progress:**
+  - ✅ Steps 1–3: the harmony picker is in the main view; on auto it shows the rule it picked, e.g. "auto (tetradic)". Mood (auto, natural or vivid) and base hue (a hue-wheel slider, ⌖ to take the selected color's hue) are behind "+ more".
+  - ✅ Step 4, Remix, became a link mode: with "edit [x] linked", changing one color moves the whole palette by the same shift. Hue rotates every color by the same angle, keeping the harmony. Lightness shifts logit(L), keeping the order without clipping. Intensity scales by the same ratio. Every part reverses exactly when dragged back, except where a color hits the sRGB edge. "Free" edits one color as before. "[ remix ]" applies a random linked shift. It works on hand-edited palettes too (`src/color/linked.ts`).
+  - ✅ Step 6, palette from image: ◩ on the colors rule opens a file picker, or an image can be dropped anywhere on the window. Up to 6 colors, one point or stop each. Mesh points start at the spot where their color is most concentrated in the image, and their size grows with its area, so a mostly dark photo stays mostly dark. Stops follow the image along the gradient's direction. The harmony shows "custom", and ⇄ reshuffles which point gets which color (`src/color/extract.ts`, D25).
+  - ✅ Step 7, value key: a "key" select behind "+ more", next to mood: high (light), full range or low (dark). It works like mood: it shows the palette's key, picking one regenerates in it, and keep pins it. Unpinned shuffles pick full most of the time and high or low now and then (D26).
+  - ✅ Step 8, temperature: "temp [off] warm cool" behind "+ more". Warm is warm light with cool shadows: the lightest color turns up to 30° toward amber, the darkest up to 30° toward blue-violet. Cool is the reverse: cool light, warm shadows. Each color turns by its place in the palette's own lightness range; mid-tones keep their hue. Base hue now also turns the current palette. Both are adjustments over the palette's original colors: "~ hue +35° · temp warm [ reset ]" under the colors says so, a "~" marks each changed color, and temp off, base hue off or reset brings the originals back. A hand edit bakes the adjustments in. "+ add point/stop" moved from the section rule to the end of the colors list (`src/color/temperature.ts`, D27).
+  - ✅ Fixed (after step 8): changing mood or key and back didn't restore the colors. Steering now regenerates from the palette's seed (D28).
+  - ✖ Step 9, proportion: built and dropped (D29). Point radii were fitted until the calmest color covered 60% of the frame, but on soft meshes with 4–6 colors the image changed little; moving points and picking key and mood do more. More moods replace it as the last M4 step.
+  - ✅ More moods: muted (dusty, low chroma), earthy (hues compressed into ochre–terracotta–olive), pastel (light and soft) and neon (bright, full chroma on a near-black ground), next to natural and vivid. Shuffles left on "any" pick natural, vivid, muted or earthy; pastel and neon are explicit picks (D30).
+  - ✅ Harmony picker reworked after use. The select always shows the current palette's rule (per pattern), and picking a rule gives a new palette in it right away. `[ ] keep` is what pins the rule and mood for ⟳ and shuffle; off means both are random. Before, picking a rule silently pinned it, so ⟳ never left it. Mood works the same way. Remix stays.
+  - ✅ **Shuffle color order (⇄):** the same colors, reassigned at random to different points or stops.
+  - ✅ Vivid tuning: with 4+ colors and a multi-hue rule, only the base hue's colors and one accent stay vivid; the other hues drop to a supporting chroma (0.3–0.55 of max). Yellow-greens (hue 100–140) are capped at 0.55 of max chroma, so they no longer read as acid. Natural palettes are unchanged.
+- **Decided:**
+  - Rule, mood, key, base hue and temperature are UI settings, not saved in the design or carried in share links. Rule, mood and key steer generated palettes (and regenerate from the palette's seed, D28); base hue and temperature act on the current palette as adjustments (D27).
+  - No curated palette library: the harmony generator with its controls covers it. This also removes the curation and licensing questions.
+- **Settled:** palette from image takes up to 6 colors, leaning distinct (D25). Weighting colorful pixels so small accents survive is noted under step 6 for later.
 
 ### M5 — Pattern variety
+
 - **Goal:** widen the range of looks beyond gradients and meshes.
 - **Scope:**
   - fBm noise fields.
@@ -174,6 +206,7 @@ Each milestone uses the same structure:
 - **Done when:** each pattern has golden-image tests and at least 3 good reference designs.
 
 ### M6 — Saving
+
 - **Goal:** never lose work within a session, and make designs shareable.
 - **Scope:**
   - Versioned design schema (zod) with migrations
@@ -191,6 +224,7 @@ Each milestone uses the same structure:
   - URL length limits for large meshes
 
 ### M7 — Polish
+
 - **Goal:** ready for real use.
 - **Scope:**
   - Device preset list
@@ -213,6 +247,7 @@ Each milestone uses the same structure:
 ---
 
 ## Phase 2 — Multi-monitor (sketch)
+
 - A canvas for arranging displays. Each display is modelled as aspect ratio + physical size (from its diagonal) + position.
 - A single composition spans the whole arrangement. Optional bezel-gap compensation.
 - The export produces one aligned wallpaper per display, each at its native resolution.
@@ -222,6 +257,8 @@ Each milestone uses the same structure:
   - Download as a ZIP?
 
 ## Later — Backlog (unordered)
+
+- Blend: sharper at the top of the slider. The mesh exponent is `k = 1.5 · 12^sharpness`, so 1.0 stops at k = 18, which still reads soft; try a higher maximum so the far end gives near-hard edges.
 - Bicubic patch mesh (Figma/SwiftUI-style bendable grid)
 - Display P3 output, as an internal flag with no UI
 - 16-bit PNG export

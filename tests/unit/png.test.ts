@@ -168,7 +168,14 @@ describe('createPngEncoder', () => {
   });
 
   it('rejects invalid sizes', () => {
-    for (const [width, height] of [[0, 1], [1, 0], [-1, 5], [1.5, 2], [NaN, 2], [2 ** 31, 1]]) {
+    for (const [width, height] of [
+      [0, 1],
+      [1, 0],
+      [-1, 5],
+      [1.5, 2],
+      [NaN, 2],
+      [2 ** 31, 1],
+    ]) {
       expect(() => createPngEncoder({ width, height })).toThrow(RangeError);
     }
   });

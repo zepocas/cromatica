@@ -1,4 +1,4 @@
-// Test harness: exposes window.harness for tests/e2e/export.spec.ts. All
+// Test harness: exposes window.harness for the export tests (tests/e2e/export.spec.ts). All
 // pixel comparisons happen in-page; only small summaries go back to Node.
 import { decode } from 'fast-png';
 import { defaultDesign, type Design, type WarpShape } from '../../../src/design/design';
@@ -124,7 +124,9 @@ async function exportVsSinglePass(
   warpShape?: WarpShape,
 ): Promise<CompareSummary> {
   const size = { width, height };
-  const design = warpShape ? { ...designs[pattern], warp: { ...designs[pattern].warp, shape: warpShape } } : designs[pattern];
+  const design = warpShape
+    ? { ...designs[pattern], warp: { ...designs[pattern].warp, shape: warpShape } }
+    : designs[pattern];
   const { png, exportMs, tiles } = await exportPng(design, size, tileSize);
   const t1 = performance.now();
   const ref = renderReference(design, size);
@@ -140,7 +142,11 @@ async function exportVsSinglePass(
   };
 }
 
-async function previewVsExport(width: number, height: number, pattern: TestPattern = 'linear'): Promise<CompareSummary> {
+async function previewVsExport(
+  width: number,
+  height: number,
+  pattern: TestPattern = 'linear',
+): Promise<CompareSummary> {
   const size = { width, height };
   const design = designs[pattern];
   const canvas = document.createElement('canvas');
@@ -213,9 +219,14 @@ async function cancelThenExport() {
   const ac = new AbortController();
   let tilesAtAbort = 0;
   let tilesTotal = 0;
-  let errorName = '';
+  let errorName: string;
   let errorMessage = '';
-  const req: ExportRequest = { design: testDesign, output: { width: 5120, height: 2880 }, format: 'png', tileSize: 1024 };
+  const req: ExportRequest = {
+    design: testDesign,
+    output: { width: 5120, height: 2880 },
+    format: 'png',
+    tileSize: 1024,
+  };
   try {
     await exportImage(req, {
       signal: ac.signal,
@@ -243,7 +254,14 @@ async function cancelThenExport() {
 
   const after = await exportImage({ design: testDesign, output: { width: 320, height: 200 }, format: 'png' });
   const png = decode(new Uint8Array(await after.arrayBuffer()));
-  return { errorName, errorMessage, tilesAtAbort, tilesTotal, preAborted, after: { type: after.type, width: png.width, height: png.height } };
+  return {
+    errorName,
+    errorMessage,
+    tilesAtAbort,
+    tilesTotal,
+    preAborted,
+    after: { type: after.type, width: png.width, height: png.height },
+  };
 }
 
 async function exportJpeg(width: number, height: number) {

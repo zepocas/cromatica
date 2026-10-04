@@ -48,18 +48,6 @@ vec3 simplex(vec2 p, uint key) {
   return 70.0 * n;
 }
 
-// Value noise in [-1, 1] with smoothstep interpolation.
-float valueNoise(vec2 p, uint key) {
-  p = clampCoord(p);
-  vec2 i = floor(p);
-  vec2 f = p - i;
-  vec2 u = f * f * (3.0 - 2.0 * f);
-  ivec2 c = ivec2(i);
-  float lo = mix(hash1(c, key), hash1(c + ivec2(1, 0), key), u.x);
-  float hi = mix(hash1(c + ivec2(0, 1), key), hash1(c + ivec2(1, 1), key), u.x);
-  return mix(lo, hi, u.y) * 2.0 - 1.0;
-}
-
 // Simplex fBm, lacunarity 2, gain 0.5, rotated per octave; ≈ [-1, 1].
 float fbm(vec2 p, uint key, int octaves) {
   float sum = 0.0;
