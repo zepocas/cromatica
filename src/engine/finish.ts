@@ -18,6 +18,8 @@ export interface PreparedFinish {
   vignetteScale: number;
   /** Number of flat steps; 0 = off. */
   bandSteps: number;
+  /** Fraction of each step over which it rises into the next; 0 = hard. */
+  bandEdge: number;
 }
 
 export function prepareFinish(finish: Finish | undefined, output: OutputSize): PreparedFinish {
@@ -26,18 +28,32 @@ export function prepareFinish(finish: Finish | undefined, output: OutputSize): P
     vignette: VIGNETTE_MAX * clamp01(finish?.vignette ?? 0),
     vignetteScale: 1 / (0.5 * Math.hypot(output.width / output.height, 1)),
     bandSteps: bands > 0 ? Math.round(BAND_STEPS[0] + (BAND_STEPS[1] - BAND_STEPS[0]) * bands) : 0,
+    bandEdge: clamp01(finish?.bandEdge ?? 0),
   };
 }
 
 /** Multiplier on linear RGB at composition coords (u, v): 1 in the middle, darker toward the corners. */
 export function vignetteFactor(f: PreparedFinish, u: number, v: number): number {
   if (f.vignette === 0) return 1;
-  const x = clamp01((Math.hypot(u, v) * f.vignetteScale - VIGNETTE_INNER) / (1 - VIGNETTE_INNER));
-  return 1 - f.vignette * x * x * (3 - 2 * x);
+  return 1 - f.vignette * smoothstep(VIGNETTE_INNER, 1, Math.hypot(u, v) * f.vignetteScale);
 }
 
-/** The ramp position in flat steps: t = 0 and t = 1 stay exact, so do the end colors. */
-export function bandT(f: PreparedFinish, t: number): number {
-  if (f.bandSteps < 2) return t;
-  return Math.min(1, Math.floor(t * f.bandSteps) / (f.bandSteps - 1));
+/**
+ * x in [0, 1] in flat steps: n levels from 0 to 1, each rising smoothly into
+ * the next over the last `bandEdge` of its width (0 = a hard edge). 0 and 1
+ * stay exact. Ramps band their position t; meshes each point's weight
+ * relative to the strongest (src/color/mesh.ts).
+ */
+export function bandLevel(f: PreparedFinish, x: number): number {
+  const n = f.bandSteps;
+  if (n < 2) return x;
+  const q = x * n;
+  const k = Math.floor(q);
+  const rise = f.bandEdge > 0 ? smoothstep(1 - f.bandEdge, 1, q - k) : 0;
+  return Math.min(1, (k + rise) / (n - 1));
+}
+
+function smoothstep(a: number, b: number, x: number): number {
+  const t = clamp01((x - a) / (b - a));
+  return t * t * (3 - 2 * t);
 }

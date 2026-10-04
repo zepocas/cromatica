@@ -9,7 +9,7 @@ void main() {
 #if BASE_MESH
   vec3 rgb = gamutClip(meshColor(uv));
 #else
-  vec3 rgb = rampColor(bandT(rampT(uv)));
+  vec3 rgb = rampColor(bandLevel(rampT(uv)));
 #endif
   rgb *= vignetteFactor(comp);
   vec3 encoded = srgbEncode(rgb);

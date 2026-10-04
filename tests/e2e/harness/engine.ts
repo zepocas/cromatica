@@ -8,7 +8,7 @@ import { bakeRamp, RAMP_SIZE } from '../../../src/color/ramp';
 import type { Rgb } from '../../../src/color/types';
 import { type Design, type RampGradient, noGrain, noWarp, type PointMesh } from '../../../src/design/design';
 import { applyMat2, transformMatrix } from '../../../src/engine/transform';
-import { bandT, prepareFinish, vignetteFactor } from '../../../src/engine/finish';
+import { bandLevel, prepareFinish, vignetteFactor } from '../../../src/engine/finish';
 import { prepareRampShape, rampT } from '../../../src/engine/ramp-shape';
 import { createRenderer } from '../../../src/engine/renderer';
 import { createWarp } from '../../../src/engine/warp';
@@ -103,14 +103,14 @@ function createReference(design: Design, output: OutputSize, halfFloat = false) 
   const at = (px: number, py: number) => warp(...applyMat2(m, ...compositionCoord(px, py, w, h)));
   const finish = prepareFinish(design.finish, output);
   const dimAt = (px: number, py: number) => vignetteFactor(finish, ...compositionCoord(px, py, w, h));
-  if (design.base.kind === 'mesh') return createMeshReference(design.base, at, dimAt);
+  if (design.base.kind === 'mesh') return createMeshReference(design.base, at, dimAt, (r) => bandLevel(finish, r));
   const base = design.base;
   const ramp = bakeRamp(base.stops, RAMP_SIZE);
   if (halfFloat && f16round) for (let i = 0; i < ramp.length; i++) ramp[i] = f16round(ramp[i]);
   const n = RAMP_SIZE;
   const shape = prepareRampShape(base, output, design.transform);
   return (px: number, py: number): Triple => {
-    const t = bandT(finish, rampT(shape, ...at(px, py)));
+    const t = bandLevel(finish, rampT(shape, ...at(px, py)));
     const dim = dimAt(px, py);
     // Sampling at (t·(n-1) + 0.5) / n with LINEAR filtering = lerp at t·(n-1).
     const s = t * (n - 1);
@@ -135,8 +135,9 @@ function createMeshReference(
   mesh: PointMesh,
   at: (px: number, py: number) => readonly [number, number],
   dimAt: (px: number, py: number) => number,
+  band: (relative: number) => number,
 ) {
-  const evaluate = createMeshEvaluator(mesh);
+  const evaluate = createMeshEvaluator(mesh, band);
   return (px: number, py: number): Triple => {
     const rgb = meshGamutClip(evaluate(...at(px, py)));
     const dim = dimAt(px, py);

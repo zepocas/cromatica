@@ -225,9 +225,9 @@ Each milestone uses the same structure:
   - **Fractals, Truchet and quasi-periodic tilings:** too graphic for gradient wallpapers.
   - **User-facing layers:** the product stays one pattern, one warp and a few finishes.
 - **Progress:**
-  - ✅ Step 1, warp shapes: **silk** (`ridged`: long draped folds, ridged noise run slowly along a seeded direction and fast across it) and **marble** (turbulent sine bands across a seeded direction: veins that fold the colors into each other). **Kaleidoscope** was built and pruned after the contact-sheet review: mirroring a wedge of a soft gradient repeats one or two colors or smudges (D31). Flow/brushed and Voronoi edges stay optional.
+  - ✅ Step 1, warp shapes: **silk** (`ridged`: long draped folds, ridged noise run slowly along a seeded direction and fast across it) and **marble** (turbulent sine bands across a seeded direction: veins that fold the colors into each other). **Kaleidoscope** was built and pruned after the contact-sheet review: mirroring a wedge of a soft gradient repeats one or two colors or smudges (D31). Flow/brushed is now planned (with bristle and smudge variants); Voronoi edges stays optional.
   - ✅ Step 2, radial and conic: two more entries in the gradient select. Linear, radial and conic share one ramp (stops, blends, angle), so switching keeps the colors; the stop editor, shuffle and palette from image work on all three. Radial runs from the center to the frame corners and has no angle; conic sweeps from its angle to the opposite side and back, smooth all the way round, with a soft core so warps can't pinch the center (D32).
-  - ✅ Step 3, finishes behind "+ more" in adjust: **vignette** (darkens toward the frame corners, up to 75%, fixed to the frame while the image turns) and **bands** (ramp gradients only: the ramp in 24 to 3 flat steps, topographic with a warp). Both are tile-identical, match the CPU reference, and at 0 are bit-identical to off (D33).
+  - ✅ Step 3, finishes: **bands** and **edge** in the main adjust controls, for every style (ramps step their position; the mesh steps each point's influence relative to the strongest, a subtler terrace), edge from crisp lines to soft terraces; **vignette** behind "+ more" (darkens toward the frame corners, up to 75%, fixed to the frame while the image turns). All tile-identical, matching the CPU reference, and at 0 bit-identical to off (D33).
 - **Open questions:**
   - ~~Does conic need a seam control?~~ Smooth seam for now (D32); to be checked by eye.
   - Should Vignette and Bands be in the main view or behind "+ more"? Behind "+ more" for now; promote either if it proves central, as warp size was.
@@ -296,7 +296,7 @@ Each milestone uses the same structure:
 
 ## Later — Backlog (unordered)
 
-- Blend: sharper at the top of the slider. The mesh exponent is `k = 1.5 · 12^sharpness`, so 1.0 stops at k = 18, which still reads soft; try a higher maximum so the far end gives near-hard edges.
+- ~~Blend: sharper at the top of the slider.~~ Done in M4.5: the far end now reaches near-hard edges (D34).
 - Bicubic patch mesh (Figma/SwiftUI-style bendable grid)
 - Display P3 output, as an internal flag with no UI
 - 16-bit PNG export

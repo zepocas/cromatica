@@ -215,5 +215,10 @@ Decisions made during the architecture review. Reopen one only if new informatio
 
 - **Order:** base pattern (with bands) → vignette in linear light → sRGB transfer → grain → dither. `Design.finish = { vignette, bands }`, missing = none; shuffles keep it like grain.
 - **Vignette:** multiplies linear RGB by `1 − 0.75·amount·smoothstep(0.35, 1, |p| / half diagonal)` in composition coords, before transform and warp, so it frames the image and stays put while the image turns, zooms or warps. Black stays black. "Leaves pure white exact" from the M4.5 done list can't hold for a vignette, which darkens corners by design; what holds is that 0 is bit-identical to off.
-- **Bands:** `floor(t·n)/(n−1)` on the ramp parameter, n from 24 (just above 0) to 3 (at 1): n flat steps with the first and last stop colors exact. Ramp gradients only; the mesh has no ramp to step, so the slider hides. Steps are hard edges (no derivative-based antialiasing, which could differ between tiles); grain and dither soften them.
-- **Both** are uniforms, not shader variants, so dragging them never recompiles.
+- **Bands:** `bandLevel(x) = (k + rise)/(n−1)` with `k = floor(x·n)` and `rise` a smoothstep over the last `edge` of each step (0 = hard): n flat levels from 0 to 1, both ends exact, n from 24 (just above 0) to 3 (at 1). Ramp gradients band their position t. The mesh bands each point's weight relative to the strongest (which is exactly 1 before normalizing, so it stays 1 and a pixel never loses all its color); that gives terraces of each point's reach, subtler than ramp bands because the mix averages the steps. The edge slider softens the step edges for both. A user request moved bands and edge to the main controls for every style.
+- **All three** are uniforms, not shader variants, so dragging them never recompiles. The finish chunk comes before the base patterns in the shader, since the mesh calls `bandLevel`.
+
+## D34. Blend reaches near-hard edges at the top
+
+- **Change:** the mesh exponent is `k = 1.5 · 12^s · (1 + 4·s⁶)`. The extra factor is ×1.007 at s = 0.35, ×1.06 at 0.5, ×1.47 at 0.7 and ×5 at 1, so k tops out at 90 instead of 18. Low and mid blends (shuffles stay in 0.1–0.5) look as before; the far end gives near-hard, Voronoi-like edges.
+- **Safe:** weights are computed in the log domain normalized by the largest, so k = 90 is fine in fp32; CPU and GPU still match. The continuity test bound scales with k, since steeper (still continuous) transitions change faster per sample.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createMeshEvaluator, evaluateMesh, meshGamutClip, meshWeights } from '../../src/color/mesh';
+import { createMeshEvaluator, evaluateMesh, meshExponent, meshGamutClip, meshWeights } from '../../src/color/mesh';
 import { gamutMapSrgb, gamutMapToLinearSrgb } from '../../src/color/gamut';
 import { linearSrgbToOklab, oklabToOklch, oklchToOklab } from '../../src/color/oklab';
 import type { Oklab, Oklch } from '../../src/color/types';
@@ -122,8 +122,10 @@ describe('evaluateMesh', () => {
           prev = lab;
           prevRgb = rgb;
         }
-        expect(maxJump).toBeLessThan(2e-3);
-        expect(maxRgbJump).toBeLessThan(4e-3);
+        // Steeper kernels (higher exponent) change faster per step; scale the bound with it.
+        const steepness = Math.max(1, meshExponent(m.sharpness) / 18);
+        expect(maxJump).toBeLessThan(2e-3 * steepness);
+        expect(maxRgbJump).toBeLessThan(4e-3 * steepness);
       }
     }
   });

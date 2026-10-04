@@ -12,6 +12,8 @@
   let { editor = $bindable() }: Props = $props();
 
   const fixed2 = (v: number) => v.toFixed(2);
+  const bandSteps = (bands: number) =>
+    prepareFinish({ vignette: 0, bands, bandEdge: 0 }, { width: 1, height: 1 }).bandSteps;
   const degrees = (v: number) => `${Math.round(v)}°`;
   const warpOff = $derived(editor.warp.shape === 'none');
 </script>
@@ -57,6 +59,25 @@
       display={degrees}
     />
   {/if}
+  <SliderRow
+    label="bands"
+    title="The image in flat steps, like a topographic map"
+    min={0}
+    max={1}
+    step={0.01}
+    bind:value={editor.finish.bands}
+    display={(v) => (v === 0 ? 'off' : String(bandSteps(v)))}
+  />
+  <SliderRow
+    label="edge"
+    title="Band edges: crisp lines ↔ soft terraces"
+    min={0}
+    max={1}
+    step={0.01}
+    disabled={editor.finish.bands === 0}
+    bind:value={editor.finish.bandEdge}
+    display={fixed2}
+  />
 
   {#snippet more()}
     <SliderRow
@@ -68,18 +89,6 @@
       bind:value={editor.finish.vignette}
       display={fixed2}
     />
-    {#if editor.kind !== 'mesh'}
-      <SliderRow
-        label="bands"
-        title="The gradient in flat steps, like a topographic map"
-        min={0}
-        max={1}
-        step={0.01}
-        bind:value={editor.finish.bands}
-        display={(v) =>
-          v === 0 ? 'off' : String(prepareFinish({ vignette: 0, bands: v }, { width: 1, height: 1 }).bandSteps)}
-      />
-    {/if}
     <!-- Log scale: the slider moves by doublings. -->
     <SliderRow
       label="zoom"

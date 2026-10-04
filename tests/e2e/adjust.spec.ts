@@ -114,19 +114,25 @@ test('transform: rotate, flip, zoom and reset move the image and the handles tog
   expect(y).toBeCloseTo(y0, 2);
 });
 
-test('vignette darkens the image; bands steps ramp gradients only', async ({ page }) => {
+test('vignette darkens the image; bands and edge work on every style', async ({ page }) => {
   await openApp(page);
   const { settled, expectPreviewChanged } = previewProbe(page);
-  await openMore(page, 'adjust');
-  await expect(page.getByLabel('Bands')).toHaveCount(0);
+  // Bands and edge are main controls; edge waits for bands.
+  await expect(page.getByLabel('Edge')).toBeDisabled();
+  for (const kind of ['mesh', 'linear']) {
+    await page.getByLabel('Gradient', { exact: true }).selectOption(kind);
+    let before = await settled();
+    await page.getByLabel('Bands').fill('0.5');
+    await expectPreviewChanged(before);
+    before = await settled();
+    await page.getByLabel('Edge').fill('0.6');
+    await expectPreviewChanged(before);
+    await page.getByLabel('Edge').fill('0');
+    await page.getByLabel('Bands').fill('0');
+  }
 
-  let before = await settled();
+  await openMore(page, 'adjust');
+  const before = await settled();
   await page.getByLabel('Vignette').fill('0.8');
   await expectPreviewChanged(before);
-
-  await page.getByLabel('Gradient', { exact: true }).selectOption('linear');
-  before = await settled();
-  await page.getByLabel('Bands').fill('0.5');
-  await expectPreviewChanged(before);
-  await expect(page.locator('output', { hasText: /^\d+$/ })).toBeVisible();
 });

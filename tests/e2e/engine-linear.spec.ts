@@ -152,7 +152,10 @@ test.describe('radial and conic gradients', () => {
 });
 
 test.describe('finish: vignette and bands', () => {
-  const withFinish = (d: Design, vignette: number, bands: number): Design => ({ ...d, finish: { vignette, bands } });
+  const withFinish = (d: Design, vignette: number, bands: number, bandEdge = 0): Design => ({
+    ...d,
+    finish: { vignette, bands, bandEdge },
+  });
 
   test('vignette matches the CPU reference on linear and mesh', async ({ page }) => {
     for (const d of [threeStops(30), meshDefault]) {
@@ -161,14 +164,18 @@ test.describe('finish: vignette and bands', () => {
     }
   });
 
-  test('bands match the CPU reference', async ({ page }) => {
-    const r = await engineHarness(page, 'compareReference', withFinish(threeStops(30), 0, 0.6), 640, 360);
-    expect(r.maxDiff, JSON.stringify(r.worst)).toBeLessThanOrEqual(1);
+  test('bands, crisp and soft, match the CPU reference on linear and mesh', async ({ page }) => {
+    for (const d of [threeStops(30), meshDefault]) {
+      for (const edge of [0, 0.5]) {
+        const r = await engineHarness(page, 'compareReference', withFinish(d, 0, 0.6, edge), 640, 360);
+        expect(r.maxDiff, `edge ${edge} ${JSON.stringify(r.worst)}`).toBeLessThanOrEqual(1);
+      }
+    }
   });
 
   test('single pass equals 256 px tiles with both on', async ({ page }) => {
     for (const d of [threeStops(75), meshDefault]) {
-      const r = await engineHarness(page, 'compareTiled', withFinish(d, 0.7, 0.5), 1531, 917, 256, true);
+      const r = await engineHarness(page, 'compareTiled', withFinish(d, 0.7, 0.5, 0.3), 1531, 917, 256, true);
       expect(r.identical).toBe(true);
     }
   });

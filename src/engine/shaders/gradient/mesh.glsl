@@ -22,11 +22,12 @@ vec3 meshColor(vec2 uv) {
   vec3 lab = vec3(0.0);
   for (int i = 0; i < MAX_MESH_POINTS; i++) {
     if (i >= u_meshCount) break;
-    float w = exp(e[i] - emax);
+    // Relative weight (the strongest is exactly 1), in bands when they're on.
+    float w = bandLevel(exp(e[i] - emax));
     sum += w;
     lab += w * u_meshColor[i];
   }
-  // sum >= 1: the largest weight is exactly exp(0).
+  // sum >= 1: the largest weight is exactly exp(0), and bandLevel(1) = 1.
   return lab / sum;
 }
 #endif

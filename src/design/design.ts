@@ -128,13 +128,16 @@ export interface Grain {
 /**
  * Finishing effects (M4.5, D33), after the base pattern. Vignette is defined
  * on the frame (composition coords, before transform and warp), so it stays
- * put while the image turns; bands steps the ramp of ramp gradients.
+ * put while the image turns. Bands steps ramp gradients along their ramp and
+ * meshes along each point's influence.
  */
 export interface Finish {
   /** Darkening toward the frame corners, [0, 1]; 0 = off. */
   vignette: number;
-  /** Ramp gradients only: the ramp in flat steps, [0, 1] (more = fewer, wider steps); 0 = off. */
+  /** The image in flat steps, [0, 1] (more = fewer, wider steps); 0 = off. */
   bands: number;
+  /** Softness of the band edges, [0, 1]: 0 = crisp lines, 1 = soft terraces. */
+  bandEdge: number;
 }
 
 /**
@@ -169,7 +172,7 @@ export const defaultWarp: Warp = { shape: 'domain', amount: 0.3, size: 0.35, see
 export const noWarp: Warp = { shape: 'none', amount: 0, size: 0.5, seed: 1 };
 export const defaultGrain: Grain = { amount: 0.35, size: 0 };
 export const noGrain: Grain = { amount: 0, size: 0 };
-export const noFinish: Finish = { vignette: 0, bands: 0 };
+export const noFinish: Finish = { vignette: 0, bands: 0, bandEdge: 0 };
 export const identityTransform: Transform = { rotate: 0, zoom: 1, flipX: false, flipY: false };
 export const MIN_ZOOM = 0.5;
 export const MAX_ZOOM = 4;
