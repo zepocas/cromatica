@@ -4,8 +4,10 @@ import type { Oklch } from '../color/types';
 import { applyMat2, clampZoom, transformMatrix } from '../engine/transform';
 import { clamp } from '../math';
 import {
+  type BasePattern,
   type ColorStop,
   type Design,
+  type Finish,
   type RampGradient,
   MAX_MESH_POINTS,
   MAX_STOPS,
@@ -26,6 +28,8 @@ export interface ShuffleOptions {
   palette?: PaletteOptions;
   /** Re-randomize layout: mesh points + radii (or gradient angle + stop positions), mesh sharpness, warp shape/amount/size/seed. */
   layout: boolean;
+  /** With `layout`: also pick the pattern kind and the finishes (the app's main shuffle). */
+  style?: boolean;
   seed: number;
 }
 
@@ -100,9 +104,21 @@ export const PLANES_SHUFFLE = {
   count: [0.15, 0.65] as Range,
 };
 
+/** Style shuffle: how often each pattern kind comes up, and the finishes' odds and ranges. */
+export const STYLE_SHUFFLE = {
+  kinds: { mesh: 0.35, linear: 0.15, radial: 0.1, conic: 0.1, planes: 0.3 } as Record<BasePattern['kind'], number>,
+  vignette: { chance: 0.3, range: [0.2, 0.6] as Range },
+  print: { chance: 0.25, range: [0.2, 0.7] as Range },
+  /** Not for planes, which are flat already. */
+  bands: { chance: 0.15, range: [0.2, 0.7] as Range },
+  planesRoughness: { clean: 0.25, range: [0.3, 1] as Range },
+  planesBlend: { chance: 0.3, range: [0.2, 0.8] as Range },
+};
+
 // Independent streams, so locking one aspect doesn't change what the other produces for the same seed.
 const COLOR_STREAM = 0x9e3779b9;
 const LAYOUT_STREAM = 0x85ebca6b;
+const STYLE_STREAM = 0xc2b2ae35;
 
 /** Shuffled mesh radii stay in this range (composition units). */
 const RADIUS_LIMITS: Range = [0.05, 2];
@@ -131,7 +147,14 @@ export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 
     layoutRng: createRng((seed ^ LAYOUT_STREAM) >>> 0),
     makePalette: (n) => generatePalette(colorRng, n, opts.palette),
   };
-  const b = design.base;
+  let b = design.base;
+  let finish = design.finish;
+  if (opts.layout && opts.style) {
+    const styleRng = createRng((seed ^ STYLE_STREAM) >>> 0);
+    b = withKind(b, pickWeighted(styleRng, STYLE_SHUFFLE.kinds));
+    if (b.kind === 'planes') b = { ...b, ...shufflePlanesStyle(styleRng) };
+    finish = shuffleFinish(styleRng, b.kind === 'planes');
+  }
   const shuffled =
     b.kind === 'mesh' ? shuffleMesh(b, ctx) : b.kind === 'planes' ? shufflePlanes(b, ctx) : shuffleRamp(b, ctx);
   let base = shuffled.pattern;
@@ -139,7 +162,7 @@ export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 
   const warp = opts.layout ? shuffleWarp(ctx.layoutRng) : { ...design.warp };
   const out: Design = { engineVersion: design.engineVersion, base, warp, grain: { ...design.grain } };
   if (design.transform) out.transform = { ...design.transform };
-  if (design.finish) out.finish = { ...design.finish };
+  if (finish) out.finish = { ...finish };
   return { design: out, palette: shuffled.palette };
 }
 
@@ -238,6 +261,47 @@ function shuffleMesh(base: PointMesh, ctx: ShuffleContext): { pattern: PointMesh
   const colors = palette ? assignMeshColors(geo, palette.colors, spacing) : base.points.map((p) => copyColor(p.color));
   const points: MeshPoint[] = geo.map((g, i) => ({ ...g, color: colors[i] }));
   return { pattern: { kind: 'mesh', points, sharpness }, palette: palette && paletteInfo(palette) };
+}
+
+function baseColors(base: BasePattern): Oklch[] {
+  if (base.kind === 'mesh') return base.points.map((p) => copyColor(p.color));
+  if (base.kind === 'planes') return base.colors.map(copyColor);
+  return base.stops.map((s) => copyColor(s.color));
+}
+
+/**
+ * The same colors as a pattern of another kind. Geometry is a placeholder: the
+ * layout shuffle that follows replaces it. Ramps keep their stops between kinds.
+ */
+function withKind(base: BasePattern, kind: BasePattern['kind']): BasePattern {
+  if (kind === base.kind) return base;
+  const colors = baseColors(base);
+  if (kind === 'mesh') {
+    return { kind, sharpness: 0.35, points: colors.map((color) => ({ x: 0, y: 0, radius: 0.4, color })) };
+  }
+  const n = Math.min(colors.length, MAX_STOPS);
+  if (kind === 'planes') return { kind, colors: colors.slice(0, n), count: 0.4, roughness: 0.5, blend: 0, seed: 0 };
+  if (base.kind !== 'mesh' && base.kind !== 'planes') return { ...base, kind };
+  const ramp = n === 1 ? [colors[0], colors[0]] : colors.slice(0, n);
+  const stops = ramp.map((color, i) => ({ position: i / (ramp.length - 1), color, blend: 'oklab' as const }));
+  return { kind, angle: 0, stops };
+}
+
+function shufflePlanesStyle(rng: Rng): Pick<PlanesPattern, 'roughness' | 'blend'> {
+  const { planesRoughness: r, planesBlend: b } = STYLE_SHUFFLE;
+  return {
+    roughness: rng.next() < r.clean ? 0 : round4(rng.range(...r.range)),
+    blend: rng.next() < b.chance ? round4(rng.range(...b.range)) : 0,
+  };
+}
+
+function shuffleFinish(rng: Rng, flat: boolean): Finish {
+  const s = STYLE_SHUFFLE;
+  const maybe = (f: { chance: number; range: Range }) => (rng.next() < f.chance ? round4(rng.range(...f.range)) : 0);
+  const vignette = maybe(s.vignette);
+  const print = maybe(s.print);
+  const bands = maybe(s.bands);
+  return { vignette, print, bands: flat ? 0 : bands, bandEdge: round4(rng.next()) };
 }
 
 /** Planes: a new layout is a new seed (and count); new colors are a palette of the same size. */

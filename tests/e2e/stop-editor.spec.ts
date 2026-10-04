@@ -88,7 +88,8 @@ test('radial and conic share the stops with linear; radial has no angle', async 
     await expect(page.getByLabel('Angle')).toHaveCount(kind === 'radial' ? 0 : 1);
   }
 
-  // Shuffling keeps the shape.
+  // Shuffling with the layout kept keeps the shape.
+  await page.getByRole('button', { name: 'Lock layout' }).click();
   await page.getByRole('button', { name: /^Shuffle( Space)?$/ }).click();
   await expect(gradient).toHaveValue('conic');
 });

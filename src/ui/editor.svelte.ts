@@ -80,12 +80,12 @@ export class EditorState {
   readonly palette = new PaletteEditor({
     kind: () => (this.kind === 'mesh' ? 'mesh' : 'ramp'),
     colorItems: () => this.colorItems,
-    regenerate: (options, seed) => this.applyShuffle(true, false, options, seed),
+    regenerate: (options, seed) => this.applyShuffle(true, false, false, options, seed),
   });
 
   /** Opens on a full shuffle of the mesh (palette, layout and warp). */
   constructor(opts: { shuffle?: boolean } = {}) {
-    if (opts.shuffle ?? true) this.shuffle();
+    if (opts.shuffle ?? true) this.applyShuffle(true, true);
   }
 
   /** Plain (non-proxy) design with stops sorted, as the renderer and worker expect. */
@@ -117,9 +117,9 @@ export class EditorState {
     return !(this.colorsLocked && this.layoutLocked);
   }
 
-  /** Shuffle the active pattern (and warp) except for the locked parts. */
+  /** Shuffle everything except the locked parts: a layout shuffle also picks the pattern kind and finishes. */
   shuffle(): void {
-    if (this.canShuffle) this.applyShuffle(!this.colorsLocked, !this.layoutLocked);
+    if (this.canShuffle) this.applyShuffle(!this.colorsLocked, !this.layoutLocked, !this.layoutLocked);
   }
 
   /** New palette only, whatever the locks say. */
@@ -130,11 +130,12 @@ export class EditorState {
   private applyShuffle(
     colors: boolean,
     layout: boolean,
+    style = false,
     palette = this.palette.shuffleOptions(),
     seed = randomSeed(),
   ): void {
     const temperature = this.palette.temperature;
-    const next = shuffleDesign(this.design, { colors, layout, palette, seed }, this.aspect);
+    const next = shuffleDesign(this.design, { colors, layout, style, palette, seed }, this.aspect);
     const base = next.design.base;
     if (base.kind === 'mesh') {
       this.mesh = base;
@@ -146,7 +147,9 @@ export class EditorState {
     } else {
       this.ramp = base;
     }
+    this.kind = base.kind;
     this.warp = next.design.warp;
+    if (next.design.finish) this.finish = next.design.finish;
     // Built around the base hue already; temperature carries over.
     if (next.palette) this.palette.adopt({ info: next.palette, seed }, temperature);
   }

@@ -31,6 +31,8 @@ test('planes: shares the ramp colors, has count, torn and new layout, no bands o
   await expect(layout).not.toHaveAttribute('data-seed', seed!);
   await expectPreviewChanged(before);
 
+  // With the layout kept, shuffle stays on planes.
+  await page.getByRole('button', { name: 'Lock layout' }).click();
   before = await settled();
   await page.getByRole('button', { name: /^Shuffle( Space)?$/ }).click();
   await expectPreviewChanged(before);

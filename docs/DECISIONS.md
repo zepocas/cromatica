@@ -250,3 +250,7 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Why:** every shuffle laid out an equally even scatter of similar-sized points with soft blends (best-candidate with 10 tries, radius 0.5–0.85 of the spacing, blend 0.1–0.5). The positions changed, but the compositions all looked alike and always vague.
 - **Change:** each shuffle draws 3–10 best-candidate tries (looser to more even), radii of 0.4–1.05 of the spacing, and with probability 0.4 one dominant point at 1.6× size. Blend is drawn from 0.1–0.8. The no-clumping test (no two points closer than 0.2 spacings) still holds.
 
+## D39. The main shuffle randomizes the style too
+
+- **Why:** shuffle only re-rolled the active gradient type, so it never showed what else the app can do. The user wants it to be a full randomize and a quick showcase.
+- **Change:** `shuffleDesign` takes `style` (used together with `layout`): on its own random stream, it picks the pattern kind (mesh 35%, planes 30%, linear 15%, radial and conic 10% each) and the finishes (vignette 30%, print 25%, bands 15% and never on planes), plus planes roughness and blend. The colors carry over to the new kind (ramps hold up to 8). The main shuffle sets `style` unless layout is locked, so "keep layout" also keeps the kind and finishes. Color-only shuffles and the opening shuffle keep the kind (the app still opens on a mesh). Grain and the transform are never shuffled.
