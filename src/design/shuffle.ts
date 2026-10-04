@@ -71,15 +71,18 @@ export const WARP_SHUFFLE_TABLE: Record<WarpShape, { weight: number; amount: Ran
 
 export const MESH_SHUFFLE = {
   /** Sharpness range (0 = haze, 1 = blobby). */
-  sharpness: [0.1, 0.5] as Range,
+  sharpness: [0.1, 0.8] as Range,
   /** Radius as a fraction of the mean point spacing sqrt(frameArea / n). */
-  radius: [0.5, 0.85] as Range,
+  radius: [0.4, 1.05] as Range,
+  /** Probability that one point is made dominant, and its radius factor. */
+  dominant: 0.4,
+  dominantScale: 1.6,
   /** Points are sampled in the frame scaled by this factor, so a few sit just outside. */
   overscan: 1.15,
   /** Probability of changing the point count by ±1 (only when colors are shuffled too). */
   countChange: 0.35,
-  /** Best-candidate samples per point (Mitchell); higher = more even spacing. */
-  candidates: 10,
+  /** Best-candidate samples per point (Mitchell), drawn per shuffle: fewer = looser, less even layouts. */
+  candidates: [3, 10] as Range,
   /** How close to (or past) the frame edge a point may sit before it is penalised, in spacings. */
   edgeSlack: 0.55,
 };
@@ -156,7 +159,7 @@ function shuffleWarp(rng: Rng): Warp {
 }
 
 /** Best-candidate (Mitchell) sampling over the overscanned frame: even, not grid-like. */
-function layoutPoints(rng: Rng, n: number, aspect: number): [number, number][] {
+function layoutPoints(rng: Rng, n: number, aspect: number, candidates: number): [number, number][] {
   const fw = aspect / 2;
   const hw = fw * MESH_SHUFFLE.overscan;
   const hh = 0.5 * MESH_SHUFFLE.overscan;
@@ -165,7 +168,7 @@ function layoutPoints(rng: Rng, n: number, aspect: number): [number, number][] {
   for (let i = 0; i < n; i++) {
     let best: [number, number] = [0, 0];
     let bestD = -1;
-    const k = i === 0 ? 1 : MESH_SHUFFLE.candidates;
+    const k = i === 0 ? 1 : candidates;
     for (let j = 0; j < k; j++) {
       const c: [number, number] = [rng.range(-hw, hw), rng.range(-hh, hh)];
       let d = Infinity;
@@ -218,11 +221,14 @@ function shuffleMesh(base: PointMesh, ctx: ShuffleContext): { pattern: PointMesh
   let geo: { x: number; y: number; radius: number }[];
   let sharpness = base.sharpness;
   if (opts.layout) {
-    geo = layoutPoints(layoutRng, n, aspect).map(([x, y]) => ({
-      x: round4(x),
-      y: round4(y),
-      radius: round4(clamp(spacing * layoutRng.range(...MESH_SHUFFLE.radius), ...RADIUS_LIMITS)),
-    }));
+    const [minK, maxK] = MESH_SHUFFLE.candidates;
+    const candidates = minK + layoutRng.int(maxK - minK + 1);
+    const dominant = layoutRng.next() < MESH_SHUFFLE.dominant ? layoutRng.int(n) : -1;
+    geo = layoutPoints(layoutRng, n, aspect, candidates).map(([x, y], i) => {
+      const scale = i === dominant ? MESH_SHUFFLE.dominantScale : 1;
+      const radius = spacing * scale * layoutRng.range(...MESH_SHUFFLE.radius);
+      return { x: round4(x), y: round4(y), radius: round4(clamp(radius, ...RADIUS_LIMITS)) };
+    });
     sharpness = round4(layoutRng.range(...MESH_SHUFFLE.sharpness));
   } else {
     geo = base.points.map((p) => ({ x: p.x, y: p.y, radius: p.radius }));
