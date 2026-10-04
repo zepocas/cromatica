@@ -18,6 +18,7 @@ import {
   type Design,
   type Finish,
   type Grain,
+  type PlanesPattern,
   type RampGradient,
   type PointMesh,
   type Transform,
@@ -34,6 +35,7 @@ import { PaletteEditor } from './palette.svelte';
 import { emptiestSpot, median, widestGapCenter } from './placement';
 
 export type PatternKind = BasePattern['kind'];
+export type PlanesLayout = Omit<PlanesPattern, 'kind' | 'colors'>;
 
 /** Point size limits, in screen (composition) units: radius × zoom. */
 export const MIN_RADIUS = 0.05;
@@ -57,6 +59,8 @@ export class EditorState {
   kind = $state<PatternKind>('mesh');
   ramp = $state<RampGradient>(structuredClone(defaultDesign.base as RampGradient));
   mesh = $state<PointMesh>(structuredClone(defaultMesh));
+  /** Planes layout; its colors are the ramp's stops. */
+  planes = $state<PlanesLayout>({ count: 0.4, roughness: 0.5, blend: 0, seed: 1 });
   warp = $state<Warp>({ ...defaultWarp });
   grain = $state<Grain>({ ...defaultGrain });
   finish = $state<Finish>({ ...noFinish });
@@ -89,6 +93,9 @@ export class EditorState {
     let base: BasePattern;
     if (this.kind === 'mesh') {
       base = $state.snapshot(this.mesh) as PointMesh;
+    } else if (this.kind === 'planes') {
+      const stops = ($state.snapshot(this.ramp.stops) as ColorStop[]).sort((a, b) => a.position - b.position);
+      base = { kind: 'planes', colors: stops.map((s) => s.color), ...this.planes };
     } else {
       // Linear, radial and conic share one ramp: same stops and angle.
       const ramp = $state.snapshot(this.ramp) as RampGradient;
@@ -132,12 +139,30 @@ export class EditorState {
     if (base.kind === 'mesh') {
       this.mesh = base;
       this.selectedPoint = Math.min(this.selectedPoint, base.points.length - 1);
+    } else if (base.kind === 'planes') {
+      const { kind: _, colors, ...layout } = base;
+      this.planes = layout;
+      this.setRampColors(colors);
     } else {
       this.ramp = base;
     }
     this.warp = next.design.warp;
     // Built around the base hue already; temperature carries over.
     if (next.palette) this.palette.adopt({ info: next.palette, seed }, temperature);
+  }
+
+  /** Planes colors onto the ramp's stops, in position order; evenly spaced stops if the count changed. */
+  private setRampColors(colors: Oklch[]): void {
+    const stops = this.ramp.stops;
+    if (stops.length === colors.length) {
+      const byPosition = stops.map((_, i) => i).sort((a, b) => stops[a].position - stops[b].position);
+      byPosition.forEach((stop, k) => (stops[stop].color = colors[k]));
+      return;
+    }
+    const blend = stops[0]?.blend ?? 'oklab';
+    const ramp = colors.length === 1 ? [colors[0], colors[0]] : colors;
+    this.ramp.stops = ramp.map((color, i) => ({ position: i / (ramp.length - 1), color, blend }));
+    this.selectedStop = 0;
   }
 
   // ---- Warp -----------------------------------------------------------------
@@ -151,6 +176,10 @@ export class EditorState {
 
   newWarpVariation(): void {
     this.warp.seed = randomSeed();
+  }
+
+  newPlanesLayout(): void {
+    this.planes.seed = randomSeed();
   }
 
   // ---- Transform ------------------------------------------------------------
@@ -260,7 +289,7 @@ export class EditorState {
       this.selectedPoint = 0;
     } else {
       const shape = prepareRampShape(
-        { ...this.ramp, kind: this.kind },
+        { ...this.ramp, kind: this.kind === 'planes' ? 'linear' : this.kind },
         { width: this.aspect, height: 1 },
         this.transform,
       );

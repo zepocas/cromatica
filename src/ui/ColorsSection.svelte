@@ -28,7 +28,8 @@
 
   const palette = $derived(editor.palette);
   const isMesh = $derived(editor.kind === 'mesh');
-  const noun = $derived(isMesh ? 'point' : 'stop');
+  const isPlanes = $derived(editor.kind === 'planes');
+  const noun = $derived(isMesh ? 'point' : isPlanes ? 'color' : 'stop');
   const colors = $derived<Oklch[]>(
     isMesh ? editor.mesh.points.map((p) => p.color) : editor.ramp.stops.map((s) => s.color),
   );
@@ -131,7 +132,7 @@
     <p class="status" role="status">{editor.imageStatus}</p>
   {/if}
 
-  {#if !isMesh}
+  {#if !isMesh && !isPlanes}
     <StopStrip bind:editor />
   {/if}
 
@@ -142,7 +143,11 @@
         color={colors[i]}
         original={original?.[i]}
         selected={i === selected}
-        name={isMesh ? `point ${i + 1}` : `${Math.round(editor.ramp.stops[i].position * 100)}%`}
+        name={isMesh
+          ? `point ${i + 1}`
+          : isPlanes
+            ? `color ${order.indexOf(i) + 1}`
+            : `${Math.round(editor.ramp.stops[i].position * 100)}%`}
         {noun}
         canRemove={editor.canRemoveColor}
         onselect={() => select(i)}
@@ -153,7 +158,11 @@
     <li class="add">
       <button
         aria-label="Add color"
-        title={isMesh ? 'Add a point (or double-click the image)' : 'Add a stop (or click the strip)'}
+        title={isMesh
+          ? 'Add a point (or double-click the image)'
+          : isPlanes
+            ? 'Add a color'
+            : 'Add a stop (or click the strip)'}
         disabled={!editor.canAddColor}
         onclick={() => editor.addColor()}>+ add {noun}</button
       >
@@ -174,7 +183,12 @@
   {#snippet more()}
     <PaletteSettings {palette} selectedHue={colors[selected][2]} />
     <hr />
-    <SelectedColorSettings bind:editor {selected} isLastStop={!isMesh && order[order.length - 1] === selected} />
+    <SelectedColorSettings
+      bind:editor
+      {selected}
+      isLastStop={!isMesh && order[order.length - 1] === selected}
+      showBlend={!isPlanes}
+    />
   {/snippet}
 </Section>
 

@@ -110,3 +110,23 @@ export const turn = (d: Design, t: Partial<Transform>): Design => ({
 });
 
 export const gray = (l: number): Design => mesh(0.5, [[0, 0, [l, 0, 0], 0.5]]);
+
+export const planesDesign = (count: number, roughness: number, blend = 0, seed = 5): Design => ({
+  engineVersion: 1,
+  warp: noWarp,
+  grain: noGrain,
+  base: {
+    kind: 'planes',
+    colors: [
+      [0.42, 0.07, 45],
+      [0.68, 0.09, 70],
+      [0.88, 0.03, 90],
+      [0.35, 0.04, 150],
+      [0.6, 0.2, 30],
+    ],
+    count,
+    roughness,
+    blend,
+    seed,
+  },
+});

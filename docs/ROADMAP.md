@@ -245,6 +245,8 @@ Each milestone uses the same structure:
   - **Planes** (collage, after synthetic cubism and the King Krule sleeve art): N seeded, rotated polygons or Voronoi-style cells, each a flat palette color, with noise-roughened edges (torn paper), overlap order for the layered look and a subtle paper grain. Evaluated per pixel with no state, so it stays tile-independent. Controls: plane count and edge roughness. Pairs with the print texture finish from M4.5 and the muted and earthy moods.
   - **Digital / glitch** (requested after M4.5): a deliberately digital, glitchy look. Candidates: block displacement (rectangles of the image shifted along one axis, the effect the dropped smudge warp hit by accident: hashed trail cells with hard starts), scanline offsets, RGB channel split and pixel-sort-like streaks. Each must stay per pixel and stateless (D4), so true pixel sorting and datamoshing are out; hashed blocks and offsets are in. Likely a warp shape plus a finish (channel split), with a seed for the block pattern.
 - **Done when:** each pattern has golden-image tests and at least 3 good reference designs.
+- **Progress:**
+  - Planes built (D37): count, torn and a new-layout button. It uses the ramp's colors, works with warps and finishes, and has contact sheets in `sheets.spec.ts`. Still to do: tune by eye, and possibly Voronoi-style cells as a second planes layout.
 
 ### M6 — Saving
 

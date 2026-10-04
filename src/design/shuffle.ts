@@ -10,6 +10,7 @@ import {
   MAX_MESH_POINTS,
   MAX_STOPS,
   type MeshPoint,
+  type PlanesPattern,
   type PointMesh,
   type Transform,
   type Warp,
@@ -91,6 +92,11 @@ export const RAMP_SHUFFLE = {
   last: [0.88, 1] as Range,
 };
 
+export const PLANES_SHUFFLE = {
+  /** Count range of a shuffled layout. Roughness and blend are kept: they are deliberate choices. */
+  count: [0.15, 0.65] as Range,
+};
+
 // Independent streams, so locking one aspect doesn't change what the other produces for the same seed.
 const COLOR_STREAM = 0x9e3779b9;
 const LAYOUT_STREAM = 0x85ebca6b;
@@ -122,7 +128,9 @@ export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 
     layoutRng: createRng((seed ^ LAYOUT_STREAM) >>> 0),
     makePalette: (n) => generatePalette(colorRng, n, opts.palette),
   };
-  const shuffled = design.base.kind === 'mesh' ? shuffleMesh(design.base, ctx) : shuffleRamp(design.base, ctx);
+  const b = design.base;
+  const shuffled =
+    b.kind === 'mesh' ? shuffleMesh(b, ctx) : b.kind === 'planes' ? shufflePlanes(b, ctx) : shuffleRamp(b, ctx);
   let base = shuffled.pattern;
   if (base.kind === 'mesh' && opts.layout && design.transform) base = toPatternSpace(base, design.transform);
   const warp = opts.layout ? shuffleWarp(ctx.layoutRng) : { ...design.warp };
@@ -224,6 +232,23 @@ function shuffleMesh(base: PointMesh, ctx: ShuffleContext): { pattern: PointMesh
   const colors = palette ? assignMeshColors(geo, palette.colors, spacing) : base.points.map((p) => copyColor(p.color));
   const points: MeshPoint[] = geo.map((g, i) => ({ ...g, color: colors[i] }));
   return { pattern: { kind: 'mesh', points, sharpness }, palette: palette && paletteInfo(palette) };
+}
+
+/** Planes: a new layout is a new seed (and count); new colors are a palette of the same size. */
+function shufflePlanes(
+  base: PlanesPattern,
+  ctx: ShuffleContext,
+): { pattern: PlanesPattern; palette: PaletteInfo | null } {
+  const { opts, layoutRng } = ctx;
+  const count = opts.layout ? round4(layoutRng.range(...PLANES_SHUFFLE.count)) : base.count;
+  const seed = opts.layout ? layoutRng.uint32() : base.seed;
+  const n = Math.min(base.colors.length, MAX_STOPS);
+  const palette = opts.colors ? ctx.makePalette(n) : null;
+  const colors = palette ? palette.colors : base.colors.slice(0, n).map(copyColor);
+  return {
+    pattern: { kind: 'planes', colors, count, roughness: base.roughness, blend: base.blend, seed },
+    palette: palette && paletteInfo(palette),
+  };
 }
 
 /** Layouts are made on screen; map them under the transform so they land in view. */

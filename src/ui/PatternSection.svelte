@@ -30,6 +30,7 @@
     { kind: 'linear', label: 'linear' },
     { kind: 'radial', label: 'radial' },
     { kind: 'conic', label: 'conic' },
+    { kind: 'planes', label: 'planes' },
   ] as const;
 
   const WARP_LABELS: Record<WarpShape, string> = {

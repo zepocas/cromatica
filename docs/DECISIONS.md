@@ -236,3 +236,12 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Xerox (high end, blended in over 0.5–1):** lightness thresholded to 3 tones against the tooth, the color rescaled to it, so hue holds and the grain is light and dark rather than confetti. Black and white stay exact.
 - **Copier marks:** toner specks (0.4% of pixels at 1) and uneven darkening toward the frame edges (up to 35%).
 - **Resolution:** like grain (D4 exception) it is defined per output pixel, so preview and export match at the same size; the export harness runs with every finish on to hold that.
+
+## D37. Planes: seeded torn-paper quads that share the ramp's colors
+
+- **Pattern:** `{ kind: 'planes', colors, count, roughness, seed }`. A seed lays out 4–24 convex quads (count slider), back to front, over a fixed field (x ±1.2, y ±0.6), so a wider frame shows more of the same collage (D4). Angles cluster around a seeded base angle or base + 90°, ±20°, for a cubist feel. Rectangles of aspect 1–3 get their corners jittered into quads. Later planes are smaller, and summed area is about 2× the field.
+- **Colors:** the ramp's stop colors in position order (the editor keeps one set of stops for linear, radial, conic and planes). Positions and blends are ignored, so the stop strip and blend menu are hidden. One color is the background, and no plane takes the color of the plane right below it.
+- **Per pixel:** the layout is prepared on the CPU and uploaded as uniforms. The shader composites the planes in linear RGB, using each quad's min-edge distance with ~0.75 px antialiasing. Torn edges add value-noise fBm to that distance (up to 0.012 units at roughness 1), and a thin warm paper rim shows inside a torn edge. Noise is only evaluated near an edge.
+- **Blend:** a slider adds up to 0.012 units (about 13 px at 1080p) to the edge half width, linear in the slider, so the lines blur slightly while the planes stay sharp. A first version went up to 0.15 and made the whole image look out of focus. The paper rim fades out as 1 − blend.
+- **With the rest:** transform and warp bend the planes. Vignette, print and grain apply. Bands are off for planes, since the colors are already flat. Shuffle re-rolls the seed and count (0.15–0.65) and keeps roughness and blend. The CPU reference matches within 1 level unwarped; with a warp, a few antialiased edge pixels differ by up to ~4 (fp32 coordinates against a hard edge).
+

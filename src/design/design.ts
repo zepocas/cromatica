@@ -65,7 +65,26 @@ export interface PointMesh {
   sharpness: number;
 }
 
-export type BasePattern = RampGradient | PointMesh;
+/**
+ * Planes (D37): a collage of seeded, overlapping flat-color quads with torn
+ * edges over a background fill (src/engine/planes.ts). The layout comes from
+ * the seed alone; the colors are the ramp's stop colors (positions unused).
+ */
+export interface PlanesPattern {
+  kind: 'planes';
+  /** 1..MAX_STOPS palette colors; each plane and the background take one. */
+  colors: Oklch[];
+  /** How many planes, [0, 1]: a few large ones at 0, many smaller ones at 1. */
+  count: number;
+  /** Torn-edge roughness, [0, 1]: 0 = clean cut edges. */
+  roughness: number;
+  /** Edge softness, [0, 1]: 0 = crisp, 1 = planes melt into each other. */
+  blend: number;
+  /** uint32 seed of the layout and the color order. */
+  seed: number;
+}
+
+export type BasePattern = RampGradient | PointMesh | PlanesPattern;
 
 /**
  * Coordinate distortion applied before the base pattern (D23). Experimental

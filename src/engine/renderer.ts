@@ -6,10 +6,12 @@ import {
   type RampGradient,
   MAX_MESH_POINTS,
   MAX_STOPS,
+  type PlanesPattern,
   type PointMesh,
 } from '../design/design';
 import { mat2Uniform, transformMatrix } from './transform';
 import { CONIC_CORE, prepareRampShape } from './ramp-shape';
+import { MAX_PLANES, PLANES_SHADER_CONSTANTS, preparePlanes } from './planes';
 import { GAMUT_CLIP_STEPS, prepareMesh } from '../color/mesh';
 import { BLUE_NOISE_SIZE, DITHER_CHANNEL_OFFSETS, blueNoiseRanks } from './blue-noise';
 import { prepareFinish, VIGNETTE_INNER } from './finish';
@@ -31,6 +33,43 @@ function meshUniforms(mesh: PointMesh) {
   points.set(m.geometry);
   colors.set(m.colors);
   return { u_meshCount: m.count, u_meshExponent: m.exponent, u_meshPoint: points, u_meshColor: colors };
+}
+
+/** Planes uniforms, padded to MAX_PLANES; uploaded every render (small). */
+function planesUniforms(planes: PlanesPattern, output: OutputSize) {
+  const p = preparePlanes(planes, output);
+  const edges = new Float32Array(MAX_PLANES * 12);
+  const bounds = new Float32Array(MAX_PLANES * 3);
+  const colors = new Float32Array(MAX_PLANES * 3);
+  edges.set(p.edges);
+  bounds.set(p.bounds);
+  colors.set(p.colors);
+  return {
+    u_planeCount: p.count,
+    u_planeBackground: p.background,
+    u_planeEdge: edges,
+    u_planeBound: bounds,
+    u_planeColor: colors,
+    u_planeKey: p.key,
+    u_planeTear: p.tear,
+    u_planeRim: p.rim,
+    u_planeSoft: p.soft,
+  };
+}
+
+/** Base-pattern variant defines: one of BASE_RAMP (with its shape), BASE_MESH, BASE_PLANES. */
+function baseDefines(base: Design['base']): Defines {
+  const kind = base.kind;
+  const defines: Defines = { BASE_RAMP: false, BASE_MESH: kind === 'mesh', BASE_PLANES: kind === 'planes' };
+  if (kind === 'mesh') return { ...defines, MAX_MESH_POINTS, GAMUT_CLIP_STEPS };
+  if (kind === 'planes') return { ...defines, ...PLANES_SHADER_CONSTANTS };
+  return {
+    ...defines,
+    BASE_RAMP: true,
+    RAMP_RADIAL: kind === 'radial',
+    RAMP_CONIC: kind === 'conic',
+    CONIC_CORE: CONIC_CORE.toFixed(4),
+  };
 }
 
 /** Warp variant defines: none for 'none' (identity), else WARP_ANY + WARP_<SHAPE>. */
@@ -116,28 +155,20 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
   return {
     render(design: Design, output: OutputSize, tile: Tile, opts: RenderOptions = {}) {
       const base = design.base;
-      const isMesh = base.kind === 'mesh';
       const warp = prepareWarp(design.warp);
       const grain = prepareGrain(design.grain);
       const finish = prepareFinish(design.finish, output);
       const info = getProgram({
         BLUE_NOISE_SIZE,
         VIGNETTE_INNER: VIGNETTE_INNER.toFixed(4),
-        BASE_RAMP: !isMesh,
-        BASE_MESH: isMesh,
-        ...(isMesh
-          ? {}
-          : {
-              RAMP_RADIAL: base.kind === 'radial',
-              RAMP_CONIC: base.kind === 'conic',
-              CONIC_CORE: CONIC_CORE.toFixed(4),
-            }),
-        ...(isMesh ? { MAX_MESH_POINTS, GAMUT_CLIP_STEPS } : {}),
+        ...baseDefines(base),
         ...warpDefines(warp),
       });
       let baseUniforms: object;
-      if (isMesh) {
+      if (base.kind === 'mesh') {
         baseUniforms = meshUniforms(base);
+      } else if (base.kind === 'planes') {
+        baseUniforms = planesUniforms(base, output);
       } else {
         updateRamp(base.stops);
         baseUniforms = {

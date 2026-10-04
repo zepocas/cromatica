@@ -1,6 +1,7 @@
 <script lang="ts">
   import { noFinish } from '../design/design';
   import { prepareFinish } from '../engine/finish';
+  import { planeCount } from '../engine/planes';
   import SliderRow from './controls/SliderRow.svelte';
   import type { EditorState } from './editor.svelte';
   import Section from './Section.svelte';
@@ -48,6 +49,46 @@
       bind:value={editor.mesh.sharpness}
       display={fixed2}
     />
+  {:else if editor.kind === 'planes'}
+    <SliderRow
+      label="planes"
+      title="A few large planes ↔ many smaller ones"
+      min={0}
+      max={1}
+      step={0.01}
+      bind:value={editor.planes.count}
+      display={(v) => String(planeCount(v))}
+    />
+    <div class="row">
+      <label for="planes-torn">torn</label>
+      <input
+        id="planes-torn"
+        type="range"
+        min="0"
+        max="1"
+        step="0.01"
+        aria-label="Torn"
+        title="Clean cut ↔ torn paper edges"
+        bind:value={editor.planes.roughness}
+      />
+      <button
+        class="icon"
+        aria-label="New layout"
+        title="New arrangement of the planes"
+        data-seed={editor.planes.seed}
+        onclick={() => editor.newPlanesLayout()}>⚄</button
+      >
+      <output>{fixed2(editor.planes.roughness)}</output>
+    </div>
+    <SliderRow
+      label="blend"
+      title="Crisp ↔ slightly blurred edges"
+      min={0}
+      max={1}
+      step={0.01}
+      bind:value={editor.planes.blend}
+      display={fixed2}
+    />
   {:else if editor.kind !== 'radial'}
     <SliderRow
       label="angle"
@@ -59,25 +100,27 @@
       display={degrees}
     />
   {/if}
-  <SliderRow
-    label="bands"
-    title="The image in flat steps, like a topographic map"
-    min={0}
-    max={1}
-    step={0.01}
-    bind:value={editor.finish.bands}
-    display={(v) => (v === 0 ? 'off' : String(bandSteps(v)))}
-  />
-  <SliderRow
-    label="edge"
-    title="Band edges: crisp lines ↔ soft terraces"
-    min={0}
-    max={1}
-    step={0.01}
-    disabled={editor.finish.bands === 0}
-    bind:value={editor.finish.bandEdge}
-    display={fixed2}
-  />
+  {#if editor.kind !== 'planes'}
+    <SliderRow
+      label="bands"
+      title="The image in flat steps, like a topographic map"
+      min={0}
+      max={1}
+      step={0.01}
+      bind:value={editor.finish.bands}
+      display={(v) => (v === 0 ? 'off' : String(bandSteps(v)))}
+    />
+    <SliderRow
+      label="edge"
+      title="Band edges: crisp lines ↔ soft terraces"
+      min={0}
+      max={1}
+      step={0.01}
+      disabled={editor.finish.bands === 0}
+      bind:value={editor.finish.bandEdge}
+      display={fixed2}
+    />
+  {/if}
 
   {#snippet more()}
     <SliderRow
