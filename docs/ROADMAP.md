@@ -153,7 +153,7 @@ Each milestone uses the same structure:
 - **Still open:**
   - On slow GPUs the grain still coarsens while dragging (the half-resolution fallback).
 
-### M4 — Color: harmony controls, curated palettes, Remix, palette from image
+### M4 — Color: harmony controls, curated palettes, Remix, palette from image ✅
 
 - **Goal:** make the color theory visible and steerable, and get good colors with less effort.
 - **Background:** since M3, every shuffle builds its palette from a harmony rule (monochrome, analogous, complementary, split-complementary, triadic or tetradic) in Oklch. Lightness is spread evenly, chroma is set relative to the maximum in-gamut chroma for each hue, and near-duplicates are rejected. `generatePalette` already accepts `rule` and `mood`, but the UI exposes neither.
@@ -191,10 +191,9 @@ Each milestone uses the same structure:
   - ✅ **Shuffle color order (⇄):** the same colors, reassigned at random to different points or stops.
   - ✅ Vivid tuning: with 4+ colors and a multi-hue rule, only the base hue's colors and one accent stay vivid; the other hues drop to a supporting chroma (0.3–0.55 of max). Yellow-greens (hue 100–140) are capped at 0.55 of max chroma, so they no longer read as acid. Natural palettes are unchanged.
 - **Decided:**
-  - The rule, mood and base hue are UI settings that only steer the next shuffle. They aren't saved in the design or carried in share links.
+  - Rule, mood, key, base hue and temperature are UI settings, not saved in the design or carried in share links. Rule, mood and key steer generated palettes (and regenerate from the palette's seed, D28); base hue and temperature act on the current palette as adjustments (D27).
   - No curated palette library: the harmony generator with its controls covers it. This also removes the curation and licensing questions.
-- **Open questions:**
-  - How many colors to extract, and how to weight colorful areas against large dull ones.
+- **Settled:** palette from image takes up to 6 colors, leaning distinct (D25). Weighting colorful pixels so small accents survive is noted under step 6 for later.
 
 ### M5 — Pattern variety
 
