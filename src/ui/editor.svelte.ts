@@ -20,10 +20,12 @@ import {
   type Warp,
 } from '../design/design';
 import { relinkPalette, remixShift, shiftPalette } from '../color/linked';
+import { applyTemperature, type Temperature } from '../color/temperature';
 import { evaluateRamp } from '../color/ramp';
 import { createRng, randomSeed } from '../design/random';
 import { shuffleWithHarmony } from '../design/shuffle';
 import type { HarmonyRule, PaletteMood, ValueKey } from '../design/shuffle.types';
+import { normalizeHue } from '../color/oklab';
 import {
   applyMat2,
   clampZoom,
@@ -35,6 +37,22 @@ import { warpPoint } from '../engine/warp';
 import { paletteFromImage, type ImagePalette } from './image-palette';
 
 export type PatternKind = BasePattern['kind'];
+/**
+ * Non-destructive palette adjustments: the colors on screen are `from`
+ * turned by `hue` degrees, then under `temperature`. `out` is what was last
+ * rendered; once the colors differ from it (a direct edit), the adjustment
+ * no longer applies and the edited colors are the new originals.
+ */
+interface Adjustment {
+  from: Oklch[];
+  hue: number;
+  temperature: Temperature;
+  out: Oklch[];
+}
+
+const samePalette = (a: readonly Oklch[], b: readonly Oklch[]) =>
+  a.length === b.length && a.every((c, i) => c[0] === b[i][0] && c[1] === b[i][1] && c[2] === b[i][2]);
+
 export type PaletteHarmony = { rule: HarmonyRule; mood: Exclude<PaletteMood, 'any'>; key: ValueKey };
 
 /** Point size limits, in screen (composition) units: radius × zoom. */
@@ -65,8 +83,10 @@ export class EditorState {
   /** Palette steering for shuffles (UI only, not part of the design). */
   /** Keep the current palette's rule, mood and key for ⟳ and shuffle; off = all random. */
   keepHarmony = $state(false);
-  /** Hue the harmony is built around; null = random each shuffle. */
+  /** Hue the harmony is built around; null = random each shuffle. Moving it turns the current palette. */
   baseHue = $state<number | null>(null);
+  /** Hue and temperature adjustments over each pattern's original colors; null = none. */
+  private adjustments = $state.raw<Record<PatternKind, Adjustment | null>>({ mesh: null, linear: null });
   /** Rule, mood and key each pattern's palette was last generated with; null before its first color shuffle. */
   private harmonies = $state<Record<PatternKind, PaletteHarmony | null>>({ mesh: null, linear: null });
   /** Linked: editing one color moves the whole palette with it (keeps the harmony). */
@@ -170,6 +190,7 @@ export class EditorState {
       baseHue: this.baseHue ?? undefined,
     };
     const kind = this.kind;
+    const temperature = this.temperature;
     const { design: next, harmony } = shuffleWithHarmony(
       this.design,
       { colors, layout, palette, seed: randomSeed() },
@@ -183,6 +204,11 @@ export class EditorState {
       this.linear = next.base;
     }
     this.warp = next.warp;
+    // New colors are the new originals (built around the base hue already); temperature carries over.
+    if (colors) {
+      this.adjustments = { ...this.adjustments, [kind]: null };
+      if (temperature !== 'off') this.adjust({ temperature });
+    }
   }
 
   /** Step through WARP_SHAPES (wrapping), e.g. with the [ and ] keys. */
@@ -263,6 +289,75 @@ export class EditorState {
     return this.colorItems.map((x) => $state.snapshot(x.color) as Oklch);
   }
 
+  private setPalette(colors: readonly Oklch[]): void {
+    this.colorItems.forEach((x, k) => (x.color = colors[k]));
+  }
+
+  /** The active pattern's adjustment, if its colors are still what it rendered. */
+  private get liveAdjustment(): Adjustment | null {
+    const a = this.adjustments[this.kind];
+    return a && samePalette(a.out, this.plainColors()) ? a : null;
+  }
+
+  /** Colors before hue and temperature adjustments; null when there are none. */
+  get originalColors(): Oklch[] | null {
+    return this.liveAdjustment?.from ?? null;
+  }
+
+  /** Degrees the palette is turned by base hue moves. */
+  get hueOffset(): number {
+    return this.liveAdjustment?.hue ?? 0;
+  }
+
+  /** Warm light with cool shadows, cool light with warm shadows, or off. */
+  get temperature(): Temperature {
+    return this.liveAdjustment?.temperature ?? 'off';
+  }
+
+  /** Change the adjustments and render them over the original colors. */
+  private adjust(change: { hue?: number; temperature?: Temperature }): void {
+    const kind = this.kind;
+    const base = this.liveAdjustment ?? { from: this.plainColors(), hue: 0, temperature: 'off' as Temperature };
+    const hue = change.hue ?? base.hue;
+    const temperature = change.temperature ?? base.temperature;
+    const turned = hue === 0 ? base.from : shiftPalette(base.from, { hue, lightness: 0, chroma: 1 });
+    this.setPalette(applyTemperature(turned, temperature));
+    this.adjustments = {
+      ...this.adjustments,
+      [kind]: hue === 0 && temperature === 'off' ? null : { from: base.from, hue, temperature, out: this.plainColors() },
+    };
+  }
+
+  setTemperature(temperature: Temperature): void {
+    this.adjust({ temperature });
+  }
+
+  /** Base hue on (at the selected color's hue, nothing turns) or off (the turn is undone). */
+  setBaseHueEnabled(on: boolean, at: number): void {
+    if (on) {
+      this.baseHue = Math.round(at);
+    } else {
+      if (this.hueOffset !== 0) this.adjust({ hue: 0 });
+      this.baseHue = null;
+    }
+  }
+
+  /** Move the base hue; the palette turns with it, keeping its hue gaps. */
+  setBaseHue(h: number): void {
+    if (this.baseHue === null) {
+      this.baseHue = h;
+      return;
+    }
+    this.adjust({ hue: this.hueOffset + (h - this.baseHue) });
+    this.baseHue = h;
+  }
+
+  /** Back to the original colors; the base hue goes back with them. */
+  resetAdjustments(): void {
+    if (this.baseHue !== null) this.baseHue = normalizeHue(this.baseHue - this.hueOffset);
+    this.adjust({ hue: 0, temperature: 'off' });
+  }
+
   /** Set color i; when linked, the other colors move by the same shift. */
   setColor(i: number, next: Oklch): void {
     const items = this.colorItems;
@@ -322,6 +417,8 @@ export class EditorState {
       this.selectedStop = 0;
     }
     this.harmonies[this.kind] = null;
+    // Imported colors are the new originals, true to the photo.
+    this.adjustments = { ...this.adjustments, [this.kind]: null };
   }
 
   /** Mesh: a point in the emptiest spot of the frame. Linear: a stop in the widest gap. */

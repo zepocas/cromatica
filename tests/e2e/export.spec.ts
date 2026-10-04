@@ -772,3 +772,70 @@ test('value key: picking one regenerates in that key, keep pins it', async ({ pa
   for (const l of await lightness()) expect(l).toBeGreaterThan(0.6);
   expect(errors).toEqual([]);
 });
+
+test('temperature and base hue adjust the palette over its original colors', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(err.message));
+  await page.goto('/?default');
+  await page.getByRole('button', { name: 'More colors settings' }).click();
+  const hexes = page.locator('li input.hex');
+  const read = () => hexes.evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));
+  const status = page.getByRole('status').filter({ hasText: '~' });
+  const temp = page.getByRole('group', { name: 'Temperature' });
+  const pick = (t: string) => temp.getByRole('button', { name: t }).click();
+  const original = await read();
+
+  // Temperature: off by default; warm and cool each change the palette differently; off restores it.
+  await expect(temp.getByRole('button', { name: 'off' })).toHaveAttribute('aria-pressed', 'true');
+  await pick('warm');
+  const warm = await read();
+  expect(warm).not.toEqual(original);
+  await expect(status).toContainText('temp warm');
+  await pick('cool');
+  const cool = await read();
+  expect(cool).not.toEqual(original);
+  expect(cool).not.toEqual(warm);
+  await pick('off');
+  expect(await read()).toEqual(original);
+  await expect(status).toHaveCount(0);
+
+  // Base hue: turning it moves the palette; switching it off undoes the turn.
+  const fix = page.getByRole('button', { name: 'Fix base hue' });
+  await fix.click();
+  const hue = page.getByLabel('Base hue', { exact: true });
+  const start = Number(await hue.inputValue());
+  await hue.fill(String((start + 120) % 360));
+  expect(await read()).not.toEqual(original);
+  await expect(status).toContainText('hue +120°');
+  await fix.click();
+  expect(await read()).toEqual(original);
+
+  // Reset brings back the originals and the base hue with them.
+  await fix.click();
+  await hue.fill(String((start + 60) % 360));
+  await pick('warm');
+  await page.getByRole('button', { name: 'Reset adjustments' }).click();
+  expect(await read()).toEqual(original);
+  await expect(hue).toHaveValue(String(start));
+  await expect(status).toHaveCount(0);
+
+  // A hand edit bakes the adjustment in: the edit stays, temperature reads off.
+  await pick('warm');
+  const first = hexes.first();
+  await first.fill('#336699');
+  await first.press('Enter');
+  await expect(status).toHaveCount(0);
+  await expect(temp.getByRole('button', { name: 'off' })).toHaveAttribute('aria-pressed', 'true');
+  expect((await read())[0]).toBe('#336699');
+
+  // Temperature carries over to a new palette.
+  await pick('cool');
+  await page.getByRole('button', { name: 'Shuffle colors' }).click();
+  await expect(status).toContainText('temp cool');
+
+  // "+ add" sits after the last color.
+  const count = await hexes.count();
+  await page.getByRole('button', { name: 'Add color' }).click();
+  await expect(hexes).toHaveCount(count + 1);
+  expect(errors).toEqual([]);
+});

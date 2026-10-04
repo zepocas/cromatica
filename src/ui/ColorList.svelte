@@ -1,6 +1,7 @@
 <script lang="ts">
   import { HARMONY_RULES } from '../color/harmony';
   import { hexToOklch, inSrgbGamut, oklchToHex } from '../color/oklab';
+  import type { Temperature } from '../color/temperature';
   import type { BlendMode, Oklch } from '../design/design';
   import type { HarmonyRule, ValueKey } from '../design/shuffle.types';
   import ColorControls from './ColorControls.svelte';
@@ -20,6 +21,12 @@
     { value: 'oklab-chroma', label: 'vivid' },
     { value: 'oklch-short', label: 'hue, short way' },
     { value: 'oklch-long', label: 'hue, long way' },
+  ];
+
+  const TEMPERATURES: { value: Temperature; title: string }[] = [
+    { value: 'off', title: 'Colors as they are' },
+    { value: 'warm', title: 'Warm light, cool shadows: light colors turn toward amber, dark ones toward blue (sunset, lamplight)' },
+    { value: 'cool', title: 'Cool light, warm shadows: light colors turn toward blue, dark ones toward amber (overcast, moonlight)' },
   ];
 
   const RULE_LABELS: Record<(typeof HARMONY_RULES)[number], string> = {
@@ -53,6 +60,17 @@
   const setColor = (i: number, color: Oklch) => editor.setColor(i, color);
 
   const hexOf = (c: Oklch) => oklchToHex(c).toUpperCase();
+  const sameColor = (a: Oklch | undefined, b: Oklch) => !!a && a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
+
+  /** Colors before base hue and sunlight; null when nothing is adjusted. */
+  const original = $derived(editor.originalColors);
+  const adjustedSummary = $derived.by(() => {
+    const parts: string[] = [];
+    const turn = Math.round(((editor.hueOffset % 360) + 540) % 360 - 180);
+    if (turn !== 0) parts.push(`hue ${turn > 0 ? '+' : ''}${turn}°`);
+    if (editor.temperature !== 'off') parts.push(`temp ${editor.temperature}`);
+    return parts.join(' · ');
+  });
 
   /** Anchor the harmony on the selected color's hue. */
   function baseFromSelected() {
@@ -97,13 +115,6 @@
       onclick={() => fileInput.click()}>◩</button
     >
     <input bind:this={fileInput} type="file" accept="image/*" hidden aria-label="Image file" onchange={onImagePicked} />
-    <button
-      class="icon"
-      aria-label="Add color"
-      title={isMesh ? 'Add a point (or double-click the image)' : 'Add a stop (or click the strip)'}
-      disabled={!editor.canAddColor}
-      onclick={() => editor.addColor()}>+</button
-    >
   {/snippet}
 
   <div class="row">
@@ -176,6 +187,9 @@
           onfocus={() => select(i)}
           onchange={(e) => onHexChange(e, i)}
         />
+        {#if original && !sameColor(original[i], color)}
+          <span class="mod" title="Adjusted from {hexOf(original[i])}">~</span>
+        {/if}
         {#if !inSrgbGamut(color)}
           <span class="gamut" title="This color can't be shown exactly; the closest displayable color is used.">!</span>
         {/if}
@@ -191,7 +205,24 @@
         >
       </li>
     {/each}
+    <li class="add">
+      <button
+        aria-label="Add color"
+        title={isMesh ? 'Add a point (or double-click the image)' : 'Add a stop (or click the strip)'}
+        disabled={!editor.canAddColor}
+        onclick={() => editor.addColor()}>+ add {noun}</button
+      >
+    </li>
   </ul>
+
+  {#if original}
+    <div class="row" role="status" title="Adjusted from the original colors">
+      <em class="what">~ {adjustedSummary}</em>
+      <button aria-label="Reset adjustments" title="Back to the original colors" onclick={() => editor.resetAdjustments()}
+        >[ reset ]</button
+      >
+    </div>
+  {/if}
 
   {#snippet more()}
     <label class="row">
@@ -220,13 +251,24 @@
         <option value="low">low (dark)</option>
       </select>
     </label>
+    <div class="row" role="group" aria-label="Temperature">
+      <span>temp</span>
+      {#each TEMPERATURES as t (t.value)}
+        <button
+          class="choice"
+          aria-pressed={editor.temperature === t.value}
+          title={t.title}
+          onclick={() => editor.setTemperature(t.value)}>{editor.temperature === t.value ? `[${t.value}]` : ` ${t.value} `}</button
+        >
+      {/each}
+    </div>
     <div class="row">
       <span>base hue</span>
       <button
         aria-label="Fix base hue"
         aria-pressed={editor.baseHue !== null}
-        title="Build the harmony around one hue instead of a random one"
-        onclick={() => (editor.baseHue = editor.baseHue === null ? Math.round(colors[selected][2]) : null)}
+        title="Fix a base hue: new palettes are built around it, and moving it turns the current palette"
+        onclick={() => editor.setBaseHueEnabled(editor.baseHue === null, colors[selected][2])}
         >{editor.baseHue === null ? '[ ]' : '[x]'}</button
       >
       <input
@@ -238,7 +280,7 @@
         aria-label="Base hue"
         disabled={editor.baseHue === null}
         value={editor.baseHue ?? 0}
-        oninput={(e) => (editor.baseHue = e.currentTarget.valueAsNumber)}
+        oninput={(e) => editor.setBaseHue(e.currentTarget.valueAsNumber)}
       />
       <button
         class="icon"
@@ -362,6 +404,29 @@
   .status {
     margin: 0;
     color: var(--dim);
+  }
+  .mod {
+    color: var(--ink);
+    cursor: help;
+  }
+  .what {
+    flex: 1;
+    font-style: normal;
+    white-space: nowrap;
+    color: var(--ink);
+  }
+  .choice {
+    white-space: pre;
+  }
+  .choice[aria-pressed='true'] {
+    color: var(--ink);
+  }
+  li.add button {
+    color: var(--dim);
+    padding-left: 26px;
+  }
+  li.add button:hover:not(:disabled) {
+    color: var(--ink);
   }
   .row button[aria-pressed='true'] {
     color: var(--ink);
