@@ -6,8 +6,9 @@ import { gamutMapToLinearSrgb } from '../../../src/color/gamut';
 import { linearSrgbToOklab, oklabToLinearSrgb, oklabToOklch, srgbDecode } from '../../../src/color/oklab';
 import { bakeRamp, RAMP_SIZE } from '../../../src/color/ramp';
 import type { Rgb } from '../../../src/color/types';
-import { type Design, type LinearGradient, noGrain, noWarp, type PointMesh } from '../../../src/design/design';
-import { applyMat2, orientationMatrix, transformMatrix } from '../../../src/engine/transform';
+import { type Design, type RampGradient, noGrain, noWarp, type PointMesh } from '../../../src/design/design';
+import { applyMat2, transformMatrix } from '../../../src/engine/transform';
+import { prepareRampShape, rampT } from '../../../src/engine/ramp-shape';
 import { createRenderer } from '../../../src/engine/renderer';
 import { createWarp } from '../../../src/engine/warp';
 import { CONTEXT_ATTRIBUTES, type OutputSize, type RenderOptions, type Tile } from '../../../src/engine/types';
@@ -104,16 +105,9 @@ function createReference(design: Design, output: OutputSize, halfFloat = false) 
   const ramp = bakeRamp(base.stops, RAMP_SIZE);
   if (halfFloat && f16round) for (let i = 0; i < ramp.length; i++) ramp[i] = f16round(ramp[i]);
   const n = RAMP_SIZE;
-  const a = (base.angle * Math.PI) / 180;
-  const dx = Math.cos(a);
-  const dy = Math.sin(a);
-  // The ramp spans the rotated/flipped frame (see linearGradientUniforms).
-  const o = orientationMatrix(design.transform);
-  const [ex, ey] = applyMat2([o[0], o[2], o[1], o[3]], dx, dy);
-  const extent = Math.abs(ex) * (w / h) + Math.abs(ey);
+  const shape = prepareRampShape(base, output, design.transform);
   return (px: number, py: number): Triple => {
-    const [u, v] = at(px, py);
-    const t = Math.min(1, Math.max(0, (u * dx + v * dy) / extent + 0.5));
+    const t = rampT(shape, ...at(px, py));
     // Sampling at (t·(n-1) + 0.5) / n with LINEAR filtering = lerp at t·(n-1).
     const s = t * (n - 1);
     const i0 = Math.min(n - 1, Math.floor(s));
@@ -320,7 +314,7 @@ const harness = {
     const frames: Uint8Array[] = [];
     try {
       for (const d of [a, b, a, mutated]) {
-        if (d === mutated) (mutated.base as LinearGradient).stops[0].color[0] += 0.2;
+        if (d === mutated) (mutated.base as RampGradient).stops[0].color[0] += 0.2;
         renderer.render(d, output, tile, { dither: false });
         frames.push(renderer.readPixels(width, height));
       }
@@ -395,7 +389,7 @@ const harness = {
    */
   edgeColumns(design: Design, width: number, height: number) {
     const image = render(design, { width, height }, false);
-    const ramp = bakeRamp((design.base as LinearGradient).stops, RAMP_SIZE);
+    const ramp = bakeRamp((design.base as RampGradient).stops, RAMP_SIZE);
     const at = (t: number) => {
       const s = t * (RAMP_SIZE - 1);
       const i0 = Math.floor(s);

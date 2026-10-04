@@ -1,6 +1,6 @@
 // Renderer: linear gradients — tiling, CPU reference, dither, aspect.
 import { expect, test } from '@playwright/test';
-import type { BlendMode } from '../../src/design/design';
+import type { BlendMode, Design, RampGradient } from '../../src/design/design';
 import { linear, threeStops, midTones, type StopSpec } from './support/designs';
 import { engineHarness, openEngineHarness, logBench } from './support/harness';
 
@@ -123,6 +123,30 @@ test.describe('aspect behavior', () => {
       const r = await engineHarness(page, 'edgeColumns', twoStops, w, h);
       expect(r.left).toBeLessThanOrEqual(1);
       expect(r.right).toBeLessThanOrEqual(1);
+    });
+  }
+});
+
+test.describe('radial and conic gradients', () => {
+  for (const kind of ['radial', 'conic'] as const) {
+    const design = (angle: number): Design => {
+      const d = threeStops(angle);
+      return { ...d, base: { ...(d.base as RampGradient), kind } };
+    };
+    test(`${kind}: matches the CPU reference`, async ({ page }) => {
+      for (const [w, h] of [
+        [640, 360],
+        [480, 777],
+      ]) {
+        const r = await engineHarness(page, 'compareReference', design(40), w, h);
+        expect(r.maxDiff, `${w}×${h} ${JSON.stringify(r.worst)}`).toBeLessThanOrEqual(1);
+      }
+    });
+
+    test(`${kind}: single pass equals 256 px tiles`, async ({ page }) => {
+      const r = await engineHarness(page, 'compareTiled', design(110), 1531, 917, 256, true);
+      expect(r.first).toBeNull();
+      expect(r.identical).toBe(true);
     });
   }
 });

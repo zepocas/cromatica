@@ -8,7 +8,7 @@ void main() {
 #if BASE_MESH
   vec3 rgb = gamutClip(meshColor(uv));
 #else
-  vec3 rgb = rampColor(linearGradientT(uv));
+  vec3 rgb = rampColor(rampT(uv));
 #endif
   vec3 encoded = srgbEncode(rgb);
   // Uniform branch: grain off is an exact passthrough (bit-identical to no grain stage).

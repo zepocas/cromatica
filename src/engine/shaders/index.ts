@@ -2,7 +2,7 @@ import vertMain from './fullscreen.vert.glsl?raw';
 import fragMain from './main.frag.glsl?raw';
 import coords from './common/coords.glsl?raw';
 import hash from './common/hash.glsl?raw';
-import linear from './gradient/linear.glsl?raw';
+import rampShape from './gradient/ramp-shape.glsl?raw';
 import mesh from './gradient/mesh.glsl?raw';
 import oklab from './color/oklab.glsl?raw';
 import ramp from './color/ramp.glsl?raw';
@@ -48,7 +48,7 @@ const WARP_CHUNKS = [
   warpMarble,
   warp,
 ];
-const FRAGMENT_CHUNKS = [coords, hash, ...WARP_CHUNKS, linear, mesh, ramp, oklab, srgb, grain, dither, fragMain];
+const FRAGMENT_CHUNKS = [coords, hash, ...WARP_CHUNKS, rampShape, mesh, ramp, oklab, srgb, grain, dither, fragMain];
 
 /** Stable cache key for a variant. */
 export function variantKey(defines: Defines): string {

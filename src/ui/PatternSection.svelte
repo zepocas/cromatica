@@ -28,6 +28,8 @@
   const PATTERNS = [
     { kind: 'mesh', label: 'mesh' },
     { kind: 'linear', label: 'linear' },
+    { kind: 'radial', label: 'radial' },
+    { kind: 'conic', label: 'conic' },
   ] as const;
 
   const WARP_LABELS: Record<WarpShape, string> = {

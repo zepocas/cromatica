@@ -204,25 +204,31 @@ Each milestone uses the same structure:
      - **Ridged / silk:** veined, folded-satin flows (`1 - |n|` fBm).
      - **Marble:** sine bands with noise turbulence.
      - **Kaleidoscope / mirror fold:** polar N-fold symmetry. N comes from the seed. It works on both base patterns.
-     - _Optional, only if the first three go well:_ **flow / brushed** (anisotropic streaks, an extension of curl) and **Voronoi edges** (F2−F1, crackle and cell walls; lowest priority).
+     - **Flow / brushed** (promoted from optional, for the dry-brush look): anisotropic streaks along a flow direction, an extension of curl, with a bristle variant (elongated noise with broken edges). A smudge variant (a directional smear) is worth trying in the same chunk.
+     - _Optional, lowest priority:_ **Voronoi edges** (F2−F1, crackle and cell walls).
   2. **Radial and conic base patterns.** They reuse the existing ramp and stops. The center defaults to the middle of the frame, and the pattern select gains two entries. The stop editor, blend modes and shuffle work as they do for linear.
   3. **Finishes**, one slider each, next to Noise (grain):
      - **Vignette.**
      - **Bands / contours:** quantizes the ramp into steps for a topographic or posterized look.
+     - **Print texture** (lithograph and xerox grain, for a zine or print feel): thresholds the image against a fibrous, paper-tooth noise instead of blue noise, with an optional toner speckle and uneven darkening toward the edges. It is defined per output pixel like grain (D4 exception) and applied before dither. Decide while building whether it is one slider or a small set of looks (litho, xerox).
 - **UI:** stays lean, following the terminal panel. New warp shapes are dropdown entries only. Radial and conic are entries in the pattern select. Vignette and Bands are one slider each, behind "+ more" unless they prove central.
 - **Done when:**
   - Every new warp shape renders tile-identically on both base patterns and in the export, and the GPU matches the CPU reference within the M3 tolerance.
   - Radial and conic work with shuffle, palette from image (stops follow the gradient direction) and the stop editor.
   - A contact sheet of the new shapes has been reviewed and pruned.
   - Vignette and Bands leave pure black and white exact and are unaffected by tiling.
+  - Print texture matches between the preview and the export, and a flat palette plus print texture plus a muted mood reads as a printed zine page.
 - **Not doing:**
+  - **Figurative marks and linework** (faces, scrawls, expressive drawing): there is no good procedural way to draw them.
+  - **Painterly filters** (Kuwahara, oil paint): they sample neighbors, which breaks the rule that a pixel depends only on its own coordinates (D4).
   - **Reaction-diffusion and other iterative or stateful algorithms:** they break the stateless, tile-independent render rule (D4).
   - **Fractals, Truchet and quasi-periodic tilings:** too graphic for gradient wallpapers.
   - **User-facing layers:** the product stays one pattern, one warp and a few finishes.
 - **Progress:**
   - ✅ Step 1, warp shapes: **silk** (`ridged`: long draped folds, ridged noise run slowly along a seeded direction and fast across it) and **marble** (turbulent sine bands across a seeded direction: veins that fold the colors into each other). **Kaleidoscope** was built and pruned after the contact-sheet review: mirroring a wedge of a soft gradient repeats one or two colors or smudges (D31). Flow/brushed and Voronoi edges stay optional.
+  - ✅ Step 2, radial and conic: two more entries in the gradient select. Linear, radial and conic share one ramp (stops, blends, angle), so switching keeps the colors; the stop editor, shuffle and palette from image work on all three. Radial runs from the center to the frame corners and has no angle; conic sweeps from its angle to the opposite side and back, smooth all the way round, with a soft core so warps can't pinch the center (D32).
 - **Open questions:**
-  - Does conic need a seam control, or is a smooth seam enough?
+  - ~~Does conic need a seam control?~~ Smooth seam for now (D32); to be checked by eye.
   - Should Vignette and Bands be in the main view or behind "+ more"?
 
 ### M5 — Pattern variety
@@ -233,6 +239,7 @@ Each milestone uses the same structure:
   - Worley cells.
   - Aurora ribbons.
   - A **grid Bézier mesh** style (photogradient's core style; revisits D11).
+  - **Planes** (collage, after synthetic cubism and the King Krule sleeve art): N seeded, rotated polygons or Voronoi-style cells, each a flat palette color, with noise-roughened edges (torn paper), overlap order for the layered look and a subtle paper grain. Evaluated per pixel with no state, so it stays tile-independent. Controls: plane count and edge roughness. Pairs with the print texture finish from M4.5 and the muted and earthy moods.
 - **Done when:** each pattern has golden-image tests and at least 3 good reference designs.
 
 ### M6 — Saving

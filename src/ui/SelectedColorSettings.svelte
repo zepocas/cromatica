@@ -46,10 +46,10 @@
     />
   </div>
 {:else}
-  <ColorControls color={editor.linear.stops[selected].color} onchange={(c) => editor.palette.setColor(selected, c)} />
+  <ColorControls color={editor.ramp.stops[selected].color} onchange={(c) => editor.palette.setColor(selected, c)} />
   <label class="row">
     <span>blend</span>
-    <select aria-label="Blend to next stop" bind:value={editor.linear.stops[selected].blend} disabled={isLastStop}>
+    <select aria-label="Blend to next stop" bind:value={editor.ramp.stops[selected].blend} disabled={isLastStop}>
       {#each BLEND_OPTIONS as o (o.value)}
         <option value={o.value}>{o.label}</option>
       {/each}

@@ -45,8 +45,16 @@
       bind:value={editor.mesh.sharpness}
       display={fixed2}
     />
-  {:else}
-    <SliderRow label="angle" min={0} max={360} step={1} bind:value={editor.linear.angle} display={degrees} />
+  {:else if editor.kind !== 'radial'}
+    <SliderRow
+      label="angle"
+      title={editor.kind === 'conic' ? 'Where the sweep starts' : 'Direction of the gradient'}
+      min={0}
+      max={360}
+      step={1}
+      bind:value={editor.ramp.angle}
+      display={degrees}
+    />
   {/if}
 
   {#snippet more()}

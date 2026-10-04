@@ -156,17 +156,17 @@ describe('points and stops', () => {
   it('a new stop takes the blend of the segment it splits; at least two stops are kept', () => {
     const e = fresh();
     e.kind = 'linear';
-    e.linear.stops[0].blend = 'oklch-long';
+    e.ramp.stops[0].blend = 'oklch-long';
     const i = e.addStop(0.25)!;
-    expect(e.linear.stops[i]).toMatchObject({ position: 0.25, blend: 'oklch-long' });
+    expect(e.ramp.stops[i]).toMatchObject({ position: 0.25, blend: 'oklch-long' });
     while (e.canRemoveColor) e.removeColor(0);
-    expect(e.linear.stops).toHaveLength(2);
+    expect(e.ramp.stops).toHaveLength(2);
   });
 
   it('add color puts a stop in the widest gap', () => {
     const e = fresh();
     e.kind = 'linear';
     e.addColor();
-    expect(e.linear.stops.at(-1)!.position).toBeCloseTo(0.25, 9);
+    expect(e.ramp.stops.at(-1)!.position).toBeCloseTo(0.25, 9);
   });
 });

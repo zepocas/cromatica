@@ -202,3 +202,11 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Marble:** displacement along the band normal by `sin(2π·f·(d·p) + 4.5·fbm)`, with amplitude ∝ band spacing. At a first, weaker strength it also read as fbm; it needs displacement comparable to the gradient's color features for the veins to show.
 - **Kaleidoscope pruned:** a mirror fold (N segments, then a twist instead of a ghosting blend) was correct and seamless, but a wedge of a soft gradient holds one or two colors, so it showed as a single color or a radial smudge on both base patterns.
 - **Shared constants** (octaves, stretch, turbulence) are injected into the shaders from warp.ts like the others.
+
+## D32. Linear, radial and conic are one ramp gradient
+
+- **Model:** `RampGradient { kind: 'linear' | 'radial' | 'conic', angle, stops }`. The editor keeps one ramp for all three, so switching shape keeps stops and blends, and palette state (rule, seed, adjustments) is per color owner (mesh or ramp), not per kind.
+- **t per shape** (`src/engine/ramp-shape.ts`, mirrored in `ramp-shape.glsl` from the same prepared uniforms): linear as before (spans the rotated frame); radial `|p| / (half frame diagonal)`, so corners reach the last stop; conic `(1 − cos θ)/2`, θ from the angle: the first stop at the angle, the last opposite, smooth everywhere with no seam and no atan.
+- **Conic core:** within 0.15 of the center, conic eases toward mid-ramp. Every color meets at the center, and a warp otherwise shreds it into a pinched knot.
+- **Palette from image** orders stops by each color's t in the active shape, so they follow the gradient however it runs.
+- **Center** is the frame's center; zoom magnifies around it. A movable center would need a pan in the transform (not built).

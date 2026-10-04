@@ -5,12 +5,12 @@ import {
   defaultMesh,
   defaultWarp,
   type Design,
-  type LinearGradient,
+  type RampGradient,
   MAX_MESH_POINTS,
   type PointMesh,
   WARP_SHAPES,
 } from '../../src/design/design';
-import { LINEAR_SHUFFLE, MESH_SHUFFLE, shuffleDesign, WARP_SHUFFLE_TABLE } from '../../src/design/shuffle';
+import { RAMP_SHUFFLE, MESH_SHUFFLE, shuffleDesign, WARP_SHUFFLE_TABLE } from '../../src/design/shuffle';
 import { applyMat2, inverseTransformMatrix } from '../../src/engine/transform';
 
 /** Just the design of a shuffle. */
@@ -26,7 +26,7 @@ const linearDesign: Design = { ...defaultDesign, grain: { amount: 0.2, size: 0.1
 const all = (seed: number) => ({ colors: true, layout: true, seed });
 
 const mesh = (d: Design) => d.base as PointMesh;
-const linear = (d: Design) => d.base as LinearGradient;
+const linear = (d: Design) => d.base as RampGradient;
 
 describe('shuffleDesign', () => {
   it('does not mutate its input', () => {
@@ -184,7 +184,7 @@ describe('shuffleDesign', () => {
       expect(l.angle).toBeGreaterThanOrEqual(0);
       expect(l.angle).toBeLessThan(360);
       for (let i = 1; i < 5; i++) {
-        expect(l.stops[i].position - l.stops[i - 1].position).toBeGreaterThanOrEqual(LINEAR_SHUFFLE.minGap - 1e-9);
+        expect(l.stops[i].position - l.stops[i - 1].position).toBeGreaterThanOrEqual(RAMP_SHUFFLE.minGap - 1e-9);
       }
       expect(l.stops[0].position).toBeGreaterThanOrEqual(0);
       expect(l.stops[4].position).toBeLessThanOrEqual(1);

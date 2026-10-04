@@ -30,13 +30,13 @@
   const isMesh = $derived(editor.kind === 'mesh');
   const noun = $derived(isMesh ? 'point' : 'stop');
   const colors = $derived<Oklch[]>(
-    isMesh ? editor.mesh.points.map((p) => p.color) : editor.linear.stops.map((s) => s.color),
+    isMesh ? editor.mesh.points.map((p) => p.color) : editor.ramp.stops.map((s) => s.color),
   );
   // Mesh points in index order (matches the handles); stops in position order.
   const order = $derived(
     isMesh
       ? colors.map((_, i) => i)
-      : colors.map((_, i) => i).sort((a, b) => editor.linear.stops[a].position - editor.linear.stops[b].position),
+      : colors.map((_, i) => i).sort((a, b) => editor.ramp.stops[a].position - editor.ramp.stops[b].position),
   );
   const selected = $derived(Math.min(isMesh ? editor.selectedPoint : editor.selectedStop, colors.length - 1));
   /** Colors before base hue and temperature; null when nothing is adjusted. */
@@ -142,7 +142,7 @@
         color={colors[i]}
         original={original?.[i]}
         selected={i === selected}
-        name={isMesh ? `point ${i + 1}` : `${Math.round(editor.linear.stops[i].position * 100)}%`}
+        name={isMesh ? `point ${i + 1}` : `${Math.round(editor.ramp.stops[i].position * 100)}%`}
         {noun}
         canRemove={editor.canRemoveColor}
         onselect={() => select(i)}

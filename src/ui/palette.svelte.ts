@@ -2,16 +2,16 @@ import type { HarmonyRule, PaletteInfo, PaletteMood, PaletteOptions, ValueKey } 
 import { relinkPalette, remixShift, shiftPalette } from '../color/linked';
 import { applyTemperature, type Temperature } from '../color/temperature';
 import type { Oklch } from '../color/types';
-import type { BasePattern } from '../design/design';
 import { createRng, randomSeed } from '../design/random';
 import { normalizeDegrees } from '../math';
 
-export type PatternKind = BasePattern['kind'];
+/** Who owns a set of colors: the mesh's points, or the stops all ramp gradients share. */
+export type PaletteOwner = 'mesh' | 'ramp';
 
 /** What the palette editor needs from the editor that owns the pattern. */
 export interface PaletteHost {
-  /** The active pattern; palette state is kept per pattern. */
-  kind(): PatternKind;
+  /** Whose colors are active; palette state is kept per owner. */
+  kind(): PaletteOwner;
   /** The active pattern's points or stops, each with a mutable color. */
   colorItems(): { color: Oklch }[];
   /** Give the active pattern a generated palette from this seed (fresh when omitted), keeping its layout. */
@@ -50,10 +50,10 @@ export class PaletteEditor {
   /** Hue new palettes are built around; null = random. Moving it turns the current palette. */
   baseHue = $state<number | null>(null);
   /** What each pattern's palette was generated with; null = custom (imported, or not generated yet). */
-  private infos = $state<Record<PatternKind, PaletteInfo | null>>({ mesh: null, linear: null });
+  private infos = $state<Record<PaletteOwner, PaletteInfo | null>>({ mesh: null, ramp: null });
   /** The seed each pattern's palette was generated from, so steering it regenerates the same palette. */
-  private seeds: Record<PatternKind, number | null> = { mesh: null, linear: null };
-  private adjustments = $state.raw<Record<PatternKind, Adjustment | null>>({ mesh: null, linear: null });
+  private seeds: Record<PaletteOwner, number | null> = { mesh: null, ramp: null };
+  private adjustments = $state.raw<Record<PaletteOwner, Adjustment | null>>({ mesh: null, ramp: null });
 
   constructor(private readonly host: PaletteHost) {}
 

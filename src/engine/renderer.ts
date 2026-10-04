@@ -3,12 +3,13 @@ import { bakeRamp, RAMP_SIZE } from '../color/ramp';
 import {
   type ColorStop,
   type Design,
-  type LinearGradient,
+  type RampGradient,
   MAX_MESH_POINTS,
   MAX_STOPS,
   type PointMesh,
 } from '../design/design';
-import { applyMat2, mat2Uniform, orientationMatrix, transformMatrix, transpose } from './transform';
+import { mat2Uniform, transformMatrix } from './transform';
+import { CONIC_CORE, prepareRampShape } from './ramp-shape';
 import { GAMUT_CLIP_STEPS, prepareMesh } from '../color/mesh';
 import { BLUE_NOISE_SIZE, DITHER_CHANNEL_OFFSETS, blueNoiseRanks } from './blue-noise';
 import { GRAIN_CHROMA, prepareGrain } from './grain';
@@ -16,20 +17,9 @@ import { buildShaderSources, variantKey, type Defines } from './shaders';
 import { prepareWarp, WARP_SHADER_CONSTANTS, type PreparedWarp } from './warp';
 import type { OutputSize, RenderOptions, Renderer, Tile } from './types';
 
-/** The linear gradient's axis, scaled so the ramp spans the (rotated, flipped) frame. */
-function linearGradientUniforms(g: LinearGradient, output: OutputSize, transform: Design['transform']) {
-  // Frame is aspect × 1 centered at the origin. Rotated and flipped by the
-  // transform's orientation O, its extent along the unit direction d is
-  // |ex|·aspect + |ey| with e = Oᵀd. Dividing by it maps the frame to
-  // t ∈ [-0.5, 0.5], so the ramp always spans the frame; zoom is left out
-  // so it still magnifies the ramp.
-  const a = (g.angle * Math.PI) / 180;
-  const dx = Math.cos(a);
-  const dy = Math.sin(a);
-  const o = orientationMatrix(transform);
-  const [ex, ey] = applyMat2(transpose(o), dx, dy);
-  const extent = Math.abs(ex) * (output.width / output.height) + Math.abs(ey);
-  return { u_linearAxis: [dx / extent, dy / extent] };
+function rampShapeUniforms(g: RampGradient, output: OutputSize, transform: Design['transform']) {
+  const r = prepareRampShape(g, output, transform);
+  return { u_rampAxis: r.axis, u_radialScale: r.radialScale };
 }
 
 /** Mesh uniforms, padded to MAX_MESH_POINTS; uploaded every render (tiny). */
@@ -130,8 +120,15 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
       const grain = prepareGrain(design.grain);
       const info = getProgram({
         BLUE_NOISE_SIZE,
-        BASE_LINEAR: !isMesh,
+        BASE_RAMP: !isMesh,
         BASE_MESH: isMesh,
+        ...(isMesh
+          ? {}
+          : {
+              RAMP_RADIAL: base.kind === 'radial',
+              RAMP_CONIC: base.kind === 'conic',
+              CONIC_CORE: CONIC_CORE.toFixed(4),
+            }),
         ...(isMesh ? { MAX_MESH_POINTS, GAMUT_CLIP_STEPS } : {}),
         ...warpDefines(warp),
       });
@@ -141,7 +138,7 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
       } else {
         updateRamp(base.stops);
         baseUniforms = {
-          ...linearGradientUniforms(base, output, design.transform),
+          ...rampShapeUniforms(base, output, design.transform),
           u_ramp: rampTexture,
           u_rampSize: rampSize,
         };

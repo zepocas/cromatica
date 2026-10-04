@@ -22,9 +22,16 @@ export interface ColorStop {
   blend: BlendMode;
 }
 
-export interface LinearGradient {
-  kind: 'linear';
-  /** Direction in degrees. 0 = left→right, 90 = bottom→top (counter-clockwise). */
+/** How a ramp gradient maps the frame to the ramp (src/engine/ramp-shape.ts). */
+export type RampShape = 'linear' | 'radial' | 'conic';
+
+/** Stops along a ramp, laid over the frame as a linear, radial or conic gradient. */
+export interface RampGradient {
+  kind: RampShape;
+  /**
+   * Degrees, counter-clockwise. Linear: the direction (0 = left→right, 90 =
+   * bottom→top). Conic: where the sweep starts. Radial: unused.
+   */
   angle: number;
   /** Sorted by position. At least 2 stops in the editor (the renderer accepts 1), at most MAX_STOPS. */
   stops: ColorStop[];
@@ -58,7 +65,7 @@ export interface PointMesh {
   sharpness: number;
 }
 
-export type BasePattern = LinearGradient | PointMesh;
+export type BasePattern = RampGradient | PointMesh;
 
 /**
  * Coordinate distortion applied before the base pattern (D23). Experimental
