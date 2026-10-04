@@ -23,7 +23,7 @@ import { relinkPalette, remixShift, shiftPalette } from '../color/linked';
 import { evaluateRamp } from '../color/ramp';
 import { createRng, randomSeed } from '../design/random';
 import { shuffleWithHarmony } from '../design/shuffle';
-import type { HarmonyRule, PaletteMood } from '../design/shuffle.types';
+import type { HarmonyRule, PaletteMood, ValueKey } from '../design/shuffle.types';
 import {
   applyMat2,
   clampZoom,
@@ -35,7 +35,7 @@ import { warpPoint } from '../engine/warp';
 import { paletteFromImage, type ImagePalette } from './image-palette';
 
 export type PatternKind = BasePattern['kind'];
-export type PaletteHarmony = { rule: HarmonyRule; mood: Exclude<PaletteMood, 'any'> };
+export type PaletteHarmony = { rule: HarmonyRule; mood: Exclude<PaletteMood, 'any'>; key: ValueKey };
 
 /** Point size limits, in screen (composition) units: radius × zoom. */
 export const MIN_RADIUS = 0.05;
@@ -63,11 +63,11 @@ export class EditorState {
   grain = $state<Grain>({ ...defaultGrain });
   transform = $state<Transform>({ ...identityTransform });
   /** Palette steering for shuffles (UI only, not part of the design). */
-  /** Keep the current palette's rule and mood for ⟳ and shuffle; off = both random. */
+  /** Keep the current palette's rule, mood and key for ⟳ and shuffle; off = all random. */
   keepHarmony = $state(false);
   /** Hue the harmony is built around; null = random each shuffle. */
   baseHue = $state<number | null>(null);
-  /** Rule and mood each pattern's palette was last generated with; null before its first color shuffle. */
+  /** Rule, mood and key each pattern's palette was last generated with; null before its first color shuffle. */
   private harmonies = $state<Record<PatternKind, PaletteHarmony | null>>({ mesh: null, linear: null });
   /** Linked: editing one color moves the whole palette with it (keeps the harmony). */
   linkColors = $state(false);
@@ -116,19 +116,24 @@ export class EditorState {
     this.applyShuffle(true, false);
   }
 
-  /** Rule and mood of the active pattern's palette. */
+  /** Rule, mood and key of the active pattern's palette. */
   get harmony(): PaletteHarmony | null {
     return this.harmonies[this.kind];
   }
 
-  /** A new palette in this rule, keeping the current mood. */
+  /** A new palette in this rule, keeping the current mood and key. */
   setHarmonyRule(rule: HarmonyRule): void {
-    this.applyShuffle(true, false, { rule, mood: this.harmony?.mood ?? 'any' });
+    this.applyShuffle(true, false, { rule, mood: this.harmony?.mood ?? 'any', key: this.harmony?.key ?? 'any' });
   }
 
-  /** A new palette in this mood, keeping the current rule. */
+  /** A new palette in this mood, keeping the current rule and key. */
   setHarmonyMood(mood: Exclude<PaletteMood, 'any'>): void {
-    this.applyShuffle(true, false, { rule: this.harmony?.rule, mood });
+    this.applyShuffle(true, false, { rule: this.harmony?.rule, mood, key: this.harmony?.key ?? 'any' });
+  }
+
+  /** A new palette in this value key, keeping the current rule and mood. */
+  setValueKey(key: ValueKey): void {
+    this.applyShuffle(true, false, { rule: this.harmony?.rule, mood: this.harmony?.mood ?? 'any', key });
   }
 
   /** Same colors, reassigned to different points or stops. */
@@ -152,11 +157,16 @@ export class EditorState {
     items.forEach((x, k) => (x.color = order[k]));
   }
 
-  private applyShuffle(colors: boolean, layout: boolean, force?: { rule?: HarmonyRule; mood: PaletteMood }): void {
+  private applyShuffle(
+    colors: boolean,
+    layout: boolean,
+    force?: { rule?: HarmonyRule; mood: PaletteMood; key: ValueKey | 'any' },
+  ): void {
     const kept = this.keepHarmony ? this.harmony : null;
     const palette = {
       rule: force ? force.rule : kept?.rule,
       mood: force ? force.mood : (kept?.mood ?? 'any'),
+      key: force ? force.key : (kept?.key ?? 'any'),
       baseHue: this.baseHue ?? undefined,
     };
     const kind = this.kind;

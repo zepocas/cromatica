@@ -746,3 +746,29 @@ test('palette from image: picker and drop set the colors, laid out like the imag
   expect(await read()).toEqual(['#DC2828', '#1E3CC8']);
   expect(errors).toEqual([]);
 });
+
+test('value key: picking one regenerates in that key, keep pins it', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(err.message));
+  await page.goto('/?default');
+  const hexes = page.locator('li input.hex');
+  const lightness = () => hexes.evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value)).then((hs) => hs.map((h) => hexToOklch(h)[0]));
+  await page.getByRole('button', { name: 'More colors settings' }).click();
+  const key = page.getByLabel('Value key');
+
+  await key.selectOption('low');
+  await expect(key).toHaveValue('low');
+  for (const l of await lightness()) expect(l).toBeLessThan(0.62);
+
+  await page.getByRole('button', { name: 'Keep harmony' }).click();
+  for (let i = 0; i < 4; i++) {
+    await page.getByRole('button', { name: 'Shuffle colors' }).click();
+    await expect(key).toHaveValue('low');
+    for (const l of await lightness()) expect(l).toBeLessThan(0.62);
+  }
+
+  await key.selectOption('high');
+  await expect(key).toHaveValue('high');
+  for (const l of await lightness()) expect(l).toBeGreaterThan(0.6);
+  expect(errors).toEqual([]);
+});

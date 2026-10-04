@@ -226,7 +226,7 @@ export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 
   return shuffleWithHarmony(design, opts, aspect).design;
 }
 
-/** shuffleDesign, plus the rule and mood of the new palette (null when colors weren't shuffled). */
+/** shuffleDesign, plus the rule, mood and key of the new palette (null when colors weren't shuffled). */
 export function shuffleWithHarmony(
   design: Design,
   opts: ShuffleOptions,
@@ -239,7 +239,7 @@ export function shuffleWithHarmony(
   let harmony: Omit<Harmony, 'colors'> | null = null;
   const palette: MakePalette = (n) => {
     const h = generateHarmony(colorRng, n, opts.palette);
-    harmony = { rule: h.rule, mood: h.mood };
+    harmony = { rule: h.rule, mood: h.mood, key: h.key };
     return h.colors;
   };
 

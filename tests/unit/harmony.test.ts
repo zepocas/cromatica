@@ -4,7 +4,9 @@ import {
   generateHarmony,
   generatePalette,
   HARMONY_RULES,
+  KEY_BANDS,
   maxChroma,
+  minLSpan,
   MIN_L_SPAN,
   minPaletteDeltaE,
   MOOD_TUNING,
@@ -155,5 +157,62 @@ describe('generatePalette', () => {
     const pal = generatePalette(createRng(1), 16);
     expect(pal).toHaveLength(16);
     for (const c of pal) expect(inSrgbGamut(c)).toBe(true);
+  });
+});
+
+describe('value key', () => {
+  const meanL = (pal: Oklch[]) => pal.reduce((s, c) => s + c[0], 0) / pal.length;
+
+  it('high and low keep spacing, gamut and their own spread for up to 5 colors', () => {
+    for (const key of ['high', 'low'] as const) {
+      const [lo, hi] = KEY_BANDS[key];
+      for (const rule of HARMONY_RULES) {
+        for (const mood of ['natural', 'vivid'] as const) {
+          for (const count of [2, 3, 4, 5]) {
+            for (let seed = 0; seed < 8; seed++) {
+              const pal = generatePalette(createRng(seed * 104729 + count), count, { rule, mood, key });
+              const min = minPaletteDeltaE(count);
+              for (let i = 0; i < count; i++) {
+                expect(inSrgbGamut(pal[i])).toBe(true);
+                // Spacing nudges may step just outside the band.
+                expect(pal[i][0]).toBeGreaterThanOrEqual(lo - 0.06);
+                expect(pal[i][0]).toBeLessThanOrEqual(hi + 0.02);
+                for (let j = i + 1; j < count; j++) expect(deltaEOk(pal[i], pal[j])).toBeGreaterThanOrEqual(min);
+              }
+              const ls = pal.map((c) => c[0]);
+              if (count >= 3 && rule !== 'monochrome') {
+                expect(Math.max(...ls) - Math.min(...ls)).toBeGreaterThanOrEqual(minLSpan(key));
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  it('high is light and soft, low is dark', () => {
+    for (let seed = 0; seed < 40; seed++) {
+      const full = generatePalette(createRng(seed), 5, { key: 'full' });
+      const high = generatePalette(createRng(seed), 5, { key: 'high', mood: 'vivid' });
+      const low = generatePalette(createRng(seed), 5, { key: 'low' });
+      expect(meanL(high)).toBeGreaterThan(meanL(full));
+      expect(meanL(low)).toBeLessThan(meanL(full));
+      for (const c of high) expect(c[1]).toBeLessThanOrEqual(0.13 + 1e-9);
+    }
+  });
+
+  it('defaults to full, with the same sequence as before keys existed', () => {
+    for (let seed = 0; seed < 20; seed++) {
+      expect(generatePalette(createRng(seed), 5)).toEqual(generatePalette(createRng(seed), 5, { key: 'full' }));
+      expect(generateHarmony(createRng(seed), 5).key).toBe('full');
+    }
+  });
+
+  it('key any reports what it picked and leans full', () => {
+    const seen = { high: 0, full: 0, low: 0 };
+    for (let seed = 0; seed < 300; seed++) seen[generateHarmony(createRng(seed), 4, { key: 'any' }).key]++;
+    expect(seen.full / 300).toBeGreaterThan(0.55);
+    expect(seen.high).toBeGreaterThan(15);
+    expect(seen.low).toBeGreaterThan(15);
   });
 });

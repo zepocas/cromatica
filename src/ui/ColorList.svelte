@@ -2,7 +2,7 @@
   import { HARMONY_RULES } from '../color/harmony';
   import { hexToOklch, inSrgbGamut, oklchToHex } from '../color/oklab';
   import type { BlendMode, Oklch } from '../design/design';
-  import type { HarmonyRule } from '../design/shuffle.types';
+  import type { HarmonyRule, ValueKey } from '../design/shuffle.types';
   import ColorControls from './ColorControls.svelte';
   import { MAX_RADIUS, MIN_RADIUS, type EditorState } from './editor.svelte';
   import Section from './Section.svelte';
@@ -123,7 +123,7 @@
     <button
       aria-label="Keep harmony"
       aria-pressed={editor.keepHarmony}
-      title="Keep this rule and mood when shuffling (off: both random)"
+      title="Keep this rule, mood and key when shuffling (off: all random)"
       onclick={() => (editor.keepHarmony = !editor.keepHarmony)}>{editor.keepHarmony ? '[x]' : '[ ]'} keep</button
     >
   </div>
@@ -204,6 +204,20 @@
         {#if !editor.harmony}<option value="" disabled>custom</option>{/if}
         <option value="natural">natural</option>
         <option value="vivid">vivid</option>
+      </select>
+    </label>
+    <label class="row">
+      <span>key</span>
+      <select
+        aria-label="Value key"
+        title="Where the palette sits on the lightness scale"
+        value={editor.harmony?.key ?? ''}
+        onchange={(e) => editor.setValueKey(e.currentTarget.value as ValueKey)}
+      >
+        {#if !editor.harmony}<option value="" disabled>custom</option>{/if}
+        <option value="high">high (light)</option>
+        <option value="full">full range</option>
+        <option value="low">low (dark)</option>
       </select>
     </label>
     <div class="row">

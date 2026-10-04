@@ -1,5 +1,5 @@
 import type { Oklch } from '../design/design';
-import type { Harmony, HarmonyRule, PaletteMood, PaletteOptions, Rng } from '../design/shuffle.types';
+import type { Harmony, HarmonyRule, PaletteMood, PaletteOptions, Rng, ValueKey } from '../design/shuffle.types';
 import { inSrgbGamut, normalizeHue, oklchToOklab } from './oklab';
 
 export const HARMONY_RULES: readonly HarmonyRule[] = [
@@ -18,6 +18,35 @@ const RULE_WEIGHTS: Record<HarmonyRule, number> = {
 
 /** Probability that mood 'any' resolves to 'natural'. */
 const NATURAL_SHARE = 0.65;
+
+export const VALUE_KEYS: readonly ValueKey[] = ['high', 'full', 'low'];
+/** Lightness band of the high and low keys; full uses the mood's band. */
+export const KEY_BANDS: Record<Exclude<ValueKey, 'full'>, [number, number]> = {
+  high: [0.7, 0.96],
+  low: [0.12, 0.55],
+};
+/** Chroma ceiling in the high key: light colors near their cusp read as neon candy. */
+const HIGH_KEY_MAX_CHROMA = 0.13;
+/** How key 'any' resolves: mostly full, so shuffles keep their range. */
+const KEY_WEIGHTS: Record<ValueKey, number> = { full: 0.7, high: 0.15, low: 0.15 };
+
+function pickKey(rng: Rng): ValueKey {
+  const r = rng.next();
+  if (r < KEY_WEIGHTS.high) return 'high';
+  if (r < KEY_WEIGHTS.high + KEY_WEIGHTS.low) return 'low';
+  return 'full';
+}
+
+function keyBand(key: ValueKey, mood: Exclude<PaletteMood, 'any'>): [number, number] {
+  return key === 'full' ? MOOD_TUNING[mood].l : KEY_BANDS[key];
+}
+
+/** Lightness span a palette must reach: MIN_L_SPAN on full, scaled to the narrower high and low bands. */
+export function minLSpan(key: ValueKey): number {
+  if (key === 'full') return MIN_L_SPAN;
+  const [lo, hi] = KEY_BANDS[key];
+  return Math.min(MIN_L_SPAN, 0.5 * (hi - lo));
+}
 
 interface MoodTuning {
   /** Chroma as a fraction of the max in-gamut chroma at (L, h). */
@@ -180,8 +209,10 @@ function planPalette(
   rule: HarmonyRule,
   mood: Exclude<PaletteMood, 'any'>,
   baseHue: number | undefined,
+  key: ValueKey,
 ): Slot[] {
   const t = MOOD_TUNING[mood];
+  const band = keyBand(key, mood);
   // Drawn either way, so a base hue doesn't shift the rest of the sequence.
   const randomBase = rng.range(0, 360);
   const base = baseHue ?? randomBase;
@@ -192,7 +223,7 @@ function planPalette(
     rng,
     Array.from({ length: count }, (_, i) => ({ h: base + offsets[i % offsets.length] + rng.range(-8, 8), lead: i % offsets.length === 0 })),
   );
-  const ls = planLightness(rng, count, rule === 'monochrome', t.l);
+  const ls = planLightness(rng, count, rule === 'monochrome', band);
   if (rule !== 'monochrome' && rng.next() < t.cuspOrder) {
     // Pair ascending lightness with ascending cusp lightness, so yellows sit
     // light and blues/purples dark instead of turning olive or washed out.
@@ -214,8 +245,10 @@ function planPalette(
     rng.pick(slots).rel = rng.range(t.accent[1][0], t.accent[1][1]);
   }
   if (count >= 3 && rng.next() < t.anchor) {
-    // Replace the lightest or darkest slot with a near-neutral: cream/off-white or deep near-black.
-    if (rng.next() < 0.6) {
+    // Replace the lightest or darkest slot with a near-neutral: cream/off-white
+    // or deep near-black. Only the one that fits the key.
+    const light = rng.next() < 0.6;
+    if (key === 'high' || (key === 'full' && light)) {
       const s = slots[count - 1];
       s.anchor = 'light';
       s.l = rng.range(0.93, 0.975);
@@ -229,12 +262,12 @@ function planPalette(
   return slots;
 }
 
-function slotColor(slot: Slot, rng: Rng, t: MoodTuning): Oklch {
+function slotColor(slot: Slot, rng: Rng, t: MoodTuning, cap = t.maxChroma): Oklch {
   if (slot.anchor) {
     const c = slot.anchor === 'light' ? rng.range(0.012, 0.035) : rng.range(0.01, 0.04);
     return [slot.l, Math.min(c, maxChroma(slot.l, slot.h) * GAMUT_MARGIN), normalizeHue(slot.h)];
   }
-  return realize(slot, t.maxChroma, t === MOOD_TUNING.vivid);
+  return realize(slot, cap, t === MOOD_TUNING.vivid);
 }
 
 function minDistance(colors: Oklch[]): number {
@@ -257,23 +290,26 @@ function buildOnce(
   mood: Exclude<PaletteMood, 'any'>,
   minDe: number,
   baseHue: number | undefined,
+  key: ValueKey,
 ): Oklch[] {
   const t = MOOD_TUNING[mood];
-  const slots = planPalette(rng, count, rule, mood, baseHue);
+  const band = keyBand(key, mood);
+  const slots = planPalette(rng, count, rule, mood, baseHue, key);
+  const cap = key === 'high' ? Math.min(t.maxChroma, HIGH_KEY_MAX_CHROMA) : t.maxChroma;
   const colors: Oklch[] = [];
   for (const slot of slots) {
-    let best = slotColor(slot, rng, t);
+    let best = slotColor(slot, rng, t, cap);
     let bestD = colors.length ? Math.min(...colors.map((c) => deltaEOk(c, best))) : Infinity;
     // Too close to an earlier color: nudge lightness (and, later, chroma) with growing steps.
     for (let attempt = 1; attempt <= 24 && bestD < minDe; attempt++) {
       const reach = 0.04 * attempt;
       const trial: Slot = {
         ...slot,
-        l: Math.min(t.l[1] + 0.02, Math.max(t.l[0] - 0.06, slot.l + rng.range(-reach, reach))),
+        l: Math.min(band[1] + 0.02, Math.max(band[0] - 0.06, slot.l + rng.range(-reach, reach))),
         rel: attempt > 8 && !slot.anchor ? rng.range(t.rel[0], Math.max(t.rel[1], t.accent[1][1])) : slot.rel,
         h: slot.h + (attempt > 16 ? rng.range(-15, 15) : 0),
       };
-      const c = slotColor(trial, rng, t);
+      const c = slotColor(trial, rng, t, cap);
       const d = Math.min(...colors.map((p) => deltaEOk(p, c)));
       if (d > bestD) {
         best = c;
@@ -301,21 +337,23 @@ export function generateHarmony(rng: Rng, count: number, opts: PaletteOptions = 
   const want = opts.mood ?? 'any';
   const mood = want === 'any' ? (rng.next() < NATURAL_SHARE ? 'natural' : 'vivid') : want;
   const baseHue = opts.baseHue !== undefined && Number.isFinite(opts.baseHue) ? normalizeHue(opts.baseHue) : undefined;
+  // Drawn only for 'any', so palettes without a key keep their sequence.
+  const key = opts.key === 'any' ? pickKey(rng) : (opts.key ?? 'full');
   const minDe = minPaletteDeltaE(n);
-  const needSpan = rule !== 'monochrome' && n >= 3 ? MIN_L_SPAN : 0;
+  const needSpan = rule !== 'monochrome' && n >= 3 ? minLSpan(key) : 0;
 
   let best: Oklch[] = [];
   let bestScore = -Infinity;
   for (let attempt = 0; attempt < 16; attempt++) {
-    const colors = buildOnce(rng, n, rule, mood, minDe, baseHue);
+    const colors = buildOnce(rng, n, rule, mood, minDe, baseHue, key);
     const d = n > 1 ? minDistance(colors) : Infinity;
     const span = lSpan(colors);
-    if (d >= minDe && span >= needSpan) return { colors, rule, mood };
+    if (d >= minDe && span >= needSpan) return { colors, rule, mood, key };
     const score = Math.min(d - minDe, span - needSpan);
     if (score > bestScore) {
       best = colors;
       bestScore = score;
     }
   }
-  return { colors: best, rule, mood };
+  return { colors: best, rule, mood, key };
 }

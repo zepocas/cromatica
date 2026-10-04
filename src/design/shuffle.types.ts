@@ -27,6 +27,8 @@ export type HarmonyRule =
   | 'tetradic';
 
 export type PaletteMood = 'natural' | 'vivid' | 'any';
+/** Value key: where the palette sits on the lightness scale. */
+export type ValueKey = 'high' | 'full' | 'low';
 
 export interface PaletteOptions {
   /** Random when omitted. */
@@ -35,6 +37,8 @@ export interface PaletteOptions {
   mood?: PaletteMood;
   /** Hue (degrees) the rule is built around; random when omitted. */
   baseHue?: number;
+  /** Default 'full' (the whole lightness range); 'any' picks one, leaning full. */
+  key?: ValueKey | 'any';
 }
 
 /** A generated palette and the rule and mood it was actually built with. */
@@ -42,6 +46,7 @@ export interface Harmony {
   colors: Oklch[];
   rule: HarmonyRule;
   mood: Exclude<PaletteMood, 'any'>;
+  key: ValueKey;
 }
 
 /**
