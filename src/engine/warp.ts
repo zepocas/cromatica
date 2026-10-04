@@ -3,16 +3,7 @@
 // chunks in src/engine/shaders/warp/ do the same math in fp32 and read the
 // same prepared uniforms (prepareWarp), so seeded parameters are bit-identical.
 import { WARP_SHAPES, type Warp, type WarpShape } from '../design/design';
-import {
-  clampCoord,
-  fbm,
-  hash1,
-  hash2,
-  hashKey,
-  pcg,
-  simplex,
-  type Vec2,
-} from './noise';
+import { clampCoord, fbm, hash1, hash2, hashKey, pcg, simplex, type Vec2 } from './noise';
 
 const TAU = 6.283185307179586;
 
@@ -115,7 +106,7 @@ export function prepareWarp(warp: Warp | undefined): PreparedWarp {
   const shape: WarpShape = warp && WARP_SHAPES.includes(warp.shape) ? warp.shape : 'none';
   const amount = clamp01(warp?.amount ?? 0);
   const freq = warpFrequency(warp?.size ?? 0.5);
-  const seed = Number.isFinite(warp?.seed) ? (warp!.seed >>> 0) : 0;
+  const seed = Number.isFinite(warp?.seed) ? warp!.seed >>> 0 : 0;
   if (shape === 'none' || amount === 0) {
     return { shape: 'none', freq, amp: 0, seed, params: new Float64Array(WARP_PARAM_SLOTS * 4) };
   }

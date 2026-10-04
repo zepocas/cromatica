@@ -145,7 +145,13 @@ function assignMeshColors(points: { x: number; y: number }[], palette: Oklch[], 
   return out;
 }
 
-function shuffleMesh(base: PointMesh, opts: ShuffleOptions, aspect: number, palette: MakePalette, layoutRng: Rng): PointMesh {
+function shuffleMesh(
+  base: PointMesh,
+  opts: ShuffleOptions,
+  aspect: number,
+  palette: MakePalette,
+  layoutRng: Rng,
+): PointMesh {
   let n = base.points.length;
   if (opts.layout && opts.colors && layoutRng.next() < MESH_SHUFFLE.countChange) {
     n = clamp(n + (layoutRng.next() < 0.5 ? -1 : 1), Math.min(2, n), MAX_MESH_POINTS);
@@ -165,9 +171,7 @@ function shuffleMesh(base: PointMesh, opts: ShuffleOptions, aspect: number, pale
     geo = base.points.map((p) => ({ x: p.x, y: p.y, radius: p.radius }));
   }
 
-  const colors = opts.colors
-    ? assignMeshColors(geo, palette(n), spacing)
-    : base.points.map((p) => copyColor(p.color));
+  const colors = opts.colors ? assignMeshColors(geo, palette(n), spacing) : base.points.map((p) => copyColor(p.color));
 
   const points: MeshPoint[] = geo.map((g, i) => ({ ...g, color: colors[i] }));
   return { kind: 'mesh', points, sharpness };

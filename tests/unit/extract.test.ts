@@ -49,7 +49,7 @@ describe('clusterImage', () => {
     expect(clusterImage(noisy, 32, 32, createRng(7))).toEqual(clusterImage(noisy, 32, 32, createRng(7)));
   });
 
-  it("places each cluster at its densest spot, not its centroid", () => {
+  it('places each cluster at its densest spot, not its centroid', () => {
     // Blue: a 12×12 block in the top-right corner plus a 1 px column on the
     // left edge, which drags blue's centroid to x ≈ 0.66. Its peak stays in the block.
     const img = image(48, 48, (x, y) => ((x >= 36 && y < 12) || x === 0 ? BLUE : RED));
@@ -67,7 +67,14 @@ describe('clusterImage', () => {
   });
 
   it('returns nothing for a fully transparent image', () => {
-    expect(clusterImage(image(4, 4, () => [0, 0, 0, 0]), 4, 4, createRng(1))).toEqual([]);
+    expect(
+      clusterImage(
+        image(4, 4, () => [0, 0, 0, 0]),
+        4,
+        4,
+        createRng(1),
+      ),
+    ).toEqual([]);
   });
 });
 

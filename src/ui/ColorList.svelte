@@ -25,8 +25,14 @@
 
   const TEMPERATURES: { value: Temperature; title: string }[] = [
     { value: 'off', title: 'Colors as they are' },
-    { value: 'warm', title: 'Warm light, cool shadows: light colors turn toward amber, dark ones toward blue (sunset, lamplight)' },
-    { value: 'cool', title: 'Cool light, warm shadows: light colors turn toward blue, dark ones toward amber (overcast, moonlight)' },
+    {
+      value: 'warm',
+      title: 'Warm light, cool shadows: light colors turn toward amber, dark ones toward blue (sunset, lamplight)',
+    },
+    {
+      value: 'cool',
+      title: 'Cool light, warm shadows: light colors turn toward blue, dark ones toward amber (overcast, moonlight)',
+    },
   ];
 
   const RULE_LABELS: Record<(typeof HARMONY_RULES)[number], string> = {
@@ -66,7 +72,7 @@
   const original = $derived(editor.originalColors);
   const adjustedSummary = $derived.by(() => {
     const parts: string[] = [];
-    const turn = Math.round(((editor.hueOffset % 360) + 540) % 360 - 180);
+    const turn = Math.round((((editor.hueOffset % 360) + 540) % 360) - 180);
     if (turn !== 0) parts.push(`hue ${turn > 0 ? '+' : ''}${turn}°`);
     if (editor.temperature !== 'off') parts.push(`temp ${editor.temperature}`);
     return parts.join(' · ');
@@ -99,8 +105,11 @@
 
 <Section title="colors">
   {#snippet tools()}
-    <button class="icon" aria-label="Shuffle colors" title="New colors, same layout" onclick={() => editor.shuffleColors()}
-      >⟳</button
+    <button
+      class="icon"
+      aria-label="Shuffle colors"
+      title="New colors, same layout"
+      onclick={() => editor.shuffleColors()}>⟳</button
     >
     <button
       class="icon"
@@ -218,8 +227,10 @@
   {#if original}
     <div class="row" role="status" title="Adjusted from the original colors">
       <em class="what">~ {adjustedSummary}</em>
-      <button aria-label="Reset adjustments" title="Back to the original colors" onclick={() => editor.resetAdjustments()}
-        >[ reset ]</button
+      <button
+        aria-label="Reset adjustments"
+        title="Back to the original colors"
+        onclick={() => editor.resetAdjustments()}>[ reset ]</button
       >
     </div>
   {/if}
@@ -258,7 +269,8 @@
           class="choice"
           aria-pressed={editor.temperature === t.value}
           title={t.title}
-          onclick={() => editor.setTemperature(t.value)}>{editor.temperature === t.value ? `[${t.value}]` : ` ${t.value} `}</button
+          onclick={() => editor.setTemperature(t.value)}
+          >{editor.temperature === t.value ? `[${t.value}]` : ` ${t.value} `}</button
         >
       {/each}
     </div>
@@ -319,7 +331,11 @@
       <ColorControls color={editor.linear.stops[selected].color} onchange={(c) => setColor(selected, c)} />
       <label class="row">
         <span>blend</span>
-        <select aria-label="Blend to next stop" bind:value={editor.linear.stops[selected].blend} disabled={selIsLastStop}>
+        <select
+          aria-label="Blend to next stop"
+          bind:value={editor.linear.stops[selected].blend}
+          disabled={selIsLastStop}
+        >
           {#each BLEND_OPTIONS as o (o.value)}
             <option value={o.value}>{o.label}</option>
           {/each}

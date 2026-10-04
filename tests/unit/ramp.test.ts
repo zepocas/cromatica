@@ -70,7 +70,12 @@ describe('evaluateRamp basics', () => {
     const b = oklchToOklab(BLUE);
     for (let i = 0; i <= 10; i++) {
       const t = i / 10;
-      expect(maxAbs(evaluateRamp(stops, t), a.map((x, k) => x + (b[k] - x) * t))).toBeLessThan(1e-12);
+      expect(
+        maxAbs(
+          evaluateRamp(stops, t),
+          a.map((x, k) => x + (b[k] - x) * t),
+        ),
+      ).toBeLessThan(1e-12);
     }
   });
 
@@ -123,7 +128,11 @@ describe('monotone spline', () => {
   });
 
   it('keeps hue monotone within oklch segments', () => {
-    const stops = [stop(0, [0.6, 0.15, 10], 'oklch-short'), stop(0.3, [0.6, 0.15, 100], 'oklch-long'), stop(1, [0.6, 0.15, 90])];
+    const stops = [
+      stop(0, [0.6, 0.15, 10], 'oklch-short'),
+      stop(0.3, [0.6, 0.15, 100], 'oklch-long'),
+      stop(1, [0.6, 0.15, 90]),
+    ];
     let prev = 10;
     let travelled = 0;
     for (let j = 1; j <= 1000; j++) {
@@ -146,7 +155,13 @@ describe('monotone spline', () => {
 
   it('is C1 at interior stops (Oklab derivative), for same and mixed modes', () => {
     const rand = rng(11);
-    const cases: BlendMode[][] = [...MODES.map((m) => [m, m]), ['oklab', 'oklch-short'], ['oklch-short', 'oklab'], ['oklab-chroma', 'oklch-long'], ['oklab', 'oklab-chroma']];
+    const cases: BlendMode[][] = [
+      ...MODES.map((m) => [m, m]),
+      ['oklab', 'oklch-short'],
+      ['oklch-short', 'oklab'],
+      ['oklab-chroma', 'oklch-long'],
+      ['oklab', 'oklab-chroma'],
+    ];
     for (const [m0, m1] of cases) {
       for (let k = 0; k < 100; k++) {
         const col = (): Oklch => [0.2 + rand() * 0.7, 0.005 + rand() * 0.3, rand() * 360];
@@ -168,7 +183,8 @@ describe('monotone spline', () => {
 });
 
 describe('blend modes', () => {
-  const mid = (mode: BlendMode, a = BLUE, b = YELLOW) => oklabToOklch(evaluateRamp([stop(0, a, mode), stop(1, b)], 0.5));
+  const mid = (mode: BlendMode, a = BLUE, b = YELLOW) =>
+    oklabToOklch(evaluateRamp([stop(0, a, mode), stop(1, b)], 0.5));
   const minC = Math.min(BLUE[1], YELLOW[1]);
 
   it('oklab dips toward gray between blue and yellow', () => {

@@ -67,7 +67,7 @@ function voidAndCluster(size: number, sigma: number, seed: number): Uint16Array 
   const initial = new Uint8Array(n);
   const energy0 = new Float64Array(n);
   const ones = Math.round(n * INITIAL_DENSITY);
-  for (let placed = 0; placed < ones; ) {
+  for (let placed = 0; placed < ones;) {
     const p = Math.floor(random() * n);
     if (!initial[p]) {
       flip(initial, energy0, p, 1);

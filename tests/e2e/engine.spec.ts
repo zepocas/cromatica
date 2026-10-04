@@ -66,10 +66,10 @@ test.describe('tile independence', () => {
     const label = `dither ${dither ? 'on' : 'off'}`;
     for (const angle of [30, 135]) {
       test(`1531×917 single pass equals 256 px tiles (angle ${angle}, ${label})`, async ({ page }) => {
-        const r = await page.evaluate(
-          ([d, dither]) => window.engineHarness.compareTiled(d, 1531, 917, 256, dither),
-          [threeStops(angle), dither] as const,
-        );
+        const r = await page.evaluate(([d, dither]) => window.engineHarness.compareTiled(d, 1531, 917, 256, dither), [
+          threeStops(angle),
+          dither,
+        ] as const);
         expect(r.first).toBeNull();
         expect(r.identical).toBe(true);
         expect(r.tiles).toBe(24);
@@ -77,10 +77,10 @@ test.describe('tile independence', () => {
     }
 
     test(`5120×2880 single pass equals 2048 px tiles (${label})`, async ({ page }) => {
-      const r = await page.evaluate(
-        ([d, dither]) => window.engineHarness.compareTiled(d, 5120, 2880, 2048, dither),
-        [threeStops(17), dither] as const,
-      );
+      const r = await page.evaluate(([d, dither]) => window.engineHarness.compareTiled(d, 5120, 2880, 2048, dither), [
+        threeStops(17),
+        dither,
+      ] as const);
       console.log(
         `5120×2880 ${label}: ${r.tiles} tiles, single ${r.singleMs.toFixed(0)} ms, tiled ${r.tiledMs.toFixed(0)} ms`,
       );
@@ -90,10 +90,10 @@ test.describe('tile independence', () => {
     });
 
     test(`worker OffscreenCanvas tiles equal main-thread single pass (${label})`, async ({ page }) => {
-      const r = await page.evaluate(
-        ([d, dither]) => window.engineHarness.compareWorker(d, 1531, 917, 300, dither),
-        [threeStops(250), dither] as const,
-      );
+      const r = await page.evaluate(([d, dither]) => window.engineHarness.compareWorker(d, 1531, 917, 300, dither), [
+        threeStops(250),
+        dither,
+      ] as const);
       expect(r.first).toBeNull();
       expect(r.identical).toBe(true);
     });
@@ -107,10 +107,11 @@ test.describe('correctness vs CPU reference (dither off)', () => {
       [480, 777],
     ]) {
       test(`angle ${angle}, ${w}×${h}`, async ({ page }) => {
-        const r = await page.evaluate(
-          ([d, w, h]) => window.engineHarness.compareReference(d, w, h),
-          [threeStops(angle), w, h] as const,
-        );
+        const r = await page.evaluate(([d, w, h]) => window.engineHarness.compareReference(d, w, h), [
+          threeStops(angle),
+          w,
+          h,
+        ] as const);
         console.log(`reference angle ${angle} ${w}×${h}: max ${r.maxDiff} (f16 model ${r.maxDiffHalf})`);
         expect(r.alphaOk).toBe(true);
         expect(r.maxDiff, JSON.stringify(r.worst)).toBeLessThanOrEqual(1);
@@ -130,29 +131,23 @@ test.describe('correctness vs CPU reference (dither off)', () => {
         blends[i % 4],
       ]),
     );
-    const r = await page.evaluate(
-      ([d]) => window.engineHarness.compareReference(d, 801, 503),
-      [d] as const,
-    );
+    const r = await page.evaluate(([d]) => window.engineHarness.compareReference(d, 801, 503), [d] as const);
     console.log(`reference 8 stops: max ${r.maxDiff} (f16 model ${r.maxDiffHalf})`);
     expect(r.maxDiff, JSON.stringify(r.worst)).toBeLessThanOrEqual(1);
   });
 });
 
 test('cached ramp follows stop changes', async ({ page }) => {
-  const r = await page.evaluate(
-    ([a, b]) => window.engineHarness.rampCache(a, b, 320, 200),
-    [threeStops(10), midTones] as const,
-  );
+  const r = await page.evaluate(([a, b]) => window.engineHarness.rampCache(a, b, 320, 200), [
+    threeStops(10),
+    midTones,
+  ] as const);
   expect(r).toEqual([true, true, true, true]);
 });
 
 test.describe('dither', () => {
   test('stays within ±2 of dither off and is unbiased', async ({ page }) => {
-    const r = await page.evaluate(
-      ([d]) => window.engineHarness.ditherStats(d, 1600, 1000),
-      [midTones] as const,
-    );
+    const r = await page.evaluate(([d]) => window.engineHarness.ditherStats(d, 1600, 1000), [midTones] as const);
     console.log(`dither: ${JSON.stringify(r)}`);
     expect(r.range[0]).toBeGreaterThan(2);
     expect(r.range[1]).toBeLessThan(253);
@@ -166,10 +161,7 @@ test.describe('dither', () => {
       [0, [0.1, 0.01, 250]],
       [1, [0.14, 0.01, 250]],
     ]);
-    const r = await page.evaluate(
-      ([d]) => window.engineHarness.banding(d, 3840, 256, 16),
-      [dark] as const,
-    );
+    const r = await page.evaluate(([d]) => window.engineHarness.banding(d, 3840, 256, 16), [dark] as const);
     console.log(`banding: ${JSON.stringify(r)}`);
     // Dither off: a handful of flat bands hundreds of pixels wide.
     expect(Math.max(...r.off.longestRun)).toBeGreaterThan(200);
@@ -197,10 +189,11 @@ test.describe('aspect behavior', () => {
     [301, 1999],
   ]) {
     test(`angle 0 spans the frame at ${w}×${h}`, async ({ page }) => {
-      const r = await page.evaluate(
-        ([d, w, h]) => window.engineHarness.edgeColumns(d, w, h),
-        [twoStops, w, h] as const,
-      );
+      const r = await page.evaluate(([d, w, h]) => window.engineHarness.edgeColumns(d, w, h), [
+        twoStops,
+        w,
+        h,
+      ] as const);
       expect(r.left).toBeLessThanOrEqual(1);
       expect(r.right).toBeLessThanOrEqual(1);
     });
@@ -264,20 +257,20 @@ test.describe('mesh tile independence', () => {
   for (const dither of [true, false]) {
     const label = `dither ${dither ? 'on' : 'off'}`;
     test(`1531×917 single pass equals 256 px tiles (${label})`, async ({ page }) => {
-      const r = await page.evaluate(
-        ([d, dither]) => window.engineHarness.compareTiled(d, 1531, 917, 256, dither),
-        [mesh16, dither] as const,
-      );
+      const r = await page.evaluate(([d, dither]) => window.engineHarness.compareTiled(d, 1531, 917, 256, dither), [
+        mesh16,
+        dither,
+      ] as const);
       expect(r.first).toBeNull();
       expect(r.identical).toBe(true);
       expect(r.tiles).toBe(24);
     });
 
     test(`5120×2880 single pass equals 2048 px tiles (${label})`, async ({ page }) => {
-      const r = await page.evaluate(
-        ([d, dither]) => window.engineHarness.compareTiled(d, 5120, 2880, 2048, dither),
-        [mesh16, dither] as const,
-      );
+      const r = await page.evaluate(([d, dither]) => window.engineHarness.compareTiled(d, 5120, 2880, 2048, dither), [
+        mesh16,
+        dither,
+      ] as const);
       console.log(
         `mesh 5120×2880 ${label}: ${r.tiles} tiles, single ${r.singleMs.toFixed(0)} ms, tiled ${r.tiledMs.toFixed(0)} ms`,
       );
@@ -287,10 +280,10 @@ test.describe('mesh tile independence', () => {
     });
 
     test(`worker tiles equal main-thread single pass (${label})`, async ({ page }) => {
-      const r = await page.evaluate(
-        ([d, dither]) => window.engineHarness.compareWorker(d, 1001, 777, 300, dither),
-        [primaries, dither] as const,
-      );
+      const r = await page.evaluate(([d, dither]) => window.engineHarness.compareWorker(d, 1001, 777, 300, dither), [
+        primaries,
+        dither,
+      ] as const);
       expect(r.first).toBeNull();
       expect(r.identical).toBe(true);
     });
@@ -313,10 +306,11 @@ test.describe('mesh vs CPU reference (dither off)', () => {
       [479, 777],
     ]) {
       test(`${name}, ${w}×${h}`, async ({ page }) => {
-        const r = await page.evaluate(
-          ([d, w, h]) => window.engineHarness.compareReference(d, w, h),
-          [d, w, h] as const,
-        );
+        const r = await page.evaluate(([d, w, h]) => window.engineHarness.compareReference(d, w, h), [
+          d,
+          w,
+          h,
+        ] as const);
         console.log(`mesh reference ${name} ${w}×${h}: max ${r.maxDiff}`);
         expect(r.alphaOk).toBe(true);
         expect(r.maxDiff, JSON.stringify(r.worst)).toBeLessThanOrEqual(1);
@@ -329,10 +323,7 @@ test.describe('mesh vs CPU reference (dither off)', () => {
     ['16 points', mesh16],
   ] as const) {
     test(`gamut clip stays within ΔE_OK 0.02 of CSS gamut mapping (${name})`, async ({ page }) => {
-      const r = await page.evaluate(
-        ([d]) => window.engineHarness.meshGamutVsCss(d, 480, 270),
-        [d] as const,
-      );
+      const r = await page.evaluate(([d]) => window.engineHarness.meshGamutVsCss(d, 480, 270), [d] as const);
       console.log(`mesh gamut ${name}: ${JSON.stringify(r)}`);
       expect(r.outOfGamut).toBeGreaterThan(0);
       expect(r.clip).toBeLessThanOrEqual(0.02);
@@ -346,10 +337,10 @@ test.describe('mesh robustness', () => {
     const label = `dither ${dither ? 'on' : 'off'}`;
     for (const s of [0, 1]) {
       test(`points far outside the frame give a smooth image (sharpness ${s}, ${label})`, async ({ page }) => {
-        const r = await page.evaluate(
-          ([d, dither]) => window.engineHarness.imageStats(d, 1600, 900, dither),
-          [farAway(s), dither] as const,
-        );
+        const r = await page.evaluate(([d, dither]) => window.engineHarness.imageStats(d, 1600, 900, dither), [
+          farAway(s),
+          dither,
+        ] as const);
         console.log(`mesh far away s=${s} ${label}: ${JSON.stringify(r)}`);
         expect(r.alphaOk).toBe(true);
         expect(r.black).toBe(0);
@@ -359,10 +350,10 @@ test.describe('mesh robustness', () => {
     }
 
     test(`degenerate radii and positions produce no NaN specks (${label})`, async ({ page }) => {
-      const r = await page.evaluate(
-        ([d, dither]) => window.engineHarness.imageStats(d, 1600, 900, dither),
-        [extreme, dither] as const,
-      );
+      const r = await page.evaluate(([d, dither]) => window.engineHarness.imageStats(d, 1600, 900, dither), [
+        extreme,
+        dither,
+      ] as const);
       console.log(`mesh extreme ${label}: ${JSON.stringify(r)}`);
       expect(r.alphaOk).toBe(true);
       expect(r.black).toBe(0);
@@ -377,14 +368,12 @@ test('mesh render time, 16 points', async ({ page }) => {
     [3456, 2234],
     [5120, 2880],
   ]) {
-    const ms = await page.evaluate(
-      ([d, w, h]) => window.engineHarness.timeRender(d, w, h, 3),
-      [mesh16, w, h] as const,
-    );
-    const linearMs = await page.evaluate(
-      ([d, w, h]) => window.engineHarness.timeRender(d, w, h, 3),
-      [threeStops(30), w, h] as const,
-    );
+    const ms = await page.evaluate(([d, w, h]) => window.engineHarness.timeRender(d, w, h, 3), [mesh16, w, h] as const);
+    const linearMs = await page.evaluate(([d, w, h]) => window.engineHarness.timeRender(d, w, h, 3), [
+      threeStops(30),
+      w,
+      h,
+    ] as const);
     console.log(`mesh 16 points ${w}×${h}: ${ms.toFixed(0)} ms (linear ${linearMs.toFixed(0)} ms)`);
     expect(ms).toBeGreaterThan(0);
   }
@@ -407,10 +396,9 @@ test.describe('warp tile independence (dither + grain on)', () => {
   for (const shape of WARP_SHAPES) {
     for (const [name, base] of bases) {
       test(`${shape} × ${name}: 1531×917 single pass equals 256 px tiles`, async ({ page }) => {
-        const r = await page.evaluate(
-          ([d]) => window.engineHarness.compareTiled(d, 1531, 917, 256, true),
-          [withLook(base, warp(shape), defaultGrain)] as const,
-        );
+        const r = await page.evaluate(([d]) => window.engineHarness.compareTiled(d, 1531, 917, 256, true), [
+          withLook(base, warp(shape), defaultGrain),
+        ] as const);
         expect(r.first).toBeNull();
         expect(r.identical).toBe(true);
         expect(r.tiles).toBe(24);
@@ -420,10 +408,9 @@ test.describe('warp tile independence (dither + grain on)', () => {
 
   for (const shape of ['domain', 'curl', 'voronoi'] as const) {
     test(`${shape} mesh 5120×2880 single pass equals 2048 px tiles`, async ({ page }) => {
-      const r = await page.evaluate(
-        ([d]) => window.engineHarness.compareTiled(d, 5120, 2880, 2048, true),
-        [withLook(mesh16, warp(shape, 0.6, 0.4, 0xdeadbeef), { amount: 0.8, size: 0.6 })] as const,
-      );
+      const r = await page.evaluate(([d]) => window.engineHarness.compareTiled(d, 5120, 2880, 2048, true), [
+        withLook(mesh16, warp(shape, 0.6, 0.4, 0xdeadbeef), { amount: 0.8, size: 0.6 }),
+      ] as const);
       console.log(`${shape} 5120×2880: single ${r.singleMs.toFixed(0)} ms, tiled ${r.tiledMs.toFixed(0)} ms`);
       expect(r.first).toBeNull();
       expect(r.identical).toBe(true);
@@ -432,10 +419,9 @@ test.describe('warp tile independence (dither + grain on)', () => {
   }
 
   test('worker tiles equal main-thread single pass (domain, grain)', async ({ page }) => {
-    const r = await page.evaluate(
-      ([d]) => window.engineHarness.compareWorker(d, 1001, 777, 300, true),
-      [withLook(primaries, warp('domain'), defaultGrain)] as const,
-    );
+    const r = await page.evaluate(([d]) => window.engineHarness.compareWorker(d, 1001, 777, 300, true), [
+      withLook(primaries, warp('domain'), defaultGrain),
+    ] as const);
     expect(r.first).toBeNull();
     expect(r.identical).toBe(true);
   });
@@ -450,10 +436,9 @@ test.describe('warp vs CPU reference (dither + grain off)', () => {
       test(`${shape} × ${name}`, async ({ page }) => {
         const stepped = STEPPED.includes(shape);
         for (const w of [warp(shape, 0.5, 0.35, 1), warp(shape, 0.9, 0.8, 0x9e3779b9)]) {
-          const r = await page.evaluate(
-            ([d]) => window.engineHarness.compareWarpReference(d, 640, 360, 2),
-            [withLook(base, w)] as const,
-          );
+          const r = await page.evaluate(([d]) => window.engineHarness.compareWarpReference(d, 640, 360, 2), [
+            withLook(base, w),
+          ] as const);
           console.log(
             `warp ref ${shape} × ${name} a=${w.amount} s=${w.size}: max ${r.maxDiff}, off-step max ${r.maxDiffOffStep}, ` +
               `>2: ${r.over} (${r.overOffStep} off-step), step px ${r.stepPixels}`,
@@ -498,10 +483,10 @@ test.describe('warp identities', () => {
   }
 
   test('grain amount 0 is bit-identical to no grain', async ({ page }) => {
-    const r = await page.evaluate(
-      ([a, b]) => window.engineHarness.compareDesigns(a, b, 480, 270),
-      [withLook(mesh16, warp('fbm')), withLook(mesh16, warp('fbm'), { amount: 0, size: 0.7 })] as const,
-    );
+    const r = await page.evaluate(([a, b]) => window.engineHarness.compareDesigns(a, b, 480, 270), [
+      withLook(mesh16, warp('fbm')),
+      withLook(mesh16, warp('fbm'), { amount: 0, size: 0.7 }),
+    ] as const);
     expect(r.identical).toBe(true);
   });
 });
@@ -520,10 +505,10 @@ test.describe('transform (M3.5)', () => {
     ['linear', warpedLinear],
   ] as const) {
     test(`${name}: identity transform is bit-identical to none`, async ({ page }) => {
-      const r = await page.evaluate(
-        ([a, b]) => window.engineHarness.compareDesigns(a, b, 480, 270),
-        [base, turn(base, {})] as const,
-      );
+      const r = await page.evaluate(([a, b]) => window.engineHarness.compareDesigns(a, b, 480, 270), [
+        base,
+        turn(base, {}),
+      ] as const);
       expect(r.identical).toBe(true);
     });
 
@@ -533,36 +518,35 @@ test.describe('transform (M3.5)', () => {
       ['rotate180', { rotate: 180 }],
     ] as const) {
       test(`${name}: ${map} permutes pixels exactly`, async ({ page }) => {
-        const r = await page.evaluate(
-          ([a, b, m]) => window.engineHarness.compareRemapped(a, b, 481, 271, m),
-          [base, turn(base, t), map] as const,
-        );
+        const r = await page.evaluate(([a, b, m]) => window.engineHarness.compareRemapped(a, b, 481, 271, m), [
+          base,
+          turn(base, t),
+          map,
+        ] as const);
         expect(r.first).toBeNull();
         expect(r.different).toBe(true);
       });
     }
 
     test(`${name}: rotate 90 permutes pixels exactly on a square`, async ({ page }) => {
-      const r = await page.evaluate(
-        ([a, b]) => window.engineHarness.compareRemapped(a, b, 301, 301, 'rotate90'),
-        [base, turn(base, { rotate: 90 })] as const,
-      );
+      const r = await page.evaluate(([a, b]) => window.engineHarness.compareRemapped(a, b, 301, 301, 'rotate90'), [
+        base,
+        turn(base, { rotate: 90 }),
+      ] as const);
       expect(r.first).toBeNull();
     });
 
     test(`${name}: free angle, zoom and flip match the CPU reference`, async ({ page }) => {
-      const r = await page.evaluate(
-        ([d]) => window.engineHarness.compareWarpReference(d, 640, 360, 2),
-        [turn(base, { rotate: 33, zoom: 1.7, flipX: true })] as const,
-      );
+      const r = await page.evaluate(([d]) => window.engineHarness.compareWarpReference(d, 640, 360, 2), [
+        turn(base, { rotate: 33, zoom: 1.7, flipX: true }),
+      ] as const);
       expect(r.maxDiff, JSON.stringify(r.worstAny)).toBeLessThanOrEqual(2);
     });
 
     test(`${name}: transformed 1531×917 single pass equals 256 px tiles (grain on)`, async ({ page }) => {
-      const r = await page.evaluate(
-        ([d]) => window.engineHarness.compareTiled(d, 1531, 917, 256, true),
-        [turn({ ...base, grain: defaultGrain }, { rotate: 117, zoom: 0.6, flipY: true })] as const,
-      );
+      const r = await page.evaluate(([d]) => window.engineHarness.compareTiled(d, 1531, 917, 256, true), [
+        turn({ ...base, grain: defaultGrain }, { rotate: 117, zoom: 0.6, flipY: true }),
+      ] as const);
       expect(r.first).toBeNull();
       expect(r.identical).toBe(true);
     });
@@ -575,26 +559,24 @@ test.describe('transform (M3.5)', () => {
       [0, [0.628, 0.2577, 29.23]],
       [1, [0.452, 0.3132, 264.05]],
     ];
-    const r = await page.evaluate(
-      ([a, b]) => window.engineHarness.compareDesigns(a, b, 640, 360),
-      [linear(90, stops), turn(linear(0, stops), { rotate: 90 })] as const,
-    );
+    const r = await page.evaluate(([a, b]) => window.engineHarness.compareDesigns(a, b, 640, 360), [
+      linear(90, stops),
+      turn(linear(0, stops), { rotate: 90 }),
+    ] as const);
     expect(r.identical).toBe(true);
   });
 });
 
-const gray = (l: number): Design =>
-  mesh(0.5, [[0, 0, [l, 0, 0], 0.5]]);
+const gray = (l: number): Design => mesh(0.5, [[0, 0, [l, 0, 0], 0.5]]);
 
 test.describe('grain', () => {
   test('is unbiased, grows with amount, and size sets its correlation length', async ({ page }) => {
     const stats: Record<string, { meanDiff: number[]; sigma: number; autocorr: number[] }> = {};
     for (const amount of [0.15, 0.35, 1]) {
       for (const size of [0, 0.5, 1]) {
-        const r = await page.evaluate(
-          ([d]) => window.engineHarness.grainStats(d, 1024, 512),
-          [withLook(gray(0.6), noWarp, { amount, size })] as const,
-        );
+        const r = await page.evaluate(([d]) => window.engineHarness.grainStats(d, 1024, 512), [
+          withLook(gray(0.6), noWarp, { amount, size }),
+        ] as const);
         stats[`${amount}/${size}`] = r;
         console.log(
           `grain a=${amount} s=${size}: mean ${r.meanDiff.map((m) => m.toFixed(3))}, σ ${r.sigma.toFixed(2)} LSB, ` +
@@ -616,18 +598,16 @@ test.describe('grain', () => {
   test('leaves pure black and white exact', async ({ page }) => {
     const d3 = threeStops(0);
     for (const d of [gray(0), gray(1), d3]) {
-      const r = await page.evaluate(
-        ([d]) => window.engineHarness.grainStats(d, 800, 450),
-        [withLook(d, warp('domain'), { amount: 1, size: 0.3 })] as const,
-      );
+      const r = await page.evaluate(([d]) => window.engineHarness.grainStats(d, 800, 450), [
+        withLook(d, warp('domain'), { amount: 1, size: 0.3 }),
+      ] as const);
       // Channels that only round to 0/255 may move by 1 LSB; never a speck.
       expect(r.maxChangeAtEnds).toBeLessThanOrEqual(1);
       if (d !== d3) expect(r.changedAtEnds).toBe(0);
     }
-    const r = await page.evaluate(
-      ([d]) => window.engineHarness.grainStats(d, 800, 450),
-      [withLook(gray(0), noWarp, { amount: 1, size: 0 })] as const,
-    );
+    const r = await page.evaluate(([d]) => window.engineHarness.grainStats(d, 800, 450), [
+      withLook(gray(0), noWarp, { amount: 1, size: 0 }),
+    ] as const);
     expect(r.ends).toBe(800 * 450 * 3);
     expect(r.changedAtEnds).toBe(0);
   });
@@ -636,10 +616,9 @@ test.describe('grain', () => {
 test('warp render time at 5120×2880 (mesh, 16 points, grain on)', async ({ page }) => {
   const lines: string[] = [];
   for (const shape of WARP_SHAPES) {
-    const ms = await page.evaluate(
-      ([d]) => window.engineHarness.timeRender(d, 5120, 2880, 3),
-      [withLook(mesh16, warp(shape), defaultGrain)] as const,
-    );
+    const ms = await page.evaluate(([d]) => window.engineHarness.timeRender(d, 5120, 2880, 3), [
+      withLook(mesh16, warp(shape), defaultGrain),
+    ] as const);
     lines.push(`${shape} ${ms.toFixed(0)} ms`);
     expect(ms).toBeGreaterThan(0);
   }
@@ -649,7 +628,11 @@ test('warp render time at 5120×2880 (mesh, 16 points, grain on)', async ({ page
 test.describe('contact sheets', () => {
   const sheetBase: Design = { ...meshDefault, grain: defaultGrain };
   const sheets: [string, string[], (shape: WarpShape, i: number) => Warp][] = [
-    ['/tmp/m3-warps-amount.png', ['amount 0.2', 'amount 0.5', 'amount 0.8'], (s, i) => warp(s, [0.2, 0.5, 0.8][i], 0.35, 1)],
+    [
+      '/tmp/m3-warps-amount.png',
+      ['amount 0.2', 'amount 0.5', 'amount 0.8'],
+      (s, i) => warp(s, [0.2, 0.5, 0.8][i], 0.35, 1),
+    ],
     ['/tmp/m3-warps-size.png', ['size 0.1', 'size 0.5', 'size 0.9'], (s, i) => warp(s, 0.4, [0.1, 0.5, 0.9][i], 1)],
   ];
   for (const [path, columns, make] of sheets) {
@@ -658,10 +641,10 @@ test.describe('contact sheets', () => {
         label: shape,
         designs: columns.map((_, i) => withLook(sheetBase, make(shape, i), defaultGrain)),
       }));
-      const png = await page.evaluate(
-        ([rows, columns]) => window.engineHarness.contactSheet(rows, columns, 480, 270),
-        [rows, columns] as const,
-      );
+      const png = await page.evaluate(([rows, columns]) => window.engineHarness.contactSheet(rows, columns, 480, 270), [
+        rows,
+        columns,
+      ] as const);
       writeFileSync(path, Buffer.from(png, 'base64'));
     });
   }

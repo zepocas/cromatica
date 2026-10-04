@@ -8,9 +8,7 @@ export interface StartMessage {
 
 /** Worker → main. */
 export type WorkerMessage =
-  | ({ type: 'progress' } & ExportProgress)
-  | { type: 'done'; blob: Blob }
-  | { type: 'error'; message: string };
+  ({ type: 'progress' } & ExportProgress) | { type: 'done'; blob: Blob } | { type: 'error'; message: string };
 
 function abortError(): DOMException {
   return new DOMException('Export aborted', 'AbortError');

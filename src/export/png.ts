@@ -70,7 +70,10 @@ function ihdr(width: number, height: number): Blob {
  */
 export function createPngEncoder(size: OutputSize): PngEncoder {
   const { width, height } = size;
-  for (const [name, v] of [['width', width], ['height', height]] as const) {
+  for (const [name, v] of [
+    ['width', width],
+    ['height', height],
+  ] as const) {
     if (!Number.isInteger(v) || v <= 0 || v > MAX_DIMENSION) {
       throw new RangeError(`${name} must be an integer in [1, ${MAX_DIMENSION}], got ${v}`);
     }
@@ -169,9 +172,7 @@ export function createPngEncoder(size: OutputSize): PngEncoder {
           throw new RangeError(`rowCount must be a positive integer, got ${rowCount}`);
         }
         if (rowsAccepted + rowCount > height) {
-          throw new RangeError(
-            `Too many rows: ${rowsAccepted} + ${rowCount} exceeds height ${height}`,
-          );
+          throw new RangeError(`Too many rows: ${rowsAccepted} + ${rowCount} exceeds height ${height}`);
         }
         const expected = width * rowCount * 4;
         if (rgba.length !== expected) {

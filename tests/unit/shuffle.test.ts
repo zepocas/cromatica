@@ -82,9 +82,7 @@ describe('shuffleDesign', () => {
       const m = mesh(shuffleDesign(meshDesign, { colors: false, layout: true, seed: s }));
       expect(m.points.map((p) => p.color)).toEqual(defaultMesh.points.map((p) => p.color));
       const l = linear(shuffleDesign(linearDesign, { colors: false, layout: true, seed: s }));
-      expect(l.stops.map((p) => [p.color, p.blend])).toEqual(
-        linear(linearDesign).stops.map((p) => [p.color, p.blend]),
-      );
+      expect(l.stops.map((p) => [p.color, p.blend])).toEqual(linear(linearDesign).stops.map((p) => [p.color, p.blend]));
     }
   });
 
@@ -155,7 +153,10 @@ describe('shuffleDesign', () => {
   it('respects the mesh point limits', () => {
     const big: Design = {
       ...meshDesign,
-      base: { ...defaultMesh, points: Array.from({ length: MAX_MESH_POINTS }, (_, i) => ({ ...defaultMesh.points[i % 5], x: i / 10 })) },
+      base: {
+        ...defaultMesh,
+        points: Array.from({ length: MAX_MESH_POINTS }, (_, i) => ({ ...defaultMesh.points[i % 5], x: i / 10 })),
+      },
     };
     const one: Design = { ...meshDesign, base: { ...defaultMesh, points: [defaultMesh.points[0]] } };
     for (let s = 0; s < 40; s++) {
@@ -168,7 +169,11 @@ describe('shuffleDesign', () => {
   it('spreads linear stops with a minimum gap and a lightness ramp', () => {
     const five: Design = {
       ...linearDesign,
-      base: { kind: 'linear', angle: 0, stops: [0, 0.25, 0.5, 0.75, 1].map((position) => ({ position, color: [0.5, 0.1, 30], blend: 'oklab' })) },
+      base: {
+        kind: 'linear',
+        angle: 0,
+        stops: [0, 0.25, 0.5, 0.75, 1].map((position) => ({ position, color: [0.5, 0.1, 30], blend: 'oklab' })),
+      },
     };
     for (let s = 0; s < 50; s++) {
       const l = linear(shuffleDesign(five, all(s)));

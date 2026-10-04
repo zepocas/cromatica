@@ -10,10 +10,10 @@ async function openHarness(page: Page) {
 }
 
 function call<K extends keyof Harness>(page: Page, name: K, ...args: Parameters<Harness[K]>) {
-  return page.evaluate(
-    ([n, a]) => (window.harness[n] as (...x: unknown[]) => unknown)(...a),
-    [name, args] as const,
-  ) as Promise<Awaited<ReturnType<Harness[K]>>>;
+  return page.evaluate(([n, a]) => (window.harness[n] as (...x: unknown[]) => unknown)(...a), [
+    name,
+    args,
+  ] as const) as Promise<Awaited<ReturnType<Harness[K]>>>;
 }
 
 test.describe('export pipeline', () => {
@@ -25,7 +25,9 @@ test.describe('export pipeline', () => {
   test('tiled 5120×2880 PNG is byte-identical (RGB) to a single-pass render', async ({ page }) => {
     test.setTimeout(300_000);
     const r = await call(page, 'exportVsSinglePass', 5120, 2880);
-    console.log(`5K PNG export: ${r.exportMs.toFixed(0)} ms, ${r.tiles} tiles; single-pass ${r.referenceMs.toFixed(0)} ms`);
+    console.log(
+      `5K PNG export: ${r.exportMs.toFixed(0)} ms, ${r.tiles} tiles; single-pass ${r.referenceMs.toFixed(0)} ms`,
+    );
     expect([r.width, r.height]).toEqual([5120, 2880]);
     expect(r.tiles).toBeGreaterThan(1);
     expect(r.firstMismatch).toBeNull();
@@ -49,7 +51,9 @@ test.describe('export pipeline', () => {
   test('tiled 5120×2880 mesh PNG is byte-identical (RGB) to a single-pass render', async ({ page }) => {
     test.setTimeout(300_000);
     const r = await call(page, 'exportVsSinglePass', 5120, 2880, undefined, 'mesh');
-    console.log(`5K mesh PNG export: ${r.exportMs.toFixed(0)} ms, ${r.tiles} tiles; single-pass ${r.referenceMs.toFixed(0)} ms`);
+    console.log(
+      `5K mesh PNG export: ${r.exportMs.toFixed(0)} ms, ${r.tiles} tiles; single-pass ${r.referenceMs.toFixed(0)} ms`,
+    );
     expect([r.width, r.height]).toEqual([5120, 2880]);
     expect(r.tiles).toBeGreaterThan(1);
     expect(r.firstMismatch).toBeNull();
@@ -736,11 +740,14 @@ test('palette from image: picker and drop set the colors, laid out like the imag
 
   // Linear, by drop: stops follow the image left to right (default angle 30°).
   await page.getByLabel('Gradient', { exact: true }).selectOption('linear');
-  const dt = await page.evaluateHandle((bytes) => {
-    const d = new DataTransfer();
-    d.items.add(new File([new Uint8Array(bytes)], 'two-tone.png', { type: 'image/png' }));
-    return d;
-  }, [...png]);
+  const dt = await page.evaluateHandle(
+    (bytes) => {
+      const d = new DataTransfer();
+      d.items.add(new File([new Uint8Array(bytes)], 'two-tone.png', { type: 'image/png' }));
+      return d;
+    },
+    [...png],
+  );
   await page.dispatchEvent('body', 'drop', { dataTransfer: dt });
   await expect(hexes).toHaveCount(2);
   expect(await read()).toEqual(['#DC2828', '#1E3CC8']);
@@ -752,7 +759,10 @@ test('value key: picking one regenerates in that key, keep pins it', async ({ pa
   page.on('pageerror', (err) => errors.push(err.message));
   await page.goto('/?default');
   const hexes = page.locator('li input.hex');
-  const lightness = () => hexes.evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value)).then((hs) => hs.map((h) => hexToOklch(h)[0]));
+  const lightness = () =>
+    hexes
+      .evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value))
+      .then((hs) => hs.map((h) => hexToOklch(h)[0]));
   await page.getByRole('button', { name: 'More colors settings' }).click();
   const key = page.getByLabel('Value key');
 

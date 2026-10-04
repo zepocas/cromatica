@@ -3,6 +3,7 @@
 > **Status: WIP.** This is a skeleton to fill in as we go. Scope, criteria and open questions will change as milestones are worked through. Decisions that get made should move into [DECISIONS.md](DECISIONS.md).
 
 Each milestone uses the same structure:
+
 - **Goal:** why the milestone exists
 - **Scope:** what gets built
 - **Done when:** exit criteria
@@ -13,6 +14,7 @@ Each milestone uses the same structure:
 ## Phase 1 — Single-monitor generator
 
 ### M0 — Export pipeline spike ✅
+
 - **Goal:** prove the riskiest part first. A render must look the same in preview and export, tile without seams, and export at 5K+ without freezing the UI.
 - **Scope:**
   - Vite + TypeScript + Svelte 5 project setup
@@ -37,6 +39,7 @@ Each milestone uses the same structure:
   - Not yet checked in Photoshop/GIMP.
 
 ### M1 — Color system ✅
+
 - **Goal:** blend colors perceptually, with no gray midpoints and no banding.
 - **Scope:**
   - Oklab/Oklch conversion
@@ -61,6 +64,7 @@ Each milestone uses the same structure:
   - The ramp size differs slightly on GPUs whose MAX_TEXTURE_SIZE is below 4096.
 
 ### M2 — Color-point mesh ✅
+
 - **Goal:** the headline feature, a mesh gradient you edit by dragging colored points.
 - **Scope:**
   - Radial-basis-function point field blended in Oklab
@@ -83,10 +87,11 @@ Each milestone uses the same structure:
 > **Re-plan (after M2):** a comparison with photogradient.com showed that most of its look comes from three things: strong film grain, a menu of warp shapes, and shuffled, natural-looking palettes. Those moved forward into M3. Curated palettes and palette-from-image are now M4, and the remaining patterns are M5. See D22.
 
 ### M3 — The look: warp, grain, shuffle ✅
+
 - **Goal:** match photogradient's look, then go beyond it.
 - **Scope:**
   - **Warp stage** (coordinate distortion before the base pattern, for both gradient and mesh).
-    - An *experimental catalogue* of shapes: domain warp, FBM, simplex, value noise, waves, rows, columns, circular, oval, Worley, Voronoi, gravity, curl flow.
+    - An _experimental catalogue_ of shapes: domain warp, FBM, simplex, value noise, waves, rows, columns, circular, oval, Worley, Voronoi, gravity, curl flow.
     - Controls: Warp (strength), Warp size (scale), and a seed ("new variation").
     - We expect to prune shapes that don't earn their place.
   - **Film grain** (finish stage): amount and size, stronger in midtones, defined per output pixel, applied before dither.
@@ -116,6 +121,7 @@ Each milestone uses the same structure:
   - `warpPoint` ignores aspect (seeded centers sit in a 16:9 box).
 
 ### M3.5 — UI refinement (photogradient-style panel) and transforms ✅
+
 - **Goal:** a simpler panel organized like photogradient's, plus the basic whole-image transforms that are missing.
 - **Scope:**
   - **Panel order:**
@@ -148,6 +154,7 @@ Each milestone uses the same structure:
   - On slow GPUs the grain still coarsens while dragging (the half-resolution fallback).
 
 ### M4 — Color: harmony controls, curated palettes, Remix, palette from image
+
 - **Goal:** make the color theory visible and steerable, and get good colors with less effort.
 - **Background:** since M3, every shuffle builds its palette from a harmony rule (monochrome, analogous, complementary, split-complementary, triadic or tetradic) in Oklch. Lightness is spread evenly, chroma is set relative to the maximum in-gamut chroma for each hue, and near-duplicates are rejected. `generatePalette` already accepts `rule` and `mood`, but the UI exposes neither.
 - **Scope, in build order:**
@@ -188,6 +195,7 @@ Each milestone uses the same structure:
   - How many colors to extract, and how to weight colorful areas against large dull ones.
 
 ### M5 — Pattern variety
+
 - **Goal:** widen the range of looks beyond gradients and meshes.
 - **Scope:**
   - fBm noise fields.
@@ -197,6 +205,7 @@ Each milestone uses the same structure:
 - **Done when:** each pattern has golden-image tests and at least 3 good reference designs.
 
 ### M6 — Saving
+
 - **Goal:** never lose work within a session, and make designs shareable.
 - **Scope:**
   - Versioned design schema (zod) with migrations
@@ -214,6 +223,7 @@ Each milestone uses the same structure:
   - URL length limits for large meshes
 
 ### M7 — Polish
+
 - **Goal:** ready for real use.
 - **Scope:**
   - Device preset list
@@ -236,6 +246,7 @@ Each milestone uses the same structure:
 ---
 
 ## Phase 2 — Multi-monitor (sketch)
+
 - A canvas for arranging displays. Each display is modelled as aspect ratio + physical size (from its diagonal) + position.
 - A single composition spans the whole arrangement. Optional bezel-gap compensation.
 - The export produces one aligned wallpaper per display, each at its native resolution.
@@ -245,6 +256,7 @@ Each milestone uses the same structure:
   - Download as a ZIP?
 
 ## Later — Backlog (unordered)
+
 - Blend: sharper at the top of the slider. The mesh exponent is `k = 1.5 · 12^sharpness`, so 1.0 stops at k = 18, which still reads soft; try a higher maximum so the far end gives near-hard edges.
 - Bicubic patch mesh (Figma/SwiftUI-style bendable grid)
 - Display P3 output, as an internal flag with no UI

@@ -13,32 +13,34 @@ See [DECISIONS.md](DECISIONS.md) for the reasoning behind each choice and [ROADM
 1. **The image depends only on the design and the pixel position.** The same design and pixel always give the same output. This is what makes the preview match the export, keeps tiled exports free of seams, and makes a saved design reproducible.
 2. **Composition coordinates:** the image height is always 1 unit and the origin is at the center. Width is set by the aspect ratio. Changing the aspect ratio reveals more (or less) on the sides and never distorts.
 3. **Resolution only matters at export ("render quality").** The only pixel-level effects are grain and dither.
-4. **One pipeline with swappable steps:** *reposition* (transform, warp, flow) → *pattern* → *color* → *finish* (grain, dither, encode).
+4. **One pipeline with swappable steps:** _reposition_ (transform, warp, flow) → _pattern_ → _color_ → _finish_ (grain, dither, encode).
 
 Internally, an export is "a rectangle over the composition", so multi-monitor support can be added later without a rewrite.
 
 ## Stack
 
-| Concern | Choice |
-|---|---|
-| Build | Vite + TypeScript |
-| UI | Svelte 5 |
-| Rendering | WebGL2 + raw GLSL + twgl.js |
-| Color math (CPU) | culori (Oklch, gamut mapping) |
-| State validation | zod |
-| Compression | Native `CompressionStream` (PNG encoder, share URLs) |
-| Tests | Vitest (math); Playwright + headless Chrome (image comparisons) |
-| Hosting | Static host, no backend |
+| Concern          | Choice                                                          |
+| ---------------- | --------------------------------------------------------------- |
+| Build            | Vite + TypeScript                                               |
+| UI               | Svelte 5                                                        |
+| Rendering        | WebGL2 + raw GLSL + twgl.js                                     |
+| Color math (CPU) | culori (Oklch, gamut mapping)                                   |
+| State validation | zod                                                             |
+| Compression      | Native `CompressionStream` (PNG encoder, share URLs)            |
+| Tests            | Vitest (math); Playwright + headless Chrome (image comparisons) |
+| Hosting          | Static host, no backend                                         |
 
 ## Modules
 
 ### `design`
+
 - The saved design, validated by a versioned schema: seed, color stops (Oklch floats), pipeline steps and their parameters, aspect ratio, export settings, `engineVersion`.
 - Undo/redo, with a slider drag counted as one step.
 - Autosave to browser storage as a **best-effort cache only**, with no sync or backup. If browser data is cleared, the design is gone.
 - Share links: design JSON compressed and base64url-encoded into the URL hash.
 
 ### `color`
+
 - Oklab/Oklch conversion.
 - Blend modes for each segment between stops:
   - Oklab (default)
@@ -51,18 +53,21 @@ Internally, an export is "a rectangle over the composition", so multi-monitor su
 - Curated palette library and palette from image (see M4).
 
 ### `engine`
+
 - GLSL library: integer hashes (PCG), simplex noise, fBm, Worley, curl, Oklab conversion, cheap in-shader gamut clip, grain, blue-noise dither.
 - Each combination of pipeline steps compiles to its own cached shader variant via `#define`s. Continuous parameters are uniforms, so slider moves never trigger a recompile. Use `KHR_parallel_shader_compile` where available.
 - `render(design, target, tile)`: the single entry point shared by preview and export.
 - Output order: linear RGB → sRGB transfer curve in the shader → dither → quantize.
 
 ### `preview`
+
 - Main-thread canvas that redraws only when something changes (at most one draw per `requestAnimationFrame`).
 - Adaptive resolution: about 0.5× while dragging, full device pixel ratio after roughly 150 ms idle.
 - 1:1 loupe that renders a small tile at export resolution, so grain can be judged accurately.
 - Dither is applied in the preview as well.
 
 ### `export`
+
 - Runs in a Worker on an OffscreenCanvas with its own WebGL2 context. The UI never freezes, and the user gets progress and a cancel button.
 - Tiled rendering at about 2048 px per tile, with a GPU sync after each tile.
 - **PNG:** custom streaming encoder that sends filtered scanlines through `CompressionStream('deflate')` to produce the IDAT chunk.
@@ -70,6 +75,7 @@ Internally, an export is "a rectangle over the composition", so multi-monitor su
 - The live preview pauses while an export is running.
 
 ### `ui`
+
 - Floating control panel over the canvas.
 - Drag handles on the canvas for the color-point mesh.
 - Device/aspect-ratio picker, shuffle controls, preset gallery.
@@ -83,16 +89,16 @@ Internally, an export is "a rectangle over the composition", so multi-monitor su
 
 ## Milestones
 
-| # | Milestone | Notes |
-|---|---|---|
+| #      | Milestone                                                                                         | Notes                                                                                                                                              |
+| ------ | ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **M0** | **Export pipeline spike:** one linear gradient → tiled 5K export in a Worker → custom PNG encoder | The riskiest part, so it comes first. Tests: a tiled render is pixel-identical to a single-pass render, and the preview matches the export at 1:1. |
-| M1 | Color system: stops, lookup texture, blend modes, spline, dither | Everything else builds on it |
-| M2 | Color-point mesh + on-canvas drag handles | Headline feature |
-| M3 | **The look:** warp stage (catalogue of shapes), film grain, basic shuffle | Re-planned after M2 (D22) |
-| M4 | Palettes: curated library, Remix, **palette from image** | See ROADMAP |
-| M5 | Patterns: fBm, Worley, aurora, grid Bézier mesh | Visual variety |
-| M6 | Saving: undo/redo, autosave cache, share links | |
-| M7 | Device presets, loupe, performance tuning on integrated GPUs | Polish |
+| M1     | Color system: stops, lookup texture, blend modes, spline, dither                                  | Everything else builds on it                                                                                                                       |
+| M2     | Color-point mesh + on-canvas drag handles                                                         | Headline feature                                                                                                                                   |
+| M3     | **The look:** warp stage (catalogue of shapes), film grain, basic shuffle                         | Re-planned after M2 (D22)                                                                                                                          |
+| M4     | Palettes: curated library, Remix, **palette from image**                                          | See ROADMAP                                                                                                                                        |
+| M5     | Patterns: fBm, Worley, aurora, grid Bézier mesh                                                   | Visual variety                                                                                                                                     |
+| M6     | Saving: undo/redo, autosave cache, share links                                                    |                                                                                                                                                    |
+| M7     | Device presets, loupe, performance tuning on integrated GPUs                                      | Polish                                                                                                                                             |
 
 ### M3/M4 — Palette shuffle (split: basic shuffle in M3, curated, Remix and from-image in M4)
 

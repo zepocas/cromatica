@@ -22,7 +22,12 @@ const relChroma = (c: Oklch) => {
 
 describe('maxChroma', () => {
   it('finds the gamut boundary', () => {
-    for (const [l, h] of [[0.5, 30], [0.7, 140], [0.4, 265], [0.9, 100]]) {
+    for (const [l, h] of [
+      [0.5, 30],
+      [0.7, 140],
+      [0.4, 265],
+      [0.9, 100],
+    ]) {
       const m = maxChroma(l, h);
       expect(inSrgbGamut([l, m, h])).toBe(true);
       expect(inSrgbGamut([l, m + 1e-3, h])).toBe(false);
@@ -34,7 +39,9 @@ describe('maxChroma', () => {
 
 describe('generatePalette', () => {
   const cases = HARMONY_RULES.flatMap((rule) =>
-    (['natural', 'vivid', 'any'] as const).flatMap((mood) => [2, 3, 4, 5, 6, 8].map((count) => ({ rule, mood, count }))),
+    (['natural', 'vivid', 'any'] as const).flatMap((mood) =>
+      [2, 3, 4, 5, 6, 8].map((count) => ({ rule, mood, count })),
+    ),
   );
 
   it('meets gamut, ΔE spacing and lightness spread for every rule/mood/count', () => {

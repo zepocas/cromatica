@@ -187,7 +187,9 @@
     background: var(--ink);
   }
   .handle.selected {
-    box-shadow: 0 0 0 2px #111, 0 0 0 3px var(--ink);
+    box-shadow:
+      0 0 0 2px #111,
+      0 0 0 3px var(--ink);
     z-index: 1;
   }
   .handle:focus-visible {

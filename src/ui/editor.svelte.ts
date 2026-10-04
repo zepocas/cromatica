@@ -26,13 +26,7 @@ import { createRng, randomSeed } from '../design/random';
 import { shuffleWithHarmony } from '../design/shuffle';
 import type { HarmonyRule, PaletteMood, ValueKey } from '../design/shuffle.types';
 import { normalizeHue } from '../color/oklab';
-import {
-  applyMat2,
-  clampZoom,
-  inverseTransformMatrix,
-  normalizeAngle,
-  transformMatrix,
-} from '../engine/transform';
+import { applyMat2, clampZoom, inverseTransformMatrix, normalizeAngle, transformMatrix } from '../engine/transform';
 import { warpPoint } from '../engine/warp';
 import { paletteFromImage, type ImagePalette } from './image-palette';
 
@@ -324,7 +318,8 @@ export class EditorState {
     this.setPalette(applyTemperature(turned, temperature));
     this.adjustments = {
       ...this.adjustments,
-      [kind]: hue === 0 && temperature === 'off' ? null : { from: base.from, hue, temperature, out: this.plainColors() },
+      [kind]:
+        hue === 0 && temperature === 'off' ? null : { from: base.from, hue, temperature, out: this.plainColors() },
     };
   }
 

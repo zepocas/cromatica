@@ -18,11 +18,25 @@
 
 <label class="row">
   <span>lightness</span>
-  <input type="range" min="0" max="1" step="0.001" value={color[0]} oninput={(e) => set(0, e.currentTarget.valueAsNumber)} />
+  <input
+    type="range"
+    min="0"
+    max="1"
+    step="0.001"
+    value={color[0]}
+    oninput={(e) => set(0, e.currentTarget.valueAsNumber)}
+  />
 </label>
 <label class="row">
   <span>intensity</span>
-  <input type="range" min="0" max="0.37" step="0.001" value={color[1]} oninput={(e) => set(1, e.currentTarget.valueAsNumber)} />
+  <input
+    type="range"
+    min="0"
+    max="0.37"
+    step="0.001"
+    value={color[1]}
+    oninput={(e) => set(1, e.currentTarget.valueAsNumber)}
+  />
 </label>
 <label class="row">
   <span>hue</span>

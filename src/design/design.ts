@@ -83,8 +83,18 @@ export type WarpShape =
   | 'curl'; // stateless curl-noise flow, integrated in-shader
 
 export const WARP_SHAPES: readonly WarpShape[] = [
-  'none', 'domain', 'fbm', 'simplex', 'waves', 'rows', 'columns',
-  'circular', 'oval', 'worley', 'voronoi', 'curl',
+  'none',
+  'domain',
+  'fbm',
+  'simplex',
+  'waves',
+  'rows',
+  'columns',
+  'circular',
+  'oval',
+  'worley',
+  'voronoi',
+  'curl',
 ];
 
 export interface Warp {

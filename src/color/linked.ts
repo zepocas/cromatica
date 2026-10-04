@@ -30,7 +30,7 @@ const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
 
 /** Signed shortest rotation from a to b, in (-180, 180]. */
 function hueDelta(a: number, b: number): number {
-  const d = (((b - a) % 360) + 540) % 360 - 180;
+  const d = ((((b - a) % 360) + 540) % 360) - 180;
   return d === -180 ? 180 : d;
 }
 

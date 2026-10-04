@@ -59,9 +59,7 @@
     curl: 'flow',
   };
 
-  const percent = $derived(
-    progress && progress.tilesTotal > 0 ? (progress.tilesDone / progress.tilesTotal) * 100 : 0,
-  );
+  const percent = $derived(progress && progress.tilesTotal > 0 ? (progress.tilesDone / progress.tilesTotal) * 100 : 0);
   const warpOff = $derived(editor.warp.shape === 'none');
 
   function clampSize(v: number): number {
@@ -162,7 +160,15 @@
     <Section title="adjust">
       <label class="row">
         <span>warp</span>
-        <input type="range" min="0" max="1" step="0.01" aria-label="Warp" disabled={warpOff} bind:value={editor.warp.amount} />
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          aria-label="Warp"
+          disabled={warpOff}
+          bind:value={editor.warp.amount}
+        />
         <output>{editor.warp.amount.toFixed(2)}</output>
       </label>
       <label class="row">
@@ -173,7 +179,15 @@
       {#if editor.kind === 'mesh'}
         <label class="row">
           <span>blend</span>
-          <input type="range" min="0" max="1" step="0.01" aria-label="Blend" title="Soft ↔ defined" bind:value={editor.mesh.sharpness} />
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            aria-label="Blend"
+            title="Soft ↔ defined"
+            bind:value={editor.mesh.sharpness}
+          />
           <output>{editor.mesh.sharpness.toFixed(2)}</output>
         </label>
       {:else}
@@ -187,7 +201,15 @@
       {#snippet more()}
         <label class="row">
           <span>warp size</span>
-          <input type="range" min="0" max="1" step="0.01" aria-label="Warp size" disabled={warpOff} bind:value={editor.warp.size} />
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            aria-label="Warp size"
+            disabled={warpOff}
+            bind:value={editor.warp.size}
+          />
           <output>{editor.warp.size.toFixed(2)}</output>
         </label>
         <label class="row">
@@ -215,16 +237,32 @@
             value={editor.transform.rotate}
             oninput={(e) => editor.setRotate(e.currentTarget.valueAsNumber)}
           />
-          <button class="icon" aria-label="Rotate left" title="Rotate 90° left" onclick={() => editor.rotateBy(90)}>↺</button>
-          <button class="icon" aria-label="Rotate right" title="Rotate 90° right" onclick={() => editor.rotateBy(-90)}>↻</button>
+          <button class="icon" aria-label="Rotate left" title="Rotate 90° left" onclick={() => editor.rotateBy(90)}
+            >↺</button
+          >
+          <button class="icon" aria-label="Rotate right" title="Rotate 90° right" onclick={() => editor.rotateBy(-90)}
+            >↻</button
+          >
           <output>{Math.round(editor.transform.rotate)}°</output>
         </div>
         <div class="row">
           <span>flip</span>
-          <button class="icon" aria-label="Flip horizontally" title="Mirror left ↔ right" onclick={() => editor.flip('x')}>⇋</button>
-          <button class="icon" aria-label="Flip vertically" title="Mirror top ↔ bottom" onclick={() => editor.flip('y')}>⇵</button>
+          <button
+            class="icon"
+            aria-label="Flip horizontally"
+            title="Mirror left ↔ right"
+            onclick={() => editor.flip('x')}>⇋</button
+          >
+          <button class="icon" aria-label="Flip vertically" title="Mirror top ↔ bottom" onclick={() => editor.flip('y')}
+            >⇵</button
+          >
           <span class="spacer"></span>
-          <button aria-label="Reset" title="Undo rotate, zoom and flips" disabled={!editor.isTransformed} onclick={() => editor.resetTransform()}>[ reset ]</button>
+          <button
+            aria-label="Reset"
+            title="Undo rotate, zoom and flips"
+            disabled={!editor.isTransformed}
+            onclick={() => editor.resetTransform()}>[ reset ]</button
+          >
         </div>
       {/snippet}
     </Section>
@@ -240,13 +278,15 @@
           aria-label="Lock colors"
           aria-pressed={editor.colorsLocked}
           title="Keep the colors when shuffling"
-          onclick={() => (editor.colorsLocked = !editor.colorsLocked)}>{editor.colorsLocked ? '[x]' : '[ ]'} colors</button
+          onclick={() => (editor.colorsLocked = !editor.colorsLocked)}
+          >{editor.colorsLocked ? '[x]' : '[ ]'} colors</button
         >
         <button
           aria-label="Lock layout"
           aria-pressed={editor.layoutLocked}
           title="Keep the layout and warp when shuffling"
-          onclick={() => (editor.layoutLocked = !editor.layoutLocked)}>{editor.layoutLocked ? '[x]' : '[ ]'} layout</button
+          onclick={() => (editor.layoutLocked = !editor.layoutLocked)}
+          >{editor.layoutLocked ? '[x]' : '[ ]'} layout</button
         >
       </div>
     {/if}

@@ -149,7 +149,11 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
         baseUniforms = meshUniforms(base);
       } else {
         updateRamp(base.stops);
-        baseUniforms = { ...linearGradientUniforms(base, output, design.transform), u_ramp: rampTexture, u_rampSize: rampSize };
+        baseUniforms = {
+          ...linearGradientUniforms(base, output, design.transform),
+          u_ramp: rampTexture,
+          u_rampSize: rampSize,
+        };
       }
 
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);

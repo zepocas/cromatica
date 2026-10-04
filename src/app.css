@@ -1,7 +1,12 @@
 :root {
   --sidebar: 300px;
   color-scheme: dark;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   line-height: 1.4;
   background: #0b0b0d;
   -webkit-font-smoothing: antialiased;
@@ -157,16 +162,26 @@ body,
   height: 3px;
   background: linear-gradient(
     to right,
-    oklch(0.72 0.12 0), oklch(0.72 0.12 60), oklch(0.72 0.12 120), oklch(0.72 0.12 180),
-    oklch(0.72 0.12 240), oklch(0.72 0.12 300), oklch(0.72 0.12 360)
+    oklch(0.72 0.12 0),
+    oklch(0.72 0.12 60),
+    oklch(0.72 0.12 120),
+    oklch(0.72 0.12 180),
+    oklch(0.72 0.12 240),
+    oklch(0.72 0.12 300),
+    oklch(0.72 0.12 360)
   );
 }
 .panel input[type='range'].hue::-moz-range-track {
   height: 3px;
   background: linear-gradient(
     to right,
-    oklch(0.72 0.12 0), oklch(0.72 0.12 60), oklch(0.72 0.12 120), oklch(0.72 0.12 180),
-    oklch(0.72 0.12 240), oklch(0.72 0.12 300), oklch(0.72 0.12 360)
+    oklch(0.72 0.12 0),
+    oklch(0.72 0.12 60),
+    oklch(0.72 0.12 120),
+    oklch(0.72 0.12 180),
+    oklch(0.72 0.12 240),
+    oklch(0.72 0.12 300),
+    oklch(0.72 0.12 360)
   );
 }
 .panel input[type='range'].hue::-webkit-slider-thumb {

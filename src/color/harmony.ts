@@ -3,7 +3,12 @@ import type { Harmony, HarmonyRule, PaletteMood, PaletteOptions, Rng, ValueKey }
 import { inSrgbGamut, normalizeHue, oklchToOklab } from './oklab';
 
 export const HARMONY_RULES: readonly HarmonyRule[] = [
-  'monochrome', 'analogous', 'complementary', 'split-complementary', 'triadic', 'tetradic',
+  'monochrome',
+  'analogous',
+  'complementary',
+  'split-complementary',
+  'triadic',
+  'tetradic',
 ];
 
 /** Relative weights used when no rule is requested. */
@@ -70,8 +75,24 @@ interface MoodTuning {
 }
 
 export const MOOD_TUNING: Record<Exclude<PaletteMood, 'any'>, MoodTuning> = {
-  natural: { rel: [0.2, 0.45], support: null, accent: [0.5, [0.45, 0.72]], maxChroma: 0.15, l: [0.24, 0.95], anchor: 0.45, cuspOrder: 0.6 },
-  vivid: { rel: [0.66, 0.94], support: [0.3, 0.55], accent: [0, [0, 0]], maxChroma: 0.4, l: [0.3, 0.9], anchor: 0.25, cuspOrder: 0.8 },
+  natural: {
+    rel: [0.2, 0.45],
+    support: null,
+    accent: [0.5, [0.45, 0.72]],
+    maxChroma: 0.15,
+    l: [0.24, 0.95],
+    anchor: 0.45,
+    cuspOrder: 0.6,
+  },
+  vivid: {
+    rel: [0.66, 0.94],
+    support: [0.3, 0.55],
+    accent: [0, [0, 0]],
+    maxChroma: 0.4,
+    l: [0.3, 0.9],
+    anchor: 0.25,
+    cuspOrder: 0.8,
+  },
 };
 
 /** Minimum pairwise ΔE_OK; relaxed for large palettes (mesh with many points). */
@@ -221,7 +242,10 @@ function planPalette(
   // hue gets which lightness. `lead` marks the base hue's colors.
   const picks = shuffleInPlace(
     rng,
-    Array.from({ length: count }, (_, i) => ({ h: base + offsets[i % offsets.length] + rng.range(-8, 8), lead: i % offsets.length === 0 })),
+    Array.from({ length: count }, (_, i) => ({
+      h: base + offsets[i % offsets.length] + rng.range(-8, 8),
+      lead: i % offsets.length === 0,
+    })),
   );
   const ls = planLightness(rng, count, rule === 'monochrome', band);
   if (rule !== 'monochrome' && rng.next() < t.cuspOrder) {

@@ -15,12 +15,7 @@ import { noGrain, noWarp, type Design, type LinearGradient, type PointMesh } fro
 import { createRenderer } from '../../../src/engine/renderer';
 import { applyMat2, orientationMatrix, transformMatrix } from '../../../src/engine/transform';
 import { createWarp } from '../../../src/engine/warp';
-import {
-  CONTEXT_ATTRIBUTES,
-  type OutputSize,
-  type RenderOptions,
-  type Tile,
-} from '../../../src/engine/types';
+import { CONTEXT_ATTRIBUTES, type OutputSize, type RenderOptions, type Tile } from '../../../src/engine/types';
 
 type AnyCanvas = HTMLCanvasElement | OffscreenCanvas;
 type Triple = [number, number, number];

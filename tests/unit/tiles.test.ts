@@ -57,9 +57,7 @@ describe('planTiles', () => {
 
   it('handles 1×1, smaller than tile, and exact multiples', () => {
     expect(planTiles({ width: 1, height: 1 }, 2048)).toEqual([[{ x: 0, y: 0, width: 1, height: 1 }]]);
-    expect(planTiles({ width: 300, height: 200 }, 2048)).toEqual([
-      [{ x: 0, y: 0, width: 300, height: 200 }],
-    ]);
+    expect(planTiles({ width: 300, height: 200 }, 2048)).toEqual([[{ x: 0, y: 0, width: 300, height: 200 }]]);
     const exact = planTiles({ width: 4096, height: 2048 }, 1024);
     expect(exact.length).toBe(2);
     expect(exact.flat().every((t) => t.width === 1024 && t.height === 1024)).toBe(true);

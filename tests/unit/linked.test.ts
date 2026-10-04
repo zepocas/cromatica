@@ -12,7 +12,7 @@ const palette: Oklch[] = [
   [0.95, 0.01, 90], // near-neutral cream
 ];
 
-const gap = (a: number, b: number) => ((b - a) % 360 + 360) % 360;
+const gap = (a: number, b: number) => (((b - a) % 360) + 360) % 360;
 
 describe('relinkPalette', () => {
   it('keeps the edited color exactly as given', () => {
@@ -52,7 +52,12 @@ describe('relinkPalette', () => {
 
   it('dragging away and back restores the palette', () => {
     let p = palette.map((c) => [...c] as Oklch);
-    for (const step of [[0.5, 0.09, 270], [0.25, 0.05, 220], [0.35, 0.08, 250]] as Oklch[]) p = relinkPalette(p, 0, step);
+    for (const step of [
+      [0.5, 0.09, 270],
+      [0.25, 0.05, 220],
+      [0.35, 0.08, 250],
+    ] as Oklch[])
+      p = relinkPalette(p, 0, step);
     p.forEach((c, i) => c.forEach((v, k) => expect(v).toBeCloseTo(palette[i][k], 9)));
   });
 

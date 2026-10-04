@@ -89,7 +89,11 @@ describe('warpPoint', () => {
               const a = w(x, y);
               const b = w(x + h, y);
               const c = w(x, y + h);
-              maxRatio = Math.max(maxRatio, Math.hypot(b[0] - a[0], b[1] - a[1]) / h, Math.hypot(c[0] - a[0], c[1] - a[1]) / h);
+              maxRatio = Math.max(
+                maxRatio,
+                Math.hypot(b[0] - a[0], b[1] - a[1]) / h,
+                Math.hypot(c[0] - a[0], c[1] - a[1]) / h,
+              );
             }
             expect(maxRatio).toBeLessThan(500);
           }

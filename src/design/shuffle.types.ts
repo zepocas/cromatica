@@ -18,13 +18,7 @@ export interface Rng {
   uint32(): number;
 }
 
-export type HarmonyRule =
-  | 'monochrome'
-  | 'analogous'
-  | 'complementary'
-  | 'split-complementary'
-  | 'triadic'
-  | 'tetradic';
+export type HarmonyRule = 'monochrome' | 'analogous' | 'complementary' | 'split-complementary' | 'triadic' | 'tetradic';
 
 export type PaletteMood = 'natural' | 'vivid' | 'any';
 /** Value key: where the palette sits on the lightness scale. */

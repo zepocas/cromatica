@@ -78,8 +78,16 @@ function makeSegment(a: ColorStop, b: ColorStop): Segment {
     const la = oklchToOklab(a.color);
     const lb = oklchToOklab(b.color);
     return {
-      x0, len, lch: false, premult: false, c0: 0, c1: 0,
-      v0: la, d: [lb[0] - la[0], lb[1] - la[1], lb[2] - la[2]], alpha: [...zero], beta: [...zero],
+      x0,
+      len,
+      lch: false,
+      premult: false,
+      c0: 0,
+      c1: 0,
+      v0: la,
+      d: [lb[0] - la[0], lb[1] - la[1], lb[2] - la[2]],
+      alpha: [...zero],
+      beta: [...zero],
     };
   }
   // Round-trip through Oklab to normalize negative chroma / wild hues.
@@ -90,8 +98,16 @@ function makeSegment(a: ColorStop, b: ColorStop): Segment {
   if (Math.min(c0, c1) >= HUE_EPS) dh = hueDelta(h0raw, h1raw, a.blend);
   else if (c0 < c1) h0 = h1raw;
   return {
-    x0, len, lch: true, premult: a.blend === 'oklab-chroma', c0, c1,
-    v0: [l0, c0, h0], d: [l1 - l0, c1 - c0, dh], alpha: [...zero], beta: [...zero],
+    x0,
+    len,
+    lch: true,
+    premult: a.blend === 'oklab-chroma',
+    c0,
+    c1,
+    v0: [l0, c0, h0],
+    d: [l1 - l0, c1 - c0, dh],
+    alpha: [...zero],
+    beta: [...zero],
   };
 }
 
@@ -217,8 +233,7 @@ export function bakeRamp(stops: ColorStop[], size = RAMP_SIZE): Float32Array {
   for (let i = 0; i < size; i++) {
     const lab = evalCompiled(ramp, i / denom);
     let rgb = oklabToLinearSrgb(lab);
-    const inGamut =
-      rgb[0] >= 0 && rgb[0] <= 1 && rgb[1] >= 0 && rgb[1] <= 1 && rgb[2] >= 0 && rgb[2] <= 1;
+    const inGamut = rgb[0] >= 0 && rgb[0] <= 1 && rgb[1] >= 0 && rgb[1] <= 1 && rgb[2] >= 0 && rgb[2] <= 1;
     if (!inGamut) rgb = gamutMapToLinearSrgb(oklabToOklch(lab));
     out[i * 4] = rgb[0];
     out[i * 4 + 1] = rgb[1];
@@ -227,4 +242,3 @@ export function bakeRamp(stops: ColorStop[], size = RAMP_SIZE): Float32Array {
   }
   return out;
 }
-

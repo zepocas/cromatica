@@ -33,14 +33,42 @@ describe('temperatureDeltas', () => {
 
   it('is zero when off, for the mid-tone, neutrals and a flat palette', () => {
     expect(temperatureDeltas(palette, 'off')).toEqual([0, 0, 0, 0, 0]);
-    const mid: Oklch[] = [[0.2, 0.1, 30], [0.5, 0.1, 30], [0.8, 0.1, 30]];
+    const mid: Oklch[] = [
+      [0.2, 0.1, 30],
+      [0.5, 0.1, 30],
+      [0.8, 0.1, 30],
+    ];
     expect(temperatureDeltas(mid, 'warm')[1]).toBeCloseTo(0, 9);
-    expect(temperatureDeltas([[0.2, 0.005, 30], [0.9, 0, 0]], 'warm')).toEqual([0, 0]);
-    expect(temperatureDeltas([[0.5, 0.1, 30], [0.5, 0.1, 200]], 'warm')).toEqual([0, 0]);
+    expect(
+      temperatureDeltas(
+        [
+          [0.2, 0.005, 30],
+          [0.9, 0, 0],
+        ],
+        'warm',
+      ),
+    ).toEqual([0, 0]);
+    expect(
+      temperatureDeltas(
+        [
+          [0.5, 0.1, 30],
+          [0.5, 0.1, 200],
+        ],
+        'warm',
+      ),
+    ).toEqual([0, 0]);
   });
 
   it('never turns past its target', () => {
-    expect(temperatureDeltas([[0.2, 0.1, 265], [0.9, 0.1, 80]], 'warm')).toEqual([10, -5]);
+    expect(
+      temperatureDeltas(
+        [
+          [0.2, 0.1, 265],
+          [0.9, 0.1, 80],
+        ],
+        'warm',
+      ),
+    ).toEqual([10, -5]);
   });
 });
 
