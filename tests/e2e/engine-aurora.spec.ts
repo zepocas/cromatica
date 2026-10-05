@@ -5,7 +5,7 @@ import { noGrain, noWarp } from '../../src/design/design';
 import { warp, withLook } from './support/designs';
 import { engineHarness, openEngineHarness } from './support/harness';
 
-const aurora = (count: number, glow: number): Design => ({
+const aurora = (count: number, glow: number, blend: number): Design => ({
   engineVersion: 1,
   warp: noWarp,
   grain: noGrain,
@@ -19,6 +19,7 @@ const aurora = (count: number, glow: number): Design => ({
     ],
     count,
     glow,
+    blend,
     seed: 5,
   },
 });
@@ -27,12 +28,12 @@ test.beforeEach(async ({ page }) => {
   await openEngineHarness(page);
 });
 
-for (const [count, glow] of [
-  [0, 0.2],
-  [1, 0.9],
+for (const [count, glow, blend] of [
+  [0, 0.2, 0],
+  [1, 0.9, 1],
 ]) {
-  test(`aurora count ${count}, glow ${glow}: CPU reference and tiles`, async ({ page }) => {
-    const d = aurora(count, glow);
+  test(`aurora count ${count}, glow ${glow}, blend ${blend}: CPU reference and tiles`, async ({ page }) => {
+    const d = aurora(count, glow, blend);
     for (const [w, h] of [
       [640, 360],
       [479, 777],
@@ -51,7 +52,7 @@ test('aurora with a warp matches the CPU reference', async ({ page }) => {
   const r = await engineHarness(
     page,
     'compareWarpReference',
-    withLook(aurora(0.5, 0.5), warp('domain', 0.4, 0.4)),
+    withLook(aurora(0.5, 0.5, 0.35), warp('domain', 0.4, 0.4)),
     640,
     360,
     2,

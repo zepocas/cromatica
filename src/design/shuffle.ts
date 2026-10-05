@@ -4,6 +4,7 @@ import type { Oklch } from '../color/types';
 import { applyMat2, clampZoom, transformMatrix } from '../engine/transform';
 import { clamp } from '../math';
 import {
+  AURORA_BLEND,
   type AuroraPattern,
   type BasePattern,
   type GridMesh,
@@ -122,6 +123,7 @@ export const GRID_SHUFFLE = {
 export const AURORA_SHUFFLE = {
   count: [0.1, 0.8] as Range,
   glow: [0.2, 0.8] as Range,
+  blend: [0.1, 0.6] as Range,
 };
 
 /** Style shuffle: how often each pattern kind comes up, and the finishes' odds and ranges. */
@@ -320,7 +322,8 @@ function withKind(base: BasePattern, kind: BasePattern['kind']): BasePattern {
   }
   const n = Math.min(colors.length, MAX_STOPS);
   if (kind === 'planes') return { kind, colors: colors.slice(0, n), count: 0.4, roughness: 0.5, blend: 0, seed: 0 };
-  if (kind === 'aurora') return { kind, colors: colors.slice(0, n), count: 0.5, glow: 0.5, seed: 0 };
+  if (kind === 'aurora')
+    return { kind, colors: colors.slice(0, n), count: 0.5, glow: 0.5, blend: AURORA_BLEND, seed: 0 };
   if (kind === 'grid') {
     // Placeholder geometry: the layout shuffle that follows lays the grid out.
     const nodes = Array.from({ length: 9 }, (_, i) => ({ x: 0, y: 0, color: copyColor(colors[i % colors.length]) }));
@@ -429,7 +432,7 @@ function shuffleGrid(base: GridMesh, ctx: ShuffleContext): { pattern: GridMesh; 
   return { pattern: { kind: 'grid', rows, cols, nodes, rest }, palette: palette && paletteInfo(palette) };
 }
 
-/** Aurora: a new layout is a new seed, ribbon count and glow. */
+/** Aurora: a new layout is a new seed, ribbon count, glow and blend. */
 function shuffleAurora(
   base: AuroraPattern,
   ctx: ShuffleContext,
@@ -438,10 +441,12 @@ function shuffleAurora(
   const count = opts.layout ? round4(layoutRng.range(...AURORA_SHUFFLE.count)) : base.count;
   const glow = opts.layout ? round4(layoutRng.range(...AURORA_SHUFFLE.glow)) : base.glow;
   const seed = opts.layout ? layoutRng.uint32() : base.seed;
+  // Drawn after the seed, so the other layout values match earlier shuffles.
+  const blend = opts.layout ? round4(layoutRng.range(...AURORA_SHUFFLE.blend)) : base.blend;
   const n = Math.min(base.colors.length, MAX_STOPS);
   const palette = opts.colors ? ctx.makePalette(n) : null;
   const colors = palette ? palette.colors : base.colors.slice(0, n).map(copyColor);
-  return { pattern: { kind: 'aurora', colors, count, glow, seed }, palette: palette && paletteInfo(palette) };
+  return { pattern: { kind: 'aurora', colors, count, glow, blend, seed }, palette: palette && paletteInfo(palette) };
 }
 
 /** Layouts are made on screen; map them under the transform so they land in view. */

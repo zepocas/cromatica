@@ -105,6 +105,8 @@ export interface AuroraPattern {
   count: number;
   /** Ribbon width, [0, 1]: thin bright lines ↔ wide soft curtains. */
   glow: number;
+  /** Edges and rays, [0, 1]: crisp ↔ soft. */
+  blend: number;
   seed: number;
 }
 
@@ -132,6 +134,8 @@ export interface GridMesh {
   rest: [number, number];
 }
 
+/** Aurora blend for new designs: sharper than the look before blend existed (0.6). */
+export const AURORA_BLEND = 0.35;
 export const MIN_GRID = 2;
 export const MAX_GRID = 5;
 
