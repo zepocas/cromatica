@@ -321,3 +321,17 @@ Decisions made during the architecture review. Reopen one only if new informatio
 
 - **Replaces** the working name from D15, for the app, the package and the repository.
 - **Storage keys** use the `cromatica.` prefix: the autosave moved from `wallpaper.design` to `cromatica.design` and reads the old key once, so an existing save survives the rename. The design chunk in exported PNGs is `cromatica.design` from the start.
+
+## D50. Aurora blend, and save version 3
+
+- **Blend:** one slider, crisp ↔ soft, sets the ribbons' lower-edge width and how deep the rays cut the glow. New auroras use 0.35, sharper than before; shuffle picks 0.1–0.6.
+- **Migration:** save version 3 adds `blend` to auroras. Version 2 auroras load with 0.6, which reproduces the look from before the slider. Saves written as version 3 can't be read by builds from before it.
+
+## D51. M7 choices
+
+- **Arrows:** ← → step the shuffle reel unless a form control or a point, node or stop handle has focus; nudging needs a focused handle.
+- **Previews never count:** a picker hover or ↑↓ preview is not an undo step and is never saved; only a click commits.
+- **Favourites:** 12, newest first, as swatch strips; adding a 13th drops the oldest and says so.
+- **Pickers without thumbnails:** live thumbnails in the dropdowns were built and dropped; the instant preview on the main canvas does the job better.
+- **Variations:** more freedom in bold cells (warp shape changes), less in gentle ones (seed changes scale with strength²), judged on a contact sheet.
+- **Linked edits:** monochrome edits put every non-gray color on the edited hue; very light or dark near-neutrals keep their chroma, so a louder palette doesn't tint them (all rules).
