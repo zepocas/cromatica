@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultDesign, defaultMesh, identityTransform, noFinish, type Design } from '../../src/design/design';
-import { DesignLoadError, loadDesign, saveDesign, SCHEMA_VERSION } from '../../src/design/schema';
+import { DesignLoadError, LEGACY_AURORA_BLEND, loadDesign, saveDesign, SCHEMA_VERSION } from '../../src/design/schema';
 import { shuffleDesign } from '../../src/design/shuffle';
 import v1Linear from './fixtures/design-v1-linear.json';
 import v1Mesh from './fixtures/design-v1-mesh.json';
@@ -20,6 +20,12 @@ describe('design schema', () => {
     expect(d.transform).toEqual({ rotate: 90, zoom: 1.5, flipX: true, flipY: false });
     expect(d.warp.seed).toBe(1234567);
     expect(d.base).toEqual(v1Mesh.base);
+  });
+
+  it('gives a version 2 aurora the blend that keeps its look', () => {
+    const base = { kind: 'aurora', colors: [[0.2, 0.03, 260]], count: 0.5, glow: 0.4, seed: 3 };
+    const d = loadDesign({ version: 2, design: { ...saveDesign(defaultDesign).design, base } });
+    expect(d.base).toEqual({ ...base, blend: LEGACY_AURORA_BLEND });
   });
 
   it('saves the current version', () => {

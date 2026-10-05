@@ -13,6 +13,7 @@ const aurora = (over: Partial<AuroraPattern> = {}): AuroraPattern => ({
   colors,
   count: 0.5,
   glow: 0.5,
+  blend: 0.6,
   seed: 7,
   ...over,
 });
@@ -22,6 +23,18 @@ describe('aurora', () => {
     expect(ribbonCount(0)).toBe(2);
     expect(ribbonCount(1)).toBe(MAX_RIBBONS);
     expect(prepareAurora(aurora({ count: 1 })).count).toBe(MAX_RIBBONS);
+  });
+
+  it('blend runs from crisp edges and deep rays to soft ones, through the look from before it at 0.6', () => {
+    const crisp = prepareAurora(aurora({ blend: 0 }));
+    const legacy = prepareAurora(aurora({ blend: 0.6 }));
+    const soft = prepareAurora(aurora({ blend: 1 }));
+    expect(legacy.down / legacy.up).toBeCloseTo(0.25, 12);
+    expect(legacy.rays).toBeCloseTo(0.45, 12);
+    expect(crisp.down).toBeLessThan(legacy.down);
+    expect(crisp.rays).toBeGreaterThan(legacy.rays);
+    expect(soft.down).toBeGreaterThan(legacy.down);
+    expect(soft.rays).toBeLessThan(legacy.rays);
   });
 
   it('uses the darkest color, dimmed, as the sky', () => {

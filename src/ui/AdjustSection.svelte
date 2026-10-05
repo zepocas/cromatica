@@ -141,6 +141,15 @@
       >
       <output>{fixed2(editor.aurora.glow)}</output>
     </div>
+    <SliderRow
+      label="blend"
+      title="Crisp edges and rays ↔ soft ones"
+      min={0}
+      max={1}
+      step={0.01}
+      bind:value={editor.aurora.blend}
+      display={fixed2}
+    />
   {:else if editor.kind === 'noise' || editor.kind === 'cells'}
     {#if editor.kind === 'noise'}
       <Choice

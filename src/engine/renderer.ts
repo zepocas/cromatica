@@ -111,6 +111,7 @@ function auroraUniforms(aurora: AuroraPattern) {
     u_auroraLine: lines,
     u_auroraKey: p.key,
     u_auroraWidth: [p.up, p.down],
+    u_auroraRays: p.rays,
   };
 }
 

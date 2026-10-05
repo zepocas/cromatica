@@ -15,7 +15,9 @@ import {
   type Design,
 } from './design';
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
+/** Aurora blend that reproduces auroras saved before blend existed. */
+export const LEGACY_AURORA_BLEND = 0.6;
 
 const unit = z.number().min(0).max(1);
 const seed = z.number().int().min(0).max(0xffffffff);
@@ -59,7 +61,14 @@ const planes = z.object({
   seed,
 });
 
-const aurora = z.object({ kind: z.literal('aurora'), colors: paletteColors, count: unit, glow: unit, seed });
+const aurora = z.object({
+  kind: z.literal('aurora'),
+  colors: paletteColors,
+  count: unit,
+  glow: unit,
+  blend: unit,
+  seed,
+});
 
 const gridSide = z.number().int().min(MIN_GRID).max(MAX_GRID);
 const grid = z
@@ -105,6 +114,12 @@ function withDefaults(design: Json): Json {
 const migrations: Record<number, (save: Json) => Json> = {
   // Version 1 is a bare Design as kept in memory before M6.
   1: (design) => ({ version: 2, design: withDefaults(design) }),
+  2: (save) => {
+    const design = isObject(save.design) ? save.design : {};
+    const base = isObject(design.base) ? design.base : {};
+    const aurora = base.kind === 'aurora' ? { blend: LEGACY_AURORA_BLEND, ...base } : base;
+    return { ...save, version: 3, design: { ...design, base: aurora } };
+  },
 };
 
 function versionOf(save: Json): number {

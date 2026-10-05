@@ -6,6 +6,7 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Oklch } from '../../src/color/types';
 import {
+  AURORA_BLEND,
   defaultGrain,
   type Design,
   type RampGradient,
@@ -13,6 +14,7 @@ import {
   WARP_SHAPES,
   type WarpShape,
 } from '../../src/design/design';
+import { LEGACY_AURORA_BLEND } from '../../src/design/schema';
 import { previewProbe } from './support/app';
 import {
   gridColors,
@@ -182,11 +184,27 @@ test('aurora.png', async ({ page }) => {
     designs: [0.2, 0.5, 0.9].map((glow): Design => ({
       ...meshDefault,
       grain: defaultGrain,
-      base: { kind: 'aurora', colors, count: 0.5, glow, seed: r + 3 },
+      base: { kind: 'aurora', colors, count: 0.5, glow, blend: AURORA_BLEND, seed: r + 3 },
     })),
   }));
   const png = await engineHarness(page, 'contactSheet', rows, cols, 640, 360);
   writeFileSync(join(DIR, 'aurora.png'), Buffer.from(png, 'base64'));
+
+  // Blend: 0.6 is the look before the slider, AURORA_BLEND the new default.
+  const blends = [0, AURORA_BLEND, LEGACY_AURORA_BLEND, 1];
+  const blendRows = palettes.map(([label, colors], r) => ({
+    label,
+    designs: blends.map((blend): Design => ({
+      ...meshDefault,
+      grain: defaultGrain,
+      base: { kind: 'aurora', colors, count: 0.5, glow: 0.5, blend, seed: r + 3 },
+    })),
+  }));
+  const blendCols = blends.map(
+    (b) => `blend ${b}${b === LEGACY_AURORA_BLEND ? ' (before)' : b === AURORA_BLEND ? ' (new default)' : ''}`,
+  );
+  const blendPng = await engineHarness(page, 'contactSheet', blendRows, blendCols, 640, 360);
+  writeFileSync(join(DIR, 'aurora-blend.png'), Buffer.from(blendPng, 'base64'));
 });
 
 test('grid.png', async ({ page }) => {
