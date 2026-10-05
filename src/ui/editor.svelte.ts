@@ -36,12 +36,26 @@ import { applyMat2, clampZoom, inverseTransformMatrix, transformMatrix } from '.
 import { warpPoint } from '../engine/warp';
 import { clamp, normalizeDegrees } from '../math';
 import { paletteFromImage, type ImagePalette } from './image-palette';
-import { PaletteEditor } from './palette.svelte';
+import { PaletteEditor, type PaletteSnapshot } from './palette.svelte';
 import { emptiestSpot, median, widestGapCenter } from './placement';
 
 export type PatternKind = BasePattern['kind'];
 export type PlanesLayout = Omit<PlanesPattern, 'kind' | 'colors'>;
 export type AuroraLayout = Omit<AuroraPattern, 'kind' | 'colors'>;
+
+export interface EditorSnapshot {
+  kind: PatternKind;
+  ramp: RampGradient;
+  mesh: PointMesh;
+  planes: PlanesLayout;
+  aurora: AuroraLayout;
+  grid: GridMesh;
+  warp: Warp;
+  grain: Grain;
+  finish: Finish;
+  transform: Transform;
+  palette: PaletteSnapshot;
+}
 
 /** A 3 × 3 grid over a 16:9 frame in the default colors (the opening shuffle replaces it). */
 function defaultGrid(): GridMesh {
@@ -165,29 +179,74 @@ export class EditorState {
   ): void {
     const temperature = this.palette.temperature;
     const next = shuffleDesign(this.design, { colors, layout, style, palette, seed }, this.aspect);
-    const base = next.design.base;
+    this.setDesign(next.design);
+    // Built around the base hue already; temperature carries over.
+    if (next.palette) this.palette.adopt({ info: next.palette, seed }, temperature);
+  }
+
+  /** Make `design` the edited one. The other kinds' configs and the palette state are left alone. */
+  setDesign(design: Design): void {
+    const base = structuredClone(design.base);
     if (base.kind === 'mesh') {
       this.mesh = base;
-      this.selectedPoint = Math.min(this.selectedPoint, base.points.length - 1);
     } else if (base.kind === 'planes') {
       const { kind: _, colors, ...layout } = base;
       this.planes = layout;
       this.setRampColors(colors);
     } else if (base.kind === 'grid') {
       this.grid = base;
-      this.selectedNode = Math.min(this.selectedNode, base.nodes.length - 1);
     } else if (base.kind === 'aurora') {
       const { kind: _, colors, ...layout } = base;
       this.aurora = layout;
       this.setRampColors(colors);
     } else {
-      this.ramp = base;
+      this.ramp = { scale: 0.35, seed: 1, noiseStyle: 'contour', ...base };
     }
     this.kind = base.kind;
-    this.warp = next.design.warp;
-    if (next.design.finish) this.finish = next.design.finish;
-    // Built around the base hue already; temperature carries over.
-    if (next.palette) this.palette.adopt({ info: next.palette, seed }, temperature);
+    this.warp = { ...design.warp };
+    this.grain = { ...design.grain };
+    this.finish = { ...(design.finish ?? noFinish) };
+    this.transform = { ...(design.transform ?? identityTransform) };
+    this.clampSelection();
+  }
+
+  /** Everything undo brings back: every kind's config and the palette's state. */
+  snapshot(): EditorSnapshot {
+    return {
+      kind: this.kind,
+      ramp: $state.snapshot(this.ramp) as RampGradient,
+      mesh: $state.snapshot(this.mesh) as PointMesh,
+      planes: $state.snapshot(this.planes),
+      aurora: $state.snapshot(this.aurora),
+      grid: $state.snapshot(this.grid) as GridMesh,
+      warp: $state.snapshot(this.warp),
+      grain: $state.snapshot(this.grain),
+      finish: $state.snapshot(this.finish),
+      transform: $state.snapshot(this.transform),
+      palette: this.palette.snapshot(),
+    };
+  }
+
+  restore(s: EditorSnapshot): void {
+    const copy = structuredClone(s);
+    this.kind = copy.kind;
+    this.ramp = copy.ramp;
+    this.mesh = copy.mesh;
+    this.planes = copy.planes;
+    this.aurora = copy.aurora;
+    this.grid = copy.grid;
+    this.warp = copy.warp;
+    this.grain = copy.grain;
+    this.finish = copy.finish;
+    this.transform = copy.transform;
+    this.palette.restore(copy.palette);
+    this.clampSelection();
+  }
+
+  private clampSelection(): void {
+    this.selectedPoint = clamp(this.selectedPoint, 0, this.mesh.points.length - 1);
+    this.selectedNode = clamp(this.selectedNode, 0, this.grid.nodes.length - 1);
+    this.selectedStop = clamp(this.selectedStop, 0, this.ramp.stops.length - 1);
   }
 
   /** Planes colors onto the ramp's stops, in position order; evenly spaced stops if the count changed. */

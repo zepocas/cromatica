@@ -37,6 +37,14 @@ const samePalette = (a: readonly Oklch[], b: readonly Oklch[]) =>
 /** Copies with no Svelte proxies, so they can be compared and stored. */
 const plain = (colors: readonly Oklch[]): Oklch[] => colors.map((c) => [c[0], c[1], c[2]]);
 
+/** The palette state undo brings back; the keep and linked toggles are settings and stay. */
+export interface PaletteSnapshot {
+  baseHue: number | null;
+  infos: Record<PaletteOwner, PaletteInfo | null>;
+  seeds: Record<PaletteOwner, number | null>;
+  adjustments: Record<PaletteOwner, Adjustment | null>;
+}
+
 /**
  * The palette side of the editor: how new palettes are steered (rule, mood,
  * key, base hue), how existing colors are edited (linked, remix, order), and
@@ -56,6 +64,22 @@ export class PaletteEditor {
   private adjustments = $state.raw<Record<PaletteOwner, Adjustment | null>>({ mesh: null, ramp: null, grid: null });
 
   constructor(private readonly host: PaletteHost) {}
+
+  snapshot(): PaletteSnapshot {
+    return structuredClone({
+      baseHue: this.baseHue,
+      infos: $state.snapshot(this.infos),
+      seeds: this.seeds,
+      adjustments: this.adjustments,
+    });
+  }
+
+  restore(s: PaletteSnapshot): void {
+    this.baseHue = s.baseHue;
+    this.infos = s.infos;
+    this.seeds = s.seeds;
+    this.adjustments = s.adjustments;
+  }
 
   /** Rule, mood and key of the active palette; null when custom. */
   get info(): PaletteInfo | null {

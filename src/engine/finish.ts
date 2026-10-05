@@ -9,16 +9,16 @@ const VIGNETTE_MAX = 0.75;
 /** Where the vignette starts, as a fraction of the half diagonal. */
 export const VIGNETTE_INNER = 0.35;
 /** Print texture: tooth modulation of the ink at print 1, and the screen's tones per channel. */
-const PRINT_INK = 0.6;
+const PRINT_INK = 0.35;
 const PRINT_LEVELS = 3;
 /** Print range over which the thresholded screen (xerox) is blended in. */
-const PRINT_SCREEN: [from: number, to: number] = [0.5, 1];
+const PRINT_SCREEN: [from: number, to: number] = [0.7, 1];
 /** Print amount over which the effect fades in, so the slider starts gently. */
 const PRINT_FADE_IN = 0.25;
 /** Fraction of pixels that get a toner speck at print 1. */
-const PRINT_SPECKLE = 0.004;
+const PRINT_SPECKLE = 0.0015;
 /** Darkening at the frame edges at print 1. */
-const PRINT_EDGE = 0.35;
+const PRINT_EDGE = 0.2;
 /** Band steps at bands just above 0 and at 1. */
 const BAND_STEPS: [many: number, few: number] = [24, 3];
 

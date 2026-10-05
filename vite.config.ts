@@ -4,7 +4,9 @@ import { defineConfig } from 'vite';
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [svelte()],
+  // Vitest transforms modules for SSR, and the server build drops some
+  // $state.snapshot calls; unit tests need the client build's copies.
+  plugins: [svelte({ dynamicCompileOptions: () => (process.env.VITEST ? { generate: 'client' } : undefined) })],
   worker: { format: 'es' },
   // Unit tests run Svelte's browser build, so rune-based classes behave as in the app.
   resolve: process.env.VITEST ? { conditions: ['browser'] } : undefined,

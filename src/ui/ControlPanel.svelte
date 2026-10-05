@@ -17,6 +17,10 @@
     format: ExportFormat;
     /** Collapsed to a one-line bar floating over a full-width preview. */
     collapsed: boolean;
+    canUndo: boolean;
+    canRedo: boolean;
+    onundo: () => void;
+    onredo: () => void;
     exporting: boolean;
     progress: ExportProgress | null;
     error: string;
@@ -32,6 +36,10 @@
     output,
     format = $bindable(),
     collapsed = $bindable(),
+    canUndo,
+    canRedo,
+    onundo,
+    onredo,
     exporting,
     progress,
     error,
@@ -58,6 +66,9 @@
 <aside class="panel" class:collapsed>
   <header>
     <h1>wallpaper</h1>
+    <span class="spacer"></span>
+    <button class="icon" aria-label="Undo" title="Undo (⌘Z)" disabled={!canUndo} onclick={onundo}>↶</button>
+    <button class="icon" aria-label="Redo" title="Redo (⇧⌘Z)" disabled={!canRedo} onclick={onredo}>↷</button>
     <button
       class="icon"
       aria-expanded={!collapsed}
@@ -100,8 +111,11 @@
   header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 4px;
     padding: 6px 0;
+  }
+  .spacer {
+    flex: 1;
   }
   h1 {
     margin: 0;

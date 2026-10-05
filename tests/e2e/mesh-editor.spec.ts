@@ -1,5 +1,5 @@
 // Mesh points on the canvas: handles, drag, nudge, add, delete, visibility.
-import { centerOf, expect, openApp, openMore, previewProbe, test, toComposition } from './support/app';
+import { centerOf, expect, openApp, previewProbe, test, toComposition } from './support/app';
 
 test('mesh editor: drag, add, delete, switch pattern and hide handles', async ({ page }) => {
   await openApp(page);
@@ -91,7 +91,9 @@ test('mesh editor: drag, add, delete, switch pattern and hide handles', async ({
   expect((await settled()).equals(before)).toBe(true);
   await page.keyboard.press('h');
   await expect(points).toHaveCount(5);
-  await openMore(page, 'colors');
+  // The bottom bar toggle, without opening "+ more".
   await page.getByRole('button', { name: 'Hide points' }).click();
   await expect(points).toHaveCount(0);
+  await page.getByRole('button', { name: 'Show points' }).click();
+  await expect(points).toHaveCount(5);
 });

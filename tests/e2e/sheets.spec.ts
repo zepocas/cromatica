@@ -14,7 +14,17 @@ import {
   type WarpShape,
 } from '../../src/design/design';
 import { previewProbe } from './support/app';
-import { gridColors, gridDesign, linear, meshDefault, threeStops, warp, withLook } from './support/designs';
+import {
+  gridColors,
+  gridDesign,
+  linear,
+  meshDefault,
+  midTones,
+  planesDesign,
+  threeStops,
+  warp,
+  withLook,
+} from './support/designs';
 
 const midTonesFive = linear(0, [
   [0, [0.3, 0.06, 250]],
@@ -208,4 +218,25 @@ test('six shuffles in a row', async ({ page }) => {
     await settled();
     await page.screenshot({ path: join(DIR, `shuffle-${i}.png`) });
   }
+});
+
+test('print.png', async ({ page }) => {
+  await openEngineHarness(page);
+  const amounts = [0.15, 0.3, 0.5, 0.8];
+  const cols = amounts.map((a) => `print ${a}`);
+  const looks: [string, Design][] = [
+    ['planes', planesDesign(0.4, 0.5)],
+    ['mesh', meshDefault],
+    ['mid tones', midTones],
+  ];
+  const rows = looks.map(([label, d]) => ({
+    label,
+    designs: amounts.map((print) => ({
+      ...d,
+      grain: defaultGrain,
+      finish: { vignette: 0, bands: 0, bandEdge: 0, print },
+    })),
+  }));
+  const png = await engineHarness(page, 'contactSheet', rows, cols, 800, 450);
+  writeFileSync(join(DIR, process.env.PRINT_SHEET ?? 'print.png'), Buffer.from(png, 'base64'));
 });

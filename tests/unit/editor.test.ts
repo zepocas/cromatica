@@ -170,3 +170,41 @@ describe('points and stops', () => {
     expect(e.ramp.stops.at(-1)!.position).toBeCloseTo(0.25, 9);
   });
 });
+
+describe('saving and undo', () => {
+  it('setDesign brings back a design exactly', () => {
+    for (let i = 0; i < 40; i++) {
+      const source = new EditorState();
+      const e = fresh();
+      e.setDesign(source.design);
+      expect(e.design).toEqual(source.design);
+    }
+  });
+
+  it('restore brings back every pattern and the palette state', () => {
+    const e = fresh();
+    e.shuffle();
+    e.palette.setBaseHueEnabled(true, 40);
+    e.palette.setBaseHue(90);
+    e.palette.setTemperature('warm');
+    const before = e.snapshot();
+    const design = e.design;
+    e.shuffle();
+    e.kind = 'planes';
+    e.palette.setTemperature('cool');
+    e.restore(before);
+    expect(e.design).toEqual(design);
+    expect(e.palette.hueOffset).toBe(50);
+    expect(e.palette.temperature).toBe('warm');
+    expect(JSON.stringify(e.snapshot())).toBe(JSON.stringify(before));
+  });
+
+  it('restore keeps the selection in range', () => {
+    const e = fresh();
+    const before = e.snapshot();
+    while (e.canAddPoint) e.addPoint(0, 0);
+    e.selectedPoint = e.mesh.points.length - 1;
+    e.restore(before);
+    expect(e.selectedPoint).toBeLessThan(e.mesh.points.length);
+  });
+});
