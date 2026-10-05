@@ -300,7 +300,7 @@ Decisions made during the architecture review. Reopen one only if new informatio
 ## D47. Looks are parked; onboarding tips instead
 
 - **Why:** curated bundles would help new users, but the main shuffle already shows what the app can do (D39). Short first-visit tips about shuffling and dropping an image address adoption at lower cost.
-- **Consequence:** "Looks" goes to the backlog; M6.5 gets an onboarding step.
+- **Consequence:** "Looks" goes to the backlog; M7 gets an onboarding step.
 
 ## D48. Context overlays are UI, never part of the image
 
