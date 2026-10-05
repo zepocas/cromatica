@@ -4,6 +4,7 @@ import { oklabToOklch } from '../color/oklab';
 import { evaluateRamp } from '../color/ramp';
 import type { Oklch } from '../color/types';
 import {
+  AURORA_BLEND,
   defaultDesign,
   defaultGrain,
   defaultMesh,
@@ -95,7 +96,7 @@ export class EditorState {
   /** Planes layout; its colors are the ramp's stops. */
   planes = $state<PlanesLayout>({ count: 0.4, roughness: 0.5, blend: 0, seed: 1 });
   /** Aurora layout; its colors are the ramp's stops. */
-  aurora = $state<AuroraLayout>({ count: 0.5, glow: 0.5, seed: 1 });
+  aurora = $state<AuroraLayout>({ count: 0.5, glow: 0.5, blend: AURORA_BLEND, seed: 1 });
   grid = $state<GridMesh>(defaultGrid());
   warp = $state<Warp>({ ...defaultWarp });
   grain = $state<Grain>({ ...defaultGrain });

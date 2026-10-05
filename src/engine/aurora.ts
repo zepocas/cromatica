@@ -20,7 +20,6 @@ export const AURORA_SHADER_CONSTANTS = {
   RAY_FREQ: '14.0',
   RAY_STRETCH: '0.8',
   RAY_OCTAVES: 2,
-  RAY_DEPTH: '0.45',
   MASK_FREQ: '0.9',
   MASK_FROM: '-0.25',
   MASK_TO: '0.35',
@@ -35,14 +34,19 @@ const BAND = 0.32;
 export const FLOW_FREQ = 1.2;
 export const FLOW_AMP = 0.18;
 export const FLOW_OCTAVES = 3;
-/** Upward fade length at glow 0 and 1; the lower edge is this fraction of it. */
+/** Upward fade length at glow 0 and 1. */
 const GLOW_WIDTH: [narrow: number, wide: number] = [0.025, 0.13];
-export const LOWER_EDGE = 0.25;
+/**
+ * Blend 0 → 1 (crisp → soft): the lower edge as a fraction of the upward
+ * fade, and how deep the rays cut the glow. Blend 0.6 is the look from before
+ * blend existed (0.25 and 0.45), which older saves migrate to.
+ */
+const LOWER_EDGE: [crisp: number, soft: number] = [0.05, 0.05 + 1 / 3];
+const RAY_DEPTH: [crisp: number, soft: number] = [0.75, 0.25];
 /** Curtain rays: frequency across and along them, octaves, and how deep they cut the glow. */
 export const RAY_FREQ = 14;
 export const RAY_STRETCH = 0.8;
 export const RAY_OCTAVES = 2;
-export const RAY_DEPTH = 0.45;
 /** Curtains fade in and out along their length: mask noise frequency and its threshold range. */
 export const MASK_FREQ = 0.9;
 export const MASK_EDGE: [from: number, to: number] = [-0.25, 0.35];
@@ -66,6 +70,8 @@ export interface PreparedAurora {
   /** Upward fade and lower edge widths. */
   up: number;
   down: number;
+  /** How deep the rays cut the glow, [0, 1]. */
+  rays: number;
 }
 
 /** Ribbons slider [0, 1] → number of ribbons. */
@@ -96,7 +102,10 @@ export function prepareAurora(aurora: AuroraPattern): PreparedAurora {
   }
   const glow = clamp01(Number.isFinite(aurora.glow) ? aurora.glow : 0.5);
   const up = GLOW_WIDTH[0] + (GLOW_WIDTH[1] - GLOW_WIDTH[0]) * glow;
-  return { count: n, sky, colors, lines, key: hashKey(seed, AURORA_SALT), up, down: up * LOWER_EDGE };
+  const blend = clamp01(Number.isFinite(aurora.blend) ? aurora.blend : 0.6);
+  const down = up * (LOWER_EDGE[0] + (LOWER_EDGE[1] - LOWER_EDGE[0]) * blend);
+  const rays = RAY_DEPTH[0] + (RAY_DEPTH[1] - RAY_DEPTH[0]) * blend;
+  return { count: n, sky, colors, lines, key: hashKey(seed, AURORA_SALT), up, down, rays };
 }
 
 /** Glow of ribbon i at (x, y), in [0, 1]. */
@@ -107,8 +116,7 @@ function ribbonGlow(p: PreparedAurora, i: number, x: number, y: number): number 
   const d = y - center;
   // Crisp below the line, a long fade above it.
   const profile = d < 0 ? Math.exp(-((d / p.down) ** 2)) : Math.exp(-d / p.up);
-  const rays =
-    1 - RAY_DEPTH * (0.5 + 0.5 * fbm(x * RAY_FREQ, y * RAY_STRETCH, (key + RAY_KEY_OFFSET) >>> 0, RAY_OCTAVES));
+  const rays = 1 - p.rays * (0.5 + 0.5 * fbm(x * RAY_FREQ, y * RAY_STRETCH, (key + RAY_KEY_OFFSET) >>> 0, RAY_OCTAVES));
   const m = fbm(x * MASK_FREQ, 0, (key + MASK_KEY_OFFSET) >>> 0, 2);
   const mask = smoothstep(MASK_EDGE[0], MASK_EDGE[1], m);
   return clamp01(strength * profile * rays * mask);

@@ -337,7 +337,8 @@ function planSlots(rng: Rng, spec: PaletteSpec): Slot[] {
   if (count >= 2 && rng.next() < t.accent[0]) {
     rng.pick(slots).rel = rng.range(t.accent[1][0], t.accent[1][1]);
   }
-  if (count >= 3 && rng.next() < t.anchor) placeAnchor(rng, slots, spec.band, t.darkGround);
+  if (count >= 3 && rng.next() < t.anchor)
+    placeAnchor(rng, slots, spec.band, t.darkGround ?? false, rule === 'monochrome');
   return slots;
 }
 
@@ -405,8 +406,14 @@ function compressHue(h: number, [lo, hi]: [number, number]): number {
   return mid + (shortestTurn(mid, h) * (hi - lo)) / 360;
 }
 
-/** Turn the lightest or darkest slot into a near-neutral, whichever the band reaches. */
-function placeAnchor(rng: Rng, slots: Slot[], band: readonly [number, number], darkGround = false): void {
+/** Turn the lightest or darkest slot into a near-neutral, whichever the band reaches; `keepHue` tints a cream with its slot's hue. */
+function placeAnchor(
+  rng: Rng,
+  slots: Slot[],
+  band: readonly [number, number],
+  darkGround: boolean,
+  keepHue: boolean,
+): void {
   const light = rng.next() < LIGHT_ANCHOR.share;
   const lightFits = !darkGround && band[1] >= LIGHT_ANCHOR_MIN_BAND_TOP;
   const darkFits = darkGround || band[0] <= DARK_ANCHOR_MAX_BAND_BOTTOM;
@@ -414,7 +421,9 @@ function placeAnchor(rng: Rng, slots: Slot[], band: readonly [number, number], d
     const s = slots[slots.length - 1];
     s.anchor = 'light';
     s.l = rng.range(...LIGHT_ANCHOR.l);
-    s.h = rng.range(...LIGHT_ANCHOR.h);
+    // Drawn either way, so the rest of the palette stays the same for a given seed.
+    const h = rng.range(...LIGHT_ANCHOR.h);
+    if (!keepHue) s.h = h;
   } else {
     const s = slots[0];
     s.anchor = 'dark';
