@@ -65,7 +65,7 @@
 
 <aside class="panel" class:collapsed>
   <header>
-    <h1>wallpaper</h1>
+    <h1>cromatica</h1>
     <span class="spacer"></span>
     <button class="icon" aria-label="Undo" title="Undo (⌘Z)" disabled={!canUndo} onclick={onundo}>↶</button>
     <button class="icon" aria-label="Redo" title="Redo (⇧⌘Z)" disabled={!canRedo} onclick={onredo}>↷</button>
