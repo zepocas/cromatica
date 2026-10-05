@@ -27,6 +27,13 @@ const L_EPS = 1e-3;
  */
 const GRAY_CHROMA = 0.02;
 
+/**
+ * Near-neutral anchors (cream, near-black): very light or dark and nearly gray.
+ * Their chroma is left alone, so a louder palette doesn't tint them.
+ */
+const ANCHOR = { chroma: 0.045, light: 0.9, dark: 0.28 } as const;
+const isAnchor = ([l, c]: Oklch) => c < ANCHOR.chroma && (l >= ANCHOR.light || l <= ANCHOR.dark);
+
 const clampL = (l: number) => Math.min(1 - L_EPS, Math.max(L_EPS, l));
 const logit = (l: number) => Math.log(clampL(l) / (1 - clampL(l)));
 const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
@@ -34,7 +41,7 @@ const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
 function applyShift(c: Oklch, s: PaletteShift, chromaAdd: number): Oklch {
   const l = sigmoid(logit(c[0]) + s.lightness);
   const h = normalizeDegrees(c[2] + s.hue);
-  const scaled = c[1] >= GRAY_CHROMA ? c[1] * s.chroma : c[1] + chromaAdd;
+  const scaled = isAnchor(c) ? c[1] : c[1] >= GRAY_CHROMA ? c[1] * s.chroma : c[1] + chromaAdd;
   return [l, Math.max(0, Math.min(scaled, maxChroma(l, h))), h];
 }
 
@@ -45,9 +52,10 @@ export function shiftPalette(colors: readonly Oklch[], shift: PaletteShift): Okl
 
 /**
  * Color `index` is being changed to `next`: return the whole palette moved by
- * the same shift. `next` itself is kept exactly as given.
+ * the same shift. `next` itself is kept exactly as given. With `oneHue`
+ * (monochrome), every color that isn't gray takes `next`'s hue exactly.
  */
-export function relinkPalette(colors: readonly Oklch[], index: number, next: Oklch): Oklch[] {
+export function relinkPalette(colors: readonly Oklch[], index: number, next: Oklch, oneHue = false): Oklch[] {
   const prev = colors[index];
   if (!prev) return colors.slice();
   const shift: PaletteShift = {
@@ -57,7 +65,12 @@ export function relinkPalette(colors: readonly Oklch[], index: number, next: Okl
     chroma: prev[1] >= GRAY_CHROMA ? next[1] / prev[1] : 1,
   };
   const chromaAdd = prev[1] < GRAY_CHROMA ? next[1] - prev[1] : 0;
-  return colors.map((c, i) => (i === index ? ([next[0], next[1], next[2]] as Oklch) : applyShift(c, shift, chromaAdd)));
+  return colors.map((c, i) => {
+    if (i === index) return [next[0], next[1], next[2]] as Oklch;
+    const [l, chroma, h] = applyShift(c, shift, chromaAdd);
+    if (!oneHue || next[1] < GRAY_CHROMA || chroma < GRAY_CHROMA) return [l, chroma, h] as Oklch;
+    return [l, Math.min(chroma, maxChroma(l, next[2])), next[2]] as Oklch;
+  });
 }
 
 /** A random linked shift: a new take on the palette with the same relationships. */

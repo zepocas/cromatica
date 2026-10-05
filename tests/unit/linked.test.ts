@@ -61,6 +61,14 @@ describe('relinkPalette', () => {
     p.forEach((c, i) => c.forEach((v, k) => expect(v).toBeCloseTo(palette[i][k], 9)));
   });
 
+  it('near-neutral creams and near-blacks keep their chroma when the others get louder', () => {
+    const anchored: Oklch[] = [[0.22, 0.03, 250], ...palette.slice(0, 3), [0.95, 0.03, 90]];
+    const out = relinkPalette(anchored, 1, [0.35, 0.24, 250]);
+    expect(out[0][1]).toBe(0.03);
+    expect(out[4][1]).toBe(0.03);
+    expect(out[2][1]).toBeCloseTo(0.21, 9);
+  });
+
   it('a gray changing hue does not swing the other colors', () => {
     const out = relinkPalette(palette, 3, [0.95, 0.01, 200]);
     expect(out[0][2]).toBe(250);
