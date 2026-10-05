@@ -240,3 +240,20 @@ test('print.png', async ({ page }) => {
   const png = await engineHarness(page, 'contactSheet', rows, cols, 800, 450);
   writeFileSync(join(DIR, process.env.PRINT_SHEET ?? 'print.png'), Buffer.from(png, 'base64'));
 });
+
+test('brushed.png', async ({ page }) => {
+  await openEngineHarness(page);
+  const sizes = [0, 0.5, 1];
+  const cols = sizes.map((s) => `size ${s}`);
+  const looks: [string, Design][] = [
+    ['mesh', meshDefault],
+    ['planes', planesDesign(0.4, 0.5)],
+    ['mid tones', midTones],
+  ];
+  const rows = looks.map(([label, d]) => ({
+    label,
+    designs: sizes.map((size) => withLook(d, warp('bristle', 0.5, size, 3), defaultGrain)),
+  }));
+  const png = await engineHarness(page, 'contactSheet', rows, cols, 800, 450);
+  writeFileSync(join(DIR, process.env.BRUSHED_SHEET ?? 'brushed.png'), Buffer.from(png, 'base64'));
+});

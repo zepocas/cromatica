@@ -32,7 +32,7 @@ const MARBLE_TURBULENCE = 4.5;
 
 /** Bristle: noise frequency along and across the stroke (fine lines across, long along). */
 const BRISTLE_ALONG = 0.15;
-const BRISTLE_ACROSS = 14;
+const BRISTLE_ACROSS = 5;
 /** Squared radius added under the circular warp's 1 / r, so the center doesn't tear. */
 const CIRCULAR_SOFTENING = 0.0004;
 /** Hash-key salts, one per independent noise channel of a shape. */
@@ -69,6 +69,8 @@ interface ShapeTuning {
   density: number;
   /** amp ∝ (FREQ_REF / freq)^coupling: 0 = constant in composition units. */
   coupling: number;
+  /** Share of the size slider's frequency range the shape uses; missing = 1 (all of it). */
+  span?: number;
 }
 
 const FREQ_REF = 1.3;
@@ -87,7 +89,7 @@ const TUNING: Record<Exclude<WarpShape, 'none'>, ShapeTuning> = {
   curl: { gain: 0.6, density: 1, coupling: 0.5 },
   ridged: { gain: 0.6, density: 0.6, coupling: 0.5 },
   marble: { gain: 0.8, density: 2, coupling: 1 }, // displacement ∝ band spacing
-  bristle: { gain: 0.7, density: 1, coupling: 0.5 },
+  bristle: { gain: 0.7, density: 1, coupling: 0.5, span: 0.5 }, // stays broad at small sizes
 };
 
 /** The warp as the shader sees it. */
@@ -158,9 +160,9 @@ export function prepareWarp(warp: Warp | undefined): PreparedWarp {
     return { shape: 'none', freq, amp: 0, seed, params: new Float64Array(WARP_PARAM_SLOTS * 4) };
   }
   const t = TUNING[shape];
-  const amp = amount * t.gain * Math.pow(FREQ_REF / freq, t.coupling);
-  const f = freq * t.density;
-  return { shape, freq: f, amp, seed, params: seededParams(shape, seed) };
+  const shapeFreq = warpFrequency(clamp01(warp?.size ?? 0.5) * (t.span ?? 1));
+  const amp = amount * t.gain * Math.pow(FREQ_REF / shapeFreq, t.coupling);
+  return { shape, freq: shapeFreq * t.density, amp, seed, params: seededParams(shape, seed) };
 }
 
 const smoothstep = (a: number, b: number, x: number) => {
