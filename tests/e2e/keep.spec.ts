@@ -131,3 +131,18 @@ test('pickers: hovering or arrowing through options previews them without an und
   await undo.click();
   await expect(page.getByLabel('Gradient', { exact: true })).toHaveAttribute('data-value', 'mesh');
 });
+
+test('tips: shown on a first visit, gone for good once dismissed, back from the ? button', async ({ page }) => {
+  await openApp(page, { shuffled: true, tips: true });
+  const tips = page.getByRole('complementary', { name: 'Tips' });
+  await expect(tips).toBeVisible();
+  await expect(tips).toContainText('exports keep the design');
+  await tips.getByRole('button', { name: '[ got it ]' }).click();
+  await expect(tips).toBeHidden();
+
+  await page.reload();
+  await expect(page.getByTestId('preview-canvas')).toBeVisible();
+  await expect(tips).toBeHidden();
+  await page.getByRole('button', { name: 'Tips' }).click();
+  await expect(tips).toBeVisible();
+});

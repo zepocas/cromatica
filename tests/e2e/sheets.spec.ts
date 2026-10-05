@@ -228,6 +228,7 @@ test('grid.png', async ({ page }) => {
 
 test('six shuffles in a row', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(() => localStorage.setItem('cromatica.tips', 'dismissed'));
   await page.goto('/');
   const { settled } = previewProbe(page);
   await settled();

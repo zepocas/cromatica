@@ -12,6 +12,8 @@
   import MoreLikeThis from './ui/MoreLikeThis.svelte';
   import GridOverlay from './ui/GridOverlay.svelte';
   import Preview from './ui/Preview.svelte';
+  import { dismissTips, tipsDismissed } from './ui/tips';
+  import Tips from './ui/Tips.svelte';
   import { CUSTOM_PRESET_ID, DEFAULT_PRESET_ID, SIZE_PRESETS } from './ui/presets';
 
   // Opens on the autosaved design, or a shuffle on a first visit; `?default`
@@ -29,6 +31,8 @@
   let customHeight = $state(1080);
   let format = $state<ExportFormat>('png');
   let collapsed = $state(false);
+  // First visit only; `?default` (tests) never shows them.
+  let tips = $state(!builtIn && !tipsDismissed());
   /** The "more like this" grid covers the preview. */
   let exploring = $state(false);
   let exporting = $state(false);
@@ -195,6 +199,7 @@
   bind:format
   bind:collapsed
   bind:exploring
+  bind:tips
   canUndo={history.canUndo}
   canRedo={history.canRedo}
   onundo={undo}
@@ -205,3 +210,11 @@
   onexport={startExport}
   oncancel={cancelExport}
 />
+{#if tips}
+  <Tips
+    onclose={() => {
+      tips = false;
+      dismissTips();
+    }}
+  />
+{/if}

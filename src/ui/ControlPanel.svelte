@@ -21,6 +21,8 @@
     /** Collapsed to a one-line bar floating over a full-width preview. */
     collapsed: boolean;
     exploring: boolean;
+    /** The tips card is showing. */
+    tips: boolean;
     canUndo: boolean;
     canRedo: boolean;
     onundo: () => void;
@@ -42,6 +44,7 @@
     format = $bindable(),
     collapsed = $bindable(),
     exploring = $bindable(),
+    tips = $bindable(),
     canUndo,
     canRedo,
     onundo,
@@ -81,6 +84,7 @@
   <header>
     <h1>cromatica</h1>
     <span class="spacer"></span>
+    <button class="icon" aria-label="Tips" aria-pressed={tips} title="Tips" onclick={() => (tips = !tips)}>?</button>
     <button class="icon" aria-label="Undo" title="Undo (⌘Z)" disabled={!canUndo} onclick={onundo}>↶</button>
     <button class="icon" aria-label="Redo" title="Redo (⇧⌘Z)" disabled={!canRedo} onclick={onredo}>↷</button>
     <button
