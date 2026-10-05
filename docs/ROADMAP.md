@@ -195,7 +195,7 @@ Each milestone uses the same structure:
   - No curated palette library: the harmony generator with its controls covers it. This also removes the curation and licensing questions.
 - **Settled:** palette from image takes up to 6 colors, leaning distinct (D25). Weighting colorful pixels so small accents survive is noted under step 6 for later.
 
-### M4.5 — More shapes, base patterns and finishes
+### M4.5 — More shapes, base patterns and finishes ✅
 
 - **Goal:** widen the range of looks cheaply, using the slots the product already has: warp shapes, base patterns and finishing effects. No layers and no new editors.
 - **Background:** from the R&D review of other shape and noise algorithms. These items were approved because each one fits the existing model (base pattern, then warp, then grain, then transform) and adds little or no UI. Bigger ideas stay in M5 and the backlog.
@@ -234,7 +234,7 @@ Each milestone uses the same structure:
   - ~~Does conic need a seam control?~~ Smooth seam for now (D32); to be checked by eye.
   - Should Vignette and Bands be in the main view or behind "+ more"? Behind "+ more" for now; promote either if it proves central, as warp size was.
 
-### M5 — Pattern variety
+### M5 — Pattern variety ✅
 
 - **Goal:** widen the range of looks beyond gradients and meshes.
 - **Scope:**
@@ -243,8 +243,12 @@ Each milestone uses the same structure:
   - Aurora ribbons.
   - A **grid Bézier mesh** style (photogradient's core style; revisits D11).
   - **Planes** (collage, after synthetic cubism and the King Krule sleeve art): N seeded, rotated polygons or Voronoi-style cells, each a flat palette color, with noise-roughened edges (torn paper), overlap order for the layered look and a subtle paper grain. Evaluated per pixel with no state, so it stays tile-independent. Controls: plane count and edge roughness. Pairs with the print texture finish from M4.5 and the muted and earthy moods.
-  - **Digital / glitch** (requested after M4.5): a deliberately digital, glitchy look. Candidates: block displacement (rectangles of the image shifted along one axis, the effect the dropped smudge warp hit by accident: hashed trail cells with hard starts), scanline offsets, RGB channel split and pixel-sort-like streaks. Each must stay per pixel and stateless (D4), so true pixel sorting and datamoshing are out; hashed blocks and offsets are in. Likely a warp shape plus a finish (channel split), with a seed for the block pattern.
-- **Done when:** each pattern has golden-image tests and at least 3 good reference designs.
+- **Done when:** each pattern has golden-image tests (CPU-reference and tile checks in the browser suite). The reference designs moved to M7's showcase examples (decided 2026-10-05).
+- **Progress:**
+  - Planes built (D37): count, torn and a new-layout button. It uses the ramp's colors, works with warps and finishes, and has contact sheets in `sheets.spec.ts`. Still to do: tune by eye, and possibly Voronoi-style cells as a second planes layout.
+  - fBm noise fields and Worley cells built as the `noise` and `cells` gradient types (D41).
+  - Aurora ribbons built as the `aurora` gradient type (D42).
+  - Grid Bézier mesh built as the `grid` gradient type (D43): 2–5 × 2–5 draggable nodes, auto-smooth curves, a fold guard in the editor. Reference designs moved to M7.
 
 ### M6 — Saving
 
@@ -277,6 +281,7 @@ Each milestone uses the same structure:
   - Context-loss recovery
   - Shader compile warm-up
   - Keyboard shortcuts
+  - **Showcase examples / reference designs** (moved from M5): for each pattern, render candidates from shuffles and contact sheets, let the user pick about 3 by eye, and save them as fixed design files. They serve as showcase examples and as test fixtures.
 - **Done when:**
   - Tested on Chrome, Safari and Firefox on macOS, and Chrome on Windows
   - Exports at every preset resolution succeed
@@ -311,3 +316,6 @@ Each milestone uses the same structure:
 - **Stipple / halftone finish:** a density-to-dot stage (threshold against the blue-noise tile, as in the prototype) applied to any design with one amount slider. No blob generator and no layers.
 - **Liquid-jazz "ink blobs" look:** seeded smin-capsule blobs rendered as stipple in flat inks (reference: stippled vinyl cover). A prototype exists in `prototype-stipple.html` and `prototype/stipple/` (untracked, not part of the app). Open findings: union all blobs into one silhouette and use per-ink fields only for the color inside it; use a black base with white as an ink; fill more of the frame. Decide later whether it is a style of this product or a separate one.
 - Flow-field advection (LIC) and Gabor noise, if more warp variety is wanted after M4.5
+- **Planes advanced panel:** under "+ more" for planes, add controls to move planes (drag, nudge, or reorder the stack) and bring over the interesting settings from the stipple / ink-blobs prototype (`prototype-stipple.html`). Requested 2026-10-04.
+- **Digital / glitch** (postponed from M5 on 2026-10-04; needs a different approach): the glitch should act on the boundaries between colors and shapes in the rendered image (tearing, offsets and channel splits that follow edges), not move coordinates. A first try as a warp shape (hashed blocks shifted sideways plus scanline jitter) and an RGB split finish was built and reverted. It was underwhelming: on soft gradients a shifted block of similar color barely shows. Likely needs an image-space stage, for example edge detection on the pattern evaluated at neighboring points, with displacement applied where colors change. That stays per pixel and stateless (D4), but costs extra pattern evaluations.
+- **Comment density:** go through the code and cut comments that restate the code or narrate history; keep the ones that explain why (conventions, math, invariants). The user finds the current amount excessive (2026-10-04).

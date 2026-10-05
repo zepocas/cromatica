@@ -83,7 +83,7 @@ test('a custom size letterboxes the preview and names the download', async ({ pa
   await page.getByLabel('Width').press('Tab');
   await page.getByLabel('Height').fill('200');
   await page.getByLabel('Height').press('Tab');
-  await expect(page.getByLabel('Device preset')).toHaveValue('custom');
+  await expect(page.getByLabel('Size preset')).toHaveValue('custom');
 
   // Letterboxed to 16:10 (layout is applied on the next animation frame).
   await expect

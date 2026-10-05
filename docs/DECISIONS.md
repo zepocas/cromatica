@@ -62,7 +62,7 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Why:** it keeps the scope tight.
 - **Consequence:** multi-monitor will need each display's physical size (from its diagonal) and position, not just its aspect ratio, so shapes line up across screens. The "export = rectangle over the composition" model already supports this.
 
-## D11. Bicubic patch mesh deferred
+## D11. Bicubic patch mesh deferred (superseded by D43)
 
 - **Why:** it's complex. The draggable color-point mesh (a radial-basis-function field) covers most of the look for Phase 1.
 
@@ -236,3 +236,48 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Xerox (high end, blended in over 0.5–1):** lightness thresholded to 3 tones against the tooth, the color rescaled to it, so hue holds and the grain is light and dark rather than confetti. Black and white stay exact.
 - **Copier marks:** toner specks (0.4% of pixels at 1) and uneven darkening toward the frame edges (up to 35%).
 - **Resolution:** like grain (D4 exception) it is defined per output pixel, so preview and export match at the same size; the export harness runs with every finish on to hold that.
+
+## D37. Planes: seeded torn-paper quads that share the ramp's colors
+
+- **Pattern:** `{ kind: 'planes', colors, count, roughness, seed }`. A seed lays out 4–24 convex quads (count slider), back to front, over a fixed field (x ±1.2, y ±0.6), so a wider frame shows more of the same collage (D4). Angles cluster around a seeded base angle or base + 90°, ±20°, for a cubist feel. Rectangles of aspect 1–3 get their corners jittered into quads. Later planes are smaller, and summed area is about 2× the field.
+- **Colors:** the ramp's stop colors in position order (the editor keeps one set of stops for linear, radial, conic and planes). Positions and blends are ignored, so the stop strip and blend menu are hidden. One color is the background, and no plane takes the color of the plane right below it.
+- **Per pixel:** the layout is prepared on the CPU and uploaded as uniforms. The shader composites the planes in linear RGB, using each quad's min-edge distance with ~0.75 px antialiasing. Torn edges add value-noise fBm to that distance (up to 0.012 units at roughness 1), and a thin warm paper rim shows inside a torn edge. Noise is only evaluated near an edge.
+- **Blend:** a slider adds up to 0.012 units (about 13 px at 1080p) to the edge half width, linear in the slider, so the lines blur slightly while the planes stay sharp. A first version went up to 0.15 and made the whole image look out of focus. The paper rim fades out as 1 − blend.
+- **With the rest:** transform and warp bend the planes. Vignette, print and grain apply. Bands are off for planes, since the colors are already flat. Shuffle re-rolls the seed and count (0.15–0.65) and keeps roughness and blend. The CPU reference matches within 1 level unwarped; with a warp, a few antialiased edge pixels differ by up to ~4 (fp32 coordinates against a hard edge).
+
+## D38. Mesh shuffle: less even, more defined
+
+- **Why:** every shuffle laid out an equally even scatter of similar-sized points with soft blends (best-candidate with 10 tries, radius 0.5–0.85 of the spacing, blend 0.1–0.5). The positions changed, but the compositions all looked alike and always vague.
+- **Change:** each shuffle draws 3–10 best-candidate tries (looser to more even), radii of 0.4–1.05 of the spacing, and with probability 0.4 one dominant point at 1.6× size. Blend is drawn from 0.1–0.8. The no-clumping test (no two points closer than 0.2 spacings) still holds.
+
+## D39. The main shuffle randomizes the style too
+
+- **Why:** shuffle only re-rolled the active gradient type, so it never showed what else the app can do. The user wants it to be a full randomize and a quick showcase.
+- **Change:** `shuffleDesign` takes `style` (used together with `layout`): on its own random stream, it picks the pattern kind (mesh 35%, planes 30%, linear 15%, radial and conic 10% each) and the finishes (vignette 30%, print 25%, bands 15% and never on planes), plus planes roughness and blend. The colors carry over to the new kind (ramps hold up to 8). The main shuffle sets `style` unless layout is locked, so "keep layout" also keeps the kind and finishes. Color-only shuffles and the opening shuffle keep the kind (the app still opens on a mesh). Grain and the transform are never shuffled.
+- **Sizes:** the size menu lists resolutions only, grouped into desktop, mobile (current iPhone and Android natives) and tablet, with no device names. The default is 3840 × 2160.
+
+## D41. Noise and cells: ramp shapes driven by noise
+
+- **Kinds:** `noise` and `cells` are ramp shapes like linear, radial and conic. They share the stops (and so the palette and the stop editor) and add `scale` (0.6–6 features per image height, exponential) and `seed` to the ramp. The angle is unused and hidden.
+- **Noise:** two styles (`noiseStyle`). **Contour** (default): t = ½ − ½·cos(2π · 3 · fBm), with 3 octaves at half the frequency, so the ramp repeats in mirrored stripes along the noise's height lines (topographic, psychedelic) with no seams. **Ridged:** t = 0.5 + 0.6 · ridged fBm (3 octaves): veins and creases. A first version, plain cloudy fBm, was judged mid: a soft mesh with a warp already looks like that. Smooth and billow variants were tried on a sheet and dropped. A layout shuffle picks the style 50/50.
+- **Cells:** Worley cells using the warp's Voronoi search. Each cell takes a hashed spot on the ramp (0.75 of its length), shaded by the distance to the cell's feature point (0.45 per cell unit). At a border both cells meet at their mean over ~0.75 output px, so edges are crisp but antialiased. Cells with similar spots show a soft crease where they meet.
+- **Shader:** the noise library is shared with the warps (`NOISE_LIB`, `NOISE_CELLS`), with the warp's uniforms fenced to warp variants. The CPU reference reuses `noise.ts` and the Voronoi search in `warp.ts`.
+- **Shuffle:** a layout shuffle re-rolls seed and scale (0.1–0.6). The style shuffle picks noise 10% and cells 8% of the time.
+
+## D42. Aurora: flowing ribbons over a dark sky
+
+- **Pattern:** `{ kind: 'aurora', colors, count, glow, seed }` with colors from the ramp's stops (like planes). The darkest color, dimmed to 35% in linear RGB, is the sky. The others take turns as 2–6 ribbons.
+- **A ribbon:** its center line is a seeded height (spread over ±0.32) plus a tilt plus fBm along x. It glows with a crisp Gaussian lower edge (¼ of the fade) and an exponential upward fade of 0.025–0.13 units (glow slider). Vertical curtain rays come from fBm stretched along y, cutting up to 45%. A coarse mask fades each curtain in and out along its length, leaving dark gaps.
+- **Blend:** ribbons are screen-blended in linear RGB, so overlaps glow without passing 1. Bands are off, as for planes.
+- **Tuning:** a first version with wider fades (up to 0.22), no mask and finer rays (30) filled the whole sky and read as layered hills with grainy streaks.
+- **Shuffle:** a layout shuffle re-rolls seed, ribbon count (0.1–0.8) and glow (0.2–0.8). The style shuffle picks aurora 9% of the time.
+
+## D43. Grid mesh: a bendable grid of colored nodes (revisits D11)
+
+- **Pattern:** `{ kind: 'grid', rows, cols, nodes, rest }`, with 2–5 rows and 2–5 columns, nodes row-major from the bottom, and a rest grid that spans ±rest (the frame at creation). Each node's offset from its rest spot bends the grid.
+- **Math:** the forward map is F(q) = q + D(q), where D interpolates the node offsets with Catmull-Rom (tensor product, indices clamped, so D is constant beyond the rest rectangle). A pixel p is pulled back by 8 Newton steps on F(q) = p, starting at q = p. Below a Jacobian determinant of 1e-3 the step is a plain fixed-point one, and steps are capped at 0.25 units. The color is the nodes' Oklab colors interpolated at q (Catmull-Rom), then the mesh's gamut clip. No patch inversion and no patch search: exact wherever the grid doesn't fold, and finite and tile-independent where it does.
+- **Folds are prevented in the editor:** edge nodes slide only along their edge (corners stay put, so the grid always spans its frame), and every node stays inside its row and column neighbors with an 8% margin. Shuffle jitters nodes by at most 35% of a cell. A deliberately folded grid renders chaotically (Newton picks among several pull-backs), so tests check it only for tile independence.
+- **Curves:** auto-smooth (Catmull-Rom); no tangent handles (user choice).
+- **Editing:** node handles plus the bent grid lines (the forward map sampled 12 times per segment) on an overlay; drag or arrow-nudge nodes. Rows and columns are sliders; resizing places the new nodes where their rest spots land on the current grid and gives them the color there, so the picture stays put.
+- **Colors:** the grid has its own palette owner (`grid`, next to mesh and ramp), since up to 25 nodes don't fit the 8 stops. A new palette has up to 5 colors, dealt over the nodes so each differs from its left and lower neighbors where it can. A palette from an image gives each node the image color nearest to it on screen.
+- **Shuffle:** a layout shuffle picks 3–4 rows and columns and jitters the nodes over the frame. The style shuffle picks grid 14% of the time.

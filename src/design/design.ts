@@ -22,8 +22,11 @@ export interface ColorStop {
   blend: BlendMode;
 }
 
+/** Noise looks: topographic stripes along the noise's height lines, or ridged veins. */
+export type NoiseStyle = 'contour' | 'ridged';
+
 /** How a ramp gradient maps the frame to the ramp (src/engine/ramp-shape.ts). */
-export type RampShape = 'linear' | 'radial' | 'conic';
+export type RampShape = 'linear' | 'radial' | 'conic' | 'noise' | 'cells';
 
 /** Stops along a ramp, laid over the frame as a linear, radial or conic gradient. */
 export interface RampGradient {
@@ -35,6 +38,12 @@ export interface RampGradient {
   angle: number;
   /** Sorted by position. At least 2 stops in the editor (the renderer accepts 1), at most MAX_STOPS. */
   stops: ColorStop[];
+  /** Noise and cells: feature size, [0, 1]; 0 = large, 1 = small. Missing = 0.35. */
+  scale?: number;
+  /** Noise and cells: uint32 seed. Missing = 1. */
+  seed?: number;
+  /** Noise only. Missing = contour. */
+  noiseStyle?: NoiseStyle;
 }
 
 /**
@@ -65,7 +74,68 @@ export interface PointMesh {
   sharpness: number;
 }
 
-export type BasePattern = RampGradient | PointMesh;
+/**
+ * Planes (D37): a collage of seeded, overlapping flat-color quads with torn
+ * edges over a background fill (src/engine/planes.ts). The layout comes from
+ * the seed alone; the colors are the ramp's stop colors (positions unused).
+ */
+export interface PlanesPattern {
+  kind: 'planes';
+  /** 1..MAX_STOPS palette colors; each plane and the background take one. */
+  colors: Oklch[];
+  /** How many planes, [0, 1]: a few large ones at 0, many smaller ones at 1. */
+  count: number;
+  /** Torn-edge roughness, [0, 1]: 0 = clean cut edges. */
+  roughness: number;
+  /** Edge softness, [0, 1]: 0 = crisp, 1 = planes melt into each other. */
+  blend: number;
+  /** uint32 seed of the layout and the color order. */
+  seed: number;
+}
+
+/**
+ * Aurora (D42): glowing ribbons flowing across a dark sky
+ * (src/engine/aurora.ts). The darkest color, dimmed, is the sky; the others
+ * are the ribbons. Colors are the ramp's stop colors.
+ */
+export interface AuroraPattern {
+  kind: 'aurora';
+  colors: Oklch[];
+  /** How many ribbons, [0, 1]: 2 at 0, 6 at 1. */
+  count: number;
+  /** Ribbon width, [0, 1]: thin bright lines ↔ wide soft curtains. */
+  glow: number;
+  seed: number;
+}
+
+/** A node of the grid mesh: where it sits (composition coords) and its color. */
+export interface GridNode {
+  x: number;
+  y: number;
+  color: Oklch;
+}
+
+/**
+ * Grid mesh (D43): rows × cols colored nodes on a bendable grid
+ * (src/engine/grid.ts). The rest grid is the rectangle ±rest centered at the
+ * origin, evenly divided; each node's offset from its rest spot bends the
+ * grid, and colors blend smoothly between nodes (Catmull-Rom, in Oklab).
+ */
+export interface GridMesh {
+  kind: 'grid';
+  /** MIN_GRID..MAX_GRID each. */
+  rows: number;
+  cols: number;
+  /** Row-major, bottom row first: node (r, c) is nodes[r * cols + c]. */
+  nodes: GridNode[];
+  /** Half width and height of the rest grid, composition units. */
+  rest: [number, number];
+}
+
+export const MIN_GRID = 2;
+export const MAX_GRID = 5;
+
+export type BasePattern = RampGradient | PointMesh | PlanesPattern | AuroraPattern | GridMesh;
 
 /**
  * Coordinate distortion applied before the base pattern (D23). Experimental

@@ -1,18 +1,20 @@
-#ifdef WARP_ANY
-// Warp noise library; src/engine/noise.ts is the same math in doubles.
-// The seed only ever enters through hash keys (D2).
+#if defined(WARP_ANY) || defined(NOISE_LIB)
+// Noise library of the warps and the noise/cells patterns; src/engine/noise.ts
+// is the same math in doubles. The seed only ever enters through hash keys (D2).
 
+const float TAU = 6.283185307179586;
+const float NOISE_MAX = 1.0e4; // cell coords stay well inside int and fp32 range
+
+#ifdef WARP_ANY
 uniform uint u_warpSeed;
 uniform float u_warpFreq;     // cycles per image height
 uniform float u_warpAmp;      // shape-specific magnitude (src/engine/warp.ts TUNING)
 uniform vec4 u_warpParam[WARP_PARAM_SLOTS]; // seeded per-shape parameters
 
-const float TAU = 6.283185307179586;
-const float NOISE_MAX = 1.0e4; // cell coords stay well inside int and fp32 range
-
 uint warpKey(uint salt) {
   return u_warpSeed ^ (salt * 0x9E3779B9u);
 }
+#endif
 
 uint octaveKey(uint key, int i) {
   return key + uint(i) * 0x632BE5ABu;
@@ -48,7 +50,7 @@ vec3 simplex(vec2 p, uint key) {
   return 70.0 * n;
 }
 
-#ifdef WARP_RIDGED
+#if defined(WARP_RIDGED) || defined(NOISE_RIDGED)
 // Ridged simplex fBm, ≈ [-1, 1]: each octave is (1 - |n|)² (src/engine/noise.ts ridged).
 float ridged(vec2 p, uint key, int octaves) {
   float sum = 0.0;
@@ -76,7 +78,7 @@ float fbm(vec2 p, uint key, int octaves) {
   return sum * (1.0 / (2.0 - pow(0.5, float(octaves - 1))));
 }
 
-#if defined(WARP_WORLEY) || defined(WARP_VORONOI)
+#if defined(WARP_WORLEY) || defined(WARP_VORONOI) || defined(NOISE_CELLS)
 // Jittered feature point of a Worley/Voronoi cell, cell units.
 vec2 cellFeature(ivec2 c, uint key) {
   return vec2(c) + 0.1 + 0.8 * hash2(c, key);

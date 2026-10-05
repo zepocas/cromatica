@@ -215,3 +215,57 @@ describe('shuffleDesign', () => {
     expect(none).toBeLessThan(0.09);
   });
 });
+
+describe('style shuffle (pattern kind and finishes)', () => {
+  const style = (seed: number, colors = true) => ({ colors, layout: true, style: true, seed });
+  const colorsOf = (d: Design) => {
+    const b = d.base;
+    if (b.kind === 'mesh') return b.points.map((p) => p.color);
+    if (b.kind === 'planes' || b.kind === 'aurora') return b.colors;
+    if (b.kind === 'grid') return b.nodes.map((n) => n.color);
+    return b.stops.map((s) => s.color);
+  };
+
+  it('picks every pattern kind, and finishes on and off', () => {
+    const kinds = new Set<string>();
+    let printed = 0;
+    let banded = 0;
+    for (let s = 0; s < 200; s++) {
+      const d = shuffled(meshDesign, style(s));
+      kinds.add(d.base.kind);
+      if (d.finish!.print > 0) printed++;
+      if (d.finish!.bands > 0) banded++;
+      if (d.base.kind === 'planes' || d.base.kind === 'aurora') expect(d.finish!.bands).toBe(0);
+    }
+    expect(kinds).toEqual(new Set(['mesh', 'grid', 'linear', 'radial', 'conic', 'noise', 'cells', 'planes', 'aurora']));
+    expect(printed).toBeGreaterThan(20);
+    expect(printed).toBeLessThan(100);
+    expect(banded).toBeGreaterThan(5);
+  });
+
+  it('keeps the colors across a kind change when colors are locked', () => {
+    for (let s = 0; s < 50; s++) {
+      for (const d of [meshDesign, linearDesign]) {
+        const out = shuffled(d, style(s, false));
+        const before = colorsOf(d);
+        const after = colorsOf(out);
+        if (out.base.kind === 'grid') {
+          // The grid deals the colors over its nodes: every node takes one of them.
+          const old = new Set(before.map((c) => c.join(',')));
+          for (const c of after) expect(old.has(c.join(','))).toBe(true);
+        } else {
+          // Ramps hold at most MAX_STOPS colors; a single color is doubled into two stops.
+          expect(after.slice(0, Math.min(before.length, 8))).toEqual(before.slice(0, 8));
+        }
+      }
+    }
+  });
+
+  it('is off without layout, and keeps the kind then', () => {
+    for (let s = 0; s < 20; s++) {
+      const d = shuffled(meshDesign, { colors: true, layout: false, style: true, seed: s });
+      expect(d.base.kind).toBe('mesh');
+      expect(d.finish).toEqual(meshDesign.finish);
+    }
+  });
+});

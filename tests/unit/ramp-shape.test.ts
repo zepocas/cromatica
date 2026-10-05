@@ -38,3 +38,46 @@ describe('rampT', () => {
     }
   });
 });
+
+describe('noise and cells', () => {
+  const field = (kind: 'noise' | 'cells', seed = 3, scale = 0.4): RampGradient => ({
+    kind,
+    angle: 0,
+    stops: [],
+    seed,
+    scale,
+  });
+  const sample = (r: ReturnType<typeof prepareRampShape>) =>
+    Array.from({ length: 4000 }, (_, i) => rampT(r, ((i % 80) / 80) * 1.7 - 0.85, Math.floor(i / 80) / 50 - 0.5));
+
+  it('ridged noise differs from contour noise', () => {
+    const contour = sample(prepareRampShape(field('noise'), frame, undefined));
+    const ridgedT = sample(prepareRampShape({ ...field('noise'), noiseStyle: 'ridged' }, frame, undefined));
+    expect(ridgedT).not.toEqual(contour);
+    expect(Math.max(...ridgedT) - Math.min(...ridgedT)).toBeGreaterThan(0.6);
+  });
+
+  for (const kind of ['noise', 'cells'] as const) {
+    it(`${kind} covers much of the ramp, stays in [0, 1] and follows the seed`, () => {
+      const t = sample(prepareRampShape(field(kind), frame, undefined));
+      expect(Math.min(...t)).toBeGreaterThanOrEqual(0);
+      expect(Math.max(...t)).toBeLessThanOrEqual(1);
+      expect(Math.max(...t) - Math.min(...t)).toBeGreaterThan(0.6);
+      expect(sample(prepareRampShape(field(kind, 4), frame, undefined))).not.toEqual(t);
+      expect(sample(prepareRampShape(field(kind), frame, undefined))).toEqual(t);
+    });
+  }
+
+  it('noise is continuous', () => {
+    const r = prepareRampShape(field('noise'), frame, undefined);
+    for (let i = 0; i < 1000; i++) {
+      expect(Math.abs(rampT(r, i * 1e-3, 0.1) - rampT(r, (i + 1) * 1e-3, 0.1))).toBeLessThan(0.05);
+    }
+  });
+
+  it('a larger scale means smaller features', () => {
+    const big = prepareRampShape(field('cells', 3, 0), frame, undefined);
+    const small = prepareRampShape(field('cells', 3, 1), frame, undefined);
+    expect(small.freq).toBeCloseTo(10 * big.freq, 9);
+  });
+});
