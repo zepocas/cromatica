@@ -27,6 +27,13 @@ const L_EPS = 1e-3;
  */
 const GRAY_CHROMA = 0.02;
 
+/**
+ * Near-neutral anchors (cream, near-black): very light or dark and nearly gray.
+ * Their chroma is left alone, so a louder palette doesn't tint them.
+ */
+const ANCHOR = { chroma: 0.045, light: 0.9, dark: 0.28 } as const;
+const isAnchor = ([l, c]: Oklch) => c < ANCHOR.chroma && (l >= ANCHOR.light || l <= ANCHOR.dark);
+
 const clampL = (l: number) => Math.min(1 - L_EPS, Math.max(L_EPS, l));
 const logit = (l: number) => Math.log(clampL(l) / (1 - clampL(l)));
 const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
@@ -34,7 +41,7 @@ const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
 function applyShift(c: Oklch, s: PaletteShift, chromaAdd: number): Oklch {
   const l = sigmoid(logit(c[0]) + s.lightness);
   const h = normalizeDegrees(c[2] + s.hue);
-  const scaled = c[1] >= GRAY_CHROMA ? c[1] * s.chroma : c[1] + chromaAdd;
+  const scaled = isAnchor(c) ? c[1] : c[1] >= GRAY_CHROMA ? c[1] * s.chroma : c[1] + chromaAdd;
   return [l, Math.max(0, Math.min(scaled, maxChroma(l, h))), h];
 }
 
