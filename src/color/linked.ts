@@ -45,9 +45,10 @@ export function shiftPalette(colors: readonly Oklch[], shift: PaletteShift): Okl
 
 /**
  * Color `index` is being changed to `next`: return the whole palette moved by
- * the same shift. `next` itself is kept exactly as given.
+ * the same shift. `next` itself is kept exactly as given. With `oneHue`
+ * (monochrome), every color that isn't gray takes `next`'s hue exactly.
  */
-export function relinkPalette(colors: readonly Oklch[], index: number, next: Oklch): Oklch[] {
+export function relinkPalette(colors: readonly Oklch[], index: number, next: Oklch, oneHue = false): Oklch[] {
   const prev = colors[index];
   if (!prev) return colors.slice();
   const shift: PaletteShift = {
@@ -57,7 +58,12 @@ export function relinkPalette(colors: readonly Oklch[], index: number, next: Okl
     chroma: prev[1] >= GRAY_CHROMA ? next[1] / prev[1] : 1,
   };
   const chromaAdd = prev[1] < GRAY_CHROMA ? next[1] - prev[1] : 0;
-  return colors.map((c, i) => (i === index ? ([next[0], next[1], next[2]] as Oklch) : applyShift(c, shift, chromaAdd)));
+  return colors.map((c, i) => {
+    if (i === index) return [next[0], next[1], next[2]] as Oklch;
+    const [l, chroma, h] = applyShift(c, shift, chromaAdd);
+    if (!oneHue || next[1] < GRAY_CHROMA || chroma < GRAY_CHROMA) return [l, chroma, h] as Oklch;
+    return [l, Math.min(chroma, maxChroma(l, next[2])), next[2]] as Oklch;
+  });
 }
 
 /** A random linked shift: a new take on the palette with the same relationships. */

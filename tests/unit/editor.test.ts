@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { hexToOklch } from '../../src/color/hex';
 import type { Oklch } from '../../src/color/types';
+import { shortestTurn } from '../../src/math';
 import { EditorState } from '../../src/ui/editor.svelte';
 import { emptiestSpot, median, widestGapCenter } from '../../src/ui/placement';
 
@@ -128,6 +130,19 @@ describe('palette steering and edits', () => {
     e.palette.linked = true;
     e.palette.setColor(0, [before[0][0], before[0][1], before[0][2] + 80]);
     expect(colorsOf(e)[1]).not.toEqual(before[1]);
+  });
+
+  it('a linked edit puts a monochrome palette on the edited hue, its cream included', () => {
+    const red = hexToOklch('#C0392B');
+    for (let k = 0; k < 40; k++) {
+      const e = fresh();
+      e.palette.setRule('monochrome');
+      e.palette.linked = true;
+      const i = colorsOf(e).findIndex((c) => c[1] > 0.06);
+      if (i < 0) continue;
+      e.palette.setColor(i, red);
+      for (const [, c, h] of colorsOf(e)) if (c >= 0.02) expect(Math.abs(shortestTurn(h, red[2]))).toBeLessThan(0.5);
+    }
   });
 
   it('shuffling the order keeps the same colors in a new arrangement', () => {

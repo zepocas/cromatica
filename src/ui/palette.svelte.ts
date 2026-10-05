@@ -147,7 +147,7 @@ export class PaletteEditor {
   setColor(i: number, next: Oklch): void {
     const items = this.host.colorItems();
     if (!items[i]) return;
-    if (this.linked) this.setAll(relinkPalette(this.colors, i, next));
+    if (this.linked) this.setAll(relinkPalette(this.colors, i, next, this.info?.rule === 'monochrome'));
     else items[i].color = next;
   }
 
