@@ -5,6 +5,7 @@
   import { readAutosave, writeAutosave } from './ui/autosave';
   import ControlPanel from './ui/ControlPanel.svelte';
   import { EditorState } from './ui/editor.svelte';
+  import { Favourites } from './ui/favourites.svelte';
   import { History } from './ui/history.svelte';
   import { isTypingTarget } from './ui/keys';
   import MeshOverlay from './ui/MeshOverlay.svelte';
@@ -19,6 +20,7 @@
   const initial = new EditorState({ shuffle: !builtIn && !saved });
   if (saved) initial.setDesign(saved);
   const history = new History(initial.snapshot());
+  const favourites = new Favourites();
   // Class instance (not proxied); $state only so it can be bound down the panel tree.
   let editor = $state(initial);
   let presetId = $state(DEFAULT_PRESET_ID);
@@ -170,6 +172,7 @@
 </Preview>
 <ControlPanel
   bind:editor
+  {favourites}
   bind:presetId
   bind:customWidth
   bind:customHeight

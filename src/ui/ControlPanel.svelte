@@ -4,11 +4,14 @@
   import ColorsSection from './ColorsSection.svelte';
   import type { EditorState } from './editor.svelte';
   import ExportBar from './ExportBar.svelte';
-  import { isTypingTarget } from './keys';
+  import type { Favourites } from './favourites.svelte';
+  import FavouritesSection from './FavouritesSection.svelte';
+  import { isFormControl, isHandle, isTypingTarget } from './keys';
   import PatternSection from './PatternSection.svelte';
 
   interface Props {
     editor: EditorState;
+    favourites: Favourites;
     presetId: string;
     customWidth: number;
     customHeight: number;
@@ -30,6 +33,7 @@
 
   let {
     editor = $bindable(),
+    favourites,
     presetId = $bindable(),
     customWidth = $bindable(),
     customHeight = $bindable(),
@@ -47,13 +51,18 @@
     oncancel,
   }: Props = $props();
 
-  /** App shortcuts: Space shuffles, [ and ] step through warp shapes. */
+  const favourite = $derived(favourites.find(editor.design));
+
+  /** App shortcuts: Space shuffles, ← and → step through recent shuffles, [ and ] through warp shapes. */
   function onWindowKeyDown(e: KeyboardEvent) {
     if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
     if (e.key === ' ') {
       // Also stops a focused button from being clicked by the same key.
       e.preventDefault();
       if (!e.repeat) editor.shuffle();
+    } else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !isFormControl(e.target) && !isHandle(e.target)) {
+      e.preventDefault();
+      editor.stepReel(e.key === 'ArrowRight' ? 1 : -1);
     } else if (e.key === '[' || e.key === ']') {
       e.preventDefault();
       editor.cycleWarpShape(e.key === ']' ? 1 : -1);
@@ -82,9 +91,21 @@
     <PatternSection bind:editor bind:presetId bind:customWidth bind:customHeight {output} />
     <AdjustSection bind:editor />
     <ColorsSection bind:editor />
+    <FavouritesSection {favourites} current={favourite} onopen={(d) => editor.setDesign(d)} />
   {/if}
 
-  <ExportBar {editor} bind:format compact={collapsed} {exporting} {progress} {error} {onexport} {oncancel} />
+  <ExportBar
+    {editor}
+    {favourites}
+    {favourite}
+    bind:format
+    compact={collapsed}
+    {exporting}
+    {progress}
+    {error}
+    {onexport}
+    {oncancel}
+  />
 </aside>
 
 <style>

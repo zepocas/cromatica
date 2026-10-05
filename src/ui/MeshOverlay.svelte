@@ -1,7 +1,7 @@
 <script lang="ts">
   import { oklchToHex } from '../color/hex';
   import type { EditorState } from './editor.svelte';
-  import { isFormControl } from './keys';
+  import { isFormControl, isHandle } from './keys';
 
   interface Props {
     editor: EditorState;
@@ -81,6 +81,8 @@
       return;
     }
     if (!editor.showHandles) return;
+    // Arrows belong to the shuffle history unless a handle has focus.
+    if (e.key.startsWith('Arrow') && !isHandle(e.target)) return;
     // Nudges follow the screen, whatever the transform.
     const [px, py] = editor.toScreen(editor.point.x, editor.point.y);
     const p = { x: px, y: py };

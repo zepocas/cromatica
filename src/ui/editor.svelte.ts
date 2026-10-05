@@ -38,6 +38,7 @@ import { clamp, normalizeDegrees } from '../math';
 import { paletteFromImage, type ImagePalette } from './image-palette';
 import { PaletteEditor, type PaletteSnapshot } from './palette.svelte';
 import { emptiestSpot, median, widestGapCenter } from './placement';
+import { Reel } from './reel.svelte';
 
 export type PatternKind = BasePattern['kind'];
 export type PlanesLayout = Omit<PlanesPattern, 'kind' | 'colors'>;
@@ -120,6 +121,8 @@ export class EditorState {
     regenerate: (options, seed) => this.applyShuffle(true, false, false, options, seed),
   });
 
+  readonly reel = new Reel<EditorSnapshot>();
+
   /** Opens on a full shuffle of the mesh (palette, layout and warp). */
   constructor(opts: { shuffle?: boolean } = {}) {
     if (opts.shuffle ?? true) this.applyShuffle(true, true);
@@ -162,12 +165,26 @@ export class EditorState {
 
   /** Shuffle everything except the locked parts: a layout shuffle also picks the pattern kind and finishes. */
   shuffle(): void {
-    if (this.canShuffle) this.applyShuffle(!this.colorsLocked, !this.layoutLocked, !this.layoutLocked);
+    if (this.canShuffle)
+      this.reeled(() => this.applyShuffle(!this.colorsLocked, !this.layoutLocked, !this.layoutLocked));
   }
 
   /** New palette only, whatever the locks say. */
   shuffleColors(): void {
-    this.applyShuffle(true, false);
+    this.reeled(() => this.applyShuffle(true, false));
+  }
+
+  /** Step to the previous (-1) or next (1) shuffle; false at either end. */
+  stepReel(direction: -1 | 1): boolean {
+    const s = this.reel.step(direction, this.snapshot());
+    if (s) this.restore(s);
+    return s !== null;
+  }
+
+  private reeled(shuffle: () => void): void {
+    const before = this.snapshot();
+    shuffle();
+    this.reel.push(before, this.snapshot());
   }
 
   private applyShuffle(

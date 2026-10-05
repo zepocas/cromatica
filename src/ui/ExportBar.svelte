@@ -3,9 +3,13 @@
   import Dropdown from './controls/Dropdown.svelte';
   import Toggle from './controls/Toggle.svelte';
   import type { EditorState } from './editor.svelte';
+  import type { Favourite, Favourites } from './favourites.svelte';
 
   interface Props {
     editor: EditorState;
+    favourites: Favourites;
+    /** The favourite the current design matches. */
+    favourite: Favourite | undefined;
     format: ExportFormat;
     /** Collapsed panel: only shuffle and download. */
     compact: boolean;
@@ -16,7 +20,18 @@
     oncancel: () => void;
   }
 
-  let { editor, format = $bindable(), compact, exporting, progress, error, onexport, oncancel }: Props = $props();
+  let {
+    editor,
+    favourites,
+    favourite,
+    format = $bindable(),
+    compact,
+    exporting,
+    progress,
+    error,
+    onexport,
+    oncancel,
+  }: Props = $props();
 
   const percent = $derived(progress && progress.tilesTotal > 0 ? (progress.tilesDone / progress.tilesTotal) * 100 : 0);
 </script>
@@ -53,6 +68,35 @@
         />
       </div>
     {/if}
+    <div class="row">
+      <span>recent</span>
+      <button
+        class="icon"
+        aria-label="Previous shuffle"
+        title="Previous shuffle (←)"
+        disabled={!editor.reel.canBack}
+        onclick={() => editor.stepReel(-1)}>←</button
+      >
+      <span class="count" aria-label="Shuffle {editor.reel.position + 1} of {editor.reel.length}"
+        >{editor.reel.length ? `${editor.reel.position + 1}/${editor.reel.length}` : '–'}</span
+      >
+      <button
+        class="icon"
+        aria-label="Next shuffle"
+        title="Next shuffle (→)"
+        disabled={!editor.reel.canForward}
+        onclick={() => editor.stepReel(1)}>→</button
+      >
+      <span class="spacer"></span>
+      <button
+        class="icon"
+        aria-label={favourite ? 'Remove from favourites' : 'Add to favourites'}
+        aria-pressed={!!favourite}
+        title={favourite ? 'Remove from favourites' : 'Keep in favourites'}
+        onclick={() => (favourite ? favourites.remove(favourite.id) : favourites.add(editor.design))}
+        >{favourite ? '♥' : '♡'}</button
+      >
+    </div>
   {/if}
   <div class="row actions">
     <button
@@ -110,6 +154,10 @@
   kbd {
     font: inherit;
     opacity: 0.6;
+  }
+  .count {
+    color: var(--dim);
+    font-variant-numeric: tabular-nums;
   }
   .spacer {
     flex: 1;
