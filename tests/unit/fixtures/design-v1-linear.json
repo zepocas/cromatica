@@ -1,0 +1,14 @@
+{
+  "engineVersion": 1,
+  "warp": { "shape": "none", "amount": 0, "size": 0.5, "seed": 1 },
+  "grain": { "amount": 0.35, "size": 0 },
+  "base": {
+    "kind": "linear",
+    "angle": 30,
+    "stops": [
+      { "position": 0, "color": [0.2264, 0.1093, 280.42], "blend": "oklab" },
+      { "position": 0.5, "color": [0.6031, 0.2141, 352.9], "blend": "oklab" },
+      { "position": 1, "color": [0.8452, 0.1383, 76.58], "blend": "oklab" }
+    ]
+  }
+}

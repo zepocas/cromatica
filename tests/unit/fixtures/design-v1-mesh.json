@@ -1,0 +1,14 @@
+{
+  "engineVersion": 1,
+  "warp": { "shape": "domain", "amount": 0.3, "size": 0.35, "seed": 1234567 },
+  "grain": { "amount": 0.2, "size": 0 },
+  "transform": { "rotate": 90, "zoom": 1.5, "flipX": true, "flipY": false },
+  "base": {
+    "kind": "mesh",
+    "sharpness": 0.35,
+    "points": [
+      { "x": -0.62, "y": 0.28, "color": [0.2941, 0.1292, 272.93], "radius": 0.45 },
+      { "x": 0.1, "y": 0.32, "color": [0.5881, 0.201, 5.25], "radius": 0.4 }
+    ]
+  }
+}
