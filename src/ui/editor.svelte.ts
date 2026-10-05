@@ -115,6 +115,8 @@ export class EditorState {
   imageStatus = $state('');
   /** Frame aspect (width / height), for clamping drags to the frame. */
   aspect = $state(16 / 9);
+  /** Shown on the main canvas instead of the design while a picker option is hovered; never saved or undone. */
+  preview = $state.raw<Design | null>(null);
 
   readonly palette = new PaletteEditor({
     kind: () => (this.kind === 'mesh' || this.kind === 'grid' ? this.kind : 'ramp'),
@@ -226,6 +228,20 @@ export class EditorState {
     this.finish = { ...(design.finish ?? noFinish) };
     this.transform = { ...(design.transform ?? identityTransform) };
     this.clampSelection();
+  }
+
+  /** The design after `change`, worked out on a copy: this editor is left alone. */
+  designAfter(change: (trial: EditorState) => void): Design {
+    const trial = new EditorState({ shuffle: false });
+    trial.aspect = this.aspect;
+    trial.restore(this.snapshot());
+    change(trial);
+    return trial.design;
+  }
+
+  /** Show what `change` would do on the main canvas; null clears the preview. */
+  previewChange(change: ((trial: EditorState) => void) | null): void {
+    this.preview = change ? this.designAfter(change) : null;
   }
 
   /** Everything undo brings back: every kind's config and the palette's state. */

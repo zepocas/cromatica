@@ -94,3 +94,40 @@ test('more like this: a grid of variations; a pick is one undo step, Esc closes'
   await page.getByRole('button', { name: 'Undo' }).click();
   await expect.poll(async () => (await settled()).equals(before)).toBe(true);
 });
+
+test('pickers: hovering or arrowing through options previews them without an undo step, a click commits', async ({
+  page,
+}) => {
+  await openApp(page);
+  const { settled } = previewProbe(page);
+  const before = await settled();
+  const undo = page.getByRole('button', { name: 'Undo' });
+
+  await page.getByLabel('Gradient', { exact: true }).click();
+  const options = page.locator('[role="option"]');
+  await options.filter({ hasText: 'aurora' }).hover();
+  await expect.poll(async () => (await settled()).equals(before)).toBe(false);
+  await expect(undo).toBeDisabled();
+
+  // Esc closes without committing: the canvas goes back and nothing changed. (The
+  // screenshot hid the panel, which took focus off the dropdown.)
+  await page.getByLabel('Gradient', { exact: true }).focus();
+  await page.keyboard.press('Escape');
+  await expect.poll(async () => (await settled()).equals(before)).toBe(true);
+  await expect(page.getByLabel('Gradient', { exact: true })).toHaveAttribute('data-value', 'mesh');
+
+  // Arrow keys move through the open list and preview each option.
+  await page.getByLabel('Gradient', { exact: true }).focus();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await expect(page.getByLabel('Gradient', { exact: true })).toHaveAttribute('aria-activedescendant', /-1$/);
+  await expect.poll(async () => (await settled()).equals(before)).toBe(false);
+  await page.getByLabel('Gradient', { exact: true }).focus();
+  await page.keyboard.press('Escape');
+
+  await page.getByLabel('Gradient', { exact: true }).click();
+  await options.filter({ hasText: 'aurora' }).click();
+  await expect(page.getByLabel('Gradient', { exact: true })).toHaveAttribute('data-value', 'aurora');
+  await undo.click();
+  await expect(page.getByLabel('Gradient', { exact: true })).toHaveAttribute('data-value', 'mesh');
+});

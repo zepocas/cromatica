@@ -126,6 +126,7 @@
       placeholder="custom"
       options={HARMONY_RULES.map((r) => ({ value: r, label: RULE_LABELS[r] }))}
       onchange={(r) => palette.setRule(r)}
+      onactive={(r) => editor.previewChange(r && r !== palette.info?.rule ? (t) => t.palette.setRule(r) : null)}
     />
     <Toggle
       checked={palette.keep}
@@ -204,7 +205,7 @@
   {/if}
 
   {#snippet more()}
-    <PaletteSettings {palette} selectedHue={colors[selected][2]} />
+    <PaletteSettings {editor} selectedHue={colors[selected][2]} />
     <hr />
     <SelectedColorSettings
       bind:editor

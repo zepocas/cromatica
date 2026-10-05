@@ -80,6 +80,7 @@
       value={editor.kind}
       options={PATTERNS.map((p) => ({ value: p.kind, label: p.label }))}
       onchange={(k) => (editor.kind = k)}
+      onactive={(k) => editor.previewChange(k && k !== editor.kind ? (t) => (t.kind = k) : null)}
     />
   </div>
   <div class="row">
@@ -91,6 +92,7 @@
       value={editor.warp.shape}
       options={WARP_SHAPES.map((s) => ({ value: s, label: WARP_LABELS[s] }))}
       onchange={(s) => (editor.warp.shape = s)}
+      onactive={(s) => editor.previewChange(s && s !== editor.warp.shape ? (t) => (t.warp.shape = s) : null)}
     />
     <button
       class="icon"

@@ -164,7 +164,7 @@
   onpagehide={() => !builtIn && writeAutosave(renderDesign)}
 />
 
-<Preview design={renderDesign} {aspect} paused={exporting} docked={!collapsed}>
+<Preview design={editor.preview ?? renderDesign} {aspect} paused={exporting} docked={!collapsed}>
   {#snippet overlay()}
     {#if exploring}
       <MoreLikeThis
@@ -176,6 +176,8 @@
         }}
         onclose={() => (exploring = false)}
       />
+    {:else if editor.preview}
+      <!-- A picker preview: the handles belong to the design underneath. -->
     {:else if editor.kind === 'mesh'}
       <MeshOverlay {editor} {aspect} />
     {:else if editor.kind === 'grid'}

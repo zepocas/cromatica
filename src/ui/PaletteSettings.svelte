@@ -4,15 +4,17 @@
   import Choice from './controls/Choice.svelte';
   import Dropdown from './controls/Dropdown.svelte';
   import Toggle from './controls/Toggle.svelte';
-  import type { PaletteEditor } from './palette.svelte';
+  import type { EditorState } from './editor.svelte';
 
   interface Props {
-    palette: PaletteEditor;
+    editor: EditorState;
     /** Hue of the selected color, for anchoring the base hue on it. */
     selectedHue: number;
   }
 
-  let { palette, selectedHue }: Props = $props();
+  let { editor, selectedHue }: Props = $props();
+
+  const palette = $derived(editor.palette);
 
   const KEY_OPTIONS: { value: ValueKey; label: string }[] = [
     { value: 'high', label: 'high (light)' },
@@ -41,6 +43,7 @@
     placeholder="custom"
     options={PALETTE_MOODS.map((m) => ({ value: m }))}
     onchange={(m) => palette.setMood(m)}
+    onactive={(m) => editor.previewChange(m && m !== palette.info?.mood ? (t) => t.palette.setMood(m) : null)}
   />
 </div>
 <div class="row">
