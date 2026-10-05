@@ -7,6 +7,7 @@ import {
   MAX_MESH_POINTS,
   MAX_STOPS,
   type AuroraPattern,
+  type GridMesh,
   type PlanesPattern,
   type PointMesh,
 } from '../design/design';
@@ -25,6 +26,7 @@ import {
 } from './ramp-shape';
 import { MAX_PLANES, PLANES_SHADER_CONSTANTS, preparePlanes } from './planes';
 import { AURORA_SHADER_CONSTANTS, MAX_RIBBONS, prepareAurora } from './aurora';
+import { GRID_MAX_STEP, GRID_MIN_DET, GRID_STEPS, MAX_GRID_NODES, prepareGrid } from './grid';
 import { GAMUT_CLIP_STEPS, prepareMesh } from '../color/mesh';
 import { BLUE_NOISE_SIZE, DITHER_CHANNEL_OFFSETS, blueNoiseRanks } from './blue-noise';
 import { prepareFinish, VIGNETTE_INNER } from './finish';
@@ -112,6 +114,16 @@ function auroraUniforms(aurora: AuroraPattern) {
   };
 }
 
+/** Grid uniforms, padded to MAX_GRID_NODES. */
+function gridUniforms(grid: GridMesh) {
+  const g = prepareGrid(grid);
+  const offsets = new Float32Array(MAX_GRID_NODES * 2);
+  const colors = new Float32Array(MAX_GRID_NODES * 3);
+  offsets.set(g.offsets);
+  colors.set(g.colors);
+  return { u_gridSize: [g.cols, g.rows], u_gridRest: [g.hw, g.hh], u_gridOffset: offsets, u_gridColor: colors };
+}
+
 /** Base-pattern variant defines: one of BASE_RAMP (with its shape), BASE_MESH, BASE_PLANES. */
 function baseDefines(base: Design['base']): Defines {
   const kind = base.kind;
@@ -120,9 +132,20 @@ function baseDefines(base: Design['base']): Defines {
     BASE_MESH: kind === 'mesh',
     BASE_PLANES: kind === 'planes',
     BASE_AURORA: kind === 'aurora',
+    BASE_GRID: kind === 'grid',
   };
   if (kind === 'mesh') return { ...defines, MAX_MESH_POINTS, GAMUT_CLIP_STEPS };
   if (kind === 'planes') return { ...defines, ...PLANES_SHADER_CONSTANTS };
+  if (kind === 'grid') {
+    return {
+      ...defines,
+      MAX_GRID_NODES,
+      GAMUT_CLIP_STEPS,
+      GRID_STEPS,
+      GRID_MIN_DET: GRID_MIN_DET.toExponential(),
+      GRID_MAX_STEP: String(GRID_MAX_STEP),
+    };
+  }
   if (kind === 'aurora') return { ...defines, NOISE_LIB: 1, ...AURORA_SHADER_CONSTANTS };
   return {
     ...defines,
@@ -238,6 +261,8 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
         baseUniforms = planesUniforms(base, output);
       } else if (base.kind === 'aurora') {
         baseUniforms = auroraUniforms(base);
+      } else if (base.kind === 'grid') {
+        baseUniforms = gridUniforms(base);
       } else {
         updateRamp(base.stops);
         baseUniforms = {

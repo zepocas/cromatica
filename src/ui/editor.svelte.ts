@@ -19,6 +19,9 @@ import {
   type Finish,
   type Grain,
   type AuroraPattern,
+  type GridMesh,
+  MAX_GRID,
+  MIN_GRID,
   type PlanesPattern,
   type RampGradient,
   type PointMesh,
@@ -26,7 +29,8 @@ import {
   type Warp,
 } from '../design/design';
 import { randomSeed } from '../design/random';
-import { shuffleDesign } from '../design/shuffle';
+import { gridLayout, shuffleDesign } from '../design/shuffle';
+import { evaluateGrid, forwardMap, prepareGrid, restPoint } from '../engine/grid';
 import { prepareRampShape, rampT } from '../engine/ramp-shape';
 import { applyMat2, clampZoom, inverseTransformMatrix, transformMatrix } from '../engine/transform';
 import { warpPoint } from '../engine/warp';
@@ -38,6 +42,13 @@ import { emptiestSpot, median, widestGapCenter } from './placement';
 export type PatternKind = BasePattern['kind'];
 export type PlanesLayout = Omit<PlanesPattern, 'kind' | 'colors'>;
 export type AuroraLayout = Omit<AuroraPattern, 'kind' | 'colors'>;
+
+/** A 3 × 3 grid over a 16:9 frame in the default colors (the opening shuffle replaces it). */
+function defaultGrid(): GridMesh {
+  const colors = defaultMesh.points.map((p) => p.color);
+  const nodes = gridLayout(null, 3, 3, 16 / 9).map((n, i) => ({ ...n, color: colors[i % colors.length] }));
+  return { kind: 'grid', rows: 3, cols: 3, nodes, rest: [8 / 9, 0.5] };
+}
 
 /** Point size limits, in screen (composition) units: radius × zoom. */
 export const MIN_RADIUS = 0.05;
@@ -70,6 +81,7 @@ export class EditorState {
   planes = $state<PlanesLayout>({ count: 0.4, roughness: 0.5, blend: 0, seed: 1 });
   /** Aurora layout; its colors are the ramp's stops. */
   aurora = $state<AuroraLayout>({ count: 0.5, glow: 0.5, seed: 1 });
+  grid = $state<GridMesh>(defaultGrid());
   warp = $state<Warp>({ ...defaultWarp });
   grain = $state<Grain>({ ...defaultGrain });
   finish = $state<Finish>({ ...noFinish });
@@ -78,6 +90,8 @@ export class EditorState {
   colorsLocked = $state(false);
   layoutLocked = $state(false);
   selectedPoint = $state(0);
+  /** Index into grid.nodes. */
+  selectedNode = $state(0);
   /** Index into linear.stops (user order, not position order). */
   selectedStop = $state(0);
   showHandles = $state(true);
@@ -87,7 +101,7 @@ export class EditorState {
   aspect = $state(16 / 9);
 
   readonly palette = new PaletteEditor({
-    kind: () => (this.kind === 'mesh' ? 'mesh' : 'ramp'),
+    kind: () => (this.kind === 'mesh' || this.kind === 'grid' ? this.kind : 'ramp'),
     colorItems: () => this.colorItems,
     regenerate: (options, seed) => this.applyShuffle(true, false, false, options, seed),
   });
@@ -102,6 +116,8 @@ export class EditorState {
     let base: BasePattern;
     if (this.kind === 'mesh') {
       base = $state.snapshot(this.mesh) as PointMesh;
+    } else if (this.kind === 'grid') {
+      base = $state.snapshot(this.grid) as GridMesh;
     } else if (this.kind === 'planes' || this.kind === 'aurora') {
       const stops = ($state.snapshot(this.ramp.stops) as ColorStop[]).sort((a, b) => a.position - b.position);
       const colors = stops.map((s) => s.color);
@@ -157,6 +173,9 @@ export class EditorState {
       const { kind: _, colors, ...layout } = base;
       this.planes = layout;
       this.setRampColors(colors);
+    } else if (base.kind === 'grid') {
+      this.grid = base;
+      this.selectedNode = Math.min(this.selectedNode, base.nodes.length - 1);
     } else if (base.kind === 'aurora') {
       const { kind: _, colors, ...layout } = base;
       this.aurora = layout;
@@ -257,21 +276,26 @@ export class EditorState {
 
   // ---- Colors: mesh points or linear stops, whichever is active --------------
 
+  /** The grid's node count is set by its rows and columns, not by adding colors. */
   get canAddColor(): boolean {
+    if (this.kind === 'grid') return false;
     return this.kind === 'mesh' ? this.canAddPoint : this.ramp.stops.length < MAX_STOPS;
   }
 
   get canRemoveColor(): boolean {
+    if (this.kind === 'grid') return false;
     return this.kind === 'mesh' ? this.canRemovePoint : this.ramp.stops.length > MIN_STOPS;
   }
 
-  /** Points or stops of the active pattern, each with a `color`. */
+  /** Points, nodes or stops of the active pattern, each with a `color`. */
   private get colorItems(): { color: Oklch }[] {
+    if (this.kind === 'grid') return this.grid.nodes;
     return this.kind === 'mesh' ? this.mesh.points : this.ramp.stops;
   }
 
   /** Mesh: a point in the emptiest spot of the frame. Linear: a stop in the widest gap. */
   addColor(): void {
+    if (this.kind === 'grid') return;
     if (this.kind === 'mesh') {
       if (!this.canAddPoint) return;
       const points = this.mesh.points.map((p) => this.toScreen(p.x, p.y));
@@ -282,6 +306,7 @@ export class EditorState {
   }
 
   removeColor(i: number): void {
+    if (this.kind === 'grid') return;
     if (this.kind === 'mesh') this.removePoint(i);
     else this.removeStop(i);
   }
@@ -316,9 +341,22 @@ export class EditorState {
         return { x, y, radius, color: colors[i] };
       });
       this.selectedPoint = 0;
+    } else if (this.kind === 'grid') {
+      // Each node takes the image color that sits nearest to it on screen.
+      for (const node of this.grid.nodes) {
+        const [x, y] = this.toScreen(node.x, node.y);
+        let best = 0;
+        geo.forEach((g, i) => {
+          if (Math.hypot(g.x - x, g.y - y) < Math.hypot(geo[best].x - x, geo[best].y - y)) best = i;
+        });
+        node.color = [...colors[best]];
+      }
     } else {
       const shape = prepareRampShape(
-        { ...this.ramp, kind: this.kind === 'planes' || this.kind === 'aurora' ? 'linear' : this.kind },
+        {
+          ...this.ramp,
+          kind: this.kind === 'planes' || this.kind === 'aurora' ? 'linear' : (this.kind as RampGradient['kind']),
+        },
         { width: this.aspect, height: 1 },
         this.transform,
       );
@@ -351,6 +389,58 @@ export class EditorState {
     stops.splice(i, 1);
     if (this.selectedStop >= i && this.selectedStop > 0) this.selectedStop--;
     this.selectedStop = Math.min(this.selectedStop, stops.length - 1);
+  }
+
+  // ---- Grid nodes -----------------------------------------------------------
+
+  /** Row and column of node i. */
+  nodeCell(i: number): [row: number, col: number] {
+    return [Math.floor(i / this.grid.cols), i % this.grid.cols];
+  }
+
+  /**
+   * Move node i to screen (x, y). Edge nodes slide along their edge (corners
+   * stay put), so the grid always spans its frame, and each node stays inside
+   * its neighbors along its row and column, so the grid can't fold.
+   */
+  moveNode(i: number, x: number, y: number): void {
+    const g = this.grid;
+    const node = g.nodes[i];
+    if (!node) return;
+    const [r, c] = this.nodeCell(i);
+    let [px, py] = this.toPattern(x, y);
+    const [rx, ry] = restPoint(g, r, c);
+    const gapX = (2 * g.rest[0]) / (g.cols - 1);
+    const gapY = (2 * g.rest[1]) / (g.rows - 1);
+    const margin = 0.08;
+    if (c === 0 || c === g.cols - 1) px = rx;
+    else px = clamp(px, g.nodes[i - 1].x + margin * gapX, g.nodes[i + 1].x - margin * gapX);
+    if (r === 0 || r === g.rows - 1) py = ry;
+    else py = clamp(py, g.nodes[i - g.cols].y + margin * gapY, g.nodes[i + g.cols].y - margin * gapY);
+    node.x = px;
+    node.y = py;
+  }
+
+  /**
+   * New size, same picture: the new nodes sit where their rest spots land on
+   * the current grid and take the color there.
+   */
+  setGridSize(rows: number, cols: number): void {
+    rows = clamp(Math.round(rows), MIN_GRID, MAX_GRID);
+    cols = clamp(Math.round(cols), MIN_GRID, MAX_GRID);
+    const g = $state.snapshot(this.grid) as GridMesh;
+    if (rows === g.rows && cols === g.cols) return;
+    const prepared = prepareGrid(g);
+    const resized = { ...g, rows, cols };
+    const nodes = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const [x, y] = forwardMap(prepared, ...restPoint(resized, r, c));
+        nodes.push({ x, y, color: oklabToOklch(evaluateGrid(prepared, x, y)) });
+      }
+    }
+    this.grid = { ...resized, nodes };
+    this.selectedNode = Math.min(this.selectedNode, nodes.length - 1);
   }
 
   // ---- Mesh points ----------------------------------------------------------

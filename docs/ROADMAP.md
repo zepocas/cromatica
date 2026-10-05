@@ -248,6 +248,7 @@ Each milestone uses the same structure:
   - Planes built (D37): count, torn and a new-layout button. It uses the ramp's colors, works with warps and finishes, and has contact sheets in `sheets.spec.ts`. Still to do: tune by eye, and possibly Voronoi-style cells as a second planes layout.
   - fBm noise fields and Worley cells built as the `noise` and `cells` gradient types (D41).
   - Aurora ribbons built as the `aurora` gradient type (D42).
+  - Grid Bézier mesh built as the `grid` gradient type (D43): 2–5 × 2–5 draggable nodes, auto-smooth curves, a fold guard in the editor. Left for M5: 3 good reference designs per pattern.
 
 ### M6 — Saving
 

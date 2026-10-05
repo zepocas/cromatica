@@ -130,3 +130,29 @@ export const planesDesign = (count: number, roughness: number, blend = 0, seed =
     seed,
   },
 });
+
+/** A rows × cols grid over a 16:9 frame; `bend` moves interior nodes in a swirl, edge nodes along their edge. */
+export function gridDesign(rows: number, cols: number, bend: number, colors: Oklch[]): Design {
+  const hw = 16 / 9 / 2;
+  const nodes = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const x0 = -hw + (2 * hw * c) / (cols - 1);
+      const y0 = -0.5 + r / (rows - 1);
+      const interiorX = c > 0 && c < cols - 1;
+      const interiorY = r > 0 && r < rows - 1;
+      const dx = interiorX ? bend * 0.25 * Math.sin(3 * y0 + c) : 0;
+      const dy = interiorY ? bend * 0.15 * Math.cos(2 * x0 + r) : 0;
+      nodes.push({ x: x0 + dx, y: y0 + dy, color: colors[(r * cols + c) % colors.length] });
+    }
+  }
+  return { engineVersion: 1, warp: noWarp, grain: noGrain, base: { kind: 'grid', rows, cols, nodes, rest: [hw, 0.5] } };
+}
+
+export const gridColors: Oklch[] = [
+  [0.3, 0.12, 280],
+  [0.62, 0.2, 350],
+  [0.86, 0.13, 77],
+  [0.65, 0.11, 190],
+  [0.45, 0.15, 30],
+];

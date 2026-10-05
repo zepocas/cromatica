@@ -12,6 +12,8 @@ void main() {
   vec3 rgb = planesColor(uv);
 #elif BASE_AURORA
   vec3 rgb = auroraColor(uv);
+#elif BASE_GRID
+  vec3 rgb = gamutClip(gridColor(uv));
 #else
   vec3 rgb = rampColor(bandLevel(rampT(uv)));
 #endif

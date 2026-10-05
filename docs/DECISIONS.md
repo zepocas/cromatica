@@ -62,7 +62,7 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Why:** it keeps the scope tight.
 - **Consequence:** multi-monitor will need each display's physical size (from its diagonal) and position, not just its aspect ratio, so shapes line up across screens. The "export = rectangle over the composition" model already supports this.
 
-## D11. Bicubic patch mesh deferred
+## D11. Bicubic patch mesh deferred (superseded by D43)
 
 - **Why:** it's complex. The draggable color-point mesh (a radial-basis-function field) covers most of the look for Phase 1.
 
@@ -271,3 +271,13 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Blend:** ribbons are screen-blended in linear RGB, so overlaps glow without passing 1. Bands are off, as for planes.
 - **Tuning:** a first version with wider fades (up to 0.22), no mask and finer rays (30) filled the whole sky and read as layered hills with grainy streaks.
 - **Shuffle:** a layout shuffle re-rolls seed, ribbon count (0.1–0.8) and glow (0.2–0.8). The style shuffle picks aurora 9% of the time.
+
+## D43. Grid mesh: a bendable grid of colored nodes (revisits D11)
+
+- **Pattern:** `{ kind: 'grid', rows, cols, nodes, rest }`, with 2–5 rows and 2–5 columns, nodes row-major from the bottom, and a rest grid that spans ±rest (the frame at creation). Each node's offset from its rest spot bends the grid.
+- **Math:** the forward map is F(q) = q + D(q), where D interpolates the node offsets with Catmull-Rom (tensor product, indices clamped, so D is constant beyond the rest rectangle). A pixel p is pulled back by 8 Newton steps on F(q) = p, starting at q = p. Below a Jacobian determinant of 1e-3 the step is a plain fixed-point one, and steps are capped at 0.25 units. The color is the nodes' Oklab colors interpolated at q (Catmull-Rom), then the mesh's gamut clip. No patch inversion and no patch search: exact wherever the grid doesn't fold, and finite and tile-independent where it does.
+- **Folds are prevented in the editor:** edge nodes slide only along their edge (corners stay put, so the grid always spans its frame), and every node stays inside its row and column neighbors with an 8% margin. Shuffle jitters nodes by at most 35% of a cell. A deliberately folded grid renders chaotically (Newton picks among several pull-backs), so tests check it only for tile independence.
+- **Curves:** auto-smooth (Catmull-Rom); no tangent handles (user choice).
+- **Editing:** node handles plus the bent grid lines (the forward map sampled 12 times per segment) on an overlay; drag or arrow-nudge nodes. Rows and columns are sliders; resizing places the new nodes where their rest spots land on the current grid and gives them the color there, so the picture stays put.
+- **Colors:** the grid has its own palette owner (`grid`, next to mesh and ramp), since up to 25 nodes don't fit the 8 stops. A new palette has up to 5 colors, dealt over the nodes so each differs from its left and lower neighbors where it can. A palette from an image gives each node the image color nearest to it on screen.
+- **Shuffle:** a layout shuffle picks 3–4 rows and columns and jitters the nodes over the frame. The style shuffle picks grid 14% of the time.

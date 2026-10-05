@@ -6,6 +6,9 @@ import { clamp } from '../math';
 import {
   type AuroraPattern,
   type BasePattern,
+  type GridMesh,
+  MAX_GRID,
+  MIN_GRID,
   type ColorStop,
   type Design,
   type Finish,
@@ -107,6 +110,15 @@ export const PLANES_SHUFFLE = {
   count: [0.15, 0.65] as Range,
 };
 
+export const GRID_SHUFFLE = {
+  /** Rows and columns are drawn from this range (inclusive). */
+  size: [3, 4] as Range,
+  /** Node jitter, as a fraction of the cell size. Edge nodes slide along their edge; corners stay put. */
+  jitter: 0.35,
+  /** Palette colors dealt over the nodes. */
+  colors: 5,
+};
+
 export const AURORA_SHUFFLE = {
   count: [0.1, 0.8] as Range,
   glow: [0.2, 0.8] as Range,
@@ -115,8 +127,9 @@ export const AURORA_SHUFFLE = {
 /** Style shuffle: how often each pattern kind comes up, and the finishes' odds and ranges. */
 export const STYLE_SHUFFLE = {
   kinds: {
-    mesh: 0.28,
-    linear: 0.1,
+    mesh: 0.22,
+    grid: 0.14,
+    linear: 0.09,
     radial: 0.07,
     conic: 0.07,
     noise: 0.09,
@@ -179,7 +192,9 @@ export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 
         ? shufflePlanes(b, ctx)
         : b.kind === 'aurora'
           ? shuffleAurora(b, ctx)
-          : shuffleRamp(b, ctx);
+          : b.kind === 'grid'
+            ? shuffleGrid(b, ctx)
+            : shuffleRamp(b, ctx);
   let base = shuffled.pattern;
   if (base.kind === 'mesh' && opts.layout && design.transform) base = toPatternSpace(base, design.transform);
   const warp = opts.layout ? shuffleWarp(ctx.layoutRng) : { ...design.warp };
@@ -289,6 +304,7 @@ function shuffleMesh(base: PointMesh, ctx: ShuffleContext): { pattern: PointMesh
 function baseColors(base: BasePattern): Oklch[] {
   if (base.kind === 'mesh') return base.points.map((p) => copyColor(p.color));
   if (base.kind === 'planes' || base.kind === 'aurora') return base.colors.map(copyColor);
+  if (base.kind === 'grid') return base.nodes.map((n) => copyColor(n.color));
   return base.stops.map((s) => copyColor(s.color));
 }
 
@@ -305,7 +321,14 @@ function withKind(base: BasePattern, kind: BasePattern['kind']): BasePattern {
   const n = Math.min(colors.length, MAX_STOPS);
   if (kind === 'planes') return { kind, colors: colors.slice(0, n), count: 0.4, roughness: 0.5, blend: 0, seed: 0 };
   if (kind === 'aurora') return { kind, colors: colors.slice(0, n), count: 0.5, glow: 0.5, seed: 0 };
-  if (base.kind !== 'mesh' && base.kind !== 'planes' && base.kind !== 'aurora') return { ...base, kind };
+  if (kind === 'grid') {
+    // Placeholder geometry: the layout shuffle that follows lays the grid out.
+    const nodes = Array.from({ length: 9 }, (_, i) => ({ x: 0, y: 0, color: copyColor(colors[i % colors.length]) }));
+    return { kind, rows: 3, cols: 3, nodes, rest: [0.89, 0.5] };
+  }
+  if (base.kind !== 'mesh' && base.kind !== 'planes' && base.kind !== 'aurora' && base.kind !== 'grid') {
+    return { ...base, kind };
+  }
   const ramp = n === 1 ? [colors[0], colors[0]] : colors.slice(0, n);
   const stops = ramp.map((color, i) => ({ position: i / (ramp.length - 1), color, blend: 'oklab' as const }));
   return { kind, angle: 0, stops };
@@ -343,6 +366,67 @@ function shufflePlanes(
     pattern: { kind: 'planes', colors, count, roughness: base.roughness, blend: base.blend, seed },
     palette: palette && paletteInfo(palette),
   };
+}
+
+/** Even grid over the frame of the given aspect, nodes jittered (edges along their edge, corners fixed). */
+export function gridLayout(rng: Rng | null, rows: number, cols: number, aspect: number): GridMesh['nodes'] {
+  const hw = aspect / 2;
+  const nodes: GridMesh['nodes'] = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      let x = -hw + (2 * hw * c) / (cols - 1);
+      let y = -0.5 + r / (rows - 1);
+      if (rng) {
+        const jx = (rng.range(-1, 1) * GRID_SHUFFLE.jitter * 2 * hw) / (cols - 1);
+        const jy = (rng.range(-1, 1) * GRID_SHUFFLE.jitter) / (rows - 1);
+        if (c > 0 && c < cols - 1) x += jx;
+        if (r > 0 && r < rows - 1) y += jy;
+      }
+      nodes.push({ x: round4(x), y: round4(y), color: [0.5, 0, 0] });
+    }
+  }
+  return nodes;
+}
+
+/** Palette colors dealt over grid nodes, each unlike its left and lower neighbors where possible. */
+function dealGridColors(rng: Rng, palette: Oklch[], rows: number, cols: number): Oklch[] {
+  const out: Oklch[] = [];
+  for (let i = 0; i < rows * cols; i++) {
+    const neighbors = [i % cols > 0 ? out[i - 1] : null, i >= cols ? out[i - cols] : null].filter(
+      (c): c is Oklch => c !== null,
+    );
+    const start = rng.int(palette.length);
+    let best = palette[start];
+    let bestScore = -Infinity;
+    for (let k = 0; k < palette.length; k++) {
+      const c = palette[(start + k) % palette.length];
+      const score = neighbors.length ? Math.min(...neighbors.map((n) => oklchDistance(n, c))) : 0;
+      if (score > bestScore + 1e-9) {
+        best = c;
+        bestScore = score;
+      }
+    }
+    out.push(copyColor(best));
+  }
+  return out;
+}
+
+/** Grid: a new layout is a new size and jittered nodes over the frame; new colors are a small palette dealt over the nodes. */
+function shuffleGrid(base: GridMesh, ctx: ShuffleContext): { pattern: GridMesh; palette: PaletteInfo | null } {
+  const { opts, layoutRng, colorRng, aspect } = ctx;
+  const size = () =>
+    clamp(GRID_SHUFFLE.size[0] + layoutRng.int(GRID_SHUFFLE.size[1] - GRID_SHUFFLE.size[0] + 1), MIN_GRID, MAX_GRID);
+  const rows = opts.layout ? size() : base.rows;
+  const cols = opts.layout ? size() : base.cols;
+  const geo = opts.layout ? gridLayout(layoutRng, rows, cols, aspect) : base.nodes;
+  const rest: [number, number] = opts.layout ? [round4(aspect / 2), 0.5] : base.rest;
+  const palette = opts.colors ? ctx.makePalette(Math.min(GRID_SHUFFLE.colors, rows * cols)) : null;
+  let colors: Oklch[];
+  if (palette) colors = dealGridColors(colorRng, palette.colors, rows, cols);
+  else if (geo === base.nodes) colors = base.nodes.map((n) => copyColor(n.color));
+  else colors = dealGridColors(colorRng, baseColors(base), rows, cols);
+  const nodes = geo.map((n, i) => ({ x: n.x, y: n.y, color: colors[i] }));
+  return { pattern: { kind: 'grid', rows, cols, nodes, rest }, palette: palette && paletteInfo(palette) };
 }
 
 /** Aurora: a new layout is a new seed, ribbon count and glow. */

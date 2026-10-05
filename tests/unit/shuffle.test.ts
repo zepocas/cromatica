@@ -222,6 +222,7 @@ describe('style shuffle (pattern kind and finishes)', () => {
     const b = d.base;
     if (b.kind === 'mesh') return b.points.map((p) => p.color);
     if (b.kind === 'planes' || b.kind === 'aurora') return b.colors;
+    if (b.kind === 'grid') return b.nodes.map((n) => n.color);
     return b.stops.map((s) => s.color);
   };
 
@@ -236,7 +237,7 @@ describe('style shuffle (pattern kind and finishes)', () => {
       if (d.finish!.bands > 0) banded++;
       if (d.base.kind === 'planes' || d.base.kind === 'aurora') expect(d.finish!.bands).toBe(0);
     }
-    expect(kinds).toEqual(new Set(['mesh', 'linear', 'radial', 'conic', 'noise', 'cells', 'planes', 'aurora']));
+    expect(kinds).toEqual(new Set(['mesh', 'grid', 'linear', 'radial', 'conic', 'noise', 'cells', 'planes', 'aurora']));
     expect(printed).toBeGreaterThan(20);
     expect(printed).toBeLessThan(100);
     expect(banded).toBeGreaterThan(5);
@@ -248,8 +249,14 @@ describe('style shuffle (pattern kind and finishes)', () => {
         const out = shuffled(d, style(s, false));
         const before = colorsOf(d);
         const after = colorsOf(out);
-        // Ramps hold at most MAX_STOPS colors; a single color is doubled into two stops.
-        expect(after.slice(0, Math.min(before.length, 8))).toEqual(before.slice(0, 8));
+        if (out.base.kind === 'grid') {
+          // The grid deals the colors over its nodes: every node takes one of them.
+          const old = new Set(before.map((c) => c.join(',')));
+          for (const c of after) expect(old.has(c.join(','))).toBe(true);
+        } else {
+          // Ramps hold at most MAX_STOPS colors; a single color is doubled into two stops.
+          expect(after.slice(0, Math.min(before.length, 8))).toEqual(before.slice(0, 8));
+        }
       }
     }
   });

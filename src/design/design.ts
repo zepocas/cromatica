@@ -108,7 +108,34 @@ export interface AuroraPattern {
   seed: number;
 }
 
-export type BasePattern = RampGradient | PointMesh | PlanesPattern | AuroraPattern;
+/** A node of the grid mesh: where it sits (composition coords) and its color. */
+export interface GridNode {
+  x: number;
+  y: number;
+  color: Oklch;
+}
+
+/**
+ * Grid mesh (D43): rows × cols colored nodes on a bendable grid
+ * (src/engine/grid.ts). The rest grid is the rectangle ±rest centered at the
+ * origin, evenly divided; each node's offset from its rest spot bends the
+ * grid, and colors blend smoothly between nodes (Catmull-Rom, in Oklab).
+ */
+export interface GridMesh {
+  kind: 'grid';
+  /** MIN_GRID..MAX_GRID each. */
+  rows: number;
+  cols: number;
+  /** Row-major, bottom row first: node (r, c) is nodes[r * cols + c]. */
+  nodes: GridNode[];
+  /** Half width and height of the rest grid, composition units. */
+  rest: [number, number];
+}
+
+export const MIN_GRID = 2;
+export const MAX_GRID = 5;
+
+export type BasePattern = RampGradient | PointMesh | PlanesPattern | AuroraPattern | GridMesh;
 
 /**
  * Coordinate distortion applied before the base pattern (D23). Experimental

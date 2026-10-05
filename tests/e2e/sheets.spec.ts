@@ -14,7 +14,7 @@ import {
   type WarpShape,
 } from '../../src/design/design';
 import { previewProbe } from './support/app';
-import { linear, meshDefault, threeStops, warp, withLook } from './support/designs';
+import { gridColors, gridDesign, linear, meshDefault, threeStops, warp, withLook } from './support/designs';
 
 const midTonesFive = linear(0, [
   [0, [0.3, 0.06, 250]],
@@ -177,6 +177,22 @@ test('aurora.png', async ({ page }) => {
   }));
   const png = await engineHarness(page, 'contactSheet', rows, cols, 640, 360);
   writeFileSync(join(DIR, 'aurora.png'), Buffer.from(png, 'base64'));
+});
+
+test('grid.png', async ({ page }) => {
+  await openEngineHarness(page);
+  const cols = ['bend 0', 'bend 1', 'bend 2.5'];
+  const rows = (
+    [
+      ['3×3', 3, 3],
+      ['4×5', 4, 5],
+    ] as const
+  ).map(([label, r, c]) => ({
+    label,
+    designs: [0, 1, 2.5].map((bend) => ({ ...gridDesign(r, c, bend, gridColors), grain: defaultGrain })),
+  }));
+  const png = await engineHarness(page, 'contactSheet', rows, cols, 640, 360);
+  writeFileSync(join(DIR, 'grid.png'), Buffer.from(png, 'base64'));
 });
 
 test('six shuffles in a row', async ({ page }) => {

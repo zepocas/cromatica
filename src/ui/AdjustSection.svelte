@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { noFinish } from '../design/design';
+  import { MAX_GRID, MIN_GRID, noFinish } from '../design/design';
   import { prepareFinish } from '../engine/finish';
   import { ribbonCount } from '../engine/aurora';
   import { planeCount } from '../engine/planes';
@@ -91,6 +91,25 @@
       bind:value={editor.planes.blend}
       display={fixed2}
     />
+  {:else if editor.kind === 'grid'}
+    <SliderRow
+      label="rows"
+      min={MIN_GRID}
+      max={MAX_GRID}
+      step={1}
+      value={editor.grid.rows}
+      oninput={(v) => editor.setGridSize(v, editor.grid.cols)}
+      display={String}
+    />
+    <SliderRow
+      label="columns"
+      min={MIN_GRID}
+      max={MAX_GRID}
+      step={1}
+      value={editor.grid.cols}
+      oninput={(v) => editor.setGridSize(editor.grid.rows, v)}
+      display={String}
+    />
   {:else if editor.kind === 'aurora'}
     <SliderRow
       label="ribbons"
@@ -167,7 +186,7 @@
       display={degrees}
     />
   {/if}
-  {#if editor.kind !== 'planes' && editor.kind !== 'aurora'}
+  {#if editor.kind !== 'planes' && editor.kind !== 'aurora' && editor.kind !== 'grid'}
     <SliderRow
       label="bands"
       title="The image in flat steps, like a topographic map"

@@ -28,19 +28,44 @@
 
   const palette = $derived(editor.palette);
   const isMesh = $derived(editor.kind === 'mesh');
+  const isGrid = $derived(editor.kind === 'grid');
   // Planes and aurora use the stops' colors only, not their positions.
   const isPlanes = $derived(editor.kind === 'planes' || editor.kind === 'aurora');
-  const noun = $derived(isMesh ? 'point' : isPlanes ? 'color' : 'stop');
+  const noun = $derived(isMesh ? 'point' : isGrid ? 'node' : isPlanes ? 'color' : 'stop');
   const colors = $derived<Oklch[]>(
-    isMesh ? editor.mesh.points.map((p) => p.color) : editor.ramp.stops.map((s) => s.color),
+    isMesh
+      ? editor.mesh.points.map((p) => p.color)
+      : isGrid
+        ? editor.grid.nodes.map((n) => n.color)
+        : editor.ramp.stops.map((s) => s.color),
   );
-  // Mesh points in index order (matches the handles); stops in position order.
+  // Mesh points in index order (matches the handles); grid nodes top row first; stops in position order.
   const order = $derived(
     isMesh
       ? colors.map((_, i) => i)
-      : colors.map((_, i) => i).sort((a, b) => editor.ramp.stops[a].position - editor.ramp.stops[b].position),
+      : isGrid
+        ? colors.map((_, i) => i).sort((a, b) => gridRank(a) - gridRank(b))
+        : colors.map((_, i) => i).sort((a, b) => editor.ramp.stops[a].position - editor.ramp.stops[b].position),
   );
-  const selected = $derived(Math.min(isMesh ? editor.selectedPoint : editor.selectedStop, colors.length - 1));
+  const selected = $derived(
+    Math.min(isMesh ? editor.selectedPoint : isGrid ? editor.selectedNode : editor.selectedStop, colors.length - 1),
+  );
+
+  /** Grid nodes listed as seen: top row first, left to right. */
+  function gridRank(i: number): number {
+    const [r, c] = editor.nodeCell(i);
+    return (editor.grid.rows - 1 - r) * editor.grid.cols + c;
+  }
+
+  function rowName(i: number): string {
+    if (isMesh) return `point ${i + 1}`;
+    if (isGrid) {
+      const [r, c] = editor.nodeCell(i);
+      return `node ${editor.grid.rows - r}·${c + 1}`;
+    }
+    if (isPlanes) return `color ${order.indexOf(i) + 1}`;
+    return `${Math.round(editor.ramp.stops[i].position * 100)}%`;
+  }
   /** Colors before base hue and temperature; null when nothing is adjusted. */
   const original = $derived(palette.originalColors);
   const adjustedSummary = $derived.by(() => {
@@ -55,6 +80,7 @@
 
   function select(i: number) {
     if (isMesh) editor.selectedPoint = i;
+    else if (isGrid) editor.selectedNode = i;
     else editor.selectedStop = i;
   }
 
@@ -133,7 +159,7 @@
     <p class="status" role="status">{editor.imageStatus}</p>
   {/if}
 
-  {#if !isMesh && !isPlanes}
+  {#if !isMesh && !isPlanes && !isGrid}
     <StopStrip bind:editor />
   {/if}
 
@@ -144,11 +170,7 @@
         color={colors[i]}
         original={original?.[i]}
         selected={i === selected}
-        name={isMesh
-          ? `point ${i + 1}`
-          : isPlanes
-            ? `color ${order.indexOf(i) + 1}`
-            : `${Math.round(editor.ramp.stops[i].position * 100)}%`}
+        name={rowName(i)}
         {noun}
         canRemove={editor.canRemoveColor}
         onselect={() => select(i)}
@@ -156,18 +178,20 @@
         onremove={() => editor.removeColor(i)}
       />
     {/each}
-    <li class="add">
-      <button
-        aria-label="Add color"
-        title={isMesh
-          ? 'Add a point (or double-click the image)'
-          : isPlanes
-            ? 'Add a color'
-            : 'Add a stop (or click the strip)'}
-        disabled={!editor.canAddColor}
-        onclick={() => editor.addColor()}>+ add {noun}</button
-      >
-    </li>
+    {#if !isGrid}
+      <li class="add">
+        <button
+          aria-label="Add color"
+          title={isMesh
+            ? 'Add a point (or double-click the image)'
+            : isPlanes
+              ? 'Add a color'
+              : 'Add a stop (or click the strip)'}
+          disabled={!editor.canAddColor}
+          onclick={() => editor.addColor()}>+ add {noun}</button
+        >
+      </li>
+    {/if}
   </ul>
 
   {#if original}

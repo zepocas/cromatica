@@ -5,8 +5,8 @@ import type { Oklch } from '../color/types';
 import { createRng, randomSeed } from '../design/random';
 import { normalizeDegrees } from '../math';
 
-/** Who owns a set of colors: the mesh's points, or the stops all ramp gradients share. */
-export type PaletteOwner = 'mesh' | 'ramp';
+/** Who owns a set of colors: the mesh's points, the grid's nodes, or the stops the ramp-colored patterns share. */
+export type PaletteOwner = 'mesh' | 'ramp' | 'grid';
 
 /** What the palette editor needs from the editor that owns the pattern. */
 export interface PaletteHost {
@@ -50,10 +50,10 @@ export class PaletteEditor {
   /** Hue new palettes are built around; null = random. Moving it turns the current palette. */
   baseHue = $state<number | null>(null);
   /** What each pattern's palette was generated with; null = custom (imported, or not generated yet). */
-  private infos = $state<Record<PaletteOwner, PaletteInfo | null>>({ mesh: null, ramp: null });
+  private infos = $state<Record<PaletteOwner, PaletteInfo | null>>({ mesh: null, ramp: null, grid: null });
   /** The seed each pattern's palette was generated from, so steering it regenerates the same palette. */
-  private seeds: Record<PaletteOwner, number | null> = { mesh: null, ramp: null };
-  private adjustments = $state.raw<Record<PaletteOwner, Adjustment | null>>({ mesh: null, ramp: null });
+  private seeds: Record<PaletteOwner, number | null> = { mesh: null, ramp: null, grid: null };
+  private adjustments = $state.raw<Record<PaletteOwner, Adjustment | null>>({ mesh: null, ramp: null, grid: null });
 
   constructor(private readonly host: PaletteHost) {}
 

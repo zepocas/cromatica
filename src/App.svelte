@@ -4,6 +4,7 @@
   import ControlPanel from './ui/ControlPanel.svelte';
   import { EditorState } from './ui/editor.svelte';
   import MeshOverlay from './ui/MeshOverlay.svelte';
+  import GridOverlay from './ui/GridOverlay.svelte';
   import Preview from './ui/Preview.svelte';
   import { CUSTOM_PRESET_ID, DEFAULT_PRESET_ID, SIZE_PRESETS } from './ui/presets';
 
@@ -89,6 +90,8 @@
   {#snippet overlay()}
     {#if editor.kind === 'mesh'}
       <MeshOverlay {editor} {aspect} />
+    {:else if editor.kind === 'grid'}
+      <GridOverlay {editor} {aspect} />
     {/if}
   {/snippet}
 </Preview>

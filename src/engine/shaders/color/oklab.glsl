@@ -1,4 +1,4 @@
-#if BASE_MESH
+#if BASE_MESH || BASE_GRID
 // Oklab → linear sRGB (Ottosson's matrices, cube of LMS) and the mesh gamut
 // clip. Must match src/color/oklab.ts and meshGamutClip in src/color/mesh.ts.
 

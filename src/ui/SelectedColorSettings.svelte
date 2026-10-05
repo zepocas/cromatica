@@ -26,7 +26,19 @@
   ];
 </script>
 
-{#if editor.kind === 'mesh'}
+{#if editor.kind === 'grid'}
+  <ColorControls color={editor.grid.nodes[selected].color} onchange={(c) => editor.palette.setColor(selected, c)} />
+  <div class="row">
+    <span>nodes</span>
+    <Toggle
+      checked={editor.showHandles}
+      label="show on image"
+      ariaLabel={editor.showHandles ? 'Hide nodes' : 'Show nodes'}
+      title="Show or hide the grid on the image (H)"
+      onchange={(on) => (editor.showHandles = on)}
+    />
+  </div>
+{:else if editor.kind === 'mesh'}
   <ColorControls color={editor.mesh.points[selected].color} onchange={(c) => editor.palette.setColor(selected, c)} />
   <SliderRow
     label="size"
