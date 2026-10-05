@@ -76,6 +76,9 @@ test('opens on a shuffled design unless ?default', async ({ page }) => {
   const defaults = await readPoints(page);
   const seen = new Set<string>();
   for (let i = 0; i < 2; i++) {
+    // A first visit each time. Cleared from ?default, which doesn't save on leaving.
+    await openApp(page);
+    await page.evaluate(() => localStorage.clear());
     await openApp(page, { shuffled: true });
     const pts = await readPoints(page);
     expect(pts).not.toEqual(defaults);

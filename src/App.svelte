@@ -1,16 +1,25 @@
 <script lang="ts">
   import { exportImage } from './export/exporter';
   import type { ExportFormat, ExportProgress } from './export/types';
+  import { readAutosave, writeAutosave } from './ui/autosave';
   import ControlPanel from './ui/ControlPanel.svelte';
   import { EditorState } from './ui/editor.svelte';
+  import { History } from './ui/history.svelte';
+  import { isTypingTarget } from './ui/keys';
   import MeshOverlay from './ui/MeshOverlay.svelte';
   import GridOverlay from './ui/GridOverlay.svelte';
   import Preview from './ui/Preview.svelte';
   import { CUSTOM_PRESET_ID, DEFAULT_PRESET_ID, SIZE_PRESETS } from './ui/presets';
 
+  // Opens on the autosaved design, or a shuffle on a first visit; `?default`
+  // starts from the built-in one and leaves the save alone (tests).
+  const builtIn = new URLSearchParams(location.search).has('default');
+  const saved = builtIn ? null : readAutosave();
+  const initial = new EditorState({ shuffle: !builtIn && !saved });
+  if (saved) initial.setDesign(saved);
+  const history = new History(initial.snapshot());
   // Class instance (not proxied); $state only so it can be bound down the panel tree.
-  // Opens on a shuffled design; `?default` starts from the built-in one (tests).
-  let editor = $state(new EditorState({ shuffle: !new URLSearchParams(location.search).has('default') }));
+  let editor = $state(initial);
   let presetId = $state(DEFAULT_PRESET_ID);
   let customWidth = $state(1920);
   let customHeight = $state(1080);
@@ -33,6 +42,41 @@
   $effect(() => {
     editor.aspect = aspect;
   });
+
+  $effect(() => history.record(editor.snapshot()));
+
+  let saveTimer: ReturnType<typeof setTimeout> | undefined;
+  $effect(() => {
+    const design = renderDesign;
+    clearTimeout(saveTimer);
+    if (!builtIn) saveTimer = setTimeout(() => writeAutosave(design), 300);
+  });
+
+  function undo() {
+    const s = history.undo();
+    if (s) editor.restore(s);
+  }
+
+  function redo() {
+    const s = history.redo();
+    if (s) editor.restore(s);
+  }
+
+  /** ⌘Z undoes and ⇧⌘Z or Ctrl+Y redoes, except in text fields, which keep their own undo. */
+  function onKeyDown(e: KeyboardEvent) {
+    if (!(e.metaKey || e.ctrlKey) || e.altKey || isTypingTarget(e.target)) return;
+    const key = e.key.toLowerCase();
+    if (key === 'z' || key === 'y') {
+      e.preventDefault();
+      if (key === 'z' && !e.shiftKey) undo();
+      else redo();
+    }
+  }
+
+  /** Each press starts a new undo step, so a drag or a held key is one step. */
+  function onPress(e: Event) {
+    if (!(e instanceof KeyboardEvent && e.repeat)) history.commit();
+  }
 
   function download(blob: Blob, name: string) {
     const url = URL.createObjectURL(blob);
@@ -84,7 +128,14 @@
   }
 </script>
 
-<svelte:window ondragover={(e) => hasFiles(e) && e.preventDefault()} ondrop={onDrop} />
+<svelte:window
+  ondragover={(e) => hasFiles(e) && e.preventDefault()}
+  ondrop={onDrop}
+  onpointerdowncapture={onPress}
+  onkeydowncapture={onPress}
+  onkeydown={onKeyDown}
+  onpagehide={() => !builtIn && writeAutosave(renderDesign)}
+/>
 
 <Preview design={renderDesign} {aspect} paused={exporting} docked={!collapsed}>
   {#snippet overlay()}
@@ -103,6 +154,10 @@
   {output}
   bind:format
   bind:collapsed
+  canUndo={history.canUndo}
+  canRedo={history.canRedo}
+  onundo={undo}
+  onredo={redo}
   {exporting}
   {progress}
   {error}
