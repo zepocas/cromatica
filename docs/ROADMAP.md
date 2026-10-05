@@ -268,6 +268,71 @@ Each milestone uses the same structure:
   - Undo history depth
   - URL length limits for large meshes
 
+### M6.5 — Keep and explore
+
+- **Goal:** keep a good result and find new ones without understanding every control. Added after the 2026-10-05 product review.
+- **Scope, in build order:**
+  1. **Design in the PNG:** the export embeds the design (the save envelope from D44) in an iTXt chunk, and dropping such a PNG on the window reopens it. PNGs without it still go to palette from image. JPEG has no equivalent for now (D45).
+  2. **History and favourites, light:** the last ~20 shuffles kept in memory, stepped with ←/→; a ♥ saves the design JSON to one localStorage key, capped at about 12 and listed as palette swatch strips. No IndexedDB and no thumbnails (D45).
+  3. **Thumbnail renderer:** one shared offscreen renderer that draws many small renders of a design. Steps 4 and 5 both use it.
+  4. **More like this:** a 3×3 grid of small mutations of the current design (seed, layout and warp nudges, same palette). Clicking one takes it.
+  5. **Visual pickers:** pattern, warp shape and mood choices shown as live thumbnails of the user's own design. Hover previews on the main canvas; click commits.
+  6. **Onboarding:** a few short tips on first visit (space shuffles, drop an image, ...), dismissible for good. It stands in for "Looks" (backlog, D47).
+- **UI:** stays lean, following the terminal panel. The thumbnails are the only color in the panel besides the swatches.
+- **Done when:**
+  - Exporting a PNG and dropping it back reproduces the design exactly, for every pattern.
+  - A favourite survives a reload; clearing browser data loses it (D13).
+  - More like this and the pickers stay responsive on a slow GPU, with the shared renderer never blocking a drag.
+- **Open questions:**
+  - Thumbnail size and the render cost of nine grid cells on slow GPUs.
+  - Whether a hover preview should count as an undo step (leaning no).
+  - Cap and format of the favourites list.
+
+### M6.6 — Relief and stipple finishes
+
+- **Goal:** two finishes that change the material of the image, not just its colors.
+- **Scope, in build order:**
+  1. **Neighbour-sampling stage:** the pattern evaluated at a few nearby points per pixel, giving a local slope or edge. Still per output pixel and stateless (D2, D4). It's the shared groundwork for relief and, later, glitch, riso overprint and contour lines (D46).
+  2. **Relief:** the pattern treated as a height map and lit. First version is **satin** (soft cloth-like highlights) and **glass** (refraction, bright rims), gentle by default, with one strength slider where 0 is bit-identical to off. A prototype with chrome and iridescent is in `prototype/relief/`; those two stay out of the product for now.
+  3. **Stipple / halftone:** a density-to-dot stage (threshold against the blue-noise tile, as in `prototype-stipple.html`) with one amount slider. No blob generator and no layers.
+- **Done when:**
+  - Both finishes render tile-identically, match the CPU reference, and at 0 are bit-identical to off.
+  - Preview and export match at the same size.
+  - Relief preview stays within the frame budget, using the existing half-resolution fallback on slow GPUs.
+  - A contact sheet of satin and glass over the existing patterns and warps has been reviewed.
+- **Open questions:**
+  - Relief direction: a fixed light, or a control.
+  - How relief interacts with bands, print and grain (order in the finish chain).
+  - Stipple dot size: per output pixel (a D4 exception, like grain) or in image units.
+
+### M6.7 — Context preview and legibility
+
+- **Goal:** show how a wallpaper will look with the operating system on top of it, and warn when icons or the clock would be hard to read.
+- **Scope:**
+  - **Mockups** for Windows (taskbar, desktop icons), macOS (menu bar, dock, notch), Android (status bar, navigation, home icons, lock-screen clock) and iOS (lock-screen clock and widgets, Dynamic Island, home icon grid).
+  - **Crop frames:** several devices' aspect ratios overlaid on the preview, since one composition exports to many ratios (D4).
+  - **Legibility:** a luminance and busyness check under each platform's icon and clock zones, with a warning (too busy, or mid-tone against light or dark text), and a "calm zone" guide.
+- **UI:** overlays only, never part of an export (D48). Related to the M7 full-screen preview, which could host the same mockups.
+- **Done when:**
+  - Each platform's zones are drawn at the right proportions for at least one current device.
+  - The warning flags a busy area under the clock and stays quiet on a calm one.
+- **Open questions:**
+  - Which zones ship first and how they're sourced.
+  - The contrast threshold and what counts as busy.
+  - Whether a batch "export set" (several sizes as a ZIP) belongs here or in M7.
+
+### M6.8 — Light/dark pairs
+
+- **Goal:** one composition exported as a light and a dark variant.
+- **Scope:**
+  - A second variant of the same design at another value key, derived from the key and temperature controls (D26, D27).
+  - Export both. macOS can use one dynamic HEIC that switches with the appearance; other platforms get a pair of files.
+- **Done when:** both variants share the composition exactly and differ only in color, and the macOS file switches with the system appearance.
+- **Open questions:**
+  - Automatic key shift or an editable second palette.
+  - HEIC encoding in the browser (a WASM encoder?) and its size.
+  - Conventions on Windows and Android.
+
 ### M7 — Polish
 
 - **Goal:** ready for real use.
@@ -313,9 +378,11 @@ Each milestone uses the same structure:
 - WebGPU backend
 - User-saved palettes
 - Mobile authoring
-- **Stipple / halftone finish:** a density-to-dot stage (threshold against the blue-noise tile, as in the prototype) applied to any design with one amount slider. No blob generator and no layers.
+- **Stipple / halftone finish:** moved to M6.6 (2026-10-05). The ink-blobs look below stays here.
 - **Liquid-jazz "ink blobs" look:** seeded smin-capsule blobs rendered as stipple in flat inks (reference: stippled vinyl cover). A prototype exists in `prototype-stipple.html` and `prototype/stipple/` (untracked, not part of the app). Open findings: union all blobs into one silhouette and use per-ink fields only for the color inside it; use a black base with white as an ink; fill more of the frame. Decide later whether it is a style of this product or a separate one.
 - Flow-field advection (LIC) and Gabor noise, if more warp variety is wanted after M4.5
 - **Planes advanced panel:** under "+ more" for planes, add controls to move planes (drag, nudge, or reorder the stack) and bring over the interesting settings from the stipple / ink-blobs prototype (`prototype-stipple.html`). Requested 2026-10-04.
 - **Digital / glitch** (postponed from M5 on 2026-10-04; needs a different approach): the glitch should act on the boundaries between colors and shapes in the rendered image (tearing, offsets and channel splits that follow edges), not move coordinates. A first try as a warp shape (hashed blocks shifted sideways plus scanline jitter) and an RGB split finish was built and reverted. It was underwhelming: on soft gradients a shifted block of similar color barely shows. Likely needs an image-space stage, for example edge detection on the pattern evaluated at neighboring points, with displacement applied where colors change. That stays per pixel and stateless (D4), but costs extra pattern evaluations.
+- **Looks (curated bundles)** (parked 2026-10-05, D47): named presets such as Zine, Dusk or Riso that set pattern, mood, key and finish together, so shuffle could stay inside a look. It would help adoption, but M6.5's onboarding tips cover most of that for now.
+- **Favourites, advanced** (2026-10-05): a real library with thumbnails, folders and a JSON file export and import. M6.5 only keeps a short plain list (D45).
 - **Comment density:** go through the code and cut comments that restate the code or narrate history; keep the ones that explain why (conventions, math, invariants). The user finds the current amount excessive (2026-10-04).

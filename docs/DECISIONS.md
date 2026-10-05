@@ -281,3 +281,28 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Editing:** node handles plus the bent grid lines (the forward map sampled 12 times per segment) on an overlay; drag or arrow-nudge nodes. Rows and columns are sliders; resizing places the new nodes where their rest spots land on the current grid and gives them the color there, so the picture stays put.
 - **Colors:** the grid has its own palette owner (`grid`, next to mesh and ramp), since up to 25 nodes don't fit the 8 stops. A new palette has up to 5 colors, dealt over the nodes so each differs from its left and lower neighbors where it can. A palette from an image gives each node the image color nearest to it on screen.
 - **Shuffle:** a layout shuffle picks 3–4 rows and columns and jitters the nodes over the frame. The style shuffle picks grid 14% of the time.
+
+## D45. Keep work: the design lives in the PNG, favourites stay small
+
+- **Why:** D13 says only exported images last, yet the exported PNG doesn't say how it was made. A wallpaper you like should reopen as a design.
+- **Design in the PNG:** the export writes the save envelope from D44 (`{ version, design }`) into an iTXt chunk. Dropping such a PNG on the window loads it through the same schema and migrations as autosave. A PNG without the chunk still goes to palette from image. The streaming encoder (D3) makes the extra chunk cheap. JPEG has no equivalent for now.
+- **History:** the last ~20 shuffles in memory, for the session only, like undo.
+- **Favourites:** a ♥ saves the design JSON to one localStorage key, capped at about 12, listed as palette swatch strips. No IndexedDB and no stored thumbnails: the user wants no database overhead for now.
+- **Later:** a fuller library (thumbnails, folders, file import) is in the backlog.
+
+## D46. Relief comes from neighbour sampling, not from a second pass
+
+- **Idea:** evaluate the pattern at a few points around each pixel to get its local slope, treat the pattern as a height map, and light it. Each pixel still depends only on the design and its own position, so D2 and D4 hold and tiling stays exact. The cost is about five pattern evaluations per pixel instead of one.
+- **Prototype:** `prototype/relief/` renders one pattern six ways: flat, satin, glass, liquid chrome, iridescent film and impasto.
+- **First version:** satin and glass only, gentle, with one strength slider and 0 bit-identical to off. In the prototype the slopes were too strong and read as crumpled foil; chrome and iridescent were the loudest and the riskiest as everyday wallpapers, so they stay out for now.
+- **Shared stage:** the same neighbour sampling is what the glitch backlog item needs (act on color boundaries), plus riso overprint and contour lines between near-identical colors. It is built once, for relief.
+
+## D47. Looks are parked; onboarding tips instead
+
+- **Why:** curated bundles would help new users, but the main shuffle already shows what the app can do (D39). Short first-visit tips about shuffling and dropping an image address adoption at lower cost.
+- **Consequence:** "Looks" goes to the backlog; M6.5 gets an onboarding step.
+
+## D48. Context overlays are UI, never part of the image
+
+- **Rule:** platform mockups, crop frames and legibility warnings are drawn over the preview and never reach the renderer or an export, so D2 holds and the exported pixels are unchanged.
+- **Zone data:** each platform's icon, clock and bar zones live in one data file, tagged with the OS version they were taken from. They change between OS releases, so they are data to keep up to date, not constants spread through the UI.
