@@ -234,6 +234,7 @@ describe('style shuffle (pattern kind and finishes)', () => {
       const d = shuffled(meshDesign, style(s));
       kinds.add(d.base.kind);
       if (d.finish!.print > 0) printed++;
+      expect(d.finish!.print).toBeLessThanOrEqual(0.4);
       if (d.finish!.bands > 0) banded++;
       if (d.base.kind === 'planes' || d.base.kind === 'aurora') expect(d.finish!.bands).toBe(0);
     }

@@ -232,9 +232,10 @@ Decisions made during the architecture review. Reopen one only if new informatio
 
 - **One slider** (`finish.print`), applied per output pixel after the sRGB transfer, before grain and dither; 0 is an exact passthrough. It fades in over 0–0.25.
 - **Paper tooth:** smooth value noise over output pixels, mostly a fine tooth (0.9 px⁻¹) plus two faint fiber layers at different angles, stretched toward a uniform distribution.
-- **Litho (low end):** the tooth modulates the ink, `ink = 1 − e` scaled by `1 ± 0.6·print`: bare paper stays white and inked areas get an even texture. A first version thresholded every channel against a coarse fibrous noise; it read like distressed concrete with colored specks.
-- **Xerox (high end, blended in over 0.5–1):** lightness thresholded to 3 tones against the tooth, the color rescaled to it, so hue holds and the grain is light and dark rather than confetti. Black and white stay exact.
-- **Copier marks:** toner specks (0.4% of pixels at 1) and uneven darkening toward the frame edges (up to 35%).
+- **Litho (low end):** the tooth modulates the ink, `ink = 1 − e` scaled by `1 ± 0.35·print`: bare paper stays white and inked areas get an even texture. A first version thresholded every channel against a coarse fibrous noise; it read like distressed concrete with colored specks.
+- **Xerox (high end, blended in over 0.7–1):** lightness thresholded to 3 tones against the tooth, the color rescaled to it, so hue holds and the grain is light and dark rather than confetti. Black and white stay exact.
+- **Copier marks:** toner specks (0.15% of pixels at 1) and uneven darkening toward the frame edges (up to 20%).
+- **Toned down (2026-10-05):** the first tuning (ink 0.6, xerox from 0.5, specks 0.4%, edges 35%) was too strong; shuffle now picks print in 0.15–0.4 (was 0.2–0.7). `SHEETS=1 npx playwright test sheets -g print` renders a comparison sheet.
 - **Resolution:** like grain (D4 exception) it is defined per output pixel, so preview and export match at the same size; the export harness runs with every finish on to hold that.
 
 ## D37. Planes: seeded torn-paper quads that share the ramp's colors

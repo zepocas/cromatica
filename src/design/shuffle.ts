@@ -138,7 +138,7 @@ export const STYLE_SHUFFLE = {
     aurora: 0.09,
   } as Record<BasePattern['kind'], number>,
   vignette: { chance: 0.3, range: [0.2, 0.6] as Range },
-  print: { chance: 0.25, range: [0.2, 0.7] as Range },
+  print: { chance: 0.25, range: [0.15, 0.4] as Range },
   /** Not for planes, which are flat already. */
   bands: { chance: 0.15, range: [0.2, 0.7] as Range },
   planesRoughness: { clean: 0.25, range: [0.3, 1] as Range },
