@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { readPngDesign, type ExportedDesign } from './export/design-png';
   import { exportImage } from './export/exporter';
   import type { ExportFormat, ExportProgress } from './export/types';
   import { readAutosave, writeAutosave } from './ui/autosave';
@@ -119,12 +120,33 @@
 
   const hasFiles = (e: DragEvent) => e.dataTransfer?.types.includes('Files') ?? false;
 
-  /** An image dropped anywhere on the window becomes the palette. */
-  function onDrop(e: DragEvent) {
+  /** Reopen the design at the size it was exported at. */
+  function openExport({ design, size }: ExportedDesign) {
+    const preset = SIZE_PRESETS.find((p) => p.width === size.width && p.height === size.height);
+    if (preset) {
+      presetId = preset.id;
+    } else {
+      presetId = CUSTOM_PRESET_ID;
+      customWidth = size.width;
+      customHeight = size.height;
+    }
+    editor.setDesign(design);
+  }
+
+  /** A PNG exported from here reopens its design; any other image dropped on the window becomes the palette. */
+  async function onDrop(e: DragEvent) {
     if (!hasFiles(e)) return;
     e.preventDefault();
     const file = [...(e.dataTransfer?.files ?? [])].find((f) => f.type.startsWith('image/'));
-    if (file) void editor.importImage(file);
+    if (!file) return;
+    // A drop comes without a press, so close the step before it by hand.
+    history.commit();
+    const exported = await readPngDesign(file).catch((err: unknown) => {
+      console.warn('drop: ignoring the embedded design', err);
+      return null;
+    });
+    if (exported) openExport(exported);
+    else void editor.importImage(file);
   }
 </script>
 
