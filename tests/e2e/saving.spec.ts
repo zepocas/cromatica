@@ -2,7 +2,7 @@
 import type { Page } from '@playwright/test';
 import { expect, openApp, previewProbe, readHexes, readWarp, test } from './support/app';
 
-const AUTOSAVE_KEY = 'wallpaper.design';
+const AUTOSAVE_KEY = 'cromatica.design';
 const readSave = (page: Page) => page.evaluate((key) => localStorage.getItem(key), AUTOSAVE_KEY);
 
 test('a reload restores the design exactly', async ({ page }) => {

@@ -86,7 +86,7 @@ Decisions made during the architecture review. Reopen one only if new informatio
 
 ## D15. Working name "gradient-wallpaper"
 
-- A placeholder until a better name is found.
+- A placeholder until a better name is found. Superseded by D49.
 
 ## D16. Export tile size 2048 px
 
@@ -286,7 +286,7 @@ Decisions made during the architecture review. Reopen one only if new informatio
 
 ## D44. Saving: a versioned save in localStorage, undo over editor snapshots
 
-- **Storage:** localStorage, one key (`wallpaper.design`). A design is a few KB of JSON, and there is no library of saved designs that would need IndexedDB.
+- **Storage:** localStorage, one key (`wallpaper.design`, `cromatica.design` since D49). A design is a few KB of JSON, and there is no library of saved designs that would need IndexedDB.
 - **Schema:** zod, in `src/design/schema.ts`. The save is `{ version, design }`; each version has a migration to the next, and the current schema requires every field, so the defaults that missing optional fields stood for are pinned in one place. `engineVersion` stays 1 and is checked on load. A save that fails validation is ignored whole (logged), and the app opens on a shuffle.
 - **What is saved:** the design only. The other patterns' settings, the palette's rule and adjustments, the size preset and the shuffle locks are not; after a reload the palette counts as custom.
 - **Undo:** snapshots of the editor (all five pattern settings, warp, grain, finish, transform and the palette state), not of the design, so undoing a pattern switch or a hue turn is exact. 100 steps, not kept across reloads. Steps are split at every pointer press and key press (not key repeats), with no timer; a change that isn't followed by a press is closed by the next undo.
@@ -316,3 +316,8 @@ Decisions made during the architecture review. Reopen one only if new informatio
 
 - **Rule:** platform mockups, crop frames and legibility warnings are drawn over the preview and never reach the renderer or an export, so D2 holds and the exported pixels are unchanged.
 - **Zone data:** each platform's icon, clock and bar zones live in one data file, tagged with the OS version they were taken from. They change between OS releases, so they are data to keep up to date, not constants spread through the UI.
+
+## D49. The app is called cromatica
+
+- **Replaces** the working name from D15, for the app, the package and the repository.
+- **Storage keys** use the `cromatica.` prefix: the autosave moved from `wallpaper.design` to `cromatica.design` and reads the old key once, so an existing save survives the rename. The design chunk in exported PNGs is `cromatica.design` from the start.

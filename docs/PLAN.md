@@ -1,6 +1,6 @@
 # Phase 1 Implementation Plan
 
-> Working name: **gradient-wallpaper** (placeholder until we find a better one).
+> Name: **cromatica** (D49).
 
 A client-side web app that generates abstract gradient wallpapers, inspired by photogradient.com but with richer algorithms, perceptual color math and crisp device-targeted exports. Phase 1 covers a single monitor only.
 

@@ -97,7 +97,7 @@ test('a custom size letterboxes the preview and names the download', async ({ pa
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download' }).click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe('gradient-320x200.png');
+  expect(download.suggestedFilename()).toBe('cromatica-320x200.png');
 });
 
 test('an exported PNG dropped back reopens its design at its size', async ({ page }) => {

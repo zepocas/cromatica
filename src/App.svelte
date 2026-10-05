@@ -102,7 +102,7 @@
         { design: renderDesign, output: size, format: fmt },
         { signal: ac.signal, onProgress: (p) => (progress = p) },
       );
-      download(blob, `gradient-${size.width}x${size.height}.${fmt === 'png' ? 'png' : 'jpg'}`);
+      download(blob, `cromatica-${size.width}x${size.height}.${fmt === 'png' ? 'png' : 'jpg'}`);
     } catch (err) {
       if (!(err instanceof DOMException && err.name === 'AbortError')) {
         error = err instanceof Error ? err.message : String(err);
