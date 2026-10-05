@@ -30,6 +30,8 @@
     { kind: 'linear', label: 'linear' },
     { kind: 'radial', label: 'radial' },
     { kind: 'conic', label: 'conic' },
+    { kind: 'noise', label: 'noise' },
+    { kind: 'cells', label: 'cells' },
     { kind: 'planes', label: 'planes' },
   ] as const;
 

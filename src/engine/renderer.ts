@@ -10,7 +10,7 @@ import {
   type PointMesh,
 } from '../design/design';
 import { mat2Uniform, transformMatrix } from './transform';
-import { CONIC_CORE, prepareRampShape } from './ramp-shape';
+import { CELL_SHADE, CELL_TINT, CONIC_CORE, NOISE_GAIN, NOISE_OCTAVES, prepareRampShape } from './ramp-shape';
 import { MAX_PLANES, PLANES_SHADER_CONSTANTS, preparePlanes } from './planes';
 import { GAMUT_CLIP_STEPS, prepareMesh } from '../color/mesh';
 import { BLUE_NOISE_SIZE, DITHER_CHANNEL_OFFSETS, blueNoiseRanks } from './blue-noise';
@@ -22,7 +22,14 @@ import type { OutputSize, RenderOptions, Renderer, Tile } from './types';
 
 function rampShapeUniforms(g: RampGradient, output: OutputSize, transform: Design['transform']) {
   const r = prepareRampShape(g, output, transform);
-  return { u_rampAxis: r.axis, u_radialScale: r.radialScale };
+  return {
+    u_rampAxis: r.axis,
+    u_radialScale: r.radialScale,
+    u_rampFreq: r.freq,
+    u_rampKey: r.key,
+    u_rampKey2: r.key2,
+    u_rampEdge: r.edge,
+  };
 }
 
 /** Mesh uniforms, padded to MAX_MESH_POINTS; uploaded every render (tiny). */
@@ -68,7 +75,13 @@ function baseDefines(base: Design['base']): Defines {
     BASE_RAMP: true,
     RAMP_RADIAL: kind === 'radial',
     RAMP_CONIC: kind === 'conic',
+    RAMP_NOISE: kind === 'noise',
+    RAMP_CELLS: kind === 'cells',
     CONIC_CORE: CONIC_CORE.toFixed(4),
+    ...(kind === 'noise' ? { NOISE_LIB: 1, NOISE_OCTAVES, NOISE_GAIN: NOISE_GAIN.toFixed(4) } : {}),
+    ...(kind === 'cells'
+      ? { NOISE_LIB: 1, NOISE_CELLS: 1, CELL_TINT: CELL_TINT.toFixed(4), CELL_SHADE: CELL_SHADE.toFixed(4) }
+      : {}),
   };
 }
 

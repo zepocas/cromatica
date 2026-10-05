@@ -246,6 +246,7 @@ Each milestone uses the same structure:
 - **Done when:** each pattern has golden-image tests and at least 3 good reference designs.
 - **Progress:**
   - Planes built (D37): count, torn and a new-layout button. It uses the ramp's colors, works with warps and finishes, and has contact sheets in `sheets.spec.ts`. Still to do: tune by eye, and possibly Voronoi-style cells as a second planes layout.
+  - fBm noise fields and Worley cells built as the `noise` and `cells` gradient types (D41).
 
 ### M6 — Saving
 

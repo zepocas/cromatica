@@ -255,3 +255,11 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Why:** shuffle only re-rolled the active gradient type, so it never showed what else the app can do. The user wants it to be a full randomize and a quick showcase.
 - **Change:** `shuffleDesign` takes `style` (used together with `layout`): on its own random stream, it picks the pattern kind (mesh 35%, planes 30%, linear 15%, radial and conic 10% each) and the finishes (vignette 30%, print 25%, bands 15% and never on planes), plus planes roughness and blend. The colors carry over to the new kind (ramps hold up to 8). The main shuffle sets `style` unless layout is locked, so "keep layout" also keeps the kind and finishes. Color-only shuffles and the opening shuffle keep the kind (the app still opens on a mesh). Grain and the transform are never shuffled.
 - **Sizes:** the size menu lists resolutions only, grouped into desktop, mobile (current iPhone and Android natives) and tablet, with no device names. The default is 3840 × 2160.
+
+## D41. Noise and cells: ramp shapes driven by noise
+
+- **Kinds:** `noise` and `cells` are ramp shapes like linear, radial and conic. They share the stops (and so the palette and the stop editor) and add `scale` (0.6–6 features per image height, exponential) and `seed` to the ramp. The angle is unused and hidden.
+- **Noise:** t = 0.5 + 1.1 · fBm (5 octaves of the warp's simplex fBm), clamped: cloudy fields that reach both ends of the ramp.
+- **Cells:** Worley cells using the warp's Voronoi search. Each cell takes a hashed spot on the ramp (0.75 of its length), shaded by the distance to the cell's feature point (0.45 per cell unit). At a border both cells meet at their mean over ~0.75 output px, so edges are crisp but antialiased. Cells with similar spots show a soft crease where they meet.
+- **Shader:** the noise library is shared with the warps (`NOISE_LIB`, `NOISE_CELLS`), with the warp's uniforms fenced to warp variants. The CPU reference reuses `noise.ts` and the Voronoi search in `warp.ts`.
+- **Shuffle:** a layout shuffle re-rolls seed and scale (0.1–0.6). The style shuffle picks noise 10% and cells 8% of the time.

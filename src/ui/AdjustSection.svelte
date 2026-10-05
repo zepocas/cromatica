@@ -89,6 +89,28 @@
       bind:value={editor.planes.blend}
       display={fixed2}
     />
+  {:else if editor.kind === 'noise' || editor.kind === 'cells'}
+    <div class="row">
+      <label for="ramp-scale">scale</label>
+      <input
+        id="ramp-scale"
+        type="range"
+        min="0"
+        max="1"
+        step="0.01"
+        aria-label="Scale"
+        title="Large ↔ small features"
+        bind:value={editor.ramp.scale}
+      />
+      <button
+        class="icon"
+        aria-label="New pattern variation"
+        title="New arrangement of the {editor.kind}"
+        data-seed={editor.ramp.seed}
+        onclick={() => editor.newRampVariation()}>⚄</button
+      >
+      <output>{fixed2(editor.ramp.scale ?? 0.35)}</output>
+    </div>
   {:else if editor.kind !== 'radial'}
     <SliderRow
       label="angle"

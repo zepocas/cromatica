@@ -23,7 +23,7 @@ export interface ColorStop {
 }
 
 /** How a ramp gradient maps the frame to the ramp (src/engine/ramp-shape.ts). */
-export type RampShape = 'linear' | 'radial' | 'conic';
+export type RampShape = 'linear' | 'radial' | 'conic' | 'noise' | 'cells';
 
 /** Stops along a ramp, laid over the frame as a linear, radial or conic gradient. */
 export interface RampGradient {
@@ -35,6 +35,10 @@ export interface RampGradient {
   angle: number;
   /** Sorted by position. At least 2 stops in the editor (the renderer accepts 1), at most MAX_STOPS. */
   stops: ColorStop[];
+  /** Noise and cells: feature size, [0, 1]; 0 = large, 1 = small. Missing = 0.35. */
+  scale?: number;
+  /** Noise and cells: uint32 seed. Missing = 1. */
+  seed?: number;
 }
 
 /**

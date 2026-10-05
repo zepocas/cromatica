@@ -97,6 +97,8 @@ export const RAMP_SHUFFLE = {
   /** Ranges of the first and last stop positions. */
   first: [0, 0.12] as Range,
   last: [0.88, 1] as Range,
+  /** Noise and cells: feature size range. */
+  scale: [0.1, 0.6] as Range,
 };
 
 export const PLANES_SHUFFLE = {
@@ -106,7 +108,10 @@ export const PLANES_SHUFFLE = {
 
 /** Style shuffle: how often each pattern kind comes up, and the finishes' odds and ranges. */
 export const STYLE_SHUFFLE = {
-  kinds: { mesh: 0.35, linear: 0.15, radial: 0.1, conic: 0.1, planes: 0.3 } as Record<BasePattern['kind'], number>,
+  kinds: { mesh: 0.3, linear: 0.12, radial: 0.08, conic: 0.08, noise: 0.1, cells: 0.08, planes: 0.24 } as Record<
+    BasePattern['kind'],
+    number
+  >,
   vignette: { chance: 0.3, range: [0.2, 0.6] as Range },
   print: { chance: 0.25, range: [0.2, 0.7] as Range },
   /** Not for planes, which are flat already. */
@@ -362,5 +367,10 @@ function shuffleRamp(base: RampGradient, ctx: ShuffleContext): { pattern: RampGr
   }
 
   const out: ColorStop[] = stops.map((s, i) => ({ position: positions[i], color: colors[i], blend: s.blend }));
-  return { pattern: { kind: base.kind, angle, stops: out }, palette: palette && paletteInfo(palette) };
+  const pattern: RampGradient = { ...base, angle, stops: out };
+  if (opts.layout && (base.kind === 'noise' || base.kind === 'cells')) {
+    pattern.scale = round4(layoutRng.range(...RAMP_SHUFFLE.scale));
+    pattern.seed = layoutRng.uint32();
+  }
+  return { pattern, palette: palette && paletteInfo(palette) };
 }

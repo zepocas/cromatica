@@ -186,12 +186,12 @@ function bandOffset(across: number, w: PreparedWarp): number {
 }
 
 /** Jittered feature point of a Worley/Voronoi cell, cell units. */
-function feature(cx: number, cy: number, key: number): Vec2 {
+export function feature(cx: number, cy: number, key: number): Vec2 {
   const h = hash2(cx, cy, key);
   return [cx + 0.1 + 0.8 * h[0], cy + 0.1 + 0.8 * h[1]];
 }
 
-interface VoronoiCells {
+export interface VoronoiCells {
   /** Nearest cell and its feature point. */
   c1: Vec2;
   p1: Vec2;
@@ -201,7 +201,7 @@ interface VoronoiCells {
 }
 
 /** F1 cell, its nearest border (bisector) and the cell across it; 3×3 searches. */
-function voronoiCells(sx: number, sy: number, key: number): VoronoiCells {
+export function voronoiCells(sx: number, sy: number, key: number): VoronoiCells {
   const ix = Math.floor(sx);
   const iy = Math.floor(sy);
   let best = Infinity;

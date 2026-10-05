@@ -5,9 +5,24 @@ import { test } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Oklch } from '../../src/color/types';
-import { defaultGrain, type Design, type Warp, WARP_SHAPES, type WarpShape } from '../../src/design/design';
+import {
+  defaultGrain,
+  type Design,
+  type RampGradient,
+  type Warp,
+  WARP_SHAPES,
+  type WarpShape,
+} from '../../src/design/design';
 import { previewProbe } from './support/app';
-import { meshDefault, warp, withLook } from './support/designs';
+import { linear, meshDefault, threeStops, warp, withLook } from './support/designs';
+
+const midTonesFive = linear(0, [
+  [0, [0.3, 0.06, 250]],
+  [0.25, [0.5, 0.09, 200]],
+  [0.5, [0.75, 0.08, 150]],
+  [0.75, [0.88, 0.07, 90]],
+  [1, [0.62, 0.14, 40]],
+]);
 import { engineHarness, openEngineHarness } from './support/harness';
 
 const DIR = process.env.SHEETS_DIR ?? '/tmp';
@@ -99,6 +114,24 @@ test.describe('planes contact sheets', () => {
       writeFileSync(join(DIR, file), Buffer.from(png, 'base64'));
     });
   }
+});
+
+test('noise-cells.png', async ({ page }) => {
+  await openEngineHarness(page);
+  const cols = ['scale 0.1', 'scale 0.35', 'scale 0.7'];
+  const field = (kind: 'noise' | 'cells', stops: Design, scale: number, seed: number): Design => ({
+    ...stops,
+    grain: defaultGrain,
+    base: { ...(stops.base as RampGradient), kind, scale, seed },
+  });
+  const rows = [
+    { label: 'noise', designs: [0.1, 0.35, 0.7].map((s) => field('noise', threeStops(0), s, 4)) },
+    { label: 'noise 2', designs: [0.1, 0.35, 0.7].map((s) => field('noise', midTonesFive, s, 8)) },
+    { label: 'cells', designs: [0.1, 0.35, 0.7].map((s) => field('cells', threeStops(0), s, 4)) },
+    { label: 'cells 2', designs: [0.1, 0.35, 0.7].map((s) => field('cells', midTonesFive, s, 8)) },
+  ];
+  const png = await engineHarness(page, 'contactSheet', rows, cols, 640, 360);
+  writeFileSync(join(DIR, 'noise-cells.png'), Buffer.from(png, 'base64'));
 });
 
 test('six shuffles in a row', async ({ page }) => {
