@@ -77,7 +77,7 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Consequence:**
   - Autosave protects against a reload or an accidental tab close.
   - If browser data is cleared, the design is gone.
-  - Share links and exported images are the way to keep work.
+  - Share links and exported images are the way to keep work. Since M6 (D44) share links are in the backlog, so for now only exported images last.
 
 ## D14. Svelte 5 for the UI
 
@@ -281,6 +281,14 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Editing:** node handles plus the bent grid lines (the forward map sampled 12 times per segment) on an overlay; drag or arrow-nudge nodes. Rows and columns are sliders; resizing places the new nodes where their rest spots land on the current grid and gives them the color there, so the picture stays put.
 - **Colors:** the grid has its own palette owner (`grid`, next to mesh and ramp), since up to 25 nodes don't fit the 8 stops. A new palette has up to 5 colors, dealt over the nodes so each differs from its left and lower neighbors where it can. A palette from an image gives each node the image color nearest to it on screen.
 - **Shuffle:** a layout shuffle picks 3–4 rows and columns and jitters the nodes over the frame. The style shuffle picks grid 14% of the time.
+
+## D44. Saving: a versioned save in localStorage, undo over editor snapshots
+
+- **Storage:** localStorage, one key (`wallpaper.design`). A design is a few KB of JSON, and there is no library of saved designs that would need IndexedDB.
+- **Schema:** zod, in `src/design/schema.ts`. The save is `{ version, design }`; each version has a migration to the next, and the current schema requires every field, so the defaults that missing optional fields stood for are pinned in one place. `engineVersion` stays 1 and is checked on load. A save that fails validation is ignored whole (logged), and the app opens on a shuffle.
+- **What is saved:** the design only. The other patterns' settings, the palette's rule and adjustments, the size preset and the shuffle locks are not; after a reload the palette counts as custom.
+- **Undo:** snapshots of the editor (all five pattern settings, warp, grain, finish, transform and the palette state), not of the design, so undoing a pattern switch or a hue turn is exact. 100 steps, not kept across reloads. Steps are split at every pointer press and key press (not key repeats), with no timer; a change that isn't followed by a press is closed by the next undo.
+- **Share links:** dropped from M6 (backlog).
 
 ## D45. Keep work: the design lives in the PNG, favourites stay small
 

@@ -250,23 +250,23 @@ Each milestone uses the same structure:
   - Aurora ribbons built as the `aurora` gradient type (D42).
   - Grid Bézier mesh built as the `grid` gradient type (D43): 2–5 × 2–5 draggable nodes, auto-smooth curves, a fold guard in the editor. Reference designs moved to M11.
 
-### M6 — Saving
+### M6 — Saving ✅
 
-- **Goal:** never lose work within a session, and make designs shareable.
+- **Goal:** never lose work within a session.
 - **Scope:**
   - Versioned design schema (zod) with migrations
   - `engineVersion` recorded in each design
   - Undo/redo, with a slider drag counted as one step
   - Autosave to browser storage as a best-effort cache
-  - Share links: compressed into the URL hash
+  - ~~Share links: compressed into the URL hash~~ moved to the backlog (user choice: they matter little, and grid designs make long URLs)
 - **Done when:**
   - A reload restores the design exactly
-  - A share link reproduces the design exactly on the same machine
   - An old-schema fixture still loads
-- **Open questions:**
-  - localStorage or IndexedDB?
-  - Undo history depth
-  - URL length limits for large meshes
+- **Outcome (D44):**
+  - **Schema:** `src/design/schema.ts`. A save is `{ version: 2, design }` with every field present; version 1 is the bare pre-M6 design, whose missing `transform`, `finish`, ramp `scale`, `seed` and `noiseStyle` are filled with their defaults on load. Anything invalid is rejected whole.
+  - **Autosave:** the design goes to localStorage 300 ms after the last change and on leaving the page. The app opens on it and only shuffles on a first visit or when the save can't be read. `?default` neither restores nor overwrites it.
+  - **Undo/redo:** ⌘Z and ⇧⌘Z (or Ctrl+Y), plus ↶ ↷ in the panel header; 100 steps, for the session only. A step is everything that changed between two presses (pointer or key), so a drag is one step and a held key is one step. Undo brings back every pattern's settings and the palette state (rule, base hue, temperature), not just the active design. Text fields keep their own undo.
+  - Unit tests now compile Svelte modules in client mode. The server build dropped `$state.snapshot` on class fields, so `editor.design` shared (and sorted) the live stops in tests only.
 
 ### M7 — Keep and explore
 
@@ -347,6 +347,7 @@ Each milestone uses the same structure:
   - Shader compile warm-up
   - Keyboard shortcuts
   - **Showcase examples / reference designs** (moved from M5): for each pattern, render candidates from shuffles and contact sheets, let the user pick about 3 by eye, and save them as fixed design files. They serve as showcase examples and as test fixtures.
+  - Status bar under the preview, IDE-style, for global and view settings: show points (moved to the bottom of the panel in M6 for now), the 1:1 loupe and preview zoom, output size, autosave state. Idea from 2026-10-05; only worth it once it holds several of these.
 - **Done when:**
   - Tested on Chrome, Safari and Firefox on macOS, and Chrome on Windows
   - Exports at every preset resolution succeed
@@ -383,6 +384,7 @@ Each milestone uses the same structure:
 - Flow-field advection (LIC) and Gabor noise, if more warp variety is wanted after M4.5
 - **Planes advanced panel:** under "+ more" for planes, add controls to move planes (drag, nudge, or reorder the stack) and bring over the interesting settings from the stipple / ink-blobs prototype (`prototype-stipple.html`). Requested 2026-10-04.
 - **Digital / glitch** (postponed from M5 on 2026-10-04; needs a different approach): the glitch should act on the boundaries between colors and shapes in the rendered image (tearing, offsets and channel splits that follow edges), not move coordinates. A first try as a warp shape (hashed blocks shifted sideways plus scanline jitter) and an RGB split finish was built and reverted. It was underwhelming: on soft gradients a shifted block of similar color barely shows. Likely needs an image-space stage, for example edge detection on the pattern evaluated at neighboring points, with displacement applied where colors change. That stays per pixel and stateless (D4), but costs extra pattern evaluations.
+- **Share links** (moved from M6 on 2026-10-05): the save envelope compressed into the URL hash. Grid designs (25 nodes) make long URLs. A JSON file export and import would be the cheaper way to keep a design outside the browser.
 - **Looks (curated bundles)** (parked 2026-10-05, D47): named presets such as Zine, Dusk or Riso that set pattern, mood, key and finish together, so shuffle could stay inside a look. It would help adoption, but M7's onboarding tips cover most of that for now.
 - **Favourites, advanced** (2026-10-05): a real library with thumbnails, folders and a JSON file export and import. M7 only keeps a short plain list (D45).
 - **Comment density:** go through the code and cut comments that restate the code or narrate history; keep the ones that explain why (conventions, math, invariants). The user finds the current amount excessive (2026-10-04).
