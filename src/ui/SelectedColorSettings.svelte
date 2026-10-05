@@ -2,7 +2,6 @@
   import type { BlendMode } from '../design/design';
   import ColorControls from './ColorControls.svelte';
   import SliderRow from './controls/SliderRow.svelte';
-  import Toggle from './controls/Toggle.svelte';
   import { MAX_RADIUS, MIN_RADIUS, type EditorState } from './editor.svelte';
 
   interface Props {
@@ -28,16 +27,6 @@
 
 {#if editor.kind === 'grid'}
   <ColorControls color={editor.grid.nodes[selected].color} onchange={(c) => editor.palette.setColor(selected, c)} />
-  <div class="row">
-    <span>nodes</span>
-    <Toggle
-      checked={editor.showHandles}
-      label="show on image"
-      ariaLabel={editor.showHandles ? 'Hide nodes' : 'Show nodes'}
-      title="Show or hide the grid on the image (H)"
-      onchange={(on) => (editor.showHandles = on)}
-    />
-  </div>
 {:else if editor.kind === 'mesh'}
   <ColorControls color={editor.mesh.points[selected].color} onchange={(c) => editor.palette.setColor(selected, c)} />
   <SliderRow
@@ -49,16 +38,6 @@
     value={editor.pointSize(selected)}
     oninput={(v) => editor.setPointSize(selected, v)}
   />
-  <div class="row">
-    <span>points</span>
-    <Toggle
-      checked={editor.showHandles}
-      label="show on image"
-      ariaLabel={editor.showHandles ? 'Hide points' : 'Show points'}
-      title="Show or hide the points on the image (H)"
-      onchange={(on) => (editor.showHandles = on)}
-    />
-  </div>
 {:else}
   <ColorControls color={editor.ramp.stops[selected].color} onchange={(c) => editor.palette.setColor(selected, c)} />
   {#if showBlend}
