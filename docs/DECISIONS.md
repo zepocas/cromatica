@@ -225,7 +225,8 @@ Decisions made during the architecture review. Reopen one only if new informatio
 
 ## D35. Brushed strokes along a seeded direction; smudge dropped
 
-- **Brushed** (`bristle`): in coordinates along and across a seeded stroke direction, simplex noise at 0.15× along and 14× across gives fine, long bristle lines; it displaces along the stroke by up to 0.7 (gain) times a soft mask (0.4–1, from coarse simplex), so colors drag across the frame in streaks. The first tuning (gain 0.18, a mask that cut strokes off fully) was barely visible: a warp only moves colors, and soft colors smeared into soft colors look the same.
+- **Brushed** (`bristle`): in coordinates along and across a seeded stroke direction, simplex noise at 0.15× along and 5× across gives broad, long strokes; it displaces along the stroke by up to 0.7 (gain) times a soft mask (0.4–1, from coarse simplex), so colors drag across the frame in streaks. The first tuning (gain 0.18, a mask that cut strokes off fully) was barely visible: a warp only moves colors, and soft colors smeared into soft colors look the same.
+- **Widened (2026-10-05):** 14× across gave hairline streaks that vanished on soft gradients; 3× turned into a generic smear like fbm. Brushed also uses only half the size slider's frequency range (`span: 0.5` in the warp tuning, 4× instead of 16×), so even the smallest size keeps brush-wide strokes. Shuffle weight halved to 0.4. `SHEETS=1 npx playwright test sheets -g brushed` renders the sheet.
 - **Smudge dropped:** a smooth one-way drag was invisible on soft gradients; finger-width trails with a hard start (hashed per trail) turned into rectangular blocks with straight cuts, a digital, glitchy look rather than a smear. That look is noted for M5 as a "digital / glitch" item.
 
 ## D36. Print texture: litho ink modulation to xerox lightness screen

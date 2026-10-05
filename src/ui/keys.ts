@@ -18,5 +18,7 @@ export function isTypingTarget(target: EventTarget | null): boolean {
  */
 export function isFormControl(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null;
-  return !!el?.closest?.('input, select, textarea, [contenteditable]:not([contenteditable="false"])');
+  return !!el?.closest?.(
+    'input, select, textarea, [role="combobox"], [contenteditable]:not([contenteditable="false"])',
+  );
 }

@@ -1,12 +1,12 @@
 // The grid mesh in the app: dragging nodes, the fold guard, and resizing.
-import { expect, openApp, previewProbe, test } from './support/app';
+import { choose, expect, openApp, previewProbe, test } from './support/app';
 
 test('grid: drag bends, nodes cannot pass their neighbors, edges stay on the frame, resize keeps nodes', async ({
   page,
 }) => {
   await openApp(page);
   const { settled, expectPreviewChanged } = previewProbe(page);
-  await page.getByLabel('Gradient', { exact: true }).selectOption('grid');
+  await choose(page.getByLabel('Gradient', { exact: true }), 'grid');
   await page.getByLabel('Rows').fill('3');
   await page.getByLabel('Columns').fill('3');
   const nodes = page.locator('[data-node]');

@@ -3,6 +3,7 @@
   import type { Oklch } from '../color/types';
   import { shortestTurn } from '../math';
   import ColorRow from './ColorRow.svelte';
+  import Dropdown from './controls/Dropdown.svelte';
   import Toggle from './controls/Toggle.svelte';
   import type { EditorState } from './editor.svelte';
   import PaletteSettings from './PaletteSettings.svelte';
@@ -117,18 +118,15 @@
 
   <div class="row">
     <label for="harmony">harmony</label>
-    <select
+    <Dropdown
       id="harmony"
-      aria-label="Harmony"
+      ariaLabel="Harmony"
       title="The palette's color rule; pick one for a new palette in that rule"
       value={palette.info?.rule ?? ''}
-      onchange={(e) => palette.setRule(e.currentTarget.value as HarmonyRule)}
-    >
-      {#if !palette.info}<option value="" disabled>custom</option>{/if}
-      {#each HARMONY_RULES as r (r)}
-        <option value={r}>{RULE_LABELS[r]}</option>
-      {/each}
-    </select>
+      placeholder="custom"
+      options={HARMONY_RULES.map((r) => ({ value: r, label: RULE_LABELS[r] }))}
+      onchange={(r) => palette.setRule(r)}
+    />
     <Toggle
       checked={palette.keep}
       label="keep"

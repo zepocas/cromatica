@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { ExportFormat, ExportProgress } from '../export/types';
+  import Dropdown from './controls/Dropdown.svelte';
   import Toggle from './controls/Toggle.svelte';
   import type { EditorState } from './editor.svelte';
 
@@ -68,10 +69,12 @@
       <button class="strong" aria-label="Download" onclick={onexport}>[ download ]</button>
       {#if !compact}
         <span class="spacer"></span>
-        <select bind:value={format} aria-label="Format">
-          <option value="png">png</option>
-          <option value="jpeg">jpeg</option>
-        </select>
+        <Dropdown
+          ariaLabel="Format"
+          value={format}
+          options={[{ value: 'png' }, { value: 'jpeg' }]}
+          onchange={(f) => (format = f)}
+        />
       {/if}
     {/if}
   </div>
@@ -111,7 +114,7 @@
   .spacer {
     flex: 1;
   }
-  .row.actions select {
+  .row.actions :global(.dropdown) {
     flex: none;
   }
   .strong {

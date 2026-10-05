@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { PALETTE_MOODS, type PaletteMood, type ValueKey } from '../color/harmony';
+  import { PALETTE_MOODS, type ValueKey } from '../color/harmony';
   import type { Temperature } from '../color/temperature';
   import Choice from './controls/Choice.svelte';
+  import Dropdown from './controls/Dropdown.svelte';
   import Toggle from './controls/Toggle.svelte';
   import type { PaletteEditor } from './palette.svelte';
 
@@ -12,6 +13,12 @@
   }
 
   let { palette, selectedHue }: Props = $props();
+
+  const KEY_OPTIONS: { value: ValueKey; label: string }[] = [
+    { value: 'high', label: 'high (light)' },
+    { value: 'full', label: 'full range' },
+    { value: 'low', label: 'low (dark)' },
+  ];
 
   const TEMPERATURES: { value: Temperature; title: string }[] = [
     { value: 'off', title: 'Colors as they are' },
@@ -26,33 +33,27 @@
   ];
 </script>
 
-<label class="row">
+<div class="row">
   <span>mood</span>
-  <select
-    aria-label="Mood"
+  <Dropdown
+    ariaLabel="Mood"
     value={palette.info?.mood ?? ''}
-    onchange={(e) => palette.setMood(e.currentTarget.value as PaletteMood)}
-  >
-    {#if !palette.info}<option value="" disabled>custom</option>{/if}
-    {#each PALETTE_MOODS as m (m)}
-      <option value={m}>{m}</option>
-    {/each}
-  </select>
-</label>
-<label class="row">
+    placeholder="custom"
+    options={PALETTE_MOODS.map((m) => ({ value: m }))}
+    onchange={(m) => palette.setMood(m)}
+  />
+</div>
+<div class="row">
   <span>key</span>
-  <select
-    aria-label="Value key"
+  <Dropdown
+    ariaLabel="Value key"
     title="Where the palette sits on the lightness scale"
     value={palette.info?.key ?? ''}
-    onchange={(e) => palette.setKey(e.currentTarget.value as ValueKey)}
-  >
-    {#if !palette.info}<option value="" disabled>custom</option>{/if}
-    <option value="high">high (light)</option>
-    <option value="full">full range</option>
-    <option value="low">low (dark)</option>
-  </select>
-</label>
+    placeholder="custom"
+    options={KEY_OPTIONS}
+    onchange={(k) => palette.setKey(k)}
+  />
+</div>
 <Choice
   label="temp"
   ariaLabel="Temperature"

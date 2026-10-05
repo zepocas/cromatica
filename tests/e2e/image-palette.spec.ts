@@ -1,5 +1,5 @@
 // Palette from image (D25): the picker and drag-and-drop.
-import { expect, openApp, readHexes, test } from './support/app';
+import { choose, expect, openApp, readHexes, test } from './support/app';
 import { twoTonePng } from './support/images';
 
 test('palette from image: picker and drop set the colors, laid out like the image', async ({ page }) => {
@@ -10,14 +10,14 @@ test('palette from image: picker and drop set the colors, laid out like the imag
   await page.getByLabel('Image file').setInputFiles({ name: 'two-tone.png', mimeType: 'image/png', buffer: png });
   await expect(page.locator('li input.hex')).toHaveCount(2);
   expect(await readHexes(page)).toEqual(['#DC2828', '#1E3CC8']);
-  await expect(page.getByLabel('Harmony', { exact: true })).toHaveValue('');
+  await expect(page.getByLabel('Harmony', { exact: true })).toHaveAttribute('data-value', '');
   const handles = page.getByLabel(/^Point \d$/);
   await expect(handles).toHaveCount(2);
   const [red, blue] = await Promise.all([handles.nth(0).boundingBox(), handles.nth(1).boundingBox()]);
   expect(red!.x).toBeLessThan(blue!.x);
 
   // Linear, by drop: stops follow the image left to right (default angle 30°).
-  await page.getByLabel('Gradient', { exact: true }).selectOption('linear');
+  await choose(page.getByLabel('Gradient', { exact: true }), 'linear');
   const dataTransfer = await page.evaluateHandle(
     (bytes) => {
       const d = new DataTransfer();

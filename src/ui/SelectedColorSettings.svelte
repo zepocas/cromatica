@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { BlendMode } from '../design/design';
   import ColorControls from './ColorControls.svelte';
+  import Dropdown from './controls/Dropdown.svelte';
   import SliderRow from './controls/SliderRow.svelte';
   import { MAX_RADIUS, MIN_RADIUS, type EditorState } from './editor.svelte';
 
@@ -41,13 +42,15 @@
 {:else}
   <ColorControls color={editor.ramp.stops[selected].color} onchange={(c) => editor.palette.setColor(selected, c)} />
   {#if showBlend}
-    <label class="row">
+    <div class="row">
       <span>blend</span>
-      <select aria-label="Blend to next stop" bind:value={editor.ramp.stops[selected].blend} disabled={isLastStop}>
-        {#each BLEND_OPTIONS as o (o.value)}
-          <option value={o.value}>{o.label}</option>
-        {/each}
-      </select>
-    </label>
+      <Dropdown
+        ariaLabel="Blend to next stop"
+        value={editor.ramp.stops[selected].blend}
+        options={BLEND_OPTIONS}
+        disabled={isLastStop}
+        onchange={(b) => (editor.ramp.stops[selected].blend = b)}
+      />
+    </div>
   {/if}
 {/if}
