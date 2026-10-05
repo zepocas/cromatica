@@ -20,6 +20,7 @@
     format: ExportFormat;
     /** Collapsed to a one-line bar floating over a full-width preview. */
     collapsed: boolean;
+    exploring: boolean;
     canUndo: boolean;
     canRedo: boolean;
     onundo: () => void;
@@ -40,6 +41,7 @@
     output,
     format = $bindable(),
     collapsed = $bindable(),
+    exploring = $bindable(),
     canUndo,
     canRedo,
     onundo,
@@ -53,7 +55,7 @@
 
   const favourite = $derived(favourites.find(editor.design));
 
-  /** App shortcuts: Space shuffles, ← and → step through recent shuffles, [ and ] through warp shapes. */
+  /** App shortcuts: Space shuffles, ← and → step through recent shuffles, [ and ] through warp shapes, M opens more like this. */
   function onWindowKeyDown(e: KeyboardEvent) {
     if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
     if (e.key === ' ') {
@@ -63,6 +65,9 @@
     } else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !isFormControl(e.target) && !isHandle(e.target)) {
       e.preventDefault();
       editor.stepReel(e.key === 'ArrowRight' ? 1 : -1);
+    } else if (e.key === 'm' || e.key === 'M') {
+      e.preventDefault();
+      exploring = !exploring;
     } else if (e.key === '[' || e.key === ']') {
       e.preventDefault();
       editor.cycleWarpShape(e.key === ']' ? 1 : -1);
@@ -98,6 +103,7 @@
     {editor}
     {favourites}
     {favourite}
+    bind:exploring
     bind:format
     compact={collapsed}
     {exporting}

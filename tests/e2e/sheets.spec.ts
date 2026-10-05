@@ -14,7 +14,10 @@ import {
   WARP_SHAPES,
   type WarpShape,
 } from '../../src/design/design';
+import { mutateDesign } from '../../src/design/mutate';
+import { createRng } from '../../src/design/random';
 import { LEGACY_AURORA_BLEND } from '../../src/design/schema';
+import { shuffleDesign } from '../../src/design/shuffle';
 import { previewProbe } from './support/app';
 import {
   gridColors,
@@ -274,4 +277,23 @@ test('brushed.png', async ({ page }) => {
   }));
   const png = await engineHarness(page, 'contactSheet', rows, cols, 800, 450);
   writeFileSync(join(DIR, process.env.BRUSHED_SHEET ?? 'brushed.png'), Buffer.from(png, 'base64'));
+});
+
+test('variations.png', async ({ page }) => {
+  await openEngineHarness(page);
+  // As the more-like-this grid: gentle → bold, after the original.
+  const strengths = [0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95, 1];
+  const cols = ['original', ...strengths.map((s) => `${s}`)];
+  const rows = [];
+  let d: Design = { ...meshDefault, grain: defaultGrain };
+  for (let seed = 11; rows.length < 6; seed++) {
+    d = shuffleDesign(d, { colors: true, layout: true, style: true, seed }).design;
+    const base = d;
+    rows.push({
+      label: `${base.base.kind} · ${base.warp.shape}`,
+      designs: [base, ...strengths.map((s, i) => mutateDesign(base, createRng(seed * 31 + i), s))],
+    });
+  }
+  const png = await engineHarness(page, 'contactSheet', rows, cols, 320, 180);
+  writeFileSync(join(DIR, 'variations.png'), Buffer.from(png, 'base64'));
 });

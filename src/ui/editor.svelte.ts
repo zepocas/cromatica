@@ -5,6 +5,8 @@ import { evaluateRamp } from '../color/ramp';
 import type { Oklch } from '../color/types';
 import {
   AURORA_BLEND,
+  MAX_RADIUS,
+  MIN_RADIUS,
   defaultDesign,
   defaultGrain,
   defaultMesh,
@@ -66,9 +68,7 @@ function defaultGrid(): GridMesh {
   return { kind: 'grid', rows: 3, cols: 3, nodes, rest: [8 / 9, 0.5] };
 }
 
-/** Point size limits, in screen (composition) units: radius × zoom. */
-export const MIN_RADIUS = 0.05;
-export const MAX_RADIUS = 1.2;
+export { MAX_RADIUS, MIN_RADIUS };
 /** How far outside the frame (composition units) a point may be dragged. */
 const OUTSIDE_MARGIN = 0.5;
 /** Fewest stops a linear gradient keeps in the editor. */

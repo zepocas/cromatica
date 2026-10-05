@@ -59,3 +59,38 @@ test('favourites: ♡ keeps the design, a click reopens it, and it survives a re
   await expect(page.getByRole('button', { name: /^Open favourite/ })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Add to favourites' })).toBeVisible();
 });
+
+test('more like this: a grid of variations; a pick is one undo step, Esc closes', async ({ page }) => {
+  await openApp(page);
+  const { settled } = previewProbe(page);
+  const before = await settled();
+  const grid = page.getByTestId('more-like-this');
+
+  await page.keyboard.press('m');
+  await expect(grid).toBeVisible();
+  await expect(grid.getByRole('button', { name: /^Variation \d$/ })).toHaveCount(8);
+  await page.keyboard.press('Escape');
+  await expect(grid).toBeHidden();
+
+  // Time until every cell has drawn, on the test browser's software GPU.
+  const ms = await page.evaluate(async () => {
+    const t0 = performance.now();
+    document.querySelector<HTMLButtonElement>('[aria-label="More like this"]')!.click();
+    const cells = () => [...document.querySelectorAll<HTMLCanvasElement>('[data-testid="more-like-this"] canvas')];
+    const drawn = () =>
+      cells().length === 9 &&
+      cells().every((c) => {
+        const px = c.getContext('2d')!.getImageData(c.width >> 1, c.height >> 1, 1, 1).data;
+        return px[3] > 0;
+      });
+    while (!drawn()) await new Promise(requestAnimationFrame);
+    return performance.now() - t0;
+  });
+  console.log(`more like this: 9 thumbnails drawn in ${ms.toFixed(0)} ms`);
+
+  await grid.getByRole('button', { name: 'Variation 1' }).click();
+  await expect(grid).toBeHidden();
+  await expect.poll(async () => (await settled()).equals(before)).toBe(false);
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect.poll(async () => (await settled()).equals(before)).toBe(true);
+});

@@ -9,6 +9,7 @@
   import { History } from './ui/history.svelte';
   import { isTypingTarget } from './ui/keys';
   import MeshOverlay from './ui/MeshOverlay.svelte';
+  import MoreLikeThis from './ui/MoreLikeThis.svelte';
   import GridOverlay from './ui/GridOverlay.svelte';
   import Preview from './ui/Preview.svelte';
   import { CUSTOM_PRESET_ID, DEFAULT_PRESET_ID, SIZE_PRESETS } from './ui/presets';
@@ -28,6 +29,8 @@
   let customHeight = $state(1080);
   let format = $state<ExportFormat>('png');
   let collapsed = $state(false);
+  /** The "more like this" grid covers the preview. */
+  let exploring = $state(false);
   let exporting = $state(false);
   let progress = $state<ExportProgress | null>(null);
   let error = $state('');
@@ -163,7 +166,17 @@
 
 <Preview design={renderDesign} {aspect} paused={exporting} docked={!collapsed}>
   {#snippet overlay()}
-    {#if editor.kind === 'mesh'}
+    {#if exploring}
+      <MoreLikeThis
+        design={renderDesign}
+        {aspect}
+        onpick={(d) => {
+          editor.setDesign(d);
+          exploring = false;
+        }}
+        onclose={() => (exploring = false)}
+      />
+    {:else if editor.kind === 'mesh'}
       <MeshOverlay {editor} {aspect} />
     {:else if editor.kind === 'grid'}
       <GridOverlay {editor} {aspect} />
@@ -179,6 +192,7 @@
   {output}
   bind:format
   bind:collapsed
+  bind:exploring
   canUndo={history.canUndo}
   canRedo={history.canRedo}
   onundo={undo}

@@ -257,6 +257,9 @@ export const MAX_ZOOM = 4;
 
 export const MAX_STOPS = 8;
 export const MAX_MESH_POINTS = 16;
+/** Point size limits, in screen (composition) units: radius × zoom. */
+export const MIN_RADIUS = 0.05;
+export const MAX_RADIUS = 1.2;
 
 export const defaultDesign: Design = {
   engineVersion: 1,

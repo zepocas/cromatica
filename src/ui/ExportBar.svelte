@@ -10,6 +10,7 @@
     favourites: Favourites;
     /** The favourite the current design matches. */
     favourite: Favourite | undefined;
+    exploring: boolean;
     format: ExportFormat;
     /** Collapsed panel: only shuffle and download. */
     compact: boolean;
@@ -24,6 +25,7 @@
     editor,
     favourites,
     favourite,
+    exploring = $bindable(),
     format = $bindable(),
     compact,
     exporting,
@@ -88,6 +90,13 @@
         onclick={() => editor.stepReel(1)}>→</button
       >
       <span class="spacer"></span>
+      <button
+        class="icon"
+        aria-label="More like this"
+        aria-pressed={exploring}
+        title="More like this: variations of this design (M)"
+        onclick={() => (exploring = !exploring)}>⊞</button
+      >
       <button
         class="icon"
         aria-label={favourite ? 'Remove from favourites' : 'Add to favourites'}
