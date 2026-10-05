@@ -1,5 +1,5 @@
 // Mesh points on the canvas: handles, drag, nudge, add, delete, visibility.
-import { centerOf, expect, openApp, previewProbe, test, toComposition } from './support/app';
+import { centerOf, choose, expect, openApp, previewProbe, test, toComposition } from './support/app';
 
 test('mesh editor: drag, add, delete, switch pattern and hide handles', async ({ page }) => {
   await openApp(page);
@@ -12,7 +12,7 @@ test('mesh editor: drag, add, delete, switch pattern and hide handles', async ({
   };
 
   // Starts on the mesh with the default points.
-  await expect(page.getByLabel('Gradient', { exact: true })).toHaveValue('mesh');
+  await expect(page.getByLabel('Gradient', { exact: true })).toHaveAttribute('data-value', 'mesh');
   await expect(points).toHaveCount(5);
 
   // The overlay covers the canvas exactly.
@@ -77,10 +77,10 @@ test('mesh editor: drag, add, delete, switch pattern and hide handles', async ({
   const edited = await stored(1);
 
   // Switching to linear and back keeps the mesh edits.
-  await page.getByLabel('Gradient', { exact: true }).selectOption('linear');
+  await choose(page.getByLabel('Gradient', { exact: true }), 'linear');
   await expect(points).toHaveCount(0);
   await expect(page.getByTestId('stop-strip')).toBeVisible();
-  await page.getByLabel('Gradient', { exact: true }).selectOption('mesh');
+  await choose(page.getByLabel('Gradient', { exact: true }), 'mesh');
   await expect(points).toHaveCount(5);
   expect(await stored(1)).toEqual(edited);
 

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { WARP_SHAPES, type WarpShape } from '../design/design';
   import { clamp } from '../math';
+  import Dropdown from './controls/Dropdown.svelte';
   import type { EditorState } from './editor.svelte';
   import { CUSTOM_PRESET_ID, PRESET_GROUPS, presetLabel, SIZE_PRESETS } from './presets';
   import Section from './Section.svelte';
@@ -24,6 +25,13 @@
   }: Props = $props();
 
   const MAX_SIZE = 16384;
+
+  const SIZE_OPTIONS = [
+    ...PRESET_GROUPS.flatMap((group) =>
+      SIZE_PRESETS.filter((p) => p.group === group).map((p) => ({ value: p.id, label: presetLabel(p), group })),
+    ),
+    { value: CUSTOM_PRESET_ID, label: 'custom' },
+  ];
 
   const PATTERNS = [
     { kind: 'mesh', label: 'mesh' },
@@ -65,21 +73,25 @@
 </script>
 
 <Section title="pattern">
-  <label class="row">
+  <div class="row">
     <span>gradient</span>
-    <select aria-label="Gradient" bind:value={editor.kind}>
-      {#each PATTERNS as p (p.kind)}
-        <option value={p.kind}>{p.label}</option>
-      {/each}
-    </select>
-  </label>
+    <Dropdown
+      ariaLabel="Gradient"
+      value={editor.kind}
+      options={PATTERNS.map((p) => ({ value: p.kind, label: p.label }))}
+      onchange={(k) => (editor.kind = k)}
+    />
+  </div>
   <div class="row">
     <label for="warp-shape">warp shape</label>
-    <select id="warp-shape" aria-label="Warp shape" title="[ and ] to step through" bind:value={editor.warp.shape}>
-      {#each WARP_SHAPES as s (s)}
-        <option value={s}>{WARP_LABELS[s]}</option>
-      {/each}
-    </select>
+    <Dropdown
+      id="warp-shape"
+      ariaLabel="Warp shape"
+      title="[ and ] to step through"
+      value={editor.warp.shape}
+      options={WARP_SHAPES.map((s) => ({ value: s, label: WARP_LABELS[s] }))}
+      onchange={(s) => (editor.warp.shape = s)}
+    />
     <button
       class="icon"
       aria-label="New variation"
@@ -89,19 +101,10 @@
       onclick={() => editor.newWarpVariation()}>⚄</button
     >
   </div>
-  <label class="row">
+  <div class="row">
     <span>size</span>
-    <select bind:value={presetId} aria-label="Size preset">
-      {#each PRESET_GROUPS as group (group)}
-        <optgroup label={group}>
-          {#each SIZE_PRESETS.filter((p) => p.group === group) as p (p.id)}
-            <option value={p.id}>{presetLabel(p)}</option>
-          {/each}
-        </optgroup>
-      {/each}
-      <option value={CUSTOM_PRESET_ID}>custom</option>
-    </select>
-  </label>
+    <Dropdown ariaLabel="Size preset" value={presetId} options={SIZE_OPTIONS} onchange={(id) => (presetId = id)} />
+  </div>
   <div class="row">
     <span></span>
     <input

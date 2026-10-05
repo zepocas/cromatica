@@ -2,7 +2,7 @@
 import { hexToOklch } from '../../src/color/hex';
 import { KEY_BANDS } from '../../src/color/harmony';
 import { shortestTurn } from '../../src/math';
-import { expect, openApp, openMore, readHexes, readLightness, test } from './support/app';
+import { choose, expect, openApp, openMore, readHexes, readLightness, test, valueOf } from './support/app';
 
 /** Hex rounding and spacing nudges let lightness stray a little past a key's band. */
 const BAND_SLACK = 0.07;
@@ -15,19 +15,22 @@ test('harmony: picking a rule regenerates, keep pins it, unpinned is fully rando
 
   // A generated palette names the rule it was built with.
   await shuffleColors.click();
-  await expect(harmony).toHaveValue(/^(monochrome|analogous|complementary|split-complementary|triadic|tetradic)$/);
+  await expect(harmony).toHaveAttribute(
+    'data-value',
+    /^(monochrome|analogous|complementary|split-complementary|triadic|tetradic)$/,
+  );
   // Picking the rule already shown would fire no change.
-  if ((await harmony.inputValue()) === 'monochrome') await harmony.selectOption('analogous');
+  if ((await valueOf(harmony)) === 'monochrome') await choose(harmony, 'analogous');
 
   // Picking a rule gives a palette in that rule right away.
   await openMore(page, 'colors');
   await page.getByRole('button', { name: 'Fix base hue' }).click();
   await page.getByLabel('Base hue', { exact: true }).fill('250');
   let before = await read();
-  await harmony.selectOption('monochrome');
+  await choose(harmony, 'monochrome');
   await expect.poll(read).not.toEqual(before);
-  await page.getByLabel('Mood').selectOption('vivid');
-  await expect(harmony).toHaveValue('monochrome');
+  await choose(page.getByLabel('Mood'), 'vivid');
+  await expect(harmony).toHaveAttribute('data-value', 'monochrome');
 
   // Kept: ⟳ stays monochrome vivid around 250° (every colorful swatch is a blue).
   await page.getByRole('button', { name: 'Keep harmony' }).click();
@@ -35,8 +38,8 @@ test('harmony: picking a rule regenerates, keep pins it, unpinned is fully rando
     before = await read();
     await shuffleColors.click();
     await expect.poll(read).not.toEqual(before);
-    await expect(harmony).toHaveValue('monochrome');
-    await expect(page.getByLabel('Mood')).toHaveValue('vivid');
+    await expect(harmony).toHaveAttribute('data-value', 'monochrome');
+    await expect(page.getByLabel('Mood')).toHaveAttribute('data-value', 'vivid');
     const colorful = (await read()).map(hexToOklch).filter(([, c]) => c > 0.045);
     expect(colorful.length).toBeGreaterThan(0);
     for (const [, , h] of colorful) expect(Math.abs(shortestTurn(250, h))).toBeLessThanOrEqual(30);
@@ -47,7 +50,7 @@ test('harmony: picking a rule regenerates, keep pins it, unpinned is fully rando
   const rules = new Set<string>();
   for (let i = 0; i < 12; i++) {
     await shuffleColors.click();
-    rules.add(await harmony.inputValue());
+    rules.add(await valueOf(harmony));
   }
   expect(rules.size).toBeGreaterThan(1);
 });
@@ -59,19 +62,19 @@ test('value key: picking one regenerates in that key, keep pins it', async ({ pa
   const low = KEY_BANDS.low[1] + BAND_SLACK;
   const high = KEY_BANDS.high[0] - BAND_SLACK;
 
-  await key.selectOption('low');
-  await expect(key).toHaveValue('low');
+  await choose(key, 'low');
+  await expect(key).toHaveAttribute('data-value', 'low');
   for (const l of await readLightness(page)) expect(l).toBeLessThan(low);
 
   await page.getByRole('button', { name: 'Keep harmony' }).click();
   for (let i = 0; i < 4; i++) {
     await page.getByRole('button', { name: 'Shuffle colors' }).click();
-    await expect(key).toHaveValue('low');
+    await expect(key).toHaveAttribute('data-value', 'low');
     for (const l of await readLightness(page)) expect(l).toBeLessThan(low);
   }
 
-  await key.selectOption('high');
-  await expect(key).toHaveValue('high');
+  await choose(key, 'high');
+  await expect(key).toHaveAttribute('data-value', 'high');
   for (const l of await readLightness(page)) expect(l).toBeGreaterThan(high);
 });
 
@@ -112,7 +115,7 @@ test('linked editing moves the whole palette; free edits one color; remix shifts
 test('shuffle color order keeps the colors and swaps where they go', async ({ page }) => {
   await openApp(page);
   for (const pattern of ['mesh', 'linear']) {
-    await page.getByLabel('Gradient', { exact: true }).selectOption(pattern);
+    await choose(page.getByLabel('Gradient', { exact: true }), pattern);
     const before = await readHexes(page);
     await page.getByRole('button', { name: 'Shuffle color order' }).click();
     await expect.poll(() => readHexes(page)).not.toEqual(before);
@@ -138,17 +141,17 @@ test('switching mood or key away and back restores the colors', async ({ page })
   const mood = page.getByLabel('Mood');
   const key = page.getByLabel('Value key');
   const original = await readHexes(page);
-  const startMood = await mood.inputValue();
-  const startKey = await key.inputValue();
+  const startMood = await valueOf(mood);
+  const startKey = await valueOf(key);
 
-  await mood.selectOption(startMood === 'vivid' ? 'natural' : 'vivid');
+  await choose(mood, startMood === 'vivid' ? 'natural' : 'vivid');
   await expect.poll(() => readHexes(page)).not.toEqual(original);
-  await mood.selectOption(startMood);
+  await choose(mood, startMood);
   await expect.poll(() => readHexes(page)).toEqual(original);
 
-  await key.selectOption(startKey === 'low' ? 'high' : 'low');
+  await choose(key, startKey === 'low' ? 'high' : 'low');
   await expect.poll(() => readHexes(page)).not.toEqual(original);
-  await key.selectOption(startKey);
+  await choose(key, startKey);
   await expect.poll(() => readHexes(page)).toEqual(original);
 });
 
@@ -158,8 +161,8 @@ test('every mood can be picked and regenerates the palette in it', async ({ page
   const mood = page.getByLabel('Mood');
   for (const m of ['muted', 'earthy', 'pastel', 'neon', 'vivid', 'natural']) {
     const before = await readHexes(page);
-    await mood.selectOption(m);
-    await expect(mood).toHaveValue(m);
+    await choose(mood, m);
+    await expect(mood).toHaveAttribute('data-value', m);
     await expect.poll(() => readHexes(page)).not.toEqual(before);
   }
 });

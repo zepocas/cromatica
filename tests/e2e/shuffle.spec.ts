@@ -1,5 +1,5 @@
 // Shuffle: the button, Space, the color and layout locks, and the opening shuffle.
-import { blur, expect, openApp, previewProbe, readHexes, readPoints, readWarp, test } from './support/app';
+import { blur, choose, expect, openApp, previewProbe, readHexes, readPoints, readWarp, test } from './support/app';
 
 test('shuffle: button, Space, color and layout locks', async ({ page }) => {
   await openApp(page);
@@ -39,7 +39,7 @@ test('shuffle: button, Space, color and layout locks', async ({ page }) => {
   expect(await readHexes(page)).toEqual(hexes);
 
   // Layout locked: the kind, positions, radii and warp stay, colors change.
-  await page.getByLabel('Gradient', { exact: true }).selectOption('mesh');
+  await choose(page.getByLabel('Gradient', { exact: true }), 'mesh');
   await lockLayout.click();
   let pts = await readPoints(page);
   const warp = await readWarp(page);
@@ -47,7 +47,7 @@ test('shuffle: button, Space, color and layout locks', async ({ page }) => {
   await shuffle.click();
   await expectPreviewChanged(before);
   const next = await readPoints(page);
-  await expect(page.getByLabel('Gradient', { exact: true })).toHaveValue('mesh');
+  await expect(page.getByLabel('Gradient', { exact: true })).toHaveAttribute('data-value', 'mesh');
   expect(next.map((p) => p.pos)).toEqual(pts.map((p) => p.pos));
   expect(next.map((p) => p.color)).not.toEqual(pts.map((p) => p.color));
   expect(await readWarp(page)).toEqual(warp);
@@ -62,17 +62,17 @@ test('shuffle: button, Space, color and layout locks', async ({ page }) => {
 
   // Only the active pattern is shuffled: a linear shuffle leaves the mesh alone (layout locked, so it stays linear).
   await lockColors.click();
-  await page.getByLabel('Gradient', { exact: true }).selectOption('linear');
+  await choose(page.getByLabel('Gradient', { exact: true }), 'linear');
   before = await settled();
   await shuffle.click();
   await expectPreviewChanged(before);
-  await page.getByLabel('Gradient', { exact: true }).selectOption('mesh');
+  await choose(page.getByLabel('Gradient', { exact: true }), 'mesh');
   expect(await readPoints(page)).toEqual(pts);
 });
 
 test('opens on a shuffled design unless ?default', async ({ page }) => {
   await openApp(page);
-  await expect(page.getByLabel('Warp shape')).toHaveValue('domain');
+  await expect(page.getByLabel('Warp shape')).toHaveAttribute('data-value', 'domain');
   const defaults = await readPoints(page);
   const seen = new Set<string>();
   for (let i = 0; i < 2; i++) {

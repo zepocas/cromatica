@@ -1,15 +1,15 @@
 // Planes and aurora: their controls and the colors they share with the ramp.
-import { expect, openApp, previewProbe, readHexes, test } from './support/app';
+import { choose, expect, openApp, previewProbe, readHexes, test } from './support/app';
 
 test('planes: shares the ramp colors, has count, torn and new layout, no bands or stop strip', async ({ page }) => {
   await openApp(page);
   const { settled, expectPreviewChanged } = previewProbe(page);
   const gradient = page.getByLabel('Gradient', { exact: true });
-  await gradient.selectOption('linear');
+  await choose(gradient, 'linear');
   const rampColors = await readHexes(page);
 
   let before = await settled();
-  await gradient.selectOption('planes');
+  await choose(gradient, 'planes');
   await expectPreviewChanged(before);
   expect(await readHexes(page)).toEqual(rampColors);
   await expect(page.getByLabel('Bands')).toHaveCount(0);
@@ -36,17 +36,17 @@ test('planes: shares the ramp colors, has count, torn and new layout, no bands o
   before = await settled();
   await page.getByRole('button', { name: /^Shuffle( Space)?$/ }).click();
   await expectPreviewChanged(before);
-  await expect(gradient).toHaveValue('planes');
+  await expect(gradient).toHaveAttribute('data-value', 'planes');
 });
 
 test('aurora: shares the ramp colors, has ribbons, glow and new layout', async ({ page }) => {
   await openApp(page);
   const { settled, expectPreviewChanged } = previewProbe(page);
   const gradient = page.getByLabel('Gradient', { exact: true });
-  await gradient.selectOption('linear');
+  await choose(gradient, 'linear');
   const rampColors = await readHexes(page);
   let before = await settled();
-  await gradient.selectOption('aurora');
+  await choose(gradient, 'aurora');
   await expectPreviewChanged(before);
   expect(await readHexes(page)).toEqual(rampColors);
   await expect(page.getByTestId('stop-strip')).toHaveCount(0);

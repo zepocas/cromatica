@@ -1,12 +1,12 @@
 // Linear gradient stops: the strip, the colors list and the blend modes.
-import { expect, openApp, openMore, previewProbe, test } from './support/app';
+import { choose, expect, openApp, openMore, previewProbe, test } from './support/app';
 
 test('stop editor: add, drag, blend mode and delete update the preview', async ({ page }) => {
   await openApp(page);
   const { settled, expectPreviewChanged } = previewProbe(page);
   const strip = page.getByTestId('stop-strip');
   const handles = page.getByRole('slider', { name: /^Stop \d+$/ });
-  await page.getByLabel('Gradient', { exact: true }).selectOption('linear');
+  await choose(page.getByLabel('Gradient', { exact: true }), 'linear');
   await expect(handles).toHaveCount(3);
 
   // Clicking the empty strip at 25% adds a selected stop there.
@@ -37,7 +37,7 @@ test('stop editor: add, drag, blend mode and delete update the preview', async (
   // Blend mode of the selected stop's segment.
   before = await settled();
   await openMore(page, 'colors');
-  await page.getByLabel('Blend to next stop').selectOption({ label: 'hue, long way' });
+  await choose(page.getByLabel('Blend to next stop'), { label: 'hue, long way' });
   await expectPreviewChanged(before);
 
   // The selected row's swatch updates the stop.
@@ -75,13 +75,13 @@ test('radial and conic share the stops with linear; radial has no angle', async 
   const { settled, expectPreviewChanged } = previewProbe(page);
   const gradient = page.getByLabel('Gradient', { exact: true });
   const handles = page.getByRole('slider', { name: /^Stop \d+$/ });
-  await gradient.selectOption('linear');
+  await choose(gradient, 'linear');
   await expect(handles).toHaveCount(3);
   const stops = await handles.evaluateAll((els) => els.map((el) => el.getAttribute('aria-valuenow')));
 
   for (const kind of ['radial', 'conic']) {
     const before = await settled();
-    await gradient.selectOption(kind);
+    await choose(gradient, kind);
     await expectPreviewChanged(before);
     await expect(handles).toHaveCount(3);
     expect(await handles.evaluateAll((els) => els.map((el) => el.getAttribute('aria-valuenow')))).toEqual(stops);
@@ -91,5 +91,5 @@ test('radial and conic share the stops with linear; radial has no angle', async 
   // Shuffling with the layout kept keeps the shape.
   await page.getByRole('button', { name: 'Lock layout' }).click();
   await page.getByRole('button', { name: /^Shuffle( Space)?$/ }).click();
-  await expect(gradient).toHaveValue('conic');
+  await expect(gradient).toHaveAttribute('data-value', 'conic');
 });

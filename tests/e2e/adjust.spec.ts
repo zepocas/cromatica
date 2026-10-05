@@ -3,6 +3,7 @@ import { WARP_SHAPES } from '../../src/design/design';
 import {
   blur,
   centerOf,
+  choose,
   expect,
   openApp,
   openMore,
@@ -16,11 +17,17 @@ test('warp controls: shape, amount, size, new variation and [ ] cycling', async 
   await openApp(page);
   const { settled, expectPreviewChanged } = previewProbe(page);
   const shape = page.getByLabel('Warp shape');
-  await expect(shape).toHaveValue('domain');
-  await expect(shape.locator('option')).toHaveCount(WARP_SHAPES.length);
+  await expect(shape).toHaveAttribute('data-value', 'domain');
+  // The open list shows every shape without scrolling.
+  await shape.click();
+  const list = page.getByRole('listbox');
+  await expect(list.getByRole('option')).toHaveCount(WARP_SHAPES.length);
+  expect(await list.evaluate((el) => el.scrollHeight <= el.clientHeight)).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(list).toBeHidden();
 
   let before = await settled();
-  await shape.selectOption('fbm');
+  await choose(shape, 'fbm');
   await expectPreviewChanged(before);
 
   before = await settled();
@@ -42,17 +49,17 @@ test('warp controls: shape, amount, size, new variation and [ ] cycling', async 
   await blur(page);
   before = await settled();
   await page.keyboard.press(']');
-  await expect(shape).toHaveValue('simplex');
+  await expect(shape).toHaveAttribute('data-value', 'simplex');
   await expectPreviewChanged(before);
   await page.keyboard.press('[');
   await page.keyboard.press('[');
   await page.keyboard.press('[');
-  await expect(shape).toHaveValue('none');
+  await expect(shape).toHaveAttribute('data-value', 'none');
   await expect(page.getByLabel('Warp size')).toBeDisabled();
   await page.keyboard.press('[');
-  await expect(shape).toHaveValue(WARP_SHAPES[WARP_SHAPES.length - 1]);
+  await expect(shape).toHaveAttribute('data-value', WARP_SHAPES[WARP_SHAPES.length - 1]);
   await page.keyboard.press(']');
-  await expect(shape).toHaveValue('none');
+  await expect(shape).toHaveAttribute('data-value', 'none');
 });
 
 test('noise slider changes the preview', async ({ page }) => {
@@ -120,7 +127,7 @@ test('vignette darkens the image; bands and edge work on every style', async ({ 
   // Bands and edge are main controls; edge waits for bands.
   await expect(page.getByLabel('Edge')).toBeDisabled();
   for (const kind of ['mesh', 'linear']) {
-    await page.getByLabel('Gradient', { exact: true }).selectOption(kind);
+    await choose(page.getByLabel('Gradient', { exact: true }), kind);
     let before = await settled();
     await page.getByLabel('Bands').fill('0.5');
     await expectPreviewChanged(before);

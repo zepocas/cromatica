@@ -16,6 +16,7 @@ Phase 1 is in progress; see the roadmap for where things stand.
 - **Checks:** `npm run lint` (ESLint), `npm run format:check` (Prettier; `npm run format` to fix), `npm test` (vitest), `npm run check` (svelte-check plus tsc), `npx playwright test` (about 2 min, SwiftShader). `BENCH=1` adds timing logs and the render-time benchmarks; `SHEETS=1 npx playwright test sheets` writes visual sheets (warp contact sheets, six shuffles) to `$SHEETS_DIR` (default /tmp). The 5K warp benchmark can stall under load; rerun it alone before treating a timeout as a regression.
 - **Test selectors:**
   - Many controls are behind "+ more", so tests click `More adjust settings` or `More colors settings` first.
+  - Dropdowns are `src/ui/controls/Dropdown.svelte`, not `<select>`: use `choose()` and `valueOf()` from `tests/e2e/support/app.ts`.
   - Use `{ exact: true }` for labels that are substrings of others ("Harmony" and "Keep harmony", "Rotate" and "Rotate left").
-- **Panel style** (`src/app.css` under `.panel`): monochrome, monospace, lowercase labels; `[ bracketed ]` buttons and glyph icons; sections via `src/ui/Section.svelte`; new controls go behind "+ more" unless they're core.
+- **Panel style** (`src/app.css` under `.panel`): monochrome, monospace, lowercase labels; `[ bracketed ]` buttons and glyph icons; dropdowns via `Dropdown.svelte` (native select popups can't be sized and scroll in Firefox-based browsers); sections via `src/ui/Section.svelte`; new controls go behind "+ more" unless they're core.
 - **Commits:** one commit per milestone step, Conventional Commits.

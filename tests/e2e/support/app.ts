@@ -25,6 +25,22 @@ export async function openApp(page: Page, { shuffled = false } = {}): Promise<vo
   await expect(page.getByTestId('preview-canvas')).toBeVisible();
 }
 
+/** Pick an option of a dropdown, by value or by its shown label. */
+export async function choose(dropdown: Locator, option: string | { label: string }): Promise<void> {
+  await dropdown.click();
+  const list = dropdown.page().getByRole('listbox');
+  const item =
+    typeof option === 'string'
+      ? list.locator(`[data-value="${option}"]`)
+      : list.getByRole('option', { name: option.label });
+  await item.click();
+}
+
+/** The value of a dropdown. */
+export async function valueOf(dropdown: Locator): Promise<string> {
+  return (await dropdown.getAttribute('data-value')) ?? '';
+}
+
 /** Open a section's "+ more" controls. */
 export async function openMore(page: Page, section: 'adjust' | 'colors'): Promise<void> {
   await page.getByRole('button', { name: `More ${section} settings` }).click();
@@ -53,7 +69,7 @@ export function readPoints(page: Page): Promise<{ pos: string; color: string }[]
 /** Warp controls' values. */
 export async function readWarp(page: Page) {
   return {
-    shape: await page.getByLabel('Warp shape').inputValue(),
+    shape: await valueOf(page.getByLabel('Warp shape')),
     amount: await page.getByLabel('Warp', { exact: true }).inputValue(),
     size: await page.getByLabel('Warp size').inputValue(),
     seed: await page.getByRole('button', { name: 'New variation' }).getAttribute('data-seed'),

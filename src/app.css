@@ -46,7 +46,8 @@ body,
   color: var(--dim);
 }
 .panel .row input[type='range'],
-.panel .row select {
+.panel .row select,
+.panel .row .dropdown {
   flex: 1;
   min-width: 0;
 }
@@ -92,7 +93,8 @@ body,
 }
 
 /* Selects read as `value ▾`. */
-.panel select {
+.panel select,
+.panel button.dropdown {
   appearance: none;
   padding: 0 14px 0 4px;
   border: 1px solid transparent;
@@ -102,11 +104,52 @@ body,
   font: inherit;
   cursor: pointer;
 }
-.panel select:hover:not(:disabled) {
+.panel select:hover:not(:disabled),
+.panel button.dropdown:hover:not(:disabled),
+.panel button.dropdown[aria-expanded='true'] {
   border-color: var(--rule);
 }
 .panel select option {
   background: #1a1a19;
+}
+.panel button.dropdown {
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The open list of a Dropdown, rendered at the end of <body>. */
+.dropdown-list {
+  position: fixed;
+  z-index: 100;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 2px 0;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--rule);
+  background: #1a1a19;
+}
+.dropdown-list.above {
+  transform: translateY(-100%);
+}
+.dropdown-list li {
+  padding: 0 10px 0 4px;
+  white-space: pre;
+  cursor: pointer;
+}
+.dropdown-list li[aria-selected='true'],
+.dropdown-list li.active {
+  color: var(--ink);
+}
+.dropdown-list li.active {
+  background: #2a2a27;
+}
+.dropdown-list li.group {
+  padding-top: 4px;
+  cursor: default;
+  color: var(--dim);
+  background: none;
 }
 .panel input[type='number'],
 .panel input[type='text'] {
