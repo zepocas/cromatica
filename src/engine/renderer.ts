@@ -10,7 +10,18 @@ import {
   type PointMesh,
 } from '../design/design';
 import { mat2Uniform, transformMatrix } from './transform';
-import { CELL_SHADE, CELL_TINT, CONIC_CORE, NOISE_GAIN, NOISE_OCTAVES, prepareRampShape } from './ramp-shape';
+import {
+  CELL_SHADE,
+  CELL_TINT,
+  CONIC_CORE,
+  CONTOUR_FREQ,
+  CONTOUR_OCTAVES,
+  CONTOUR_REPEATS,
+  prepareRampShape,
+  RIDGE_FREQ,
+  RIDGE_GAIN,
+  RIDGE_OCTAVES,
+} from './ramp-shape';
 import { MAX_PLANES, PLANES_SHADER_CONSTANTS, preparePlanes } from './planes';
 import { GAMUT_CLIP_STEPS, prepareMesh } from '../color/mesh';
 import { BLUE_NOISE_SIZE, DITHER_CHANNEL_OFFSETS, blueNoiseRanks } from './blue-noise';
@@ -64,6 +75,24 @@ function planesUniforms(planes: PlanesPattern, output: OutputSize) {
   };
 }
 
+function noiseDefines(g: RampGradient): Defines {
+  if (g.noiseStyle === 'ridged') {
+    return {
+      NOISE_LIB: 1,
+      NOISE_RIDGED: 1,
+      RIDGE_OCTAVES,
+      RIDGE_FREQ: RIDGE_FREQ.toFixed(4),
+      RIDGE_GAIN: RIDGE_GAIN.toFixed(4),
+    };
+  }
+  return {
+    NOISE_LIB: 1,
+    CONTOUR_OCTAVES,
+    CONTOUR_FREQ: CONTOUR_FREQ.toFixed(4),
+    CONTOUR_REPEATS: CONTOUR_REPEATS.toFixed(1),
+  };
+}
+
 /** Base-pattern variant defines: one of BASE_RAMP (with its shape), BASE_MESH, BASE_PLANES. */
 function baseDefines(base: Design['base']): Defines {
   const kind = base.kind;
@@ -78,7 +107,7 @@ function baseDefines(base: Design['base']): Defines {
     RAMP_NOISE: kind === 'noise',
     RAMP_CELLS: kind === 'cells',
     CONIC_CORE: CONIC_CORE.toFixed(4),
-    ...(kind === 'noise' ? { NOISE_LIB: 1, NOISE_OCTAVES, NOISE_GAIN: NOISE_GAIN.toFixed(4) } : {}),
+    ...(kind === 'noise' ? noiseDefines(base as RampGradient) : {}),
     ...(kind === 'cells'
       ? { NOISE_LIB: 1, NOISE_CELLS: 1, CELL_TINT: CELL_TINT.toFixed(4), CELL_SHADE: CELL_SHADE.toFixed(4) }
       : {}),

@@ -199,6 +199,18 @@ test.describe('noise and cells', () => {
     const d = threeStops(0);
     return { ...d, base: { ...(d.base as RampGradient), kind, scale, seed } };
   };
+  test('ridged noise matches the CPU reference', async ({ page }) => {
+    const d = field('noise', 0.4);
+    const r = await engineHarness(
+      page,
+      'compareReference',
+      { ...d, base: { ...(d.base as RampGradient), noiseStyle: 'ridged' } },
+      640,
+      360,
+    );
+    expect(r.maxDiff, JSON.stringify(r.worst)).toBeLessThanOrEqual(1);
+  });
+
   for (const kind of ['noise', 'cells'] as const) {
     for (const scale of [0.1, 0.7]) {
       test(`${kind} scale ${scale} matches the CPU reference and tiles`, async ({ page }) => {

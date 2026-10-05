@@ -259,7 +259,7 @@ Decisions made during the architecture review. Reopen one only if new informatio
 ## D41. Noise and cells: ramp shapes driven by noise
 
 - **Kinds:** `noise` and `cells` are ramp shapes like linear, radial and conic. They share the stops (and so the palette and the stop editor) and add `scale` (0.6–6 features per image height, exponential) and `seed` to the ramp. The angle is unused and hidden.
-- **Noise:** t = 0.5 + 1.1 · fBm (5 octaves of the warp's simplex fBm), clamped: cloudy fields that reach both ends of the ramp.
+- **Noise:** two styles (`noiseStyle`). **Contour** (default): t = ½ − ½·cos(2π · 3 · fBm), with 3 octaves at half the frequency, so the ramp repeats in mirrored stripes along the noise's height lines (topographic, psychedelic) with no seams. **Ridged:** t = 0.5 + 0.6 · ridged fBm (3 octaves): veins and creases. A first version, plain cloudy fBm, was judged mid: a soft mesh with a warp already looks like that. Smooth and billow variants were tried on a sheet and dropped. A layout shuffle picks the style 50/50.
 - **Cells:** Worley cells using the warp's Voronoi search. Each cell takes a hashed spot on the ramp (0.75 of its length), shaded by the distance to the cell's feature point (0.45 per cell unit). At a border both cells meet at their mean over ~0.75 output px, so edges are crisp but antialiased. Cells with similar spots show a soft crease where they meet.
 - **Shader:** the noise library is shared with the warps (`NOISE_LIB`, `NOISE_CELLS`), with the warp's uniforms fenced to warp variants. The CPU reference reuses `noise.ts` and the Voronoi search in `warp.ts`.
 - **Shuffle:** a layout shuffle re-rolls seed and scale (0.1–0.6). The style shuffle picks noise 10% and cells 8% of the time.

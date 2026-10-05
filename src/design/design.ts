@@ -22,6 +22,9 @@ export interface ColorStop {
   blend: BlendMode;
 }
 
+/** Noise looks: topographic stripes along the noise's height lines, or ridged veins. */
+export type NoiseStyle = 'contour' | 'ridged';
+
 /** How a ramp gradient maps the frame to the ramp (src/engine/ramp-shape.ts). */
 export type RampShape = 'linear' | 'radial' | 'conic' | 'noise' | 'cells';
 
@@ -39,6 +42,8 @@ export interface RampGradient {
   scale?: number;
   /** Noise and cells: uint32 seed. Missing = 1. */
   seed?: number;
+  /** Noise only. Missing = contour. */
+  noiseStyle?: NoiseStyle;
 }
 
 /**

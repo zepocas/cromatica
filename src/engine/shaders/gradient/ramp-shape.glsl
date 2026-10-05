@@ -21,7 +21,13 @@ float rampT(vec2 uv) {
 #if RAMP_RADIAL
   return min(1.0, length(uv) * u_radialScale);
 #elif RAMP_NOISE
-  return clamp(0.5 + NOISE_GAIN * fbm(uv * u_rampFreq, u_rampKey, NOISE_OCTAVES), 0.0, 1.0);
+#ifdef NOISE_RIDGED
+  return clamp(0.5 + RIDGE_GAIN * ridged(uv * (u_rampFreq * RIDGE_FREQ), u_rampKey, RIDGE_OCTAVES), 0.0, 1.0);
+#else
+  // Mirrored repeats (0 → 1 → 0), so the stripes have no seams.
+  float h = fbm(uv * (u_rampFreq * CONTOUR_FREQ), u_rampKey, CONTOUR_OCTAVES);
+  return 0.5 - 0.5 * cos(TAU * CONTOUR_REPEATS * h);
+#endif
 #elif RAMP_CELLS
   vec2 s = clamp(uv * u_rampFreq, -NOISE_MAX, NOISE_MAX);
   ivec2 c1;

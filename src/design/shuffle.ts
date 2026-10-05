@@ -371,6 +371,7 @@ function shuffleRamp(base: RampGradient, ctx: ShuffleContext): { pattern: RampGr
   if (opts.layout && (base.kind === 'noise' || base.kind === 'cells')) {
     pattern.scale = round4(layoutRng.range(...RAMP_SHUFFLE.scale));
     pattern.seed = layoutRng.uint32();
+    if (base.kind === 'noise') pattern.noiseStyle = layoutRng.next() < 0.5 ? 'contour' : 'ridged';
   }
   return { pattern, palette: palette && paletteInfo(palette) };
 }

@@ -50,6 +50,13 @@ describe('noise and cells', () => {
   const sample = (r: ReturnType<typeof prepareRampShape>) =>
     Array.from({ length: 4000 }, (_, i) => rampT(r, ((i % 80) / 80) * 1.7 - 0.85, Math.floor(i / 80) / 50 - 0.5));
 
+  it('ridged noise differs from contour noise', () => {
+    const contour = sample(prepareRampShape(field('noise'), frame, undefined));
+    const ridgedT = sample(prepareRampShape({ ...field('noise'), noiseStyle: 'ridged' }, frame, undefined));
+    expect(ridgedT).not.toEqual(contour);
+    expect(Math.max(...ridgedT) - Math.min(...ridgedT)).toBeGreaterThan(0.6);
+  });
+
   for (const kind of ['noise', 'cells'] as const) {
     it(`${kind} covers much of the ramp, stays in [0, 1] and follows the seed`, () => {
       const t = sample(prepareRampShape(field(kind), frame, undefined));

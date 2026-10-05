@@ -2,6 +2,7 @@
   import { noFinish } from '../design/design';
   import { prepareFinish } from '../engine/finish';
   import { planeCount } from '../engine/planes';
+  import Choice from './controls/Choice.svelte';
   import SliderRow from './controls/SliderRow.svelte';
   import type { EditorState } from './editor.svelte';
   import Section from './Section.svelte';
@@ -90,6 +91,18 @@
       display={fixed2}
     />
   {:else if editor.kind === 'noise' || editor.kind === 'cells'}
+    {#if editor.kind === 'noise'}
+      <Choice
+        label="style"
+        ariaLabel="Noise style"
+        options={[
+          { value: 'contour', title: 'Topographic stripes' },
+          { value: 'ridged', title: 'Veins and creases' },
+        ]}
+        value={editor.ramp.noiseStyle ?? 'contour'}
+        onchange={(v) => (editor.ramp.noiseStyle = v)}
+      />
+    {/if}
     <div class="row">
       <label for="ramp-scale">scale</label>
       <input

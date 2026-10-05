@@ -57,7 +57,12 @@ const MIN_STOPS = 2;
  */
 export class EditorState {
   kind = $state<PatternKind>('mesh');
-  ramp = $state<RampGradient>({ ...structuredClone(defaultDesign.base as RampGradient), scale: 0.35, seed: 1 });
+  ramp = $state<RampGradient>({
+    ...structuredClone(defaultDesign.base as RampGradient),
+    scale: 0.35,
+    seed: 1,
+    noiseStyle: 'contour',
+  });
   mesh = $state<PointMesh>(structuredClone(defaultMesh));
   /** Planes layout; its colors are the ramp's stops. */
   planes = $state<PlanesLayout>({ count: 0.4, roughness: 0.5, blend: 0, seed: 1 });

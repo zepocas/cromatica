@@ -124,9 +124,10 @@ test('noise-cells.png', async ({ page }) => {
     grain: defaultGrain,
     base: { ...(stops.base as RampGradient), kind, scale, seed },
   });
+  const ridged = (d: Design): Design => ({ ...d, base: { ...(d.base as RampGradient), noiseStyle: 'ridged' } });
   const rows = [
-    { label: 'noise', designs: [0.1, 0.35, 0.7].map((s) => field('noise', threeStops(0), s, 4)) },
-    { label: 'noise 2', designs: [0.1, 0.35, 0.7].map((s) => field('noise', midTonesFive, s, 8)) },
+    { label: 'contour', designs: [0.1, 0.35, 0.7].map((s) => field('noise', threeStops(0), s, 4)) },
+    { label: 'ridged', designs: [0.1, 0.35, 0.7].map((s) => ridged(field('noise', midTonesFive, s, 8))) },
     { label: 'cells', designs: [0.1, 0.35, 0.7].map((s) => field('cells', threeStops(0), s, 4)) },
     { label: 'cells 2', designs: [0.1, 0.35, 0.7].map((s) => field('cells', midTonesFive, s, 8)) },
   ];

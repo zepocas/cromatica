@@ -23,3 +23,15 @@ for (const kind of ['noise', 'cells']) {
     await expectPreviewChanged(before);
   });
 }
+
+test('noise: style switches between contour and ridged', async ({ page }) => {
+  await openApp(page);
+  const { settled, expectPreviewChanged } = previewProbe(page);
+  await page.getByLabel('Gradient', { exact: true }).selectOption('noise');
+  const style = page.getByRole('group', { name: 'Noise style' });
+  await expect(style.getByRole('button', { name: '[contour]' })).toHaveAttribute('aria-pressed', 'true');
+  const before = await settled();
+  await style.getByRole('button', { name: 'ridged' }).click();
+  await expectPreviewChanged(before);
+  await expect(style.getByRole('button', { name: '[ridged]' })).toHaveAttribute('aria-pressed', 'true');
+});

@@ -3,7 +3,7 @@
 // values as uniforms, so CPU references and the GPU agree.
 import type { RampGradient, RampShape, Transform } from '../design/design';
 import { clamp01 } from '../math';
-import { clampCoord, fbm, hash1, hashKey } from './noise';
+import { clampCoord, fbm, hash1, hashKey, ridged } from './noise';
 import type { OutputSize } from './types';
 import { applyMat2, orientationMatrix, transpose } from './transform';
 import { feature, voronoiCells } from './warp';
@@ -15,9 +15,14 @@ import { feature, voronoiCells } from './warp';
  */
 export const CONIC_CORE = 0.15;
 
-/** Noise: fBm octaves and the gain that spreads its values over the ramp. */
-export const NOISE_OCTAVES = 5;
-export const NOISE_GAIN = 1.1;
+/** Contour noise: fBm octaves, frequency factor, and how many times the ramp repeats over the noise's range. */
+export const CONTOUR_OCTAVES = 3;
+export const CONTOUR_FREQ = 0.5;
+export const CONTOUR_REPEATS = 3;
+/** Ridged noise: octaves, frequency factor, and the gain that spreads it over the ramp. */
+export const RIDGE_OCTAVES = 3;
+export const RIDGE_FREQ = 0.7;
+export const RIDGE_GAIN = 0.6;
 /** Cells: how much of the ramp the per-cell hash and the distance to the cell's center span. */
 export const CELL_TINT = 0.75;
 export const CELL_SHADE = 0.45;
@@ -39,6 +44,7 @@ export interface PreparedRampShape {
   key2: number;
   /** Cells: antialiasing half width, cell units. */
   edge: number;
+  ridged: boolean;
 }
 
 /** scale ∈ [0, 1] → 0.6..6 features per image height, exponential. */
@@ -59,7 +65,7 @@ export function prepareRampShape(
   const a = (g.angle * Math.PI) / 180;
   const dx = Math.cos(a);
   const dy = Math.sin(a);
-  const none = { radialScale: 0, freq: 0, key: 0, key2: 0, edge: 0 };
+  const none = { radialScale: 0, freq: 0, key: 0, key2: 0, edge: 0, ridged: false };
   if (g.kind === 'radial')
     return { ...none, shape: 'radial', axis: [dx, dy], radialScale: 1 / (0.5 * Math.hypot(aspect, 1)) };
   if (g.kind === 'conic') return { ...none, shape: 'conic', axis: [dx, dy] };
@@ -75,6 +81,7 @@ export function prepareRampShape(
       key: hashKey(seed, salt),
       key2: hashKey(seed, salt + 0x10),
       edge: (CELL_AA_PIXELS / output.height) * freq,
+      ridged: g.kind === 'noise' && g.noiseStyle === 'ridged',
     };
   }
   // The frame is aspect × 1, rotated and flipped by the transform's orientation
@@ -104,8 +111,15 @@ export function rampT(r: PreparedRampShape, x: number, y: number): number {
     }
     case 'linear':
       return Math.min(1, Math.max(0, x * r.axis[0] + y * r.axis[1] + 0.5));
-    case 'noise':
-      return clamp01(0.5 + NOISE_GAIN * fbm(x * r.freq, y * r.freq, r.key, NOISE_OCTAVES));
+    case 'noise': {
+      if (r.ridged) {
+        const f = r.freq * RIDGE_FREQ;
+        return clamp01(0.5 + RIDGE_GAIN * ridged(x * f, y * f, r.key, RIDGE_OCTAVES));
+      }
+      // Mirrored repeats (0 → 1 → 0), so the stripes have no seams.
+      const f = r.freq * CONTOUR_FREQ;
+      return 0.5 - 0.5 * Math.cos(2 * Math.PI * CONTOUR_REPEATS * fbm(x * f, y * f, r.key, CONTOUR_OCTAVES));
+    }
     case 'cells':
       return cellsT(r, x, y);
   }

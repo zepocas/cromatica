@@ -50,7 +50,7 @@ vec3 simplex(vec2 p, uint key) {
   return 70.0 * n;
 }
 
-#ifdef WARP_RIDGED
+#if defined(WARP_RIDGED) || defined(NOISE_RIDGED)
 // Ridged simplex fBm, ≈ [-1, 1]: each octave is (1 - |n|)² (src/engine/noise.ts ridged).
 float ridged(vec2 p, uint key, int octaves) {
   float sum = 0.0;
