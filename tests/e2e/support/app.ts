@@ -19,8 +19,21 @@ export const test = base.extend<{ failOnPageErrors: void }>({
 
 export { expect };
 
-/** Open the app on the built-in design (default), or on its opening shuffle. */
-export async function openApp(page: Page, { shuffled = false } = {}): Promise<void> {
+const tipsHidden = new WeakSet<Page>();
+
+/** Open the app on the built-in design (default), or on its opening shuffle; first-visit tips only when asked for. */
+export async function openApp(page: Page, { shuffled = false, tips = false } = {}): Promise<void> {
+  if (!tips && !tipsHidden.has(page)) {
+    tipsHidden.add(page);
+    // Runs on every later navigation too, about:blank included, where storage throws.
+    await page.addInitScript(() => {
+      try {
+        localStorage.setItem('cromatica.tips', 'dismissed');
+      } catch {
+        // No storage on this page.
+      }
+    });
+  }
   await page.goto(shuffled ? '/' : '/?default');
   await expect(page.getByTestId('preview-canvas')).toBeVisible();
 }

@@ -43,6 +43,7 @@ export interface PaletteSnapshot {
   infos: Record<PaletteOwner, PaletteInfo | null>;
   seeds: Record<PaletteOwner, number | null>;
   adjustments: Record<PaletteOwner, Adjustment | null>;
+  spareSeed: number;
 }
 
 /**
@@ -62,6 +63,8 @@ export class PaletteEditor {
   /** The seed each pattern's palette was generated from, so steering it regenerates the same palette. */
   private seeds: Record<PaletteOwner, number | null> = { mesh: null, ramp: null, grid: null };
   private adjustments = $state.raw<Record<PaletteOwner, Adjustment | null>>({ mesh: null, ramp: null, grid: null });
+  /** Seed for steering a custom palette, fixed until used, so a preview of it matches the result. */
+  private spareSeed = randomSeed();
 
   constructor(private readonly host: PaletteHost) {}
 
@@ -71,6 +74,7 @@ export class PaletteEditor {
       infos: $state.snapshot(this.infos),
       seeds: this.seeds,
       adjustments: this.adjustments,
+      spareSeed: this.spareSeed,
     });
   }
 
@@ -79,6 +83,7 @@ export class PaletteEditor {
     this.infos = s.infos;
     this.seeds = s.seeds;
     this.adjustments = s.adjustments;
+    this.spareSeed = s.spareSeed;
   }
 
   /** Rule, mood and key of the active palette; null when custom. */
@@ -124,7 +129,7 @@ export class PaletteEditor {
         key: change.key ?? current?.key ?? 'any',
         baseHue: this.baseHue ?? undefined,
       },
-      this.seeds[this.host.kind()] ?? undefined,
+      this.seeds[this.host.kind()] ?? this.spareSeed,
     );
   }
 
@@ -137,6 +142,7 @@ export class PaletteEditor {
     const kind = this.host.kind();
     this.infos[kind] = generated?.info ?? null;
     this.seeds[kind] = generated?.seed ?? null;
+    if (generated?.seed === this.spareSeed) this.spareSeed = randomSeed();
     this.adjustments = { ...this.adjustments, [kind]: null };
     if (temperature !== 'off') this.adjust({ temperature });
   }

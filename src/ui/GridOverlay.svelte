@@ -3,7 +3,7 @@
   import type { GridMesh } from '../design/design';
   import { forwardMap, prepareGrid, restPoint } from '../engine/grid';
   import type { EditorState } from './editor.svelte';
-  import { isFormControl } from './keys';
+  import { isFormControl, isHandle } from './keys';
 
   interface Props {
     editor: EditorState;
@@ -95,6 +95,8 @@
       return;
     }
     if (!editor.showHandles) return;
+    // Arrows belong to the shuffle history unless a handle has focus.
+    if (e.key.startsWith('Arrow') && !isHandle(e.target)) return;
     const n = editor.grid.nodes[editor.selectedNode];
     if (!n) return;
     const [x, y] = editor.toScreen(n.x, n.y);

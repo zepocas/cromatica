@@ -4,11 +4,14 @@
   import ColorsSection from './ColorsSection.svelte';
   import type { EditorState } from './editor.svelte';
   import ExportBar from './ExportBar.svelte';
-  import { isTypingTarget } from './keys';
+  import type { Favourites } from './favourites.svelte';
+  import FavouritesSection from './FavouritesSection.svelte';
+  import { isFormControl, isHandle, isTypingTarget } from './keys';
   import PatternSection from './PatternSection.svelte';
 
   interface Props {
     editor: EditorState;
+    favourites: Favourites;
     presetId: string;
     customWidth: number;
     customHeight: number;
@@ -17,6 +20,9 @@
     format: ExportFormat;
     /** Collapsed to a one-line bar floating over a full-width preview. */
     collapsed: boolean;
+    exploring: boolean;
+    /** The tips card is showing. */
+    tips: boolean;
     canUndo: boolean;
     canRedo: boolean;
     onundo: () => void;
@@ -30,12 +36,15 @@
 
   let {
     editor = $bindable(),
+    favourites,
     presetId = $bindable(),
     customWidth = $bindable(),
     customHeight = $bindable(),
     output,
     format = $bindable(),
     collapsed = $bindable(),
+    exploring = $bindable(),
+    tips = $bindable(),
     canUndo,
     canRedo,
     onundo,
@@ -47,13 +56,21 @@
     oncancel,
   }: Props = $props();
 
-  /** App shortcuts: Space shuffles, [ and ] step through warp shapes. */
+  const favourite = $derived(favourites.find(editor.design));
+
+  /** App shortcuts: Space shuffles, ← and → step through recent shuffles, [ and ] through warp shapes, M opens more like this. */
   function onWindowKeyDown(e: KeyboardEvent) {
     if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
     if (e.key === ' ') {
       // Also stops a focused button from being clicked by the same key.
       e.preventDefault();
       if (!e.repeat) editor.shuffle();
+    } else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !isFormControl(e.target) && !isHandle(e.target)) {
+      e.preventDefault();
+      editor.stepReel(e.key === 'ArrowRight' ? 1 : -1);
+    } else if (e.key === 'm' || e.key === 'M') {
+      e.preventDefault();
+      exploring = !exploring;
     } else if (e.key === '[' || e.key === ']') {
       e.preventDefault();
       editor.cycleWarpShape(e.key === ']' ? 1 : -1);
@@ -65,8 +82,9 @@
 
 <aside class="panel" class:collapsed>
   <header>
-    <h1>wallpaper</h1>
+    <h1>cromatica</h1>
     <span class="spacer"></span>
+    <button class="icon" aria-label="Tips" aria-pressed={tips} title="Tips" onclick={() => (tips = !tips)}>?</button>
     <button class="icon" aria-label="Undo" title="Undo (⌘Z)" disabled={!canUndo} onclick={onundo}>↶</button>
     <button class="icon" aria-label="Redo" title="Redo (⇧⌘Z)" disabled={!canRedo} onclick={onredo}>↷</button>
     <button
@@ -82,9 +100,22 @@
     <PatternSection bind:editor bind:presetId bind:customWidth bind:customHeight {output} />
     <AdjustSection bind:editor />
     <ColorsSection bind:editor />
+    <FavouritesSection {favourites} current={favourite} onopen={(d) => editor.setDesign(d)} />
   {/if}
 
-  <ExportBar {editor} bind:format compact={collapsed} {exporting} {progress} {error} {onexport} {oncancel} />
+  <ExportBar
+    {editor}
+    {favourites}
+    {favourite}
+    bind:exploring
+    bind:format
+    compact={collapsed}
+    {exporting}
+    {progress}
+    {error}
+    {onexport}
+    {oncancel}
+  />
 </aside>
 
 <style>

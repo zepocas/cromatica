@@ -1,6 +1,7 @@
 import { createRenderer } from '../engine/renderer';
 import { CONTEXT_ATTRIBUTES, type OutputSize, type Renderer, type Tile } from '../engine/types';
 import type { StartMessage, WorkerMessage } from './exporter';
+import { designText } from './design-png';
 import { createPngEncoder } from './png';
 import { assertOutputSize, planTiles } from './tiles';
 import { DEFAULT_TILE_SIZE, type ExportRequest } from './types';
@@ -15,8 +16,18 @@ interface BandSink {
   abort(): void;
 }
 
-function pngSink(output: OutputSize): BandSink {
-  const encoder = createPngEncoder(output);
+/** The design's text entries, or none if it doesn't validate: the image is still worth having. */
+function embeddedDesign(design: ExportRequest['design']): Record<string, string> {
+  try {
+    return designText(design);
+  } catch (err) {
+    console.warn('export: the design could not be embedded', err);
+    return {};
+  }
+}
+
+function pngSink(output: OutputSize, text: Record<string, string>): BandSink {
+  const encoder = createPngEncoder(output, text);
   return {
     writeBand: (rgba, _y, rows) => encoder.writeRows(rgba, rows),
     finish: () => encoder.finish(),
@@ -83,7 +94,10 @@ async function runExport(req: ExportRequest): Promise<Blob> {
   let sink: BandSink | undefined;
   try {
     renderer = createRenderer(gl);
-    sink = req.format === 'png' ? pngSink(output) : jpegSink(output, req.quality ?? DEFAULT_JPEG_QUALITY);
+    sink =
+      req.format === 'png'
+        ? pngSink(output, embeddedDesign(req.design))
+        : jpegSink(output, req.quality ?? DEFAULT_JPEG_QUALITY);
     let tilesDone = 0;
     for (const band of bands) {
       for (const tile of band) {

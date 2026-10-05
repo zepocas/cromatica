@@ -1,6 +1,4 @@
-# gradient-wallpaper
-
-> Working name, a placeholder until we find a better one.
+# cromatica
 
 A client-side web app that generates abstract gradient wallpapers at crisp, device-native resolutions. It adds perceptual (Oklab) color blending, domain warping, flow and cellular noise, and blue-noise dithering to remove banding.
 

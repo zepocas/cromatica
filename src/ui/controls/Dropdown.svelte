@@ -16,6 +16,8 @@
 </script>
 
 <script lang="ts" generics="T extends string">
+  import { untrack } from 'svelte';
+
   // An in-page replacement for <select>: native popups can't be sized, and
   // Firefox-based browsers scroll lists that would fit.
 
@@ -29,9 +31,21 @@
     disabled?: boolean;
     title?: string;
     id?: string;
+    /** The option under the pointer or the arrow keys while open; null once closed. */
+    onactive?: (value: T | null) => void;
   }
 
-  let { ariaLabel, value, options, onchange, placeholder = '', disabled = false, title, id }: Props = $props();
+  let {
+    ariaLabel,
+    value,
+    options,
+    onchange,
+    placeholder = '',
+    disabled = false,
+    title,
+    id,
+    onactive,
+  }: Props = $props();
 
   const uid = $props.id();
   let button: HTMLButtonElement;
@@ -114,6 +128,13 @@
     const t = e.target as Node;
     if (open && !button.contains(t) && !list?.contains(t)) hide();
   }
+
+  $effect(() => {
+    const v = open ? (options[active]?.value ?? null) : null;
+    untrack(() => onactive?.(v));
+  });
+  // Removed while open (e.g. its section closed): clear what it was showing.
+  $effect(() => () => untrack(() => open && onactive?.(null)));
 
   // Scrolls only the list: scrollIntoView could scroll the panel, which closes the list.
   $effect(() => {

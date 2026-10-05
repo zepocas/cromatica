@@ -22,3 +22,8 @@ export function isFormControl(target: EventTarget | null): boolean {
     'input, select, textarea, [role="combobox"], [contenteditable]:not([contenteditable="false"])',
   );
 }
+
+/** True when the target is a point, node or stop handle, which nudge with the arrow keys. */
+export function isHandle(target: EventTarget | null): boolean {
+  return !!(target as HTMLElement | null)?.closest?.('[data-point], [data-node], [data-stop]');
+}

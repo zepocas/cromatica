@@ -5,6 +5,8 @@ import { evaluateRamp } from '../color/ramp';
 import type { Oklch } from '../color/types';
 import {
   AURORA_BLEND,
+  MAX_RADIUS,
+  MIN_RADIUS,
   defaultDesign,
   defaultGrain,
   defaultMesh,
@@ -39,6 +41,7 @@ import { clamp, normalizeDegrees } from '../math';
 import { paletteFromImage, type ImagePalette } from './image-palette';
 import { PaletteEditor, type PaletteSnapshot } from './palette.svelte';
 import { emptiestSpot, median, widestGapCenter } from './placement';
+import { Reel } from './reel.svelte';
 
 export type PatternKind = BasePattern['kind'];
 export type PlanesLayout = Omit<PlanesPattern, 'kind' | 'colors'>;
@@ -65,9 +68,7 @@ function defaultGrid(): GridMesh {
   return { kind: 'grid', rows: 3, cols: 3, nodes, rest: [8 / 9, 0.5] };
 }
 
-/** Point size limits, in screen (composition) units: radius × zoom. */
-export const MIN_RADIUS = 0.05;
-export const MAX_RADIUS = 1.2;
+export { MAX_RADIUS, MIN_RADIUS };
 /** How far outside the frame (composition units) a point may be dragged. */
 const OUTSIDE_MARGIN = 0.5;
 /** Fewest stops a linear gradient keeps in the editor. */
@@ -114,12 +115,16 @@ export class EditorState {
   imageStatus = $state('');
   /** Frame aspect (width / height), for clamping drags to the frame. */
   aspect = $state(16 / 9);
+  /** Shown on the main canvas instead of the design while a picker option is hovered; never saved or undone. */
+  preview = $state.raw<Design | null>(null);
 
   readonly palette = new PaletteEditor({
     kind: () => (this.kind === 'mesh' || this.kind === 'grid' ? this.kind : 'ramp'),
     colorItems: () => this.colorItems,
     regenerate: (options, seed) => this.applyShuffle(true, false, false, options, seed),
   });
+
+  readonly reel = new Reel<EditorSnapshot>();
 
   /** Opens on a full shuffle of the mesh (palette, layout and warp). */
   constructor(opts: { shuffle?: boolean } = {}) {
@@ -163,12 +168,26 @@ export class EditorState {
 
   /** Shuffle everything except the locked parts: a layout shuffle also picks the pattern kind and finishes. */
   shuffle(): void {
-    if (this.canShuffle) this.applyShuffle(!this.colorsLocked, !this.layoutLocked, !this.layoutLocked);
+    if (this.canShuffle)
+      this.reeled(() => this.applyShuffle(!this.colorsLocked, !this.layoutLocked, !this.layoutLocked));
   }
 
   /** New palette only, whatever the locks say. */
   shuffleColors(): void {
-    this.applyShuffle(true, false);
+    this.reeled(() => this.applyShuffle(true, false));
+  }
+
+  /** Step to the previous (-1) or next (1) shuffle; false at either end. */
+  stepReel(direction: -1 | 1): boolean {
+    const s = this.reel.step(direction, this.snapshot());
+    if (s) this.restore(s);
+    return s !== null;
+  }
+
+  private reeled(shuffle: () => void): void {
+    const before = this.snapshot();
+    shuffle();
+    this.reel.push(before, this.snapshot());
   }
 
   private applyShuffle(
@@ -209,6 +228,20 @@ export class EditorState {
     this.finish = { ...(design.finish ?? noFinish) };
     this.transform = { ...(design.transform ?? identityTransform) };
     this.clampSelection();
+  }
+
+  /** The design after `change`, worked out on a copy: this editor is left alone. */
+  designAfter(change: (trial: EditorState) => void): Design {
+    const trial = new EditorState({ shuffle: false });
+    trial.aspect = this.aspect;
+    trial.restore(this.snapshot());
+    change(trial);
+    return trial.design;
+  }
+
+  /** Show what `change` would do on the main canvas; null clears the preview. */
+  previewChange(change: ((trial: EditorState) => void) | null): void {
+    this.preview = change ? this.designAfter(change) : null;
   }
 
   /** Everything undo brings back: every kind's config and the palette's state. */

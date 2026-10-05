@@ -42,7 +42,8 @@ test('mesh editor: drag, add, delete, switch pattern and hide handles', async ({
   await expect(points.nth(1)).toHaveAttribute('aria-pressed', 'true');
   await expectPreviewChanged(before);
 
-  // Arrow keys nudge the selected point.
+  // Arrow keys nudge the focused point (the screenshot hid the overlay, which dropped its focus).
+  await points.nth(1).focus();
   await page.keyboard.press('ArrowUp');
   await expect.poll(async () => (await stored(1))[1]).toBeCloseTo(y1 + 0.01, 3);
 

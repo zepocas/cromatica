@@ -1,7 +1,8 @@
 // The export pipeline (D3): tiled, worker-rendered PNG/JPEG against
 // single-pass renders, plus the app's download.
+import { readFile } from 'node:fs/promises';
 import { WARP_SHAPES } from '../../src/design/design';
-import { expect, openApp, test } from './support/app';
+import { choose, expect, openApp, previewProbe, readHexes, test } from './support/app';
 import { exportHarness, logBench, openExportHarness } from './support/harness';
 
 test.describe('export pipeline', () => {
@@ -96,5 +97,43 @@ test('a custom size letterboxes the preview and names the download', async ({ pa
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download' }).click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe('gradient-320x200.png');
+  expect(download.suggestedFilename()).toBe('cromatica-320x200.png');
+});
+
+test('an exported PNG dropped back reopens its design at its size', async ({ page }) => {
+  await openApp(page, { shuffled: true });
+  await page.getByLabel('Width').fill('320');
+  await page.getByLabel('Width').press('Tab');
+  await page.getByLabel('Height').fill('200');
+  await page.getByLabel('Height').press('Tab');
+  const { settled, expectPreviewChanged } = previewProbe(page);
+  const before = await settled();
+  const hexes = await readHexes(page);
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download' }).click();
+  const png = await readFile(await (await downloadPromise).path());
+
+  await choose(page.getByLabel('Size preset'), '1920x1080');
+  await page.getByRole('button', { name: /^Shuffle( Space)?$/ }).click();
+  await expectPreviewChanged(before);
+
+  const dataTransfer = await page.evaluateHandle(
+    (bytes) => {
+      const d = new DataTransfer();
+      d.items.add(new File([new Uint8Array(bytes)], 'gradient.png', { type: 'image/png' }));
+      return d;
+    },
+    [...png],
+  );
+  await page.dispatchEvent('body', 'drop', { dataTransfer });
+  await expect(page.getByLabel('Size preset')).toHaveAttribute('data-value', 'custom');
+  await expect(page.getByLabel('Width')).toHaveValue('320');
+  await expect(page.getByLabel('Height')).toHaveValue('200');
+  await expect.poll(async () => (await settled()).equals(before)).toBe(true);
+  expect(await readHexes(page)).toEqual(hexes);
+
+  // One undo step back to the shuffle before the drop.
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expectPreviewChanged(before);
 });

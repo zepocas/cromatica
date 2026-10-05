@@ -268,7 +268,7 @@ Each milestone uses the same structure:
   - **Undo/redo:** ⌘Z and ⇧⌘Z (or Ctrl+Y), plus ↶ ↷ in the panel header; 100 steps, for the session only. A step is everything that changed between two presses (pointer or key), so a drag is one step and a held key is one step. Undo brings back every pattern's settings and the palette state (rule, base hue, temperature), not just the active design. Text fields keep their own undo.
   - Unit tests now compile Svelte modules in client mode. The server build dropped `$state.snapshot` on class fields, so `editor.design` shared (and sorted) the live stops in tests only.
 
-### M7 — Keep and explore
+### M7 — Keep and explore ✅
 
 - **Goal:** keep a good result and find new ones without understanding every control. Added after the 2026-10-05 product review.
 - **Scope, in build order:**
@@ -276,17 +276,21 @@ Each milestone uses the same structure:
   2. **History and favourites, light:** the last ~20 shuffles kept in memory, stepped with ←/→; a ♥ saves the design JSON to one localStorage key, capped at about 12 and listed as palette swatch strips. No IndexedDB and no thumbnails (D45).
   3. **Thumbnail renderer:** one shared offscreen renderer that draws many small renders of a design. Steps 4 and 5 both use it.
   4. **More like this:** a 3×3 grid of small mutations of the current design (seed, layout and warp nudges, same palette). Clicking one takes it.
-  5. **Visual pickers:** pattern, warp shape and mood choices shown as live thumbnails of the user's own design. Hover previews on the main canvas; click commits.
+  5. **Visual pickers:** ~~pattern, warp shape and mood choices shown as live thumbnails of the user's own design~~ the thumbnails were tried and dropped (the main canvas made them redundant). Hover or ↑↓ previews on the main canvas; click commits.
   6. **Onboarding:** a few short tips on first visit (space shuffles, drop an image, ...), dismissible for good. It stands in for "Looks" (backlog, D47).
-- **UI:** stays lean, following the terminal panel. The thumbnails are the only color in the panel besides the swatches.
+- **UI:** stays lean, following the terminal panel. Thumbnails appear only in the more-like-this grid.
 - **Done when:**
   - Exporting a PNG and dropping it back reproduces the design exactly, for every pattern.
   - A favourite survives a reload; clearing browser data loses it (D13).
   - More like this and the pickers stay responsive on a slow GPU, with the shared renderer never blocking a drag.
-- **Open questions:**
-  - Thumbnail size and the render cost of nine grid cells on slow GPUs.
-  - Whether a hover preview should count as an undo step (leaning no).
-  - Cap and format of the favourites list.
+- **Outcome (D45, D51):**
+  - **Design in the PNG:** exports carry the save envelope in a `cromatica.design` iTXt chunk (`src/export/design-png.ts`). Dropping one reopens the design at its exported size (matching preset, else custom), as one undo step; other images, or a PNG whose design can't be read, still give their colors.
+  - **History:** every shuffle (and ⟳) goes into a 20-slot reel, the design before the first shuffle included. ← → and the `← n/m →` buttons step through it; a slot keeps edits made in it, a new shuffle goes at the end, and a step is an undo step. Arrows nudge a point or node only when its handle has focus (`src/ui/reel.svelte.ts`).
+  - **Favourites:** ♡/♥ in the bottom bar, a "favourites" section listing up to 12 as swatch strips plus the pattern, newest first; a 13th drops the oldest with a notice. One localStorage key, one full save per entry, so migrations apply (`src/ui/favourites.svelte.ts`).
+  - **More like this:** ⊞ or M swaps the preview for a 3×3 grid around the current design, gentle to bold. Variations keep palette, kind, finishes and transform and nudge points, sliders and angles; new seeds and warp shapes get likelier with boldness (strength²), and the planes count changes only as rarely as a seed, since it re-deals the collage (`src/design/mutate.ts`, sheet: `SHEETS=1 npx playwright test sheets -g variations`).
+  - **Thumbnail renderer:** one offscreen WebGL context draws one thumbnail per frame into 2D canvases (`src/preview/thumbnails.ts`). Nine cells take about 350 ms on SwiftShader.
+  - **Pickers:** gradient, warp shape, harmony and mood preview the option under the pointer or ↑↓ on the main canvas, worked out on a copy of the editor; never an undo step or saved. Custom palettes keep a spare seed so a mood or harmony preview matches the click.
+  - **Tips:** a first-visit card (space, ← →, M, hover/↑↓ previews, "+ more", PNGs keep the design), dismissed for good with `[ got it ]`, back from `?` in the panel header.
 
 ### M8 — Relief and stipple finishes
 

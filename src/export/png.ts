@@ -63,15 +63,26 @@ function ihdr(width: number, height: number): Blob {
   return chunk('IHDR', [data]);
 }
 
+/** An uncompressed iTXt chunk with no language tag (PNG 1.2, 4.2.3.3). */
+function itxt(keyword: string, text: string): Blob {
+  if (!/^[\x20-\x7e]{1,79}$/.test(keyword) || /^ | $| {2}/.test(keyword)) {
+    throw new RangeError(`invalid PNG text keyword: ${JSON.stringify(keyword)}`);
+  }
+  // Keyword NUL, compression flag and method, empty language tag and translated keyword (each NUL-terminated).
+  const head = new Uint8Array([...ascii(keyword), 0, 0, 0, 0, 0]);
+  return chunk('iTXt', [head, new TextEncoder().encode(text)]);
+}
+
 const abortError = () => new DOMException('PNG encoder was aborted', 'AbortError');
 
 /**
  * Streaming PNG encoder: RGBA8 rows in, 8-bit RGB PNG out (color type 2,
- * alpha dropped, sRGB chunk). Rows are filtered (Up, D17) and fed to
+ * alpha dropped, sRGB chunk). `text` entries become iTXt chunks before the
+ * image data. Rows are filtered (Up, D17) and fed to
  * CompressionStream('deflate') in ~1 MiB batches; only the previous row and
  * the compressed output are retained.
  */
-export function createPngEncoder(size: OutputSize): PngEncoder {
+export function createPngEncoder(size: OutputSize, text: Record<string, string> = {}): PngEncoder {
   const { width, height } = size;
   for (const [name, v] of [
     ['width', width],
@@ -90,7 +101,12 @@ export function createPngEncoder(size: OutputSize): PngEncoder {
   const writer = compressor.writable.getWriter();
   const reader = compressor.readable.getReader();
 
-  const parts: BlobPart[] = [SIGNATURE, ihdr(width, height), chunk('sRGB', [new Uint8Array([0])])];
+  const parts: BlobPart[] = [
+    SIGNATURE,
+    ihdr(width, height),
+    chunk('sRGB', [new Uint8Array([0])]),
+    ...Object.entries(text).map(([keyword, value]) => itxt(keyword, value)),
+  ];
   let pending: Uint8Array<ArrayBuffer>[] = [];
   let pendingBytes = 0;
   const flushIdat = () => {
