@@ -5,6 +5,7 @@ import hash from './common/hash.glsl?raw';
 import rampShape from './gradient/ramp-shape.glsl?raw';
 import mesh from './gradient/mesh.glsl?raw';
 import planes from './gradient/planes.glsl?raw';
+import aurora from './gradient/aurora.glsl?raw';
 import oklab from './color/oklab.glsl?raw';
 import ramp from './color/ramp.glsl?raw';
 import srgb from './color/srgb.glsl?raw';
@@ -62,6 +63,7 @@ const FRAGMENT_CHUNKS = [
   rampShape,
   mesh,
   planes,
+  aurora,
   ramp,
   oklab,
   srgb,

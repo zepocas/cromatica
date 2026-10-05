@@ -18,6 +18,7 @@ import {
   type Design,
   type Finish,
   type Grain,
+  type AuroraPattern,
   type PlanesPattern,
   type RampGradient,
   type PointMesh,
@@ -36,6 +37,7 @@ import { emptiestSpot, median, widestGapCenter } from './placement';
 
 export type PatternKind = BasePattern['kind'];
 export type PlanesLayout = Omit<PlanesPattern, 'kind' | 'colors'>;
+export type AuroraLayout = Omit<AuroraPattern, 'kind' | 'colors'>;
 
 /** Point size limits, in screen (composition) units: radius × zoom. */
 export const MIN_RADIUS = 0.05;
@@ -66,6 +68,8 @@ export class EditorState {
   mesh = $state<PointMesh>(structuredClone(defaultMesh));
   /** Planes layout; its colors are the ramp's stops. */
   planes = $state<PlanesLayout>({ count: 0.4, roughness: 0.5, blend: 0, seed: 1 });
+  /** Aurora layout; its colors are the ramp's stops. */
+  aurora = $state<AuroraLayout>({ count: 0.5, glow: 0.5, seed: 1 });
   warp = $state<Warp>({ ...defaultWarp });
   grain = $state<Grain>({ ...defaultGrain });
   finish = $state<Finish>({ ...noFinish });
@@ -98,9 +102,13 @@ export class EditorState {
     let base: BasePattern;
     if (this.kind === 'mesh') {
       base = $state.snapshot(this.mesh) as PointMesh;
-    } else if (this.kind === 'planes') {
+    } else if (this.kind === 'planes' || this.kind === 'aurora') {
       const stops = ($state.snapshot(this.ramp.stops) as ColorStop[]).sort((a, b) => a.position - b.position);
-      base = { kind: 'planes', colors: stops.map((s) => s.color), ...this.planes };
+      const colors = stops.map((s) => s.color);
+      base =
+        this.kind === 'planes'
+          ? { kind: 'planes', colors, ...this.planes }
+          : { kind: 'aurora', colors, ...$state.snapshot(this.aurora) };
     } else {
       // Linear, radial and conic share one ramp: same stops and angle.
       const ramp = $state.snapshot(this.ramp) as RampGradient;
@@ -149,6 +157,10 @@ export class EditorState {
       const { kind: _, colors, ...layout } = base;
       this.planes = layout;
       this.setRampColors(colors);
+    } else if (base.kind === 'aurora') {
+      const { kind: _, colors, ...layout } = base;
+      this.aurora = layout;
+      this.setRampColors(colors);
     } else {
       this.ramp = base;
     }
@@ -188,6 +200,10 @@ export class EditorState {
 
   newPlanesLayout(): void {
     this.planes.seed = randomSeed();
+  }
+
+  newAuroraLayout(): void {
+    this.aurora.seed = randomSeed();
   }
 
   /** Noise and cells: a new arrangement of the same field. */
@@ -302,7 +318,7 @@ export class EditorState {
       this.selectedPoint = 0;
     } else {
       const shape = prepareRampShape(
-        { ...this.ramp, kind: this.kind === 'planes' ? 'linear' : this.kind },
+        { ...this.ramp, kind: this.kind === 'planes' || this.kind === 'aurora' ? 'linear' : this.kind },
         { width: this.aspect, height: 1 },
         this.transform,
       );

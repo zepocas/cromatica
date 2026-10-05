@@ -28,7 +28,8 @@
 
   const palette = $derived(editor.palette);
   const isMesh = $derived(editor.kind === 'mesh');
-  const isPlanes = $derived(editor.kind === 'planes');
+  // Planes and aurora use the stops' colors only, not their positions.
+  const isPlanes = $derived(editor.kind === 'planes' || editor.kind === 'aurora');
   const noun = $derived(isMesh ? 'point' : isPlanes ? 'color' : 'stop');
   const colors = $derived<Oklch[]>(
     isMesh ? editor.mesh.points.map((p) => p.color) : editor.ramp.stops.map((s) => s.color),

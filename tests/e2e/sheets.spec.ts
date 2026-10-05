@@ -135,6 +135,50 @@ test('noise-cells.png', async ({ page }) => {
   writeFileSync(join(DIR, 'noise-cells.png'), Buffer.from(png, 'base64'));
 });
 
+test('aurora.png', async ({ page }) => {
+  await openEngineHarness(page);
+  const cols = ['glow 0.2', 'glow 0.5', 'glow 0.9'];
+  const palettes: [string, Oklch[]][] = [
+    [
+      'night',
+      [
+        [0.15, 0.03, 260],
+        [0.8, 0.17, 150],
+        [0.65, 0.15, 190],
+        [0.6, 0.2, 320],
+      ],
+    ],
+    [
+      'warm',
+      [
+        [0.2, 0.04, 30],
+        [0.75, 0.15, 60],
+        [0.65, 0.2, 20],
+        [0.9, 0.1, 95],
+      ],
+    ],
+    [
+      'pastel',
+      [
+        [0.35, 0.05, 280],
+        [0.85, 0.08, 200],
+        [0.88, 0.07, 340],
+        [0.92, 0.06, 100],
+      ],
+    ],
+  ];
+  const rows = palettes.map(([label, colors], r) => ({
+    label,
+    designs: [0.2, 0.5, 0.9].map((glow): Design => ({
+      ...meshDefault,
+      grain: defaultGrain,
+      base: { kind: 'aurora', colors, count: 0.5, glow, seed: r + 3 },
+    })),
+  }));
+  const png = await engineHarness(page, 'contactSheet', rows, cols, 640, 360);
+  writeFileSync(join(DIR, 'aurora.png'), Buffer.from(png, 'base64'));
+});
+
 test('six shuffles in a row', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');

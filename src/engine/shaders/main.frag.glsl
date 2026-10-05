@@ -10,6 +10,8 @@ void main() {
   vec3 rgb = gamutClip(meshColor(uv));
 #elif BASE_PLANES
   vec3 rgb = planesColor(uv);
+#elif BASE_AURORA
+  vec3 rgb = auroraColor(uv);
 #else
   vec3 rgb = rampColor(bandLevel(rampT(uv)));
 #endif

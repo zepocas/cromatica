@@ -6,6 +6,7 @@ import {
   type RampGradient,
   MAX_MESH_POINTS,
   MAX_STOPS,
+  type AuroraPattern,
   type PlanesPattern,
   type PointMesh,
 } from '../design/design';
@@ -23,6 +24,7 @@ import {
   RIDGE_OCTAVES,
 } from './ramp-shape';
 import { MAX_PLANES, PLANES_SHADER_CONSTANTS, preparePlanes } from './planes';
+import { AURORA_SHADER_CONSTANTS, MAX_RIBBONS, prepareAurora } from './aurora';
 import { GAMUT_CLIP_STEPS, prepareMesh } from '../color/mesh';
 import { BLUE_NOISE_SIZE, DITHER_CHANNEL_OFFSETS, blueNoiseRanks } from './blue-noise';
 import { prepareFinish, VIGNETTE_INNER } from './finish';
@@ -93,12 +95,35 @@ function noiseDefines(g: RampGradient): Defines {
   };
 }
 
+/** Aurora uniforms, padded to MAX_RIBBONS. */
+function auroraUniforms(aurora: AuroraPattern) {
+  const p = prepareAurora(aurora);
+  const colors = new Float32Array(MAX_RIBBONS * 3);
+  const lines = new Float32Array(MAX_RIBBONS * 3);
+  colors.set(p.colors);
+  lines.set(p.lines);
+  return {
+    u_auroraCount: p.count,
+    u_auroraSky: p.sky,
+    u_auroraColor: colors,
+    u_auroraLine: lines,
+    u_auroraKey: p.key,
+    u_auroraWidth: [p.up, p.down],
+  };
+}
+
 /** Base-pattern variant defines: one of BASE_RAMP (with its shape), BASE_MESH, BASE_PLANES. */
 function baseDefines(base: Design['base']): Defines {
   const kind = base.kind;
-  const defines: Defines = { BASE_RAMP: false, BASE_MESH: kind === 'mesh', BASE_PLANES: kind === 'planes' };
+  const defines: Defines = {
+    BASE_RAMP: false,
+    BASE_MESH: kind === 'mesh',
+    BASE_PLANES: kind === 'planes',
+    BASE_AURORA: kind === 'aurora',
+  };
   if (kind === 'mesh') return { ...defines, MAX_MESH_POINTS, GAMUT_CLIP_STEPS };
   if (kind === 'planes') return { ...defines, ...PLANES_SHADER_CONSTANTS };
+  if (kind === 'aurora') return { ...defines, NOISE_LIB: 1, ...AURORA_SHADER_CONSTANTS };
   return {
     ...defines,
     BASE_RAMP: true,
@@ -211,6 +236,8 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
         baseUniforms = meshUniforms(base);
       } else if (base.kind === 'planes') {
         baseUniforms = planesUniforms(base, output);
+      } else if (base.kind === 'aurora') {
+        baseUniforms = auroraUniforms(base);
       } else {
         updateRamp(base.stops);
         baseUniforms = {

@@ -93,7 +93,22 @@ export interface PlanesPattern {
   seed: number;
 }
 
-export type BasePattern = RampGradient | PointMesh | PlanesPattern;
+/**
+ * Aurora (D42): glowing ribbons flowing across a dark sky
+ * (src/engine/aurora.ts). The darkest color, dimmed, is the sky; the others
+ * are the ribbons. Colors are the ramp's stop colors.
+ */
+export interface AuroraPattern {
+  kind: 'aurora';
+  colors: Oklch[];
+  /** How many ribbons, [0, 1]: 2 at 0, 6 at 1. */
+  count: number;
+  /** Ribbon width, [0, 1]: thin bright lines ↔ wide soft curtains. */
+  glow: number;
+  seed: number;
+}
+
+export type BasePattern = RampGradient | PointMesh | PlanesPattern | AuroraPattern;
 
 /**
  * Coordinate distortion applied before the base pattern (D23). Experimental

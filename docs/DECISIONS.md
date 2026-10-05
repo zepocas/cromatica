@@ -263,3 +263,11 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Cells:** Worley cells using the warp's Voronoi search. Each cell takes a hashed spot on the ramp (0.75 of its length), shaded by the distance to the cell's feature point (0.45 per cell unit). At a border both cells meet at their mean over ~0.75 output px, so edges are crisp but antialiased. Cells with similar spots show a soft crease where they meet.
 - **Shader:** the noise library is shared with the warps (`NOISE_LIB`, `NOISE_CELLS`), with the warp's uniforms fenced to warp variants. The CPU reference reuses `noise.ts` and the Voronoi search in `warp.ts`.
 - **Shuffle:** a layout shuffle re-rolls seed and scale (0.1–0.6). The style shuffle picks noise 10% and cells 8% of the time.
+
+## D42. Aurora: flowing ribbons over a dark sky
+
+- **Pattern:** `{ kind: 'aurora', colors, count, glow, seed }` with colors from the ramp's stops (like planes). The darkest color, dimmed to 35% in linear RGB, is the sky. The others take turns as 2–6 ribbons.
+- **A ribbon:** its center line is a seeded height (spread over ±0.32) plus a tilt plus fBm along x. It glows with a crisp Gaussian lower edge (¼ of the fade) and an exponential upward fade of 0.025–0.13 units (glow slider). Vertical curtain rays come from fBm stretched along y, cutting up to 45%. A coarse mask fades each curtain in and out along its length, leaving dark gaps.
+- **Blend:** ribbons are screen-blended in linear RGB, so overlaps glow without passing 1. Bands are off, as for planes.
+- **Tuning:** a first version with wider fades (up to 0.22), no mask and finer rays (30) filled the whole sky and read as layered hills with grainy streaks.
+- **Shuffle:** a layout shuffle re-rolls seed, ribbon count (0.1–0.8) and glow (0.2–0.8). The style shuffle picks aurora 9% of the time.

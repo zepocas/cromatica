@@ -4,6 +4,7 @@ import type { Oklch } from '../color/types';
 import { applyMat2, clampZoom, transformMatrix } from '../engine/transform';
 import { clamp } from '../math';
 import {
+  type AuroraPattern,
   type BasePattern,
   type ColorStop,
   type Design,
@@ -106,12 +107,23 @@ export const PLANES_SHUFFLE = {
   count: [0.15, 0.65] as Range,
 };
 
+export const AURORA_SHUFFLE = {
+  count: [0.1, 0.8] as Range,
+  glow: [0.2, 0.8] as Range,
+};
+
 /** Style shuffle: how often each pattern kind comes up, and the finishes' odds and ranges. */
 export const STYLE_SHUFFLE = {
-  kinds: { mesh: 0.3, linear: 0.12, radial: 0.08, conic: 0.08, noise: 0.1, cells: 0.08, planes: 0.24 } as Record<
-    BasePattern['kind'],
-    number
-  >,
+  kinds: {
+    mesh: 0.28,
+    linear: 0.1,
+    radial: 0.07,
+    conic: 0.07,
+    noise: 0.09,
+    cells: 0.08,
+    planes: 0.22,
+    aurora: 0.09,
+  } as Record<BasePattern['kind'], number>,
   vignette: { chance: 0.3, range: [0.2, 0.6] as Range },
   print: { chance: 0.25, range: [0.2, 0.7] as Range },
   /** Not for planes, which are flat already. */
@@ -158,10 +170,16 @@ export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 
     const styleRng = createRng((seed ^ STYLE_STREAM) >>> 0);
     b = withKind(b, pickWeighted(styleRng, STYLE_SHUFFLE.kinds));
     if (b.kind === 'planes') b = { ...b, ...shufflePlanesStyle(styleRng) };
-    finish = shuffleFinish(styleRng, b.kind === 'planes');
+    finish = shuffleFinish(styleRng, b.kind === 'planes' || b.kind === 'aurora');
   }
   const shuffled =
-    b.kind === 'mesh' ? shuffleMesh(b, ctx) : b.kind === 'planes' ? shufflePlanes(b, ctx) : shuffleRamp(b, ctx);
+    b.kind === 'mesh'
+      ? shuffleMesh(b, ctx)
+      : b.kind === 'planes'
+        ? shufflePlanes(b, ctx)
+        : b.kind === 'aurora'
+          ? shuffleAurora(b, ctx)
+          : shuffleRamp(b, ctx);
   let base = shuffled.pattern;
   if (base.kind === 'mesh' && opts.layout && design.transform) base = toPatternSpace(base, design.transform);
   const warp = opts.layout ? shuffleWarp(ctx.layoutRng) : { ...design.warp };
@@ -270,7 +288,7 @@ function shuffleMesh(base: PointMesh, ctx: ShuffleContext): { pattern: PointMesh
 
 function baseColors(base: BasePattern): Oklch[] {
   if (base.kind === 'mesh') return base.points.map((p) => copyColor(p.color));
-  if (base.kind === 'planes') return base.colors.map(copyColor);
+  if (base.kind === 'planes' || base.kind === 'aurora') return base.colors.map(copyColor);
   return base.stops.map((s) => copyColor(s.color));
 }
 
@@ -286,7 +304,8 @@ function withKind(base: BasePattern, kind: BasePattern['kind']): BasePattern {
   }
   const n = Math.min(colors.length, MAX_STOPS);
   if (kind === 'planes') return { kind, colors: colors.slice(0, n), count: 0.4, roughness: 0.5, blend: 0, seed: 0 };
-  if (base.kind !== 'mesh' && base.kind !== 'planes') return { ...base, kind };
+  if (kind === 'aurora') return { kind, colors: colors.slice(0, n), count: 0.5, glow: 0.5, seed: 0 };
+  if (base.kind !== 'mesh' && base.kind !== 'planes' && base.kind !== 'aurora') return { ...base, kind };
   const ramp = n === 1 ? [colors[0], colors[0]] : colors.slice(0, n);
   const stops = ramp.map((color, i) => ({ position: i / (ramp.length - 1), color, blend: 'oklab' as const }));
   return { kind, angle: 0, stops };
@@ -324,6 +343,21 @@ function shufflePlanes(
     pattern: { kind: 'planes', colors, count, roughness: base.roughness, blend: base.blend, seed },
     palette: palette && paletteInfo(palette),
   };
+}
+
+/** Aurora: a new layout is a new seed, ribbon count and glow. */
+function shuffleAurora(
+  base: AuroraPattern,
+  ctx: ShuffleContext,
+): { pattern: AuroraPattern; palette: PaletteInfo | null } {
+  const { opts, layoutRng } = ctx;
+  const count = opts.layout ? round4(layoutRng.range(...AURORA_SHUFFLE.count)) : base.count;
+  const glow = opts.layout ? round4(layoutRng.range(...AURORA_SHUFFLE.glow)) : base.glow;
+  const seed = opts.layout ? layoutRng.uint32() : base.seed;
+  const n = Math.min(base.colors.length, MAX_STOPS);
+  const palette = opts.colors ? ctx.makePalette(n) : null;
+  const colors = palette ? palette.colors : base.colors.slice(0, n).map(copyColor);
+  return { pattern: { kind: 'aurora', colors, count, glow, seed }, palette: palette && paletteInfo(palette) };
 }
 
 /** Layouts are made on screen; map them under the transform so they land in view. */

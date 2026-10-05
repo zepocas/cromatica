@@ -33,6 +33,7 @@
     { kind: 'noise', label: 'noise' },
     { kind: 'cells', label: 'cells' },
     { kind: 'planes', label: 'planes' },
+    { kind: 'aurora', label: 'aurora' },
   ] as const;
 
   const WARP_LABELS: Record<WarpShape, string> = {

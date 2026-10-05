@@ -11,6 +11,7 @@ import { applyMat2, transformMatrix } from '../../../src/engine/transform';
 import { bandLevel, prepareFinish, vignetteFactor } from '../../../src/engine/finish';
 import { prepareRampShape, rampT } from '../../../src/engine/ramp-shape';
 import { evaluatePlanes, preparePlanes } from '../../../src/engine/planes';
+import { evaluateAurora, prepareAurora } from '../../../src/engine/aurora';
 import { createRenderer } from '../../../src/engine/renderer';
 import { createWarp } from '../../../src/engine/warp';
 import { CONTEXT_ATTRIBUTES, type OutputSize, type RenderOptions, type Tile } from '../../../src/engine/types';
@@ -105,6 +106,14 @@ function createReference(design: Design, output: OutputSize, halfFloat = false) 
   const finish = prepareFinish(design.finish, output);
   const dimAt = (px: number, py: number) => vignetteFactor(finish, ...compositionCoord(px, py, w, h));
   if (design.base.kind === 'mesh') return createMeshReference(design.base, at, dimAt, (r) => bandLevel(finish, r));
+  if (design.base.kind === 'aurora') {
+    const aurora = prepareAurora(design.base);
+    return (px: number, py: number): Triple => {
+      const rgb = evaluateAurora(aurora, ...at(px, py));
+      const dim = dimAt(px, py);
+      return [srgbEncode(rgb[0] * dim) * 255, srgbEncode(rgb[1] * dim) * 255, srgbEncode(rgb[2] * dim) * 255];
+    };
+  }
   if (design.base.kind === 'planes') {
     const planes = preparePlanes(design.base, output);
     return (px: number, py: number): Triple => {

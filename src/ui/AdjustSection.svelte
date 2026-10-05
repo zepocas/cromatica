@@ -1,6 +1,7 @@
 <script lang="ts">
   import { noFinish } from '../design/design';
   import { prepareFinish } from '../engine/finish';
+  import { ribbonCount } from '../engine/aurora';
   import { planeCount } from '../engine/planes';
   import Choice from './controls/Choice.svelte';
   import SliderRow from './controls/SliderRow.svelte';
@@ -90,6 +91,37 @@
       bind:value={editor.planes.blend}
       display={fixed2}
     />
+  {:else if editor.kind === 'aurora'}
+    <SliderRow
+      label="ribbons"
+      title="How many ribbons"
+      min={0}
+      max={1}
+      step={0.01}
+      bind:value={editor.aurora.count}
+      display={(v) => String(ribbonCount(v))}
+    />
+    <div class="row">
+      <label for="aurora-glow">glow</label>
+      <input
+        id="aurora-glow"
+        type="range"
+        min="0"
+        max="1"
+        step="0.01"
+        aria-label="Glow"
+        title="Thin bright lines ↔ wide soft curtains"
+        bind:value={editor.aurora.glow}
+      />
+      <button
+        class="icon"
+        aria-label="New aurora layout"
+        title="New arrangement of the ribbons"
+        data-seed={editor.aurora.seed}
+        onclick={() => editor.newAuroraLayout()}>⚄</button
+      >
+      <output>{fixed2(editor.aurora.glow)}</output>
+    </div>
   {:else if editor.kind === 'noise' || editor.kind === 'cells'}
     {#if editor.kind === 'noise'}
       <Choice
@@ -135,7 +167,7 @@
       display={degrees}
     />
   {/if}
-  {#if editor.kind !== 'planes'}
+  {#if editor.kind !== 'planes' && editor.kind !== 'aurora'}
     <SliderRow
       label="bands"
       title="The image in flat steps, like a topographic map"
