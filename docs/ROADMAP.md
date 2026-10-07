@@ -292,23 +292,26 @@ Each milestone uses the same structure:
   - **Pickers:** gradient, warp shape, harmony and mood preview the option under the pointer or ↑↓ on the main canvas, worked out on a copy of the editor; never an undo step or saved. Custom palettes keep a spare seed so a mood or harmony preview matches the click.
   - **Tips:** a first-visit card (space, ← →, M, hover/↑↓ previews, "+ more", PNGs keep the design), dismissed for good with `[ got it ]`, back from `?` in the panel header.
 
-### M8 — Relief and stipple finishes
+### M8 — Relief and halftone finishes ✅
 
 - **Goal:** two finishes that change the material of the image, not just its colors.
 - **Scope, in build order:**
   1. **Neighbour-sampling stage:** the pattern evaluated at a few nearby points per pixel, giving a local slope or edge. Still per output pixel and stateless (D2, D4). It's the shared groundwork for relief and, later, glitch, riso overprint and contour lines (D46).
   2. **Relief:** the pattern treated as a height map and lit. First version is **satin** (soft cloth-like highlights) and **glass** (refraction, bright rims), gentle by default, with one strength slider where 0 is bit-identical to off. A prototype with chrome and iridescent is in `prototype/relief/`; those two stay out of the product for now.
-  3. **Stipple / halftone:** a density-to-dot stage (threshold against the blue-noise tile, as in `prototype-stipple.html`) with one amount slider. No blob generator and no layers.
+  3. **Stipple / halftone:** a density-to-dot stage with one amount slider. No blob generator and no layers. Shipped as halftone only (D54).
 - **Done when:**
   - Both finishes render tile-identically, match the CPU reference, and at 0 are bit-identical to off.
   - Preview and export match at the same size.
   - Relief preview stays within the frame budget, using the existing half-resolution fallback on slow GPUs.
   - A contact sheet of satin and glass over the existing patterns and warps has been reviewed.
-- **Settled (2026-10-07):**
-  - Relief light: a direction control, not a fixed light.
-  - Stipple dot size: in image units, so it scales with the output like the rest of the composition.
-- **Open questions:**
-  - How relief interacts with bands, print and grain (order in the finish chain). The user decides after seeing it in the app.
+- **Outcome (D46, D54):**
+  - **Neighbour sampling:** the pattern (transform → warp → base) is one shader function, `patternColor`, so it can be read at nearby points; `heightSlope` takes the slope of its Oklab lightness by central differences 0.003 image heights apart, compiled in only when something uses it (`src/engine/neighbours.ts`).
+  - **Relief:** lighter = higher, lit from a direction fixed on screen. Shading is measured against a flat surface, so flat areas are untouched; steep slopes are eased so detailed patterns don't crumple. Satin adds shading and a tinted sheen; glass refracts the pattern underneath and adds tinted rims and glints. Panel, under "+ more": relief, light, then surface (`src/engine/relief.ts`). Sheets: `relief.png`, `relief-light.png`.
+  - **Halftone:** every pixel is ink (darker, richer) or paper (lighter, paler) on a 45° screen, ~4 px at 1080p and in image units. The ink share is calibrated so ink and paper mix back to the color's luminance, and dot edges mix in linear light. One slider under "+ more" (`src/engine/halftone.ts`); dragging it keeps the preview at full resolution, as for grain and print (D53), since a half-resolution frame aliases the screen. Sheets: `halftone.png`, `halftone-1080p-crops.png` (contact sheets can now render 1:1 crops of a full-size image).
+  - **Order:** pattern → relief → vignette → halftone → print → grain.
+  - **Shuffle:** relief in 15% of style shuffles (0.2–0.5, satin or glass, light 100°–170°), halftone in 12% (0.15–0.35), drawn after the other finishes so earlier shuffles are unchanged.
+  - **Saves:** version 4 adds `relief`, `reliefStyle`, `reliefLight` and `halftone`; older designs load with both off.
+  - **Checks:** both match the CPU reference within 1 level, tile and worker renders are identical, off is bit-identical. Relief costs about 4.5× the render time on SwiftShader (five pattern reads per pixel); the user tried it live and reported no slowdown; not measured on a real GPU.
 
 ### M9 — Context preview and legibility
 
@@ -356,7 +359,8 @@ Each milestone uses the same structure:
   - **Brushed warp:** one of the user's least favorite shapes (2026-10-05); decide whether to remove it. Saved designs that use it would need a migration (D44).
   - **Colors "blend" dropdown** (per stop: perceptual, vivid, hue short/long way): feels like overkill to the user (2026-10-07); reconsider whether to keep it.
   - **Relief's name:** the finish works, but "relief" may not be the right word for it in the panel; reconsider.
-  - **Noise vs print sliders:** reconsider them together (D53, 2026-10-07). They look alike, and noise is the softer, more redundant one. Decide whether to merge them, drop one, or rename ("noise" is the better name; "noise (print)" is an option).
+  - **Relief controls and shuffle weight:** consider grouping relief's settings (relief, light, surface) visually, e.g. with a border, and revisit whether and how often shuffles turn relief on, and how strongly (user, 2026-10-07; M8 shipped 15% at 0.2–0.5).
+  - **Noise, print and halftone sliders:** reconsider them together (D53, 2026-10-07). Noise and print look alike, and noise is the softer, more redundant one. Decide whether to merge them, drop one, or rename ("noise" is the better name; "noise (print)" is an option). Halftone (M8) joins them: the user floated "noise (halftone)" and a single noise section holding all the noise-like finishes.
   - Status bar under the preview, IDE-style, for global and view settings: show points (moved to the bottom of the panel in M6 for now), the 1:1 loupe and preview zoom, output size, autosave state. Idea from 2026-10-05; only worth it once it holds several of these.
 - **Done when:**
   - Tested on Chrome, Safari and Firefox on macOS, and Chrome on Windows

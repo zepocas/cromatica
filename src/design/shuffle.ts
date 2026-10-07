@@ -16,6 +16,7 @@ import {
   type RampGradient,
   MAX_MESH_POINTS,
   MAX_STOPS,
+  noFinish,
   type MeshPoint,
   type PlanesPattern,
   type PointMesh,
@@ -143,6 +144,9 @@ export const STYLE_SHUFFLE = {
   print: { chance: 0.25, range: [0.15, 0.4] as Range },
   /** Not for planes, which are flat already. */
   bands: { chance: 0.15, range: [0.2, 0.7] as Range },
+  /** Subtle (2026-10-07); weights to revisit in M11. Light from the upper left. */
+  relief: { chance: 0.15, range: [0.2, 0.5] as Range, light: [100, 170] as Range },
+  halftone: { chance: 0.12, range: [0.15, 0.35] as Range },
   planesRoughness: { clean: 0.25, range: [0.3, 1] as Range },
   planesBlend: { chance: 0.3, range: [0.2, 0.8] as Range },
 };
@@ -351,7 +355,22 @@ function shuffleFinish(rng: Rng, flat: boolean): Finish {
   const vignette = maybe(s.vignette);
   const print = maybe(s.print);
   const bands = maybe(s.bands);
-  return { vignette, print, bands: flat ? 0 : bands, bandEdge: round4(rng.next()) };
+  const bandEdge = round4(rng.next());
+  // Drawn last, so shuffles from before relief and halftone existed come out the same.
+  const relief = maybe(s.relief);
+  const reliefStyle = rng.next() < 0.5 ? 'satin' : 'glass';
+  const reliefLight = Math.round(rng.range(...s.relief.light));
+  const halftone = maybe(s.halftone);
+  return {
+    vignette,
+    print,
+    bands: flat ? 0 : bands,
+    bandEdge,
+    relief,
+    reliefStyle: relief > 0 ? reliefStyle : noFinish.reliefStyle,
+    reliefLight: relief > 0 ? reliefLight : noFinish.reliefLight,
+    halftone,
+  };
 }
 
 /** Planes: a new layout is a new seed (and count); new colors are a palette of the same size. */

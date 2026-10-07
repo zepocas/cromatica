@@ -9,7 +9,9 @@ import {
   AURORA_BLEND,
   defaultGrain,
   type Design,
+  noFinish,
   type RampGradient,
+  type ReliefStyle,
   type Warp,
   WARP_SHAPES,
   type WarpShape,
@@ -256,7 +258,7 @@ test('print.png', async ({ page }) => {
     designs: amounts.map((print) => ({
       ...d,
       grain: defaultGrain,
-      finish: { vignette: 0, bands: 0, bandEdge: 0, print },
+      finish: { ...noFinish, print },
     })),
   }));
   const png = await engineHarness(page, 'contactSheet', rows, cols, 800, 450);
@@ -297,4 +299,115 @@ test('variations.png', async ({ page }) => {
   }
   const png = await engineHarness(page, 'contactSheet', rows, cols, 320, 180);
   writeFileSync(join(DIR, 'variations.png'), Buffer.from(png, 'base64'));
+});
+
+test('relief.png', async ({ page }) => {
+  await openEngineHarness(page);
+  const looks: [string, Design][] = [
+    ['bands', { ...threeStops(30), finish: { ...noFinish, bands: 0.5, bandEdge: 0.6 } }],
+    ['mesh', meshDefault],
+    ['mesh · marble', withLook(meshDefault, warp('marble', 0.5, 0.4, 3))],
+    ['planes', planesDesign(0.4, 0.5)],
+    [
+      'cells',
+      { ...threeStops(0), base: { ...(threeStops(0).base as RampGradient), kind: 'cells', scale: 0.35, seed: 4 } },
+    ],
+    [
+      'contour',
+      { ...midTonesFive, base: { ...(midTonesFive.base as RampGradient), kind: 'noise', scale: 0.35, seed: 8 } },
+    ],
+    [
+      'aurora',
+      {
+        ...meshDefault,
+        base: {
+          kind: 'aurora',
+          colors: [
+            [0.15, 0.03, 260],
+            [0.8, 0.17, 150],
+            [0.65, 0.15, 190],
+            [0.6, 0.2, 320],
+          ],
+          count: 0.5,
+          glow: 0.5,
+          blend: AURORA_BLEND,
+          seed: 3,
+        },
+      },
+    ],
+    ['grid', gridDesign(4, 5, 1, gridColors)],
+  ];
+  const settings: [string, ReliefStyle, number][] = [
+    ['off', 'satin', 0],
+    ...[0.35, 0.7, 1].map((s): [string, ReliefStyle, number] => [`satin ${s}`, 'satin', s]),
+    ...[0.35, 0.7, 1].map((s): [string, ReliefStyle, number] => [`glass ${s}`, 'glass', s]),
+  ];
+  const rows = looks.map(([label, d]) => ({
+    label,
+    designs: settings.map(([, reliefStyle, relief]) => ({
+      ...d,
+      grain: defaultGrain,
+      finish: { ...noFinish, ...d.finish, relief, reliefStyle },
+    })),
+  }));
+  const png = await engineHarness(
+    page,
+    'contactSheet',
+    rows,
+    settings.map(([label]) => label),
+    480,
+    270,
+  );
+  writeFileSync(join(DIR, process.env.RELIEF_SHEET ?? 'relief.png'), Buffer.from(png, 'base64'));
+});
+
+test('relief-light.png', async ({ page }) => {
+  await openEngineHarness(page);
+  const lights = [0, 45, 135, 225, 315];
+  const contour: Design = {
+    ...midTonesFive,
+    base: { ...(midTonesFive.base as RampGradient), kind: 'noise', scale: 0.35, seed: 8 },
+  };
+  const looks: [string, Design, ReliefStyle][] = [
+    ['contour · satin', contour, 'satin'],
+    ['marble · satin', withLook(meshDefault, warp('marble', 0.5, 0.4, 3)), 'satin'],
+    ['mesh · glass', meshDefault, 'glass'],
+  ];
+  const rows = looks.map(([label, d, reliefStyle]) => ({
+    label,
+    designs: lights.map((reliefLight) => ({
+      ...d,
+      grain: defaultGrain,
+      finish: { ...noFinish, relief: 0.7, reliefStyle, reliefLight },
+    })),
+  }));
+  const cols = lights.map((l) => `light ${l}°`);
+  const png = await engineHarness(page, 'contactSheet', rows, cols, 480, 270);
+  writeFileSync(join(DIR, 'relief-light.png'), Buffer.from(png, 'base64'));
+});
+
+test('halftone.png', async ({ page }) => {
+  await openEngineHarness(page);
+  const contour: Design = {
+    ...midTonesFive,
+    base: { ...(midTonesFive.base as RampGradient), kind: 'noise', scale: 0.35, seed: 8 },
+  };
+  const looks: [string, Design][] = [
+    ['mesh', meshDefault],
+    ['bands', { ...threeStops(30), finish: { ...noFinish, bands: 0.5, bandEdge: 0.6 } }],
+    ['planes', planesDesign(0.4, 0.5)],
+    ['contour', contour],
+    ['grid', gridDesign(4, 5, 1, gridColors)],
+  ];
+  const amounts = [0, 0.2, 0.4, 0.6, 0.8, 1];
+  const rows = looks.map(([label, d]) => ({
+    label,
+    designs: amounts.map((halftone) => ({ ...d, grain: defaultGrain, finish: { ...noFinish, ...d.finish, halftone } })),
+  }));
+  const cols = amounts.map((a) => (a === 0 ? 'off' : `halftone ${a}`));
+  // Whole images, then 1:1 crops of a 1920×1080 export, where the dots are their real size.
+  const whole = await engineHarness(page, 'contactSheet', rows, cols, 480, 270);
+  writeFileSync(join(DIR, 'halftone.png'), Buffer.from(whole, 'base64'));
+  const crop = await engineHarness(page, 'contactSheet', rows, cols, 400, 300, { width: 1920, height: 1080 });
+  writeFileSync(join(DIR, 'halftone-1080p-crops.png'), Buffer.from(crop, 'base64'));
 });

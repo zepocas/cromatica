@@ -32,6 +32,9 @@ import { BLUE_NOISE_SIZE, DITHER_CHANNEL_OFFSETS, blueNoiseRanks } from './blue-
 import { prepareFinish, VIGNETTE_INNER } from './finish';
 import { GRAIN_CHROMA, prepareGrain } from './grain';
 import { buildShaderSources, variantKey, type Defines } from './shaders';
+import { NEIGHBOUR_SHADER_CONSTANTS } from './neighbours';
+import { prepareRelief, RELIEF_SHADER_CONSTANTS, type PreparedRelief } from './relief';
+import { HALFTONE_SHADER_CONSTANTS, HALFTONE_TABLE, halftoneContrast } from './halftone';
 import { prepareWarp, WARP_SHADER_CONSTANTS, type PreparedWarp } from './warp';
 import type { OutputSize, RenderOptions, Renderer, Tile } from './types';
 
@@ -169,6 +172,12 @@ function warpDefines(w: PreparedWarp): Defines {
   return { WARP_ANY: true, [`WARP_${w.shape.toUpperCase()}`]: true, ...WARP_SHADER_CONSTANTS };
 }
 
+/** Relief variant defines: none when off, so off compiles to exactly the shader without relief. */
+function reliefDefines(r: PreparedRelief): Defines {
+  if (r.depth === 0) return {};
+  return { ...NEIGHBOUR_SHADER_CONSTANTS, ...RELIEF_SHADER_CONSTANTS, RELIEF: 1, RELIEF_GLASS: r.glass };
+}
+
 function warpUniforms(w: PreparedWarp) {
   if (w.shape === 'none') return {};
   return {
@@ -249,11 +258,15 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
       const warp = prepareWarp(design.warp);
       const grain = prepareGrain(design.grain);
       const finish = prepareFinish(design.finish, output);
+      const relief = prepareRelief(design.finish);
+      const halftone = halftoneContrast(design.finish);
       const info = getProgram({
         BLUE_NOISE_SIZE,
         VIGNETTE_INNER: VIGNETTE_INNER.toFixed(4),
         ...baseDefines(base),
         ...warpDefines(warp),
+        ...reliefDefines(relief),
+        ...(halftone > 0 ? { ...HALFTONE_SHADER_CONSTANTS, GAMUT_CLIP_STEPS } : {}),
       });
       let baseUniforms: object;
       if (base.kind === 'mesh') {
@@ -303,6 +316,10 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
         u_printLevels: finish.printLevels,
         u_printSpeckle: finish.printSpeckle,
         u_printEdge: finish.printEdge,
+        ...(relief.depth > 0
+          ? { u_reliefDepth: relief.depth, u_reliefLight: relief.light, u_reliefHalf: relief.half }
+          : {}),
+        ...(halftone > 0 ? { u_halftoneContrast: halftone, u_halftoneTable: new Float32Array(HALFTONE_TABLE) } : {}),
         u_blueNoise: blueNoiseTexture,
         u_ditherOffset: ditherOffsets,
         u_dither: opts.dither === false ? 0 : 1,

@@ -216,7 +216,18 @@ export interface Finish {
   bandEdge: number;
   /** Print texture, [0, 1]: lithograph at the low end, xerox at the high end; 0 = off. */
   print: number;
+  /** Relief (D46): the pattern lit as a height map (lighter = higher), [0, 1]; 0 = off. */
+  relief: number;
+  reliefStyle: ReliefStyle;
+  /** Where the light comes from, degrees counter-clockwise from the right, [0, 360). Fixed on screen. */
+  reliefLight: number;
+  /** Halftone ink dots on paper, [0, 1]: the contrast between ink and paper; 0 = off. Dots are in image units. */
+  halftone: number;
 }
+
+/** Satin: soft shading and sheen. Glass: the pattern refracted under the surface, bright rims. */
+export const RELIEF_STYLES = ['satin', 'glass'] as const;
+export type ReliefStyle = (typeof RELIEF_STYLES)[number];
 
 /**
  * Whole-image transform (D24), applied to composition coords before the
@@ -250,7 +261,16 @@ export const defaultWarp: Warp = { shape: 'domain', amount: 0.3, size: 0.35, see
 export const noWarp: Warp = { shape: 'none', amount: 0, size: 0.5, seed: 1 };
 export const defaultGrain: Grain = { amount: 0.35, size: 0 };
 export const noGrain: Grain = { amount: 0, size: 0 };
-export const noFinish: Finish = { vignette: 0, bands: 0, bandEdge: 0, print: 0 };
+export const noFinish: Finish = {
+  vignette: 0,
+  bands: 0,
+  bandEdge: 0,
+  print: 0,
+  relief: 0,
+  reliefStyle: 'satin',
+  reliefLight: 135,
+  halftone: 0,
+};
 export const identityTransform: Transform = { rotate: 0, zoom: 1, flipX: false, flipY: false };
 export const MIN_ZOOM = 0.5;
 export const MAX_ZOOM = 4;

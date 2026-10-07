@@ -28,6 +28,14 @@ describe('design schema', () => {
     expect(d.base).toEqual({ ...base, blend: LEGACY_AURORA_BLEND });
   });
 
+  it('gives a version 3 design relief off and keeps its other finishes', () => {
+    const saved = saveDesign(defaultDesign).design;
+    const finish = { vignette: 0.3, bands: 0.2, bandEdge: 0.5, print: 0.1 };
+    const d = loadDesign({ version: 3, design: { ...saved, finish } });
+    expect(d.finish).toEqual({ ...noFinish, ...finish });
+    expect(d.finish.relief).toBe(0);
+  });
+
   it('saves the current version', () => {
     expect(saveDesign(defaultDesign).version).toBe(SCHEMA_VERSION);
   });

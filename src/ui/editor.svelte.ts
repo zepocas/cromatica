@@ -224,7 +224,7 @@ export class EditorState {
     this.kind = base.kind;
     this.warp = { ...design.warp };
     this.grain = { ...design.grain };
-    this.finish = { ...(design.finish ?? noFinish) };
+    this.finish = { ...noFinish, ...design.finish };
     this.transform = { ...(design.transform ?? identityTransform) };
     this.clampSelection();
   }

@@ -14,6 +14,8 @@ import { evaluatePlanes, preparePlanes } from '../../../src/engine/planes';
 import { evaluateAurora, prepareAurora } from '../../../src/engine/aurora';
 import { evaluateGrid, prepareGrid } from '../../../src/engine/grid';
 import { createRenderer } from '../../../src/engine/renderer';
+import { applyRelief, prepareRelief } from '../../../src/engine/relief';
+import { applyHalftone, halftoneContrast } from '../../../src/engine/halftone';
 import { createWarp } from '../../../src/engine/warp';
 import { CONTEXT_ATTRIBUTES, type OutputSize, type RenderOptions, type Tile } from '../../../src/engine/types';
 
@@ -62,6 +64,28 @@ function renderImage(
 }
 
 const newCanvas = () => document.createElement('canvas');
+
+/** The centre `width` × `height` pixels of an image of size `output`, at 1:1. */
+function renderCrop(design: Design, output: OutputSize, width: number, height: number) {
+  const canvas = newCanvas();
+  const gl = canvas.getContext('webgl2', CONTEXT_ATTRIBUTES) as WebGL2RenderingContext;
+  const renderer = createRenderer(gl);
+  try {
+    const tile: Tile = {
+      x: Math.floor((output.width - width) / 2),
+      y: Math.floor((output.height - height) / 2),
+      width,
+      height,
+    };
+    canvas.width = width;
+    canvas.height = height;
+    renderer.render(design, output, tile, { dither: true });
+    return renderer.readPixels(width, height);
+  } finally {
+    renderer.dispose();
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+  }
+}
 const render = (design: Design, output: OutputSize, dither: boolean) =>
   renderImage(newCanvas(), design, output, 0, { dither }).image;
 
@@ -94,83 +118,69 @@ function srgbEncode(x: number): number {
 const f16round = (Math as unknown as { f16round?: (x: number) => number }).f16round;
 
 /**
- * CPU reference of the (warped) linear gradient, in doubles: warped composition
- * coords per pixel, t, then the baked ramp with the texture's linear filtering,
- * then the sRGB transfer. Returns ENCODED values scaled to 0..255, unrounded.
- * Grain is not modeled (render references with grain off).
+ * CPU reference of the render, in doubles: the pattern at composition coords
+ * (transform → warp → base, ramps through the baked ramp with the texture's
+ * linear filtering), relief, vignette, halftone, then the sRGB transfer. Returns ENCODED
+ * values scaled to 0..255, unrounded. Grain and print are not modeled.
  */
 function createReference(design: Design, output: OutputSize, halfFloat = false) {
+  const { width: w, height: h } = output;
+  const finish = prepareFinish(design.finish, output);
+  const relief = prepareRelief(design.finish);
+  const halftone = halftoneContrast(design.finish);
+  const pattern = createPatternReference(design, output, halfFloat);
+  return (px: number, py: number): Triple => {
+    const [u, v] = compositionCoord(px, py, w, h);
+    let rgb = pattern(u, v);
+    if (relief.depth > 0) rgb = applyRelief(relief, pattern, u, v, rgb);
+    const dim = vignetteFactor(finish, u, v);
+    rgb = rgb.map((c) => c * dim) as Rgb;
+    if (halftone > 0) rgb = applyHalftone(halftone, rgb, u, v, 1 / h);
+    return [srgbEncode(rgb[0]) * 255, srgbEncode(rgb[1]) * 255, srgbEncode(rgb[2]) * 255];
+  };
+}
+
+/** The pattern's linear RGB at composition coords (u, v). */
+function createPatternReference(design: Design, output: OutputSize, halfFloat: boolean): (u: number, v: number) => Rgb {
   const warp = createWarp(design.warp ?? noWarp);
   const m = transformMatrix(design.transform);
-  const { width: w, height: h } = output;
-  const at = (px: number, py: number) => warp(...applyMat2(m, ...compositionCoord(px, py, w, h)));
+  const at = (u: number, v: number) => warp(...applyMat2(m, u, v));
   const finish = prepareFinish(design.finish, output);
-  const dimAt = (px: number, py: number) => vignetteFactor(finish, ...compositionCoord(px, py, w, h));
-  if (design.base.kind === 'mesh') return createMeshReference(design.base, at, dimAt, (r) => bandLevel(finish, r));
-  if (design.base.kind === 'grid') {
-    const grid = prepareGrid(design.base);
-    return (px: number, py: number): Triple => {
-      const rgb = meshGamutClip(evaluateGrid(grid, ...at(px, py)));
-      const dim = dimAt(px, py);
-      return [srgbEncode(rgb[0] * dim) * 255, srgbEncode(rgb[1] * dim) * 255, srgbEncode(rgb[2] * dim) * 255];
-    };
-  }
-  if (design.base.kind === 'aurora') {
-    const aurora = prepareAurora(design.base);
-    return (px: number, py: number): Triple => {
-      const rgb = evaluateAurora(aurora, ...at(px, py));
-      const dim = dimAt(px, py);
-      return [srgbEncode(rgb[0] * dim) * 255, srgbEncode(rgb[1] * dim) * 255, srgbEncode(rgb[2] * dim) * 255];
-    };
-  }
-  if (design.base.kind === 'planes') {
-    const planes = preparePlanes(design.base, output);
-    return (px: number, py: number): Triple => {
-      const rgb = evaluatePlanes(planes, ...at(px, py));
-      const dim = dimAt(px, py);
-      return [srgbEncode(rgb[0] * dim) * 255, srgbEncode(rgb[1] * dim) * 255, srgbEncode(rgb[2] * dim) * 255];
-    };
-  }
   const base = design.base;
+  if (base.kind === 'mesh') {
+    const evaluate = createMeshEvaluator(base, (r) => bandLevel(finish, r));
+    return (u, v) => meshGamutClip(evaluate(...at(u, v)));
+  }
+  if (base.kind === 'grid') {
+    const grid = prepareGrid(base);
+    return (u, v) => meshGamutClip(evaluateGrid(grid, ...at(u, v)));
+  }
+  if (base.kind === 'aurora') {
+    const aurora = prepareAurora(base);
+    return (u, v) => evaluateAurora(aurora, ...at(u, v));
+  }
+  if (base.kind === 'planes') {
+    const planes = preparePlanes(base, output);
+    return (u, v) => evaluatePlanes(planes, ...at(u, v));
+  }
   const ramp = bakeRamp(base.stops, RAMP_SIZE);
   if (halfFloat && f16round) for (let i = 0; i < ramp.length; i++) ramp[i] = f16round(ramp[i]);
   const n = RAMP_SIZE;
   const shape = prepareRampShape(base, output, design.transform);
-  return (px: number, py: number): Triple => {
-    const t = bandLevel(finish, rampT(shape, ...at(px, py)));
-    const dim = dimAt(px, py);
+  return (u, v) => {
+    const t = bandLevel(finish, rampT(shape, ...at(u, v)));
     // Sampling at (t·(n-1) + 0.5) / n with LINEAR filtering = lerp at t·(n-1).
     const s = t * (n - 1);
     const i0 = Math.min(n - 1, Math.floor(s));
     const i1 = Math.min(n - 1, i0 + 1);
     const f = s - i0;
-    const out: Triple = [0, 0, 0];
-    for (let k = 0; k < 3; k++) {
-      const c = (ramp[i0 * 4 + k] * (1 - f) + ramp[i1 * 4 + k] * f) * dim;
-      out[k] = srgbEncode(c) * 255;
-    }
-    return out;
+    return [0, 1, 2].map((k) => ramp[i0 * 4 + k] * (1 - f) + ramp[i1 * 4 + k] * f) as Rgb;
   };
 }
 
 /** Composition coords of an output pixel center (src/engine/types.ts). */
 const compositionCoord = (px: number, py: number, w: number, h: number) =>
   [(px + 0.5 - w / 2) / h, (h / 2 - (py + 0.5)) / h] as const;
-
-/** CPU reference of the mesh: Oklab blend → the shader's gamut clip → sRGB, 0..255 unrounded. */
-function createMeshReference(
-  mesh: PointMesh,
-  at: (px: number, py: number) => readonly [number, number],
-  dimAt: (px: number, py: number) => number,
-  band: (relative: number) => number,
-) {
-  const evaluate = createMeshEvaluator(mesh, band);
-  return (px: number, py: number): Triple => {
-    const rgb = meshGamutClip(evaluate(...at(px, py)));
-    const dim = dimAt(px, py);
-    return [srgbEncode(rgb[0] * dim) * 255, srgbEncode(rgb[1] * dim) * 255, srgbEncode(rgb[2] * dim) * 255];
-  };
-}
 
 const deltaEOK = (a: Rgb, b: Rgb) => {
   const p = linearSrgbToOklab(a);
@@ -182,21 +192,26 @@ function compareToReference(image: Uint8Array, ref: (x: number, y: number) => Tr
   let maxDiff = 0;
   let worst: { x: number; y: number; gpu: number[]; ref: number[] } | null = null;
   let alphaOk = true;
+  /** Pixels off by more than 1 in any channel. */
+  let over = 0;
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = (y * w + x) * 4;
       const r = ref(x, y).map(Math.round);
       if (image[i + 3] !== 255) alphaOk = false;
+      let pixel = 0;
       for (let k = 0; k < 3; k++) {
         const d = Math.abs(image[i + k] - r[k]);
+        pixel = Math.max(pixel, d);
         if (d > maxDiff) {
           maxDiff = d;
           worst = { x, y, gpu: Array.from(image.subarray(i, i + 3)), ref: r };
         }
       }
+      if (pixel > 1) over++;
     }
   }
-  return { maxDiff, worst, alphaOk };
+  return { maxDiff, worst, alphaOk, over };
 }
 
 /** Longest run of identical values of channel k along each row, max over rows. */
@@ -667,7 +682,14 @@ const harness = {
    * Contact sheet: rows × columns of designs, each rendered at cellW × cellH
    * with dither on, labeled, as a PNG data URL.
    */
-  async contactSheet(rows: { label: string; designs: Design[] }[], columns: string[], cellW: number, cellH: number) {
+  /** With `cropOf`, each cell is the 1:1 centre of an image that size instead of the whole image. */
+  async contactSheet(
+    rows: { label: string; designs: Design[] }[],
+    columns: string[],
+    cellW: number,
+    cellH: number,
+    cropOf?: OutputSize,
+  ) {
     const labelW = 110;
     const headerH = 28;
     const gap = 4;
@@ -686,7 +708,7 @@ const harness = {
       ctx.fillStyle = '#eee';
       ctx.fillText(row.label, 8, y0 + cellH / 2);
       row.designs.forEach((d, c) => {
-        const px = render(d, { width: cellW, height: cellH }, true);
+        const px = cropOf ? renderCrop(d, cropOf, cellW, cellH) : render(d, { width: cellW, height: cellH }, true);
         const img = new ImageData(new Uint8ClampedArray(px.buffer as ArrayBuffer), cellW, cellH);
         ctx.putImageData(img, labelW + c * (cellW + gap), y0);
       });

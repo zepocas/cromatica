@@ -228,6 +228,44 @@
       display={(v) => (v === 0 ? 'off' : v.toFixed(2))}
     />
     <SliderRow
+      label="relief"
+      title="Light the image as a raised surface: lighter parts stand higher"
+      min={0}
+      max={1}
+      step={0.01}
+      bind:value={editor.finish.relief}
+      display={(v) => (v === 0 ? 'off' : v.toFixed(2))}
+    />
+    <SliderRow
+      label="light"
+      title="Where the light comes from"
+      min={0}
+      max={359}
+      step={1}
+      disabled={editor.finish.relief === 0}
+      bind:value={editor.finish.reliefLight}
+      display={degrees}
+    />
+    <Choice
+      label="surface"
+      ariaLabel="Relief surface"
+      options={[
+        { value: 'satin', title: 'Soft shading and sheen' },
+        { value: 'glass', title: 'The image refracted under glass, bright rims' },
+      ]}
+      value={editor.finish.reliefStyle}
+      onchange={(v) => (editor.finish.reliefStyle = v)}
+    />
+    <SliderRow
+      label="halftone"
+      title="A print screen of ink dots on paper: fine texture ↔ newsprint"
+      min={0}
+      max={1}
+      step={0.01}
+      bind:value={editor.finish.halftone}
+      display={(v) => (v === 0 ? 'off' : v.toFixed(2))}
+    />
+    <SliderRow
       label="vignette"
       title="Darken toward the corners"
       min={0}
