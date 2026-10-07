@@ -1,6 +1,36 @@
 # cromatica
 
-A client-side web app that generates abstract gradient wallpapers at crisp, device-native resolutions. It adds perceptual (Oklab) color blending, domain warping, flow and cellular noise, and blue-noise dithering to remove banding.
+Generate abstract gradient wallpapers in your browser, at crisp, device-native resolutions. Everything runs client-side: no account, no upload.
+
+**Try it: [zepocas.github.io/cromatica](https://zepocas.github.io/cromatica/)**
+
+<p>
+  <img src="docs/examples/marble.jpg" alt="Marbled swirls in cream and black" width="49%" />
+  <img src="docs/examples/aurora.jpg" alt="Soft aurora in dusty purple and sage" width="49%" />
+  <img src="docs/examples/gradient.jpg" alt="Aqua to orange to violet gradient with grain" width="49%" />
+  <img src="docs/examples/planes.jpg" alt="Torn, layered earthy planes" width="49%" />
+</p>
+
+## Features
+
+- **Five patterns:** color-point mesh, linear/radial/conic gradients, planes, aurora and grid.
+- **Warps** such as silk and marble that bend any pattern into folds and flow.
+- **Cohesive color:** palettes come from color theory, not random RGB. See [How colors work](#how-colors-work).
+- **Finishes:** grain, bands, edge, brushed and print textures, plus blue-noise dithering so gradients never band.
+- **Explore:** shuffle, "more like this" variations, history and favourites.
+- **Export** PNG or JPEG at any size, rendered in tiles. A PNG carries its own design, so dropping it back into the app reopens it.
+- **Autosave and undo/redo,** all local to your browser.
+
+## How colors work
+
+Shuffled palettes are built, not random. Each one combines:
+
+- **A harmony rule** around a base hue: monochrome, analogous, complementary, split-complementary, triadic or tetradic.
+- **A deliberate lightness spread,** so the colors stay distinct instead of blending into one mid-tone.
+- **Balanced saturation.** Chroma is a fraction of what the display can show at that lightness and hue, so no color is garish or dull next to its neighbors. In the vivid moods with four or more colors, the base hue and one accent lead while the other hues stay calmer.
+- **A mood** (natural, vivid, muted, earthy, pastel, neon) and a **value key** (light, full range or dark) to steer the feel.
+
+Colors blend in Oklab, which looks even to the eye. The blends preserve chroma, so complementary colors don't turn gray in between. Edit one color with linking on and the rest follow, keeping the harmony. Or drop an image on the window to pull a palette from it.
 
 Phase 1 is in progress; see the roadmap for where things stand.
 
