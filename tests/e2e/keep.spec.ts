@@ -42,10 +42,11 @@ test('arrows nudge a focused handle instead of stepping', async ({ page }) => {
 test('favourites: ♡ keeps the design, a click reopens it, and it survives a reload', async ({ page }) => {
   await openApp(page);
   const { settled } = previewProbe(page);
-  const kept = await settled();
   await page.getByRole('button', { name: 'Add to favourites' }).click();
   await expect(page.getByRole('button', { name: 'Remove from favourites' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('button', { name: /^Open favourite/ })).toHaveCount(1);
+  // Taken with the section open, as it is after a reload.
+  const kept = await settled();
 
   await page.getByRole('button', { name: /^Shuffle( Space)?$/ }).click();
   await expect(page.getByRole('button', { name: 'Add to favourites' })).toBeVisible();
@@ -58,6 +59,25 @@ test('favourites: ♡ keeps the design, a click reopens it, and it survives a re
   await page.getByRole('button', { name: 'Remove favourite 1' }).click();
   await expect(page.getByRole('button', { name: /^Open favourite/ })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Add to favourites' })).toBeVisible();
+});
+
+test('favourites section: folded while empty, opens when one is added, and stays open on removal', async ({ page }) => {
+  await openApp(page);
+  await expect(page.getByRole('button', { name: 'Expand favourites' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Open favourite/ })).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Add to favourites' }).click();
+  await expect(page.getByRole('button', { name: 'Collapse favourites' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open favourite 1' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Collapse favourites' }).click();
+  await expect(page.getByRole('button', { name: /^Open favourite/ })).toHaveCount(0);
+  // The heart stays on the folded title line.
+  await expect(page.getByRole('button', { name: 'Remove from favourites' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Expand favourites' }).click();
+  await page.getByRole('button', { name: 'Remove favourite 1' }).click();
+  await expect(page.getByRole('button', { name: 'Collapse favourites' })).toBeVisible();
 });
 
 test('more like this: a grid of variations; a pick is one undo step, Esc closes', async ({ page }) => {

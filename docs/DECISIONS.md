@@ -360,3 +360,13 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Dots in image units:** halftone dots scale with the output, like the rest of the composition (D4), not per output pixel like grain.
 - **Order:** pattern → relief → vignette → halftone → print → grain, chosen by the user after seeing it.
 - **Shuffle:** relief and halftone come up sometimes and subtly; weights to revisit in M11.
+
+## D55. Favourites at the bottom of the panel, lighter panels
+
+- **Decision (2026-10-07):** favourites stay in the left panel, as a "favourites" section just above the footer, under colors. It starts folded when empty, opens by itself when a favourite is added (removing one never closes it), and grows upward into the spare height of the panel, if there is any.
+- **Columns:** each favourite is its palette as a vertical column, first color on top; the columns share the panel's width (as many as fit).
+- **Heart:** one bordered ♡/♥ button on the section's title line, so it stays visible when folded; it replaces the small ♡ in the footer. A kept design's ♥ and its border are red, the only color in the panel besides the wallpaper's own, so it stands out.
+- **Tried and dropped:** thumbnails in a tall bottom dock, a right-hand rail of stripes (a second column that narrowed the preview), and a tab plus bottom dock under the preview.
+- **Bottom of the panel:** colors and favourites sit just above the footer, so they are next to shuffle and download. This holds only while the panel has spare height; on a shorter window the content fills the panel, which scrolls as before. "+ more" expands in place, growing upward into the spare height while there is any, then downward.
+- **Panels:** `mid` theme, a step lighter than before (#1b1b1a on a #0b0b0d canvas). A lighter variant (#232322) was too light. The canvas stays as dark as before.
+- **Not done:** a flyout for the extra color settings (it covers the point handles).

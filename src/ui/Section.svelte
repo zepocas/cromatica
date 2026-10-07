@@ -8,12 +8,13 @@
     /** Less-used controls, hidden until "more" is opened. */
     more?: Snippet;
     children: Snippet;
+    /** Folded to its title line; bindable so a parent can open it. */
+    collapsed?: boolean;
   }
 
-  let { title, tools, more, children }: Props = $props();
+  let { title, tools, more, children, collapsed = $bindable(false) }: Props = $props();
 
   let open = $state(false);
-  let collapsed = $state(false);
 </script>
 
 <section>
