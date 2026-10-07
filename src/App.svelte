@@ -14,6 +14,7 @@
   import Preview from './ui/Preview.svelte';
   import { dismissTips, tipsDismissed } from './ui/tips';
   import Tips from './ui/Tips.svelte';
+  import { CanvasView } from './ui/view.svelte';
   import { CUSTOM_PRESET_ID, DEFAULT_PRESET_ID, SIZE_PRESETS } from './ui/presets';
 
   // Opens on the autosaved design, or a shuffle on a first visit; `?default`
@@ -39,6 +40,7 @@
   let progress = $state<ExportProgress | null>(null);
   let error = $state('');
   let abort: AbortController | null = null;
+  const view = new CanvasView();
 
   const output = $derived.by(() => {
     const preset = SIZE_PRESETS.find((p) => p.id === presetId);
@@ -140,6 +142,7 @@
       customHeight = size.height;
     }
     editor.setDesign(design);
+    view.reset();
   }
 
   /** A PNG exported from here reopens its design; any other image dropped on the window becomes the palette. */
@@ -168,7 +171,14 @@
   onpagehide={() => !builtIn && writeAutosave(renderDesign)}
 />
 
-<Preview design={editor.preview ?? renderDesign} {aspect} paused={exporting} docked={!collapsed}>
+<Preview
+  design={editor.preview ?? renderDesign}
+  {aspect}
+  paused={exporting}
+  docked={!collapsed}
+  {view}
+  zoomable={!exploring}
+>
   {#snippet overlay()}
     {#if exploring}
       <MoreLikeThis

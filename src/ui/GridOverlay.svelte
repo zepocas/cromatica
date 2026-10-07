@@ -145,8 +145,8 @@
         aria-label="Node {r + 1}, {c + 1}"
         aria-pressed={i === editor.selectedNode}
         title="Drag to bend the grid"
-        style:left="clamp(7px, {leftPct(x)}%, calc(100% - 7px))"
-        style:top="clamp(7px, {topPct(y)}%, calc(100% - 7px))"
+        style:left="clamp(var(--inset), {leftPct(x)}%, calc(100% - var(--inset)))"
+        style:top="clamp(var(--inset), {topPct(y)}%, calc(100% - var(--inset)))"
         style:--color={oklchToHex(n.color)}
         onfocus={() => (editor.selectedNode = i)}
         onpointerdown={(e) => onHandlePointerDown(e, i)}
@@ -159,7 +159,9 @@
 </div>
 
 <style>
+  /* The frame scales with the view; handles keep their on-screen size. */
   .overlay {
+    --inset: calc(7px / var(--zoom, 1));
     position: absolute;
     inset: 0;
     touch-action: none;
@@ -187,7 +189,7 @@
     position: absolute;
     width: 12px;
     height: 12px;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) scale(calc(1 / var(--zoom, 1)));
     background: var(--color);
     border: 2px solid #fff;
     border-radius: 50%;
