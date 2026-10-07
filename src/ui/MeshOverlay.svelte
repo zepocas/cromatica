@@ -151,8 +151,8 @@
         aria-label="Point {i + 1}"
         aria-pressed={i === editor.selectedPoint}
         title={outside ? 'Outside the frame — drag to bring it back' : 'Drag to move · Delete to remove'}
-        style:left="clamp(14px, {leftPct(x)}%, calc(100% - 14px))"
-        style:top="clamp(14px, {topPct(y)}%, calc(100% - 14px))"
+        style:left="clamp(var(--inset), {leftPct(x)}%, calc(100% - var(--inset)))"
+        style:top="clamp(var(--inset), {topPct(y)}%, calc(100% - var(--inset)))"
         style:--color={oklchToHex(p.color)}
         style:--angle="{Math.atan2(-y, x)}rad"
         onfocus={() => (editor.selectedPoint = i)}
@@ -166,7 +166,9 @@
 </div>
 
 <style>
+  /* The frame scales with the view; handles and ring lines keep their on-screen size. */
   .overlay {
+    --inset: calc(14px / var(--zoom, 1));
     position: absolute;
     inset: 0;
     touch-action: none;
@@ -179,7 +181,7 @@
   .radius {
     position: absolute;
     transform: translate(-50%, -50%);
-    border: 1px dashed rgba(255, 255, 255, 0.45);
+    border: calc(1px / var(--zoom, 1)) dashed rgba(255, 255, 255, 0.45);
     border-radius: 50%;
     pointer-events: none;
   }
@@ -187,7 +189,7 @@
     position: absolute;
     width: 14px;
     height: 14px;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) scale(calc(1 / var(--zoom, 1)));
     background: var(--color);
     border: 2px solid #fff;
     border-radius: 50%;
