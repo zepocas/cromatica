@@ -7,6 +7,7 @@ import mesh from './gradient/mesh.glsl?raw';
 import planes from './gradient/planes.glsl?raw';
 import aurora from './gradient/aurora.glsl?raw';
 import grid from './gradient/grid.glsl?raw';
+import pattern from './gradient/pattern.glsl?raw';
 import oklab from './color/oklab.glsl?raw';
 import ramp from './color/ramp.glsl?raw';
 import srgb from './color/srgb.glsl?raw';
@@ -14,6 +15,7 @@ import dither from './color/dither.glsl?raw';
 import grain from './color/grain.glsl?raw';
 import finish from './color/finish.glsl?raw';
 import print from './color/print.glsl?raw';
+import neighbours from './color/neighbours.glsl?raw';
 import warpNoise from './warp/noise.glsl?raw';
 import warpDomain from './warp/domain.glsl?raw';
 import warpFbm from './warp/fbm.glsl?raw';
@@ -68,6 +70,8 @@ const FRAGMENT_CHUNKS = [
   grid,
   ramp,
   oklab,
+  pattern,
+  neighbours,
   srgb,
   print,
   grain,

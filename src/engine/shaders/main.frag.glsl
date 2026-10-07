@@ -1,22 +1,11 @@
 out vec4 fragColor;
 
-// Output order (D5, D7, D33): transform → warp → base pattern (linear RGB, bands; planes are already flat) → vignette → sRGB transfer → print →
+// Output order (D5, D7, D33): pattern (transform → warp → base, linear RGB) → vignette → sRGB transfer → print →
 // grain → dither → 8-bit quantization by the framebuffer.
 void main() {
   ivec2 px = outputPixel();
   vec2 comp = compositionCoord(px);
-  vec2 uv = warpCoord(transformCoord(comp));
-#if BASE_MESH
-  vec3 rgb = gamutClip(meshColor(uv));
-#elif BASE_PLANES
-  vec3 rgb = planesColor(uv);
-#elif BASE_AURORA
-  vec3 rgb = auroraColor(uv);
-#elif BASE_GRID
-  vec3 rgb = gamutClip(gridColor(uv));
-#else
-  vec3 rgb = rampColor(bandLevel(rampT(uv)));
-#endif
+  vec3 rgb = patternColor(comp);
   rgb *= vignetteFactor(comp);
   vec3 encoded = srgbEncode(rgb);
   // Uniform branch: print off is an exact passthrough.
