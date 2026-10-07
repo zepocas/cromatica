@@ -16,6 +16,13 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 5
+    ignore:
+      # Bump by hand: the types must match the Node version in ci.yml.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+      # Bump by hand: needs a migration. Remove once the project is on TypeScript 7.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
     groups:
       minor-and-patch:
         update-types: [minor, patch]
