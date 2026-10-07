@@ -3,7 +3,9 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { defineConfig } from 'vite';
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  // GitHub Pages serves the project site from /cromatica/; dev and tests stay at the root.
+  base: command === 'build' ? '/cromatica/' : '/',
   // Vitest transforms modules for SSR, and the server build drops some
   // $state.snapshot calls; unit tests need the client build's copies.
   plugins: [svelte({ dynamicCompileOptions: () => (process.env.VITEST ? { generate: 'client' } : undefined) })],
@@ -14,4 +16,4 @@ export default defineConfig({
     include: ['tests/unit/**/*.test.ts'],
     environment: 'node',
   },
-});
+}));
