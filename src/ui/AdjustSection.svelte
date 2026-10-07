@@ -257,6 +257,15 @@
       onchange={(v) => (editor.finish.reliefStyle = v)}
     />
     <SliderRow
+      label="halftone"
+      title="A print screen of ink dots on paper: fine texture ↔ newsprint"
+      min={0}
+      max={1}
+      step={0.01}
+      bind:value={editor.finish.halftone}
+      display={(v) => (v === 0 ? 'off' : v.toFixed(2))}
+    />
+    <SliderRow
       label="vignette"
       title="Darken toward the corners"
       min={0}

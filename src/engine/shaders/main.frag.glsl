@@ -1,6 +1,6 @@
 out vec4 fragColor;
 
-// Output order (D5, D7, D33, D46): pattern (transform → warp → base, linear RGB) → relief → vignette → sRGB transfer → print →
+// Output order (D5, D7, D33, D46): pattern (transform → warp → base, linear RGB) → relief → vignette → halftone → sRGB transfer → print →
 // grain → dither → 8-bit quantization by the framebuffer.
 void main() {
   ivec2 px = outputPixel();
@@ -10,6 +10,9 @@ void main() {
   rgb = relief(rgb, comp);
 #endif
   rgb *= vignetteFactor(comp);
+#ifdef HALFTONE
+  rgb = halftone(rgb, comp);
+#endif
   vec3 encoded = srgbEncode(rgb);
   // Uniform branch: print off is an exact passthrough.
   if (u_printMix > 0.0) encoded = printTexture(encoded, px, comp);

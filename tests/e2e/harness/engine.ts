@@ -15,6 +15,7 @@ import { evaluateAurora, prepareAurora } from '../../../src/engine/aurora';
 import { evaluateGrid, prepareGrid } from '../../../src/engine/grid';
 import { createRenderer } from '../../../src/engine/renderer';
 import { applyRelief, prepareRelief } from '../../../src/engine/relief';
+import { applyHalftone, halftoneContrast } from '../../../src/engine/halftone';
 import { createWarp } from '../../../src/engine/warp';
 import { CONTEXT_ATTRIBUTES, type OutputSize, type RenderOptions, type Tile } from '../../../src/engine/types';
 
@@ -63,6 +64,28 @@ function renderImage(
 }
 
 const newCanvas = () => document.createElement('canvas');
+
+/** The centre `width` × `height` pixels of an image of size `output`, at 1:1. */
+function renderCrop(design: Design, output: OutputSize, width: number, height: number) {
+  const canvas = newCanvas();
+  const gl = canvas.getContext('webgl2', CONTEXT_ATTRIBUTES) as WebGL2RenderingContext;
+  const renderer = createRenderer(gl);
+  try {
+    const tile: Tile = {
+      x: Math.floor((output.width - width) / 2),
+      y: Math.floor((output.height - height) / 2),
+      width,
+      height,
+    };
+    canvas.width = width;
+    canvas.height = height;
+    renderer.render(design, output, tile, { dither: true });
+    return renderer.readPixels(width, height);
+  } finally {
+    renderer.dispose();
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+  }
+}
 const render = (design: Design, output: OutputSize, dither: boolean) =>
   renderImage(newCanvas(), design, output, 0, { dither }).image;
 
@@ -97,20 +120,23 @@ const f16round = (Math as unknown as { f16round?: (x: number) => number }).f16ro
 /**
  * CPU reference of the render, in doubles: the pattern at composition coords
  * (transform → warp → base, ramps through the baked ramp with the texture's
- * linear filtering), relief, vignette, then the sRGB transfer. Returns ENCODED
+ * linear filtering), relief, vignette, halftone, then the sRGB transfer. Returns ENCODED
  * values scaled to 0..255, unrounded. Grain and print are not modeled.
  */
 function createReference(design: Design, output: OutputSize, halfFloat = false) {
   const { width: w, height: h } = output;
   const finish = prepareFinish(design.finish, output);
   const relief = prepareRelief(design.finish);
+  const halftone = halftoneContrast(design.finish);
   const pattern = createPatternReference(design, output, halfFloat);
   return (px: number, py: number): Triple => {
     const [u, v] = compositionCoord(px, py, w, h);
     let rgb = pattern(u, v);
     if (relief.depth > 0) rgb = applyRelief(relief, pattern, u, v, rgb);
     const dim = vignetteFactor(finish, u, v);
-    return [srgbEncode(rgb[0] * dim) * 255, srgbEncode(rgb[1] * dim) * 255, srgbEncode(rgb[2] * dim) * 255];
+    rgb = rgb.map((c) => c * dim) as Rgb;
+    if (halftone > 0) rgb = applyHalftone(halftone, rgb, u, v, 1 / h);
+    return [srgbEncode(rgb[0]) * 255, srgbEncode(rgb[1]) * 255, srgbEncode(rgb[2]) * 255];
   };
 }
 
@@ -656,7 +682,14 @@ const harness = {
    * Contact sheet: rows × columns of designs, each rendered at cellW × cellH
    * with dither on, labeled, as a PNG data URL.
    */
-  async contactSheet(rows: { label: string; designs: Design[] }[], columns: string[], cellW: number, cellH: number) {
+  /** With `cropOf`, each cell is the 1:1 centre of an image that size instead of the whole image. */
+  async contactSheet(
+    rows: { label: string; designs: Design[] }[],
+    columns: string[],
+    cellW: number,
+    cellH: number,
+    cropOf?: OutputSize,
+  ) {
     const labelW = 110;
     const headerH = 28;
     const gap = 4;
@@ -675,7 +708,7 @@ const harness = {
       ctx.fillStyle = '#eee';
       ctx.fillText(row.label, 8, y0 + cellH / 2);
       row.designs.forEach((d, c) => {
-        const px = render(d, { width: cellW, height: cellH }, true);
+        const px = cropOf ? renderCrop(d, cropOf, cellW, cellH) : render(d, { width: cellW, height: cellH }, true);
         const img = new ImageData(new Uint8ClampedArray(px.buffer as ArrayBuffer), cellW, cellH);
         ctx.putImageData(img, labelW + c * (cellW + gap), y0);
       });

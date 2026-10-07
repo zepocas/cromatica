@@ -221,6 +221,8 @@ export interface Finish {
   reliefStyle: ReliefStyle;
   /** Where the light comes from, degrees counter-clockwise from the right, [0, 360). Fixed on screen. */
   reliefLight: number;
+  /** Halftone ink dots on paper, [0, 1]: the contrast between ink and paper; 0 = off. Dots are in image units. */
+  halftone: number;
 }
 
 /** Satin: soft shading and sheen. Glass: the pattern refracted under the surface, bright rims. */
@@ -267,6 +269,7 @@ export const noFinish: Finish = {
   relief: 0,
   reliefStyle: 'satin',
   reliefLight: 135,
+  halftone: 0,
 };
 export const identityTransform: Transform = { rotate: 0, zoom: 1, flipX: false, flipY: false };
 export const MIN_ZOOM = 0.5;

@@ -385,3 +385,29 @@ test('relief-light.png', async ({ page }) => {
   const png = await engineHarness(page, 'contactSheet', rows, cols, 480, 270);
   writeFileSync(join(DIR, 'relief-light.png'), Buffer.from(png, 'base64'));
 });
+
+test('halftone.png', async ({ page }) => {
+  await openEngineHarness(page);
+  const contour: Design = {
+    ...midTonesFive,
+    base: { ...(midTonesFive.base as RampGradient), kind: 'noise', scale: 0.35, seed: 8 },
+  };
+  const looks: [string, Design][] = [
+    ['mesh', meshDefault],
+    ['bands', { ...threeStops(30), finish: { ...noFinish, bands: 0.5, bandEdge: 0.6 } }],
+    ['planes', planesDesign(0.4, 0.5)],
+    ['contour', contour],
+    ['grid', gridDesign(4, 5, 1, gridColors)],
+  ];
+  const amounts = [0, 0.2, 0.4, 0.6, 0.8, 1];
+  const rows = looks.map(([label, d]) => ({
+    label,
+    designs: amounts.map((halftone) => ({ ...d, grain: defaultGrain, finish: { ...noFinish, ...d.finish, halftone } })),
+  }));
+  const cols = amounts.map((a) => (a === 0 ? 'off' : `halftone ${a}`));
+  // Whole images, then 1:1 crops of a 1920×1080 export, where the dots are their real size.
+  const whole = await engineHarness(page, 'contactSheet', rows, cols, 480, 270);
+  writeFileSync(join(DIR, 'halftone.png'), Buffer.from(whole, 'base64'));
+  const crop = await engineHarness(page, 'contactSheet', rows, cols, 400, 300, { width: 1920, height: 1080 });
+  writeFileSync(join(DIR, 'halftone-1080p-crops.png'), Buffer.from(crop, 'base64'));
+});

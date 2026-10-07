@@ -101,6 +101,7 @@ const designSchema = z.object({
     relief: unit,
     reliefStyle: z.enum(RELIEF_STYLES),
     reliefLight: z.number().min(0).lt(360),
+    halftone: unit,
   }),
 });
 

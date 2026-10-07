@@ -34,6 +34,7 @@ import { GRAIN_CHROMA, prepareGrain } from './grain';
 import { buildShaderSources, variantKey, type Defines } from './shaders';
 import { NEIGHBOUR_SHADER_CONSTANTS } from './neighbours';
 import { prepareRelief, RELIEF_SHADER_CONSTANTS, type PreparedRelief } from './relief';
+import { HALFTONE_SHADER_CONSTANTS, HALFTONE_TABLE, halftoneContrast } from './halftone';
 import { prepareWarp, WARP_SHADER_CONSTANTS, type PreparedWarp } from './warp';
 import type { OutputSize, RenderOptions, Renderer, Tile } from './types';
 
@@ -258,12 +259,14 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
       const grain = prepareGrain(design.grain);
       const finish = prepareFinish(design.finish, output);
       const relief = prepareRelief(design.finish);
+      const halftone = halftoneContrast(design.finish);
       const info = getProgram({
         BLUE_NOISE_SIZE,
         VIGNETTE_INNER: VIGNETTE_INNER.toFixed(4),
         ...baseDefines(base),
         ...warpDefines(warp),
         ...reliefDefines(relief),
+        ...(halftone > 0 ? { ...HALFTONE_SHADER_CONSTANTS, GAMUT_CLIP_STEPS } : {}),
       });
       let baseUniforms: object;
       if (base.kind === 'mesh') {
@@ -316,6 +319,7 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
         ...(relief.depth > 0
           ? { u_reliefDepth: relief.depth, u_reliefLight: relief.light, u_reliefHalf: relief.half }
           : {}),
+        ...(halftone > 0 ? { u_halftoneContrast: halftone, u_halftoneTable: new Float32Array(HALFTONE_TABLE) } : {}),
         u_blueNoise: blueNoiseTexture,
         u_ditherOffset: ditherOffsets,
         u_dither: opts.dither === false ? 0 : 1,
