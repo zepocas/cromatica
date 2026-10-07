@@ -3,13 +3,9 @@
   import Dropdown from './controls/Dropdown.svelte';
   import Toggle from './controls/Toggle.svelte';
   import type { EditorState } from './editor.svelte';
-  import type { Favourite, Favourites } from './favourites.svelte';
 
   interface Props {
     editor: EditorState;
-    favourites: Favourites;
-    /** The favourite the current design matches. */
-    favourite: Favourite | undefined;
     exploring: boolean;
     format: ExportFormat;
     /** Collapsed panel: only shuffle and download. */
@@ -23,8 +19,6 @@
 
   let {
     editor,
-    favourites,
-    favourite,
     exploring = $bindable(),
     format = $bindable(),
     compact,
@@ -97,14 +91,6 @@
         title="More like this: variations of this design (M)"
         onclick={() => (exploring = !exploring)}>⊞</button
       >
-      <button
-        class="icon"
-        aria-label={favourite ? 'Remove from favourites' : 'Add to favourites'}
-        aria-pressed={!!favourite}
-        title={favourite ? 'Remove from favourites' : 'Keep in favourites'}
-        onclick={() => (favourite ? favourites.remove(favourite.id) : favourites.add(editor.design))}
-        >{favourite ? '♥' : '♡'}</button
-      >
     </div>
   {/if}
   <div class="row actions">
@@ -141,7 +127,7 @@
   footer {
     position: sticky;
     bottom: 0;
-    margin: auto calc(-1 * var(--pad)) 0;
+    margin: 0 calc(-1 * var(--pad));
     display: flex;
     flex-direction: column;
     gap: 6px;

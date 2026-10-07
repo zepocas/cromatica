@@ -103,6 +103,7 @@ Internally, an export is "a rectangle over the composition", so multi-monitor su
 | M9     | Context preview and legibility (Windows, macOS, Android, iOS)                                           | Added 2026-10-05                                                                                                                                   |
 | M10    | Light/dark pairs                                                                                        | Added 2026-10-05                                                                                                                                   |
 | M11    | Device presets, loupe, performance tuning on integrated GPUs                                            | Polish (was M7)                                                                                                                                    |
+| M12    | Mobile layout: the editor usable on phones and tablets                                                  | Added 2026-10-07; after M11 (D55)                                                                                                                  |
 
 ### M3/M4 — Palette shuffle (split: basic shuffle in M3, curated, Remix and from-image in M4)
 

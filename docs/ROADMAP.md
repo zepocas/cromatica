@@ -286,7 +286,7 @@ Each milestone uses the same structure:
 - **Outcome (D45, D51):**
   - **Design in the PNG:** exports carry the save envelope in a `cromatica.design` iTXt chunk (`src/export/design-png.ts`). Dropping one reopens the design at its exported size (matching preset, else custom), as one undo step; other images, or a PNG whose design can't be read, still give their colors.
   - **History:** every shuffle (and ⟳) goes into a 20-slot reel, the design before the first shuffle included. ← → and the `← n/m →` buttons step through it; a slot keeps edits made in it, a new shuffle goes at the end, and a step is an undo step. Arrows nudge a point or node only when its handle has focus (`src/ui/reel.svelte.ts`).
-  - **Favourites:** ♡/♥ in the bottom bar, a "favourites" section listing up to 12 as swatch strips plus the pattern, newest first; a 13th drops the oldest with a notice. One localStorage key, one full save per entry, so migrations apply (`src/ui/favourites.svelte.ts`).
+  - **Favourites** (the layout moved in D55): ♡/♥ in the bottom bar, a "favourites" section listing up to 12 as swatch strips plus the pattern, newest first; a 13th drops the oldest with a notice. One localStorage key, one full save per entry, so migrations apply (`src/ui/favourites.svelte.ts`).
   - **More like this:** ⊞ or M swaps the preview for a 3×3 grid around the current design, gentle to bold. Variations keep palette, kind, finishes and transform and nudge points, sliders and angles; new seeds and warp shapes get likelier with boldness (strength²), and the planes count changes only as rarely as a seed, since it re-deals the collage (`src/design/mutate.ts`, sheet: `SHEETS=1 npx playwright test sheets -g variations`).
   - **Thumbnail renderer:** one offscreen WebGL context draws one thumbnail per frame into 2D canvases (`src/preview/thumbnails.ts`). Nine cells take about 350 ms on SwiftShader.
   - **Pickers:** gradient, warp shape, harmony and mood preview the option under the pointer or ↑↓ on the main canvas, worked out on a copy of the editor; never an undo step or saved. Custom palettes keep a spare seed so a mood or harmony preview matches the click.
@@ -370,6 +370,19 @@ Each milestone uses the same structure:
   - Hosting
   - Product name (currently a placeholder)
 
+### M12 — Mobile layout
+
+- **Goal:** the editor is usable on a phone and a tablet, not only on a desktop window. Added 2026-10-07; after M11 on purpose, so the desktop layout is settled first (D55).
+- **Scope:**
+  - **Layout:** the docked left panel (about 300px, monospace, small targets) does not fit a narrow screen. Find a layout for it: a bottom sheet, tabs, or a full-screen panel over the preview. The colors and favourites sections at the bottom of the panel (12 favourite columns across the panel width) need a mobile counterpart.
+  - **Touch:** touch-sized controls, drag handles for mesh points, grid nodes and stops with a finger, no hover-only affordances (the favourite ×, picker previews on hover).
+  - **Shortcuts:** the Space, arrow and M shortcuts need on-screen buttons.
+  - **Performance:** check the preview and the thumbnails on a phone GPU, and export limits at 4K and 5K on mobile memory (D4 tiling).
+- **Done when:** the whole flow (shuffle, adjust colors, keep a favourite, export) works on a current iPhone Safari and Android Chrome, and the desktop layout is unchanged.
+- **Open questions:**
+  - Whether the panel becomes a sheet or a separate screen.
+  - Whether a smaller set of controls makes sense on mobile, or the same ones in a different frame.
+
 ---
 
 ## Phase 2 — Multi-monitor (sketch)
@@ -392,7 +405,7 @@ Each milestone uses the same structure:
 - mozjpeg (WASM) for 4:4:4 JPEG
 - WebGPU backend
 - User-saved palettes
-- Mobile authoring
+- ~~Mobile authoring~~ Promoted to M12 (2026-10-07).
 - **Stipple / halftone finish:** moved to M8 (2026-10-05). The ink-blobs look below stays here.
 - **Liquid-jazz "ink blobs" look:** seeded smin-capsule blobs rendered as stipple in flat inks (reference: stippled vinyl cover). A prototype exists in `prototype-stipple.html` and `prototype/stipple/` (untracked, not part of the app). Open findings: union all blobs into one silhouette and use per-ink fields only for the color inside it; use a black base with white as an ink; fill more of the frame. Decide later whether it is a style of this product or a separate one.
 - Flow-field advection (LIC) and Gabor noise, if more warp variety is wanted after M4.5

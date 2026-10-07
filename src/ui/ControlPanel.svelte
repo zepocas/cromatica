@@ -56,8 +56,6 @@
     oncancel,
   }: Props = $props();
 
-  const favourite = $derived(favourites.find(editor.design));
-
   /** App shortcuts: Space shuffles, ← and → step through recent shuffles, [ and ] through warp shapes, M opens more like this. */
   function onWindowKeyDown(e: KeyboardEvent) {
     if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
@@ -99,14 +97,15 @@
   {#if !collapsed}
     <PatternSection bind:editor bind:presetId bind:customWidth bind:customHeight {output} />
     <AdjustSection bind:editor />
-    <ColorsSection bind:editor />
-    <FavouritesSection {favourites} current={favourite} onopen={(d) => editor.setDesign(d)} />
+    <!-- With spare height these sit at the bottom, above the footer; a full panel scrolls as before. -->
+    <div class="bottom">
+      <ColorsSection bind:editor />
+      <FavouritesSection {favourites} design={editor.design} onopen={(d) => editor.setDesign(d)} />
+    </div>
   {/if}
 
   <ExportBar
     {editor}
-    {favourites}
-    {favourite}
     bind:exploring
     bind:format
     compact={collapsed}
@@ -138,6 +137,9 @@
   /* Scroll when too tall instead of squashing the controls. */
   .panel > :global(*) {
     flex-shrink: 0;
+  }
+  .bottom {
+    margin-top: auto;
   }
   header {
     display: flex;
