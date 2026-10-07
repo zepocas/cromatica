@@ -350,3 +350,13 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Naming:** "noise" is the better name overall; "noise (print)" is an option if both stay.
 - **Decision:** no change now. Revisit both in M11 (Polish), together, and decide whether to merge, drop one or rename.
 - **Related fix:** both are per output pixel (D4), so dragging either keeps the preview at full resolution; a half-resolution frame showed a different texture that snapped back on release.
+
+## D54. M8 choices: relief and halftone
+
+- **Height is lightness:** relief reads the pattern's Oklab lightness as height, the same for every pattern. Flat areas stay untouched, so relief shows on edges, bands and slopes; planes only get thin edge shading.
+- **Light:** a direction control (degrees, fixed on screen, not turned with the image), at a fixed 40° elevation.
+- **Surfaces:** satin and glass only. The user found the first sheet weak, but liked both live with the relief and light sliders, so the effect shipped as built; satin and glass stay the two surfaces.
+- **Stipple dropped, halftone kept:** random stipple dots didn't work for the user; halftone ships alone, as one slider with no dot-style choice. Its name joins the noise and print naming review in M11 (D53).
+- **Dots in image units:** halftone dots scale with the output, like the rest of the composition (D4), not per output pixel like grain.
+- **Order:** pattern → relief → vignette → halftone → print → grain, chosen by the user after seeing it.
+- **Shuffle:** relief and halftone come up sometimes and subtly; weights to revisit in M11.
