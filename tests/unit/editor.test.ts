@@ -28,19 +28,6 @@ describe('placement', () => {
 });
 
 describe('palette adjustments', () => {
-  it('temperature changes the colors and off restores them exactly', () => {
-    const e = fresh();
-    const original = colorsOf(e);
-    e.palette.setTemperature('warm');
-    expect(colorsOf(e)).not.toEqual(original);
-    expect(e.palette.originalColors).toEqual(original);
-    e.palette.setTemperature('cool');
-    expect(e.palette.temperature).toBe('cool');
-    e.palette.setTemperature('off');
-    expect(colorsOf(e)).toEqual(original);
-    expect(e.palette.originalColors).toBeNull();
-  });
-
   it('turning the base hue moves the palette; switching it off undoes the turn', () => {
     const e = fresh();
     const original = colorsOf(e);
@@ -49,6 +36,7 @@ describe('palette adjustments', () => {
     e.palette.setBaseHue(160);
     expect(e.palette.hueOffset).toBe(60);
     expect(colorsOf(e)).not.toEqual(original);
+    expect(e.palette.originalColors).toEqual(original);
     e.palette.setBaseHueEnabled(false, 0);
     expect(colorsOf(e)).toEqual(original);
     expect(e.palette.baseHue).toBeNull();
@@ -59,31 +47,33 @@ describe('palette adjustments', () => {
     const original = colorsOf(e);
     e.palette.setBaseHueEnabled(true, 100);
     e.palette.setBaseHue(130);
-    e.palette.setTemperature('warm');
     e.palette.resetAdjustments();
     expect(colorsOf(e)).toEqual(original);
     expect(e.palette.baseHue).toBe(100);
-    expect(e.palette.temperature).toBe('off');
+    expect(e.palette.hueOffset).toBe(0);
   });
 
   it('a direct edit bakes the adjustment in', () => {
     const e = fresh();
-    e.palette.setTemperature('warm');
+    e.palette.setBaseHueEnabled(true, 100);
+    e.palette.setBaseHue(150);
     const edited: Oklch = [0.5, 0.1, 200];
     e.palette.setColor(0, edited);
     expect(colorsOf(e)[0]).toEqual(edited);
-    expect(e.palette.temperature).toBe('off');
+    expect(e.palette.hueOffset).toBe(0);
     expect(e.palette.originalColors).toBeNull();
   });
 
-  it('temperature carries over to a new palette; an image import starts without it', () => {
+  it('a new palette or an image import starts unadjusted', () => {
     const e = fresh();
-    e.palette.setTemperature('cool');
+    e.palette.setBaseHueEnabled(true, 100);
+    e.palette.setBaseHue(150);
     e.shuffleColors();
-    expect(e.palette.temperature).toBe('cool');
+    expect(e.palette.hueOffset).toBe(0);
     expect(e.palette.info).not.toBeNull();
+    e.palette.setBaseHue(180);
     e.applyImagePalette({ aspect: 1, palette: [{ color: [0.5, 0.1, 0.05], weight: 1, x: 0.5, y: 0.5 }] });
-    expect(e.palette.temperature).toBe('off');
+    expect(e.palette.hueOffset).toBe(0);
     expect(e.palette.info).toBeNull();
   });
 });
@@ -201,16 +191,14 @@ describe('saving and undo', () => {
     e.shuffle();
     e.palette.setBaseHueEnabled(true, 40);
     e.palette.setBaseHue(90);
-    e.palette.setTemperature('warm');
     const before = e.snapshot();
     const design = e.design;
     e.shuffle();
     e.kind = 'planes';
-    e.palette.setTemperature('cool');
+    e.palette.setBaseHue(120);
     e.restore(before);
     expect(e.design).toEqual(design);
     expect(e.palette.hueOffset).toBe(50);
-    expect(e.palette.temperature).toBe('warm');
     expect(JSON.stringify(e.snapshot())).toBe(JSON.stringify(before));
   });
 

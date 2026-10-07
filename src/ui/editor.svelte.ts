@@ -197,11 +197,10 @@ export class EditorState {
     palette = this.palette.shuffleOptions(),
     seed = randomSeed(),
   ): void {
-    const temperature = this.palette.temperature;
     const next = shuffleDesign(this.design, { colors, layout, style, palette, seed }, this.aspect);
     this.setDesign(next.design);
-    // Built around the base hue already; temperature carries over.
-    if (next.palette) this.palette.adopt({ info: next.palette, seed }, temperature);
+    // Built around the base hue already.
+    if (next.palette) this.palette.adopt({ info: next.palette, seed });
   }
 
   /** Make `design` the edited one. The other kinds' configs and the palette state are left alone. */

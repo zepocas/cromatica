@@ -1,7 +1,5 @@
 <script lang="ts">
   import { PALETTE_MOODS, type ValueKey } from '../color/harmony';
-  import type { Temperature } from '../color/temperature';
-  import Choice from './controls/Choice.svelte';
   import Dropdown from './controls/Dropdown.svelte';
   import Toggle from './controls/Toggle.svelte';
   import type { EditorState } from './editor.svelte';
@@ -20,18 +18,6 @@
     { value: 'high', label: 'high (light)' },
     { value: 'full', label: 'full range' },
     { value: 'low', label: 'low (dark)' },
-  ];
-
-  const TEMPERATURES: { value: Temperature; title: string }[] = [
-    { value: 'off', title: 'Colors as they are' },
-    {
-      value: 'warm',
-      title: 'Warm light, cool shadows: light colors turn toward amber, dark ones toward blue (sunset, lamplight)',
-    },
-    {
-      value: 'cool',
-      title: 'Cool light, warm shadows: light colors turn toward blue, dark ones toward amber (overcast, moonlight)',
-    },
   ];
 </script>
 
@@ -57,13 +43,6 @@
     onchange={(k) => palette.setKey(k)}
   />
 </div>
-<Choice
-  label="temp"
-  ariaLabel="Temperature"
-  options={TEMPERATURES}
-  value={palette.temperature}
-  onchange={(t) => palette.setTemperature(t)}
-/>
 <div class="row">
   <span>base hue</span>
   <Toggle
