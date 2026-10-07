@@ -341,6 +341,7 @@ Each milestone uses the same structure:
 
 - **Goal:** ready for real use.
 - **Scope:**
+  - **Backlog review:** at the start of M11, go through the backlog and decide what to promote, keep or drop. First candidate: design in the JPEG.
   - Device preset list
   - Custom pixel sizes
   - 1:1 loupe
@@ -392,4 +393,5 @@ Each milestone uses the same structure:
 - **Share links** (moved from M6 on 2026-10-05): the save envelope compressed into the URL hash. Grid designs (25 nodes) make long URLs. A JSON file export and import would be the cheaper way to keep a design outside the browser.
 - **Looks (curated bundles)** (parked 2026-10-05, D47): named presets such as Zine, Dusk or Riso that set pattern, mood, key and finish together, so shuffle could stay inside a look. It would help adoption, but M7's onboarding tips cover most of that for now.
 - **Favourites, advanced** (2026-10-05): a real library with thumbnails, folders and a JSON file export and import. M7 only keeps a short plain list (D45).
+- **Design in the JPEG** (2026-10-05, follows D45): embed the save envelope in an exported JPEG and reopen it on drop, as the PNG does. A COM or APP1 (XMP) segment can carry it, spliced in after `canvas.convertToBlob` because the browser encoder has no metadata hook, with a segment reader for drop. Each segment holds about 64 KB, so measure a typical `saveDesign` JSON first. Weaker than PNG: JPEGs are re-encoded and stripped more often when shared. Reassess at the start of M11 (see its scope).
 - **Comment density:** go through the code and cut comments that restate the code or narrate history; keep the ones that explain why (conventions, math, invariants). The user finds the current amount excessive (2026-10-04).
