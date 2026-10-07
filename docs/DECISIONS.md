@@ -335,3 +335,10 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Pickers without thumbnails:** live thumbnails in the dropdowns were built and dropped; the instant preview on the main canvas does the job better.
 - **Variations:** more freedom in bold cells (warp shape changes), less in gentle ones (seed changes scale with strength²), judged on a contact sheet.
 - **Linked edits:** monochrome edits put every non-gray color on the edited hue; very light or dark near-neutrals keep their chroma, so a louder palette doesn't tint them (all rules).
+
+## D52. Noise and print overlap: reconsider in polish
+
+- **Observation (2026-10-07):** the noise (grain) and print sliders are very similar in use. Noise is super soft, and print can reach the same look, so noise looks redundant.
+- **Naming:** "noise" is the better name overall; "noise (print)" is an option if both stay.
+- **Decision:** no change now. Revisit both in M11 (Polish), together, and decide whether to merge, drop one or rename.
+- **Related fix:** both are per output pixel (D4), so dragging either keeps the preview at full resolution; a half-resolution frame showed a different texture that snapped back on release.
