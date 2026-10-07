@@ -356,6 +356,7 @@ Each milestone uses the same structure:
   - **Brushed warp:** one of the user's least favorite shapes (2026-10-05); decide whether to remove it. Saved designs that use it would need a migration (D44).
   - **Colors "blend" dropdown** (per stop: perceptual, vivid, hue short/long way): feels like overkill to the user (2026-10-07); reconsider whether to keep it.
   - **Relief's name:** the finish works, but "relief" may not be the right word for it in the panel; reconsider.
+  - **Noise vs print sliders:** reconsider them together (D53, 2026-10-07). They look alike, and noise is the softer, more redundant one. Decide whether to merge them, drop one, or rename ("noise" is the better name; "noise (print)" is an option).
   - Status bar under the preview, IDE-style, for global and view settings: show points (moved to the bottom of the panel in M6 for now), the 1:1 loupe and preview zoom, output size, autosave state. Idea from 2026-10-05; only worth it once it holds several of these.
 - **Done when:**
   - Tested on Chrome, Safari and Firefox on macOS, and Chrome on Windows

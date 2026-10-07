@@ -343,3 +343,10 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Decision (2026-10-07):** the "temp off/warm/cool" setting from M4 step 8 is removed, at the user's call.
 - **What stays:** base hue is still an adjustment over the original colors (D27), with the same "~ hue …" status, reset and hand-edit rules; the adjustment layer now holds only the turn.
 - **Saves:** temperature was a UI setting, never saved (M4), so no migration. Undo snapshots from before the change don't outlive the session.
+
+## D53. Noise and print overlap: reconsider in polish
+
+- **Observation (2026-10-07):** the noise (grain) and print sliders are very similar in use. Noise is super soft, and print can reach the same look, so noise looks redundant.
+- **Naming:** "noise" is the better name overall; "noise (print)" is an option if both stay.
+- **Decision:** no change now. Revisit both in M11 (Polish), together, and decide whether to merge, drop one or rename.
+- **Related fix:** both are per output pixel (D4), so dragging either keeps the preview at full resolution; a half-resolution frame showed a different texture that snapped back on release.
