@@ -7,7 +7,7 @@
     /** Index of the point or stop. */
     index: number;
     color: Oklch;
-    /** The color before base hue and temperature; undefined when not adjusted. */
+    /** The color before the base hue turn; undefined when not adjusted. */
     original: Oklch | undefined;
     selected: boolean;
     /** What the row is called: "point 3" or a stop's position, "40%". */

@@ -67,13 +67,12 @@
     if (isPlanes) return `color ${order.indexOf(i) + 1}`;
     return `${Math.round(editor.ramp.stops[i].position * 100)}%`;
   }
-  /** Colors before base hue and temperature; null when nothing is adjusted. */
+  /** Colors before the base hue turn; null when nothing is adjusted. */
   const original = $derived(palette.originalColors);
   const adjustedSummary = $derived.by(() => {
     const parts: string[] = [];
     const turn = Math.round(shortestTurn(0, palette.hueOffset));
     if (turn !== 0) parts.push(`hue ${turn > 0 ? '+' : ''}${turn}°`);
-    if (palette.temperature !== 'off') parts.push(`temp ${palette.temperature}`);
     return parts.join(' · ');
   });
 

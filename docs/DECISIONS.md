@@ -169,6 +169,8 @@ Decisions made during the architecture review. Reopen one only if new informatio
 
 ## D27. Temperature and base hue are adjustments over the original colors
 
+- **Update (D52):** temperature was removed on 2026-10-07; the rest holds for base hue.
+
 - **Temperature model:** the painter's rule that the light's temperature sets the shadows' opposite. Warm turns the lightest color up to 30° toward amber (75°) and the darkest up to 30° toward blue-violet (275°); cool swaps the targets. Each color turns by `30° · |t|`, where `t` runs from -1 at the palette's darkest color to +1 at its lightest, never past its target. Mid-tones and near-neutrals keep their hue, so the harmony rule still reads. Lightness never changes; chroma is capped to stay in sRGB. Relative lightness means a low-key palette is lit within its own dark band.
 - **Three states, three buttons:** off, warm, cool. A first "[x] warm/cool" checkbox had two states for what reads as three (off, warm, cool), so "on" looked like one of the two was always active. A 0–1 "sunlight" slider was tried and dropped: the choice of light matters more than its strength.
 - **Not in the generator:** a first version bent hues inside the palette planner, so it only took effect on the next shuffle and looked broken. The same went for base hue, which only steered the next shuffle.
@@ -335,3 +337,9 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Pickers without thumbnails:** live thumbnails in the dropdowns were built and dropped; the instant preview on the main canvas does the job better.
 - **Variations:** more freedom in bold cells (warp shape changes), less in gentle ones (seed changes scale with strength²), judged on a contact sheet.
 - **Linked edits:** monochrome edits put every non-gray color on the edited hue; very light or dark near-neutrals keep their chroma, so a louder palette doesn't tint them (all rules).
+
+## D52. Temperature removed; base hue stays
+
+- **Decision (2026-10-07):** the "temp off/warm/cool" setting from M4 step 8 is removed, at the user's call.
+- **What stays:** base hue is still an adjustment over the original colors (D27), with the same "~ hue …" status, reset and hand-edit rules; the adjustment layer now holds only the turn.
+- **Saves:** temperature was a UI setting, never saved (M4), so no migration. Undo snapshots from before the change don't outlive the session.

@@ -183,7 +183,7 @@ Each milestone uses the same structure:
   - ✅ Step 4, Remix, became a link mode: with "edit [x] linked", changing one color moves the whole palette by the same shift. Hue rotates every color by the same angle, keeping the harmony. Lightness shifts logit(L), keeping the order without clipping. Intensity scales by the same ratio. Every part reverses exactly when dragged back, except where a color hits the sRGB edge. "Free" edits one color as before. "[ remix ]" applies a random linked shift. It works on hand-edited palettes too (`src/color/linked.ts`).
   - ✅ Step 6, palette from image: ◩ on the colors rule opens a file picker, or an image can be dropped anywhere on the window. Up to 6 colors, one point or stop each. Mesh points start at the spot where their color is most concentrated in the image, and their size grows with its area, so a mostly dark photo stays mostly dark. Stops follow the image along the gradient's direction. The harmony shows "custom", and ⇄ reshuffles which point gets which color (`src/color/extract.ts`, D25).
   - ✅ Step 7, value key: a "key" select behind "+ more", next to mood: high (light), full range or low (dark). It works like mood: it shows the palette's key, picking one regenerates in it, and keep pins it. Unpinned shuffles pick full most of the time and high or low now and then (D26).
-  - ✅ Step 8, temperature: "temp [off] warm cool" behind "+ more". Warm is warm light with cool shadows: the lightest color turns up to 30° toward amber, the darkest up to 30° toward blue-violet. Cool is the reverse: cool light, warm shadows. Each color turns by its place in the palette's own lightness range; mid-tones keep their hue. Base hue now also turns the current palette. Both are adjustments over the palette's original colors: "~ hue +35° · temp warm [ reset ]" under the colors says so, a "~" marks each changed color, and temp off, base hue off or reset brings the originals back. A hand edit bakes the adjustments in. "+ add point/stop" moved from the section rule to the end of the colors list (`src/color/temperature.ts`, D27).
+  - ✅ Step 8, temperature (removed 2026-10-07, D52): "temp [off] warm cool" behind "+ more". Warm is warm light with cool shadows: the lightest color turns up to 30° toward amber, the darkest up to 30° toward blue-violet. Cool is the reverse: cool light, warm shadows. Each color turns by its place in the palette's own lightness range; mid-tones keep their hue. Base hue now also turns the current palette. Both are adjustments over the palette's original colors: "~ hue +35° · temp warm [ reset ]" under the colors says so, a "~" marks each changed color, and temp off, base hue off or reset brings the originals back. A hand edit bakes the adjustments in. "+ add point/stop" moved from the section rule to the end of the colors list (`src/color/temperature.ts`, D27).
   - ✅ Fixed (after step 8): changing mood or key and back didn't restore the colors. Steering now regenerates from the palette's seed (D28).
   - ✖ Step 9, proportion: built and dropped (D29). Point radii were fitted until the calmest color covered 60% of the frame, but on soft meshes with 4–6 colors the image changed little; moving points and picking key and mood do more. More moods replace it as the last M4 step.
   - ✅ More moods: muted (dusty, low chroma), earthy (hues compressed into ochre–terracotta–olive), pastel (light and soft) and neon (bright, full chroma on a near-black ground), next to natural and vivid. Shuffles left on "any" pick natural, vivid, muted or earthy; pastel and neon are explicit picks (D30).
@@ -304,10 +304,11 @@ Each milestone uses the same structure:
   - Preview and export match at the same size.
   - Relief preview stays within the frame budget, using the existing half-resolution fallback on slow GPUs.
   - A contact sheet of satin and glass over the existing patterns and warps has been reviewed.
+- **Settled (2026-10-07):**
+  - Relief light: a direction control, not a fixed light.
+  - Stipple dot size: in image units, so it scales with the output like the rest of the composition.
 - **Open questions:**
-  - Relief direction: a fixed light, or a control.
-  - How relief interacts with bands, print and grain (order in the finish chain).
-  - Stipple dot size: per output pixel (a D4 exception, like grain) or in image units.
+  - How relief interacts with bands, print and grain (order in the finish chain). The user decides after seeing it in the app.
 
 ### M9 — Context preview and legibility
 
@@ -353,6 +354,8 @@ Each milestone uses the same structure:
   - Keyboard shortcuts
   - **Showcase examples / reference designs** (moved from M5): for each pattern, render candidates from shuffles and contact sheets, let the user pick about 3 by eye, and save them as fixed design files. They serve as showcase examples and as test fixtures.
   - **Brushed warp:** one of the user's least favorite shapes (2026-10-05); decide whether to remove it. Saved designs that use it would need a migration (D44).
+  - **Colors "blend" dropdown** (per stop: perceptual, vivid, hue short/long way): feels like overkill to the user (2026-10-07); reconsider whether to keep it.
+  - **Relief's name:** the finish works, but "relief" may not be the right word for it in the panel; reconsider.
   - Status bar under the preview, IDE-style, for global and view settings: show points (moved to the bottom of the panel in M6 for now), the 1:1 loupe and preview zoom, output size, autosave state. Idea from 2026-10-05; only worth it once it holds several of these.
 - **Done when:**
   - Tested on Chrome, Safari and Firefox on macOS, and Chrome on Windows

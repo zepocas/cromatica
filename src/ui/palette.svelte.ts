@@ -1,6 +1,5 @@
 import type { HarmonyRule, PaletteInfo, PaletteMood, PaletteOptions, ValueKey } from '../color/harmony';
 import { relinkPalette, remixShift, shiftPalette } from '../color/linked';
-import { applyTemperature, type Temperature } from '../color/temperature';
 import type { Oklch } from '../color/types';
 import { createRng, randomSeed } from '../design/random';
 import { normalizeDegrees } from '../math';
@@ -19,15 +18,14 @@ export interface PaletteHost {
 }
 
 /**
- * Non-destructive adjustments (D27): the colors on screen are `from` turned
- * by `hue` degrees, then under `temperature`. `out` is what was last
+ * Non-destructive adjustment (D27): the colors on screen are `from` turned
+ * by `hue` degrees. `out` is what was last
  * rendered; once the colors differ from it (a direct edit), the adjustment no
  * longer applies and the edited colors are the new originals.
  */
 interface Adjustment {
   from: Oklch[];
   hue: number;
-  temperature: Temperature;
   out: Oklch[];
 }
 
@@ -49,7 +47,7 @@ export interface PaletteSnapshot {
 /**
  * The palette side of the editor: how new palettes are steered (rule, mood,
  * key, base hue), how existing colors are edited (linked, remix, order), and
- * the hue and temperature adjustments. State is kept per pattern kind.
+ * the base hue adjustment. State is kept per pattern kind.
  */
 export class PaletteEditor {
   /** Keep the current palette's rule, mood and key for ⟳ and shuffle; off = all random. */
@@ -136,15 +134,14 @@ export class PaletteEditor {
   /**
    * The editor just gave the active pattern new colors. They are the new
    * originals; generated ones remember what made them and their seed (null =
-   * custom), and a temperature carries over.
+   * custom).
    */
-  adopt(generated: { info: PaletteInfo; seed: number } | null, temperature: Temperature = 'off'): void {
+  adopt(generated: { info: PaletteInfo; seed: number } | null): void {
     const kind = this.host.kind();
     this.infos[kind] = generated?.info ?? null;
     this.seeds[kind] = generated?.seed ?? null;
     if (generated?.seed === this.spareSeed) this.spareSeed = randomSeed();
     this.adjustments = { ...this.adjustments, [kind]: null };
-    if (temperature !== 'off') this.adjust({ temperature });
   }
 
   // ---- Editing colors -------------------------------------------------------
@@ -185,7 +182,7 @@ export class PaletteEditor {
     this.host.colorItems().forEach((x, k) => (x.color = colors[k]));
   }
 
-  // ---- Adjustments: base hue and temperature --------------------------------
+  // ---- Adjustment: base hue ---------------------------------------------------
 
   /** The active pattern's adjustment, if its colors are still what it rendered. */
   private get liveAdjustment(): Adjustment | null {
@@ -193,7 +190,7 @@ export class PaletteEditor {
     return a && samePalette(a.out, this.colors) ? a : null;
   }
 
-  /** Colors before base hue and temperature; null when nothing is adjusted. */
+  /** Colors before the base hue turn; null when nothing is adjusted. */
   get originalColors(): Oklch[] | null {
     return this.liveAdjustment?.from ?? null;
   }
@@ -201,15 +198,6 @@ export class PaletteEditor {
   /** Degrees the palette is turned by base hue moves. */
   get hueOffset(): number {
     return this.liveAdjustment?.hue ?? 0;
-  }
-
-  /** Warm light with cool shadows, cool light with warm shadows, or off. */
-  get temperature(): Temperature {
-    return this.liveAdjustment?.temperature ?? 'off';
-  }
-
-  setTemperature(temperature: Temperature): void {
-    this.adjust({ temperature });
   }
 
   /** Base hue on (at the given hue; nothing turns) or off (the turn is undone). */
@@ -231,20 +219,16 @@ export class PaletteEditor {
   /** Back to the original colors; the base hue goes back with them. */
   resetAdjustments(): void {
     if (this.baseHue !== null) this.baseHue = normalizeDegrees(this.baseHue - this.hueOffset);
-    this.adjust({ hue: 0, temperature: 'off' });
+    this.adjust({ hue: 0 });
   }
 
-  /** Change the adjustments and render them over the original colors. */
-  private adjust(change: { hue?: number; temperature?: Temperature }): void {
-    const base = this.liveAdjustment ?? { from: this.colors, hue: 0, temperature: 'off' as Temperature };
-    const hue = change.hue ?? base.hue;
-    const temperature = change.temperature ?? base.temperature;
-    const turned = hue === 0 ? base.from : shiftPalette(base.from, { hue, lightness: 0, chroma: 1 });
-    this.setAll(applyTemperature(turned, temperature));
-    const unchanged = hue === 0 && temperature === 'off';
+  /** Change the turn and render it over the original colors. */
+  private adjust({ hue }: { hue: number }): void {
+    const base = this.liveAdjustment ?? { from: this.colors, hue: 0 };
+    this.setAll(hue === 0 ? base.from : shiftPalette(base.from, { hue, lightness: 0, chroma: 1 }));
     this.adjustments = {
       ...this.adjustments,
-      [this.host.kind()]: unchanged ? null : { from: base.from, hue, temperature, out: this.colors },
+      [this.host.kind()]: hue === 0 ? null : { from: base.from, hue, out: this.colors },
     };
   }
 }
