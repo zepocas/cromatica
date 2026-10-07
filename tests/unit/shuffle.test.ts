@@ -244,6 +244,29 @@ describe('style shuffle (pattern kind and finishes)', () => {
     expect(banded).toBeGreaterThan(5);
   });
 
+  it('sometimes adds subtle relief and halftone', () => {
+    let relief = 0;
+    let halftone = 0;
+    const surfaces = new Set<string>();
+    for (let s = 0; s < 400; s++) {
+      const f = shuffled(meshDesign, style(s)).finish!;
+      if (f.relief > 0) {
+        relief++;
+        surfaces.add(f.reliefStyle);
+        expect(f.relief).toBeLessThanOrEqual(0.5);
+        expect(f.reliefLight).toBeGreaterThanOrEqual(100);
+        expect(f.reliefLight).toBeLessThanOrEqual(170);
+      }
+      if (f.halftone > 0) halftone++;
+      expect(f.halftone).toBeLessThanOrEqual(0.35);
+    }
+    expect(relief).toBeGreaterThan(30);
+    expect(relief).toBeLessThan(100);
+    expect(surfaces).toEqual(new Set(['satin', 'glass']));
+    expect(halftone).toBeGreaterThan(20);
+    expect(halftone).toBeLessThan(80);
+  });
+
   it('keeps the colors across a kind change when colors are locked', () => {
     for (let s = 0; s < 50; s++) {
       for (const d of [meshDesign, linearDesign]) {
