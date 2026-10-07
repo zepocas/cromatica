@@ -16,6 +16,7 @@ import {
   type RampGradient,
   MAX_MESH_POINTS,
   MAX_STOPS,
+  noFinish,
   type MeshPoint,
   type PlanesPattern,
   type PointMesh,
@@ -351,7 +352,7 @@ function shuffleFinish(rng: Rng, flat: boolean): Finish {
   const vignette = maybe(s.vignette);
   const print = maybe(s.print);
   const bands = maybe(s.bands);
-  return { vignette, print, bands: flat ? 0 : bands, bandEdge: round4(rng.next()) };
+  return { ...noFinish, vignette, print, bands: flat ? 0 : bands, bandEdge: round4(rng.next()) };
 }
 
 /** Planes: a new layout is a new seed (and count); new colors are a palette of the same size. */

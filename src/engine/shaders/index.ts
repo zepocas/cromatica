@@ -16,6 +16,7 @@ import grain from './color/grain.glsl?raw';
 import finish from './color/finish.glsl?raw';
 import print from './color/print.glsl?raw';
 import neighbours from './color/neighbours.glsl?raw';
+import relief from './color/relief.glsl?raw';
 import warpNoise from './warp/noise.glsl?raw';
 import warpDomain from './warp/domain.glsl?raw';
 import warpFbm from './warp/fbm.glsl?raw';
@@ -72,6 +73,7 @@ const FRAGMENT_CHUNKS = [
   oklab,
   pattern,
   neighbours,
+  relief,
   srgb,
   print,
   grain,

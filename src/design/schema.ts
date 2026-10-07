@@ -11,11 +11,12 @@ import {
   MIN_ZOOM,
   MAX_ZOOM,
   noFinish,
+  RELIEF_STYLES,
   WARP_SHAPES,
   type Design,
 } from './design';
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 /** Aurora blend that reproduces auroras saved before blend existed. */
 export const LEGACY_AURORA_BLEND = 0.6;
 
@@ -92,7 +93,15 @@ const designSchema = z.object({
     flipX: z.boolean(),
     flipY: z.boolean(),
   }),
-  finish: z.object({ vignette: unit, bands: unit, bandEdge: unit, print: unit }),
+  finish: z.object({
+    vignette: unit,
+    bands: unit,
+    bandEdge: unit,
+    print: unit,
+    relief: unit,
+    reliefStyle: z.enum(RELIEF_STYLES),
+    reliefLight: z.number().min(0).lt(360),
+  }),
 });
 
 const savedSchema = z.object({ version: z.literal(SCHEMA_VERSION), design: designSchema });
@@ -119,6 +128,11 @@ const migrations: Record<number, (save: Json) => Json> = {
     const base = isObject(design.base) ? design.base : {};
     const aurora = base.kind === 'aurora' ? { blend: LEGACY_AURORA_BLEND, ...base } : base;
     return { ...save, version: 3, design: { ...design, base: aurora } };
+  },
+  3: (save) => {
+    const design = isObject(save.design) ? save.design : {};
+    const finish = isObject(design.finish) ? design.finish : {};
+    return { ...save, version: 4, design: { ...design, finish: { ...noFinish, ...finish } } };
   },
 };
 
