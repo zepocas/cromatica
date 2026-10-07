@@ -1,7 +1,7 @@
-// Grain and print are per output pixel, so dragging their sliders must not drop the preview resolution.
+// Grain, print and halftone are a few pixels fine, so dragging their sliders must not drop the preview resolution.
 import { expect, openApp, openMore, test } from './support/app';
 
-for (const label of ['Print', 'Noise']) {
+for (const label of ['Print', 'Noise', 'Halftone']) {
   test(`${label} slider keeps the preview at full resolution while dragging`, async ({ page }) => {
     await openApp(page);
     await openMore(page, 'adjust');

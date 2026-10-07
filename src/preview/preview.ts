@@ -37,9 +37,9 @@ const MAX_DPR = 2;
  */
 const FRAME_BUDGET_MS = 12;
 
-/** The design without the per-pixel textures (grain and print), to tell texture-only edits apart. */
+/** The design without the fine textures (grain, print, halftone), to tell texture-only edits apart. */
 function withoutTextures(d: Design): string {
-  return JSON.stringify({ ...d, grain: null, finish: d.finish && { ...d.finish, print: 0 } });
+  return JSON.stringify({ ...d, grain: null, finish: d.finish && { ...d.finish, print: 0, halftone: 0 } });
 }
 
 export function createPreview(
@@ -124,8 +124,8 @@ export function createPreview(
   }
 
   // On slow GPUs, drop to low resolution while changes keep arriving; sharpen once idle.
-  // Edits to grain or print itself stay at full resolution: those textures are per
-  // output pixel, so a half-resolution frame would show a different texture, then snap.
+  // Edits to grain, print or halftone stay at full resolution: those textures are a few
+  // pixels fine, so a half-resolution frame would show a different texture, then snap.
   function interact(textureOnly: boolean): void {
     if (!opts.fixedSize && !textureOnly && fullFrameMs > FRAME_BUDGET_MS) {
       scale = INTERACTIVE_SCALE;
