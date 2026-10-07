@@ -13,14 +13,21 @@
   let { title, tools, more, children }: Props = $props();
 
   let open = $state(false);
+  let collapsed = $state(false);
 </script>
 
 <section>
   <div class="rule">
-    <span class="title">{title}</span>
+    <button
+      class="title"
+      aria-expanded={!collapsed}
+      aria-label="{collapsed ? 'Expand' : 'Collapse'} {title}"
+      title={collapsed ? 'Expand' : 'Collapse'}
+      onclick={() => (collapsed = !collapsed)}><span aria-hidden="true">{collapsed ? '▸' : '▾'}</span> {title}</button
+    >
     <span class="line" aria-hidden="true"></span>
     {#if tools}{@render tools()}{/if}
-    {#if more}
+    {#if more && !collapsed}
       <button
         class="more"
         aria-expanded={open}
@@ -30,12 +37,14 @@
       >
     {/if}
   </div>
-  <div class="body">
-    {@render children()}
-    {#if more && open}
-      <div class="advanced">{@render more()}</div>
-    {/if}
-  </div>
+  {#if !collapsed}
+    <div class="body">
+      {@render children()}
+      {#if more && open}
+        <div class="advanced">{@render more()}</div>
+      {/if}
+    </div>
+  {/if}
 </section>
 
 <style>
@@ -54,6 +63,7 @@
   }
   .title {
     color: var(--ink);
+    cursor: pointer;
   }
   .line {
     flex: 1;

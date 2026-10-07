@@ -151,11 +151,10 @@
   h1 {
     margin: 0;
     font: inherit;
+    font-size: 1.5em;
+    font-weight: 800;
+    letter-spacing: -0.02em;
     color: var(--ink);
-  }
-  h1::before {
-    content: '~/';
-    color: var(--dim);
   }
   /* Collapsed: one compact bar, so handles under the panel can be reached. */
   .panel.collapsed {
