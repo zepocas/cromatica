@@ -1,7 +1,7 @@
-// Linear gradient stops: the strip, the colors list and the blend modes.
-import { choose, expect, openApp, openMore, previewProbe, test } from './support/app';
+// Linear gradient stops: the strip and the colors list.
+import { choose, expect, openApp, previewProbe, test } from './support/app';
 
-test('stop editor: add, drag, blend mode and delete update the preview', async ({ page }) => {
+test('stop editor: add, drag and delete update the preview', async ({ page }) => {
   await openApp(page);
   const { settled, expectPreviewChanged } = previewProbe(page);
   const strip = page.getByTestId('stop-strip');
@@ -33,12 +33,6 @@ test('stop editor: add, drag, blend mode and delete update the preview', async (
   await mid.focus();
   await mid.press('ArrowLeft');
   await expect(mid).toHaveAttribute('aria-valuenow', '79');
-
-  // Blend mode of the selected stop's segment.
-  before = await settled();
-  await openMore(page, 'colors');
-  await choose(page.getByLabel('Blend to next stop'), { label: 'hue, long way' });
-  await expectPreviewChanged(before);
 
   // The selected row's swatch updates the stop.
   before = await settled();

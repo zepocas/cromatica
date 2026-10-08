@@ -45,6 +45,20 @@ describe('design schema', () => {
     expect(d.finish.relief).toBe(0);
   });
 
+  it('turns every stop of a version 5 ramp into a perceptual blend, and leaves other patterns alone (D60)', () => {
+    const saved = saveDesign(defaultDesign).design;
+    const ramp = saved.base as RampGradient;
+    const stops = ramp.stops.map((s, i) => ({
+      ...s,
+      blend: (['oklch-long', 'oklab-chroma', 'oklch-short'] as const)[i % 3],
+    }));
+    const d = loadDesign({ version: 5, design: { ...saved, base: { ...ramp, stops } } });
+    expect((d.base as typeof ramp).stops.map((s) => s.blend)).toEqual(ramp.stops.map(() => 'oklab'));
+    expect((d.base as typeof ramp).stops.map((s) => s.color)).toEqual(ramp.stops.map((s) => s.color));
+    const mesh = saveDesign({ ...defaultDesign, base: defaultMesh }).design;
+    expect(loadDesign({ version: 5, design: mesh }).base).toEqual(mesh.base);
+  });
+
   describe('version 4 to 5: grain, print and halftone become one noise (D60)', () => {
     const fromV4 = (grain: number, print: number, halftone: number) =>
       loadDesign({

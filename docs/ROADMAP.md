@@ -346,7 +346,7 @@ Each milestone uses the same structure:
 
 - **Goal:** settle what the panel's finishes and color controls are called and which of them stay, before the references are fixed. After M11.
 - **Scope, in this order:**
-  - **Colors "blend" dropdown** (per stop: perceptual, vivid, hue short/long way): feels like overkill to the user (2026-10-07); reconsider whether to keep it.
+  - ~~**Colors "blend" dropdown**~~ Done (D60): removed; every ramp blends perceptually.
   - ~~**Relief's name**~~ Done (D60): the controls form a bordered "lighting" group: amount, direction, surface.
   - ~~**Relief controls and shuffle weight**~~ Done (D60): relief 0.1–0.5, halftone 0.1–0.35, chances unchanged.
   - ~~**Noise, print and halftone sliders**~~ Done (D60, D53): one "noise" group with a type (lithograph, xerox, halftone, grain) and an amount; old saves migrate. Arrow-key previews now cover every list that can show one.

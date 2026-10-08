@@ -17,7 +17,7 @@ import {
   type Design,
 } from './design';
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 /** Where lithograph ends on the version-4 print scale; above it a print was a xerox. */
 const LITHO_END = 0.7;
 /** Aurora blend that reproduces auroras saved before blend existed. */
@@ -35,7 +35,7 @@ const rampGradient = z.object({
       z.object({
         position: unit,
         color: oklch,
-        blend: z.enum(['oklab', 'oklab-chroma', 'oklch-short', 'oklch-long']),
+        blend: z.literal('oklab'),
       }),
     )
     .min(1)
@@ -164,6 +164,15 @@ const migrations: Record<number, (save: Json) => Json> = {
           ? { type: 'halftone', amount: num(halftone) }
           : { type: 'grain', amount: grainAmount };
     return { ...save, version: 5, design: { ...rest, finish: { ...finish, noise } } };
+  },
+  // D60: the per-stop blend choice is gone; every ramp blends perceptually.
+  5: (save) => {
+    const design = isObject(save.design) ? save.design : {};
+    const base = isObject(design.base) ? design.base : {};
+    const stops = Array.isArray(base.stops)
+      ? base.stops.map((s: unknown) => (isObject(s) ? { ...s, blend: 'oklab' } : s))
+      : base.stops;
+    return { ...save, version: 6, design: { ...design, base: 'stops' in base ? { ...base, stops } : base } };
   },
 };
 
