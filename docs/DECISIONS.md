@@ -416,3 +416,12 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Saves:** `bandStyle` defaults to `weights` when missing, so older saves, favourites and PNG-embedded designs render as before. No schema version bump (D44). Shuffles reset it to A.
 - **Reference:** the CPU mesh evaluator implements B and C; browser tests compare the GPU with it for each style.
 - **Seen on the sheets:** B is the boldest at every slider position but angular (Voronoi-like borders); C is the most organic but subtle at 3 steps; A is soft below about 0.6.
+
+## D61. Brushed warp reworked, not removed
+
+- **Decision (2026-10-08):** the user called brushed one of their least favorite shapes (it looked too perfect and predictable). Instead of removing it (which needed a migration of saved designs, D44), it was reworked and judged by eye on contact sheets of six seeds.
+- **Problem:** one straight stroke direction and a single noise layer gave regular sawtooth wedges, all pointing the same way.
+- **Change (`bristle`, `src/engine/warp.ts` and `shaders/warp/bristle.glsl`):** the stroke direction drifts up to 0.8 rad across the frame, so strokes curve and fan out; a finer bristle layer (14× across) mixes in; lines wobble across; the strength varies per stroke and along it (mask 0.15–1), so some strokes are bold and some barely show.
+- **Compatibility:** saved designs keep the shape name, seed, amount and size, so they open and render, but with the new look. No schema change.
+- **Relief:** the strokes are smooth ridges, so relief (D46) lights them well: satin gives silk or brushed-metal grooves, glass thin bright rims. Nothing in relief depends on the warp shape.
+- **Not changed:** shuffle weight stays 0.4 (D35); worth revisiting with M12's relief and shuffle review.
