@@ -54,29 +54,6 @@
     bind:value={editor.warp.size}
     display={fixed2}
   />
-  <fieldset class="group">
-    <legend>noise</legend>
-    <div class="row">
-      <span>type</span>
-      <Dropdown
-        ariaLabel="Noise type"
-        value={editor.finish.noise.type}
-        options={NOISE_OPTIONS}
-        onchange={(v) => setNoiseType(v)}
-        onactive={(v) =>
-          editor.previewChange(v && v !== editor.finish.noise.type ? (t) => (t.finish.noise = noiseOf(v)) : null)}
-      />
-    </div>
-    <SliderRow
-      label="amount"
-      ariaLabel="Noise amount"
-      min={0}
-      max={1}
-      step={0.01}
-      bind:value={editor.finish.noise.amount}
-      display={(v) => (v === 0 ? 'off' : v.toFixed(2))}
-    />
-  </fieldset>
   {#if editor.kind === 'mesh'}
     <SliderRow
       label="blend"
@@ -289,40 +266,64 @@
       display={fixed2}
     />
   {/if}
+  <fieldset class="group">
+    <legend>noise</legend>
+    <div class="row">
+      <span>type</span>
+      <Dropdown
+        ariaLabel="Noise type"
+        value={editor.finish.noise.type}
+        options={NOISE_OPTIONS}
+        onchange={(v) => setNoiseType(v)}
+        onactive={(v) =>
+          editor.previewChange(v && v !== editor.finish.noise.type ? (t) => (t.finish.noise = noiseOf(v)) : null)}
+      />
+    </div>
+    <SliderRow
+      label="amount"
+      ariaLabel="Noise amount"
+      min={0}
+      max={1}
+      step={0.01}
+      bind:value={editor.finish.noise.amount}
+      display={(v) => (v === 0 ? 'off' : v.toFixed(2))}
+    />
+  </fieldset>
+
+  <fieldset class="group">
+    <legend>lighting</legend>
+    <SliderRow
+      label="amount"
+      title="Light the image as a raised surface: lighter parts stand higher"
+      min={0}
+      max={1}
+      step={0.01}
+      bind:value={editor.finish.relief}
+      display={(v) => (v === 0 ? 'off' : v.toFixed(2))}
+    />
+    <SliderRow
+      label="direction"
+      title="Where the light comes from"
+      min={0}
+      max={359}
+      step={1}
+      disabled={editor.finish.relief === 0}
+      bind:value={editor.finish.reliefLight}
+      display={degrees}
+    />
+    <Choice
+      label="surface"
+      ariaLabel="Relief surface"
+      options={[
+        { value: 'satin', title: 'Soft shading and sheen' },
+        { value: 'glass', title: 'The image refracted under glass, bright rims' },
+      ]}
+      value={editor.finish.reliefStyle}
+      onchange={(v) => (editor.finish.reliefStyle = v)}
+    />
+  </fieldset>
 
   {#snippet more()}
-    <fieldset class="group">
-      <legend>lighting</legend>
-      <SliderRow
-        label="amount"
-        title="Light the image as a raised surface: lighter parts stand higher"
-        min={0}
-        max={1}
-        step={0.01}
-        bind:value={editor.finish.relief}
-        display={(v) => (v === 0 ? 'off' : v.toFixed(2))}
-      />
-      <SliderRow
-        label="direction"
-        title="Where the light comes from"
-        min={0}
-        max={359}
-        step={1}
-        disabled={editor.finish.relief === 0}
-        bind:value={editor.finish.reliefLight}
-        display={degrees}
-      />
-      <Choice
-        label="surface"
-        ariaLabel="Relief surface"
-        options={[
-          { value: 'satin', title: 'Soft shading and sheen' },
-          { value: 'glass', title: 'The image refracted under glass, bright rims' },
-        ]}
-        value={editor.finish.reliefStyle}
-        onchange={(v) => (editor.finish.reliefStyle = v)}
-      />
-    </fieldset>
     <SliderRow
       label="vignette"
       title="Darken toward the corners"
