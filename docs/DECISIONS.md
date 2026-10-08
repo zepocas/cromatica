@@ -348,7 +348,7 @@ Decisions made during the architecture review. Reopen one only if new informatio
 
 - **Observation (2026-10-07):** the noise (grain) and print sliders are very similar in use. Noise is super soft, and print can reach the same look, so noise looks redundant.
 - **Naming:** "noise" is the better name overall; "noise (print)" is an option if both stay.
-- **Decision:** no change now. Revisit both in M11 (Polish), together, and decide whether to merge, drop one or rename.
+- **Decision:** no change now. Revisit both in M12 (UI decisions), together, and decide whether to merge, drop one or rename.
 - **Related fix:** both are per output pixel (D4), so dragging either keeps the preview at full resolution; a half-resolution frame showed a different texture that snapped back on release.
 
 ## D54. M8 choices: relief and halftone
@@ -359,7 +359,7 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Stipple dropped, halftone kept:** random stipple dots didn't work for the user; halftone ships alone, as one slider with no dot-style choice. Its name joins the noise and print naming review in M11 (D53).
 - **Dots in image units:** halftone dots scale with the output, like the rest of the composition (D4), not per output pixel like grain.
 - **Order:** pattern → relief → vignette → halftone → print → grain, chosen by the user after seeing it.
-- **Shuffle:** relief and halftone come up sometimes and subtly; weights to revisit in M11.
+- **Shuffle:** relief and halftone come up sometimes and subtly; weights to revisit in M12.
 
 ## D55. Favourites at the bottom of the panel, lighter panels
 
@@ -387,3 +387,11 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **macOS dynamic HEIC:** a macOS light/dark wallpaper is a 2-image HEVC HEIC with `apple_desktop:apr` XMP. Apple publishes no spec; the research rests on community sources. No browser encoder fits: libheif-js only decodes, x265 is GPL with HEVC patent questions, and WebCodecs HEVC encoding depends on the hardware (Safari about 91%, Chrome about 22–48%, Firefox about 0%). See `docs/research/heic-dynamic-wallpaper.md`.
 - **Other platforms:** no primary source shows a one-file light/dark pair for Windows. iOS only has Apple's own adaptive wallpapers and a Shortcuts workaround (search snippets only). Android was left out of scope.
 - **If it returns:** see the backlog entry in the roadmap.
+
+## D58. M11 (Polish) split into four milestones, mobile becomes M15
+
+- **Decision (2026-10-08):** M11 was too big. It is now M11 effects (backlog review, bold bands, brushed warp, bicubic patch mesh), M12 UI decisions (blend dropdown, relief, noise/print/halftone, then showcase examples), M13 performance and UX (adaptive preview resolution, full-screen preview, context-loss recovery, shader warm-up, keyboard shortcuts), and M14 lean panel (the status bar trial). Mobile layout moves from M12 to M15 (D55).
+- **Dropped from M11:** the export set (ZIP), export progress and cancel, device presets and custom pixel sizes (they already exist), and the 1:1 loupe.
+- **Showcase examples come last in M12:** they double as golden-image fixtures, so they wait until the finishes are settled.
+- **M14 is a trial** that can run in parallel with almost any milestone. The status bar is built only if settings move into it to slim the left panel.
+- **Backlog reorder:** bicubic patch mesh (prototype, parallel R&D investigation), share links (investigate; may be its own milestone), digital/glitch as a post-processing stage, the ink-blobs look as an optional panel of 3 to 4 settings, and the planes advanced panel (to be confirmed) now sit at the top.
