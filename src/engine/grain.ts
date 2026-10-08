@@ -1,4 +1,4 @@
-// Analog film grain parameters (finish stage, D7, D60); the noise itself is in
+// Analog film grain parameters (finish stage, D7, D63); the noise itself is in
 // shaders/color/grain.glsl. Grain is defined per output pixel (D4).
 import type { Noise } from '../design/design';
 import { clamp01 } from '../math';

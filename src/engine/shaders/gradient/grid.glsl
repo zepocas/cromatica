@@ -7,6 +7,7 @@ uniform ivec2 u_gridSize;                     // cols, rows
 uniform vec2 u_gridRest;                      // rest half width, half height
 uniform vec2 u_gridOffset[MAX_GRID_NODES];    // node offset from its rest spot
 uniform vec3 u_gridColor[MAX_GRID_NODES];     // Oklab, gamut-mapped on the CPU
+uniform float u_gridLines;                  // lines along the bent grid, [0, 1]; 0 = none (D62)
 
 void gridWeights(float f, out vec4 w, out vec4 d) {
   float f2 = f * f;
@@ -78,6 +79,29 @@ vec3 gridColor(vec2 p) {
   for (int b = 0; b < 4; b++) {
     for (int a = 0; a < 4; a++) {
       lab += wx[a] * wy[b] * u_gridColor[gridNode(cy - 1 + b, cx - 1 + a)];
+    }
+  }
+  if (u_gridLines > 0.0) {
+    // Distance to the nearest grid line in pattern units: its distance in grid
+    // parameters over the pixel gradient of that parameter (inverse Jacobian).
+    vec2 jx, jy;
+    gridOffset(q, jx, jy);
+    float a = 1.0 + jx.x;
+    float b = jy.x;
+    float c = jx.y;
+    float d = 1.0 + jy.y;
+    float det = a * d - b * c;
+    if (abs(det) >= GRID_MIN_DET) {
+      vec2 k = vec2(u_gridSize - 1);
+      vec2 g = (q + u_gridRest) / (2.0 * u_gridRest) * k;
+      vec2 grad = k / (2.0 * u_gridRest) * vec2(length(vec2(d, b)), length(vec2(c, a))) / abs(det);
+      vec2 near = abs(g - clamp(floor(g + 0.5), vec2(0.0), k));
+      float dist = min(near.x / grad.x, near.y / grad.y);
+      float hwid = 0.5 * mix(GRID_LINE_WIDTH_MIN, GRID_LINE_WIDTH_MAX, u_gridLines);
+      float pixel = 1.0 / float(u_outputSize.y);
+      float line = 1.0 - smoothstep(hwid - pixel, hwid + pixel, dist);
+      float dir = clamp((GRID_LINE_PIVOT - lab.x) * GRID_LINE_PIVOT_SLOPE, -1.0, 1.0);
+      lab.x += GRID_LINE_PUSH * min(1.0, u_gridLines / GRID_LINE_OPACITY_AT) * line * dir;
     }
   }
   return lab;

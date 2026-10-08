@@ -1,6 +1,7 @@
 // Finishing effects (D33): vignette and bands. The shader (shaders/color/
 // finish.glsl) reads the same prepared values as uniforms.
-import type { Finish } from '../design/design';
+import type { MeshBanding } from '../color/mesh';
+import { BAND_STYLES, type Finish } from '../design/design';
 import { clamp01 } from '../math';
 import type { OutputSize } from './types';
 
@@ -31,6 +32,8 @@ export interface PreparedFinish {
   bandSteps: number;
   /** Fraction of each step over which it rises into the next; 0 = hard. */
   bandEdge: number;
+  /** Index into BAND_STYLES (the shader's u_bandMode). */
+  bandStyle: number;
   /** Print texture: how much of the printed look is mixed in; 0 = off. */
   printMix: number;
   /** How strongly the paper tooth modulates the ink (litho). */
@@ -65,6 +68,7 @@ export function prepareFinish(finish: Finish | undefined, output: OutputSize): P
     vignetteScale: 1 / (0.5 * Math.hypot(output.width / output.height, 1)),
     bandSteps: bands > 0 ? Math.round(BAND_STEPS[0] + (BAND_STEPS[1] - BAND_STEPS[0]) * bands) : 0,
     bandEdge: clamp01(finish?.bandEdge ?? 0),
+    bandStyle: Math.max(0, BAND_STYLES.indexOf(finish?.bandStyle ?? 'weights')),
     printMix: smoothstep(0, PRINT_FADE_IN, print),
     printInk: PRINT_INK * print,
     printScreen: screen,
@@ -93,6 +97,29 @@ export function bandLevel(f: PreparedFinish, x: number): number {
   const k = Math.floor(q);
   const rise = f.bandEdge > 0 ? smoothstep(1 - f.bandEdge, 1, q - k) : 0;
   return Math.min(1, (k + rise) / (n - 1));
+}
+
+/** How the CPU mesh reference bands, from the prepared finish. */
+export function meshBanding(f: PreparedFinish): MeshBanding {
+  return {
+    style: BAND_STYLES[f.bandStyle],
+    steps: f.bandSteps,
+    level: (x) => bandLevel(f, x),
+    stepLightness: (l) => stepLightness(f, l),
+  };
+}
+
+/**
+ * Lightness in flat steps, each at its band's center so the mean lightness
+ * holds, and rising into the next over the last `bandEdge`. Off is exactly l.
+ */
+export function stepLightness(f: PreparedFinish, l: number): number {
+  const n = f.bandSteps;
+  if (n < 2) return l;
+  const q = clamp01(l) * n;
+  const k = Math.floor(q);
+  const rise = f.bandEdge > 0 ? smoothstep(1 - f.bandEdge, 1, q - k) : 0;
+  return Math.min(1, (k + rise + 0.5) / n);
 }
 
 function smoothstep(a: number, b: number, x: number): number {

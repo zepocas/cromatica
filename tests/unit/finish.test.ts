@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { noFinish } from '../../src/design/design';
 import { prepareGrain } from '../../src/engine/grain';
-import { bandLevel, prepareFinish, VIGNETTE_INNER, vignetteFactor } from '../../src/engine/finish';
+import { bandLevel, prepareFinish, stepLightness, VIGNETTE_INNER, vignetteFactor } from '../../src/engine/finish';
 
 const frame = { width: 1600, height: 900 };
 const corner: [number, number] = [1600 / 900 / 2, 0.5];
@@ -104,5 +104,38 @@ describe('grain', () => {
     expect(seed(0.5)).toBe(seed(0.5));
     expect(seed(0.5)).not.toBe(seed(0.51));
     expect(new Set(Array.from({ length: 101 }, (_, i) => seed(i / 100))).size).toBe(101);
+  });
+});
+
+describe('stepLightness (mesh band style layers)', () => {
+  it('is the identity when off', () => {
+    const f = prepareFinish({ ...noFinish, bands: 0 }, frame);
+    for (const l of [0, 0.123, 0.5, 1]) expect(stepLightness(f, l)).toBe(l);
+  });
+
+  it('snaps to band centers, so the mean lightness holds, and stays in [0, 1]', () => {
+    const f = prepareFinish({ ...noFinish, bands: 1, bandEdge: 0 }, frame);
+    const n = f.bandSteps;
+    expect(stepLightness(f, 0)).toBeCloseTo(0.5 / n, 12);
+    expect(stepLightness(f, 1)).toBeLessThanOrEqual(1);
+    const levels = new Set<number>();
+    let sum = 0;
+    for (let i = 0; i <= 1000; i++) {
+      const v = stepLightness(f, i / 1000);
+      levels.add(v);
+      sum += v - i / 1000;
+    }
+    expect(levels.size).toBe(n + 1);
+    expect(Math.abs(sum / 1001)).toBeLessThan(0.06);
+  });
+
+  it('rises into the next step over the edge, never going backward', () => {
+    const f = prepareFinish({ ...noFinish, bands: 0.5, bandEdge: 0.6 }, frame);
+    let prev = -1;
+    for (let i = 0; i <= 2000; i++) {
+      const v = stepLightness(f, i / 2000);
+      expect(v).toBeGreaterThanOrEqual(prev);
+      prev = v;
+    }
   });
 });

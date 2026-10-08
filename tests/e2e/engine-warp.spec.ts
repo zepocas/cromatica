@@ -161,7 +161,7 @@ test.describe('grain', () => {
     expect(stats[0.35].autocorr[3]).toBeLessThan(stats[0.35].autocorr[0]);
   });
 
-  test('draws the same grain for the same amount and fresh grain for the next notch (D60)', async ({ page }) => {
+  test('draws the same grain for the same amount and fresh grain for the next notch (D63)', async ({ page }) => {
     const same = await engineHarness(page, 'compareDesigns', grainy(gray(0.6), 0.5), grainy(gray(0.6), 0.5), 400, 300);
     expect(same.identical).toBe(true);
     // A rescaled copy of one pattern would leave most pixels within a level of each other.

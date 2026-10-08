@@ -336,20 +336,26 @@ Each milestone uses the same structure:
 
 - **Goal:** settle the visual effects work. Polish was split into four milestones on 2026-10-08 (D58): M11 effects, M12 UI decisions, M13 performance and UX, M14 lean panel.
 - **Scope, in this order:**
-  - **Backlog review:** at the start of M11, go through the backlog and decide what to promote, keep or drop. First candidate: design in the JPEG.
-  - **Bold bands on the mesh** (from the backlog, 2026-10-08; D33): step the lightness, step the blend between the two strongest points, or draw contour lines at band boundaries. Today's bands stay as they are until one is picked.
-  - **Brushed warp:** one of the user's least favorite shapes (2026-10-05); decide whether to remove it. Saved designs that use it would need a migration (D44).
-  - **Bicubic patch mesh** (from the backlog, 2026-10-08): a bendable Figma/SwiftUI-style grid. Prototype first, in parallel with the R&D agent's investigation.
-- **Done when:** the backlog is reviewed, one bold-bands option is picked or dropped, brushed warp is kept or removed (with a migration if removed), and the bicubic prototype is judged by the user: promote it, park it or drop it.
+  - **Backlog review** ✅ (2026-10-08, D59): design in the JPEG stays as a try (with share links), advanced favourites and the light/dark pair are dropped, looks stay parked, the comment cleanup is wanted, the technical section is to be evaluated and the planes panel needs a brainstorm.
+  - **Bold bands on the mesh** ✅ (2026-10-08, D60): three styles behind an A|B|C switch in the bands row. A is today's weight terraces (default), B flat facets between the two strongest points, C stepped lightness layers. All three tried by eye on a contact sheet; the user liked all of them, so none was dropped.
+  - **Brushed warp** ✅ (2026-10-08, D61): kept and reworked instead of removed. The old version was a predictable zigzag; the new one has bending, varied, feathery strokes and pairs well with relief. No migration needed.
+  - **Bicubic patch mesh** ✅ (2026-10-08, D62): evaluated and not built as a separate pattern. The grid (D43) already is a bendable grid, and tangent handles would only refine the same soft blobs. Instead the grid got grid lines drawn along the bent grid, which the user liked; cloth shading was tried and dropped.
+- **Done when:** the backlog is reviewed, one bold-bands option is picked or dropped, brushed warp is kept or removed (with a migration if removed), and the bicubic idea is judged by the user: promote it, park it or drop it.
 
 ### M12 — UI decisions
 
 - **Goal:** settle what the panel's finishes and color controls are called and which of them stay, before the references are fixed. After M11.
 - **Scope, in this order:**
-  - ~~**Colors "blend" dropdown**~~ Done (D60): removed; every ramp blends perceptually.
-  - ~~**Relief's name**~~ Done (D60): the controls form a bordered "lighting" group: amount, direction, surface.
-  - ~~**Relief controls and shuffle weight**~~ Done (D60): relief 0.1–0.5, halftone 0.1–0.35, chances unchanged.
-  - ~~**Noise, print and halftone sliders**~~ Done (D60, D53): one "noise" group with a type (lithograph, xerox, halftone, grain) and an amount; old saves migrate. Arrow-key previews now cover every list that can show one.
+  - ~~**Colors "blend" dropdown**~~ Done (D63): removed; every ramp blends perceptually.
+  - ~~**Relief's name**~~ Done (D63): the controls form a bordered "lighting" group: amount, direction, surface.
+  - ~~**Relief controls and shuffle weight**~~ Done (D63): relief 0.1–0.5, halftone 0.1–0.35, chances unchanged.
+  - ~~**Noise, print and halftone sliders**~~ Done (D63, D53): one "noise" group with a type (lithograph, xerox, halftone, grain) and an amount; old saves migrate. Arrow-key previews now cover every list that can show one.
+  - **Keep row split into colors, pattern, adjust** (2026-10-08): the footer's `keep` toggles stay next to the shuffle button, where locking is noticed (per-section lock icons on the headers were considered and rejected: less visible and far from the shuffle button). Replace the two toggles with three, `keep [ ] colors [ ] pattern [ ] adjust`:
+    - **colors:** the palette, as today.
+    - **pattern:** gradient kind, node or point layout, and the warp (shape, amount, size, seed).
+    - **adjust:** the finishes (vignette, print, bands, relief, halftone), the transform and the noise (grain).
+    - **Fit:** about 270 px of the 286 px panel; trim the label gap. Fallback: shorter words (`color`, `shape`, `finish`).
+    - **Open questions:** warp goes with pattern (confirm); the adjust values get their own random stream so locking pattern doesn't change what the finishes shuffle to, and with nothing locked the stream order stays as today so existing shuffles don't change; "more like this" respects the same flags; the keeps are not saved with the design (D44), as today.
   - **Showcase examples / reference designs** (moved from M5; last, after the finish cleanup above, 2026-10-08): for each pattern, render candidates from shuffles and contact sheets, let the user pick about 3 by eye, and save them as fixed design files. They serve as showcase examples and as test fixtures.
 - **Done when:** each decision is recorded in DECISIONS, and each pattern has about 3 saved reference designs used as showcase and golden-image fixtures. The showcase examples come last because merging or renaming the finishes would change the designs.
 
@@ -409,22 +415,19 @@ Each milestone uses the same structure:
 ## Later — Backlog (unordered)
 
 - **Bicubic patch mesh** (promoted to prototype, 2026-10-08): Figma/SwiftUI-style bendable grid. Also in M11's scope (effects); an investigation runs in parallel with the R&D agent.
+- ~~Reevaluate the grid pattern~~ Done in M11 (D62): the grid stays (shown as "net" in the panel), with a "lines" option that gives it its own look. Revisit if it still feels too close to the mesh.
 - **Share links** (investigate; may become its own milestone, 2026-10-08): the save envelope compressed into the URL hash. Grid designs (25 nodes) make long URLs. A JSON file export and import would be the cheaper way to keep a design outside the browser.
 - **Digital / glitch as a post-processing stage** (wanted as a novelty feature, to give a real try, 2026-10-08): the glitch should act on the boundaries between colors and shapes in the rendered image (tearing, offsets and channel splits that follow edges), not move coordinates. A first try as a warp shape (hashed blocks shifted sideways plus scanline jitter) and an RGB split finish was built and reverted. It was underwhelming: on soft gradients a shifted block of similar color barely shows. The earlier attempt shows it likely needs an image-space stage, for example edge detection on the pattern evaluated at neighboring points, with displacement applied where colors change. That stays per pixel and stateless (D4), but costs extra pattern evaluations.
 - **Liquid-jazz "ink blobs" look, as an optional niche panel** (2026-10-08): get close to the reference with an advanced, optional panel of 3, at most 4, settings, not the full prototype depth. seeded smin-capsule blobs rendered as stipple in flat inks (reference: stippled vinyl cover). A prototype exists in `prototype-stipple.html` and `prototype/stipple/` (untracked, not part of the app). Open findings: union all blobs into one silhouette and use per-ink fields only for the color inside it; use a black base with white as an ink; fill more of the frame. Decide later whether it is a style of this product or a separate one.
-- **Planes advanced panel** (the user may be misremembering this one; confirm before building, 2026-10-08): under "+ more" for planes, add controls to move planes (drag, nudge, or reorder the stack) and bring over the interesting settings from the stipple / ink-blobs prototype (`prototype-stipple.html`). Requested 2026-10-04.
+- **Planes advanced panel** (needs a new discussion and brainstorm before any build, 2026-10-08, D59): the user wants to remember what it was for. Requested 2026-10-04: controls to move planes (drag, nudge, or reorder the stack), and settings brought over from the stipple / ink-blobs prototype.
 - **Mobile layout / authoring:** tracked as milestone M15, not here (promoted 2026-10-07, D55; renumbered D58).
 - ~~Blend: sharper at the top of the slider.~~ Done in M4.5: the far end now reaches near-hard edges (D34).
-- **Light/dark pair** (dropped from M10 on 2026-10-08, D57): the code is on the branch `feat/light-dark-pairs`. If it returns: a macOS script (pillow-heif or `heif-enc` plus `exiv2`, or Swift `CGImageDestination`) that merges two exported PNGs into a dynamic HEIC, and a "dark colors from an image" drop target. The pair was not saved across reloads; saving it needs a schema version and changes to autosave, favourites and the PNG chunk.
-- Display P3 output, as an internal flag with no UI
-- 16-bit PNG export
-- mozjpeg (WASM) for 4:4:4 JPEG
-- WebGPU backend
+- **Light/dark pair** (dropped for good, 2026-10-08, D57, D59): the code stays on the branch `feat/light-dark-pairs`; not planned. The earlier notes on a macOS HEIC script and a "dark colors from an image" drop target are dropped with it.
+- **Technical section** (to evaluate, 2026-10-08, D59): Display P3 output, 16-bit PNG, mozjpeg (WASM) for 4:4:4 JPEG, WebGPU backend, flow-field advection (LIC) and Gabor noise. Performance comes first. Display P3 may matter for gamut, so it needs a real look; the rest wait for a reason.
 - User-saved palettes
 - ~~Mobile authoring~~ Promoted to M15 (2026-10-07; was M12).
 - **Stipple / halftone finish:** moved to M8 (2026-10-05). The ink-blobs look below stays here.
-- Flow-field advection (LIC) and Gabor noise, if more warp variety is wanted after M4.5
 - **Looks (curated bundles)** (parked 2026-10-05, D47): named presets such as Zine, Dusk or Riso that set pattern, mood, key and finish together, so shuffle could stay inside a look. It would help adoption, but M7's onboarding tips cover most of that for now.
-- **Favourites, advanced** (2026-10-05): a real library with thumbnails, folders and a JSON file export and import. M7 only keeps a short plain list (D45).
-- **Design in the JPEG** (2026-10-05, follows D45): embed the save envelope in an exported JPEG and reopen it on drop, as the PNG does. A COM or APP1 (XMP) segment can carry it, spliced in after `canvas.convertToBlob` because the browser encoder has no metadata hook, with a segment reader for drop. Each segment holds about 64 KB, so measure a typical `saveDesign` JSON first. Weaker than PNG: JPEGs are re-encoded and stripped more often when shared. Reassess at the start of M11 (see its scope).
+- ~~Favourites, advanced~~ Dropped (2026-10-08, D59): the favourites list from M7 is enough. A JSON file export and import stays under share links.
+- **Design in the JPEG** (2026-10-05, follows D45): embed the save envelope in an exported JPEG and reopen it on drop, as the PNG does. A COM or APP1 (XMP) segment can carry it, spliced in after `canvas.convertToBlob` because the browser encoder has no metadata hook, with a segment reader for drop. Each segment holds about 64 KB, so measure a typical `saveDesign` JSON first. Weaker than PNG: JPEGs are re-encoded and stripped more often when shared. **Wanted as a try, alongside share links (2026-10-08, D59):** not dropped; build it as an experiment and judge by what survives sharing.
 - **Comment density:** go through the code and cut comments that restate the code or narrate history; keep the ones that explain why (conventions, math, invariants). The user finds the current amount excessive (2026-10-04).

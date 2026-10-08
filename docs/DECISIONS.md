@@ -396,7 +396,47 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **M14 is a trial** that can run in parallel with almost any milestone. The status bar is built only if settings move into it to slim the left panel.
 - **Backlog reorder:** bicubic patch mesh (prototype, parallel R&D investigation), share links (investigate; may be its own milestone), digital/glitch as a post-processing stage, the ink-blobs look as an optional panel of 3 to 4 settings, and the planes advanced panel (to be confirmed) now sit at the top.
 
-## D60. M12 UI decisions: lighting group, shuffle ranges, one noise
+## D59. M11 backlog review outcome
+
+- **Decision (2026-10-08):** the backlog review that opens M11 is done.
+- **Design in the JPEG:** kept as an experiment, next to share links. Not dropped.
+- **Favourites, advanced:** dropped. M7's favourites list is enough; a JSON export and import stays under share links.
+- **Light/dark pair:** dropped for good (confirms D57). The branch stays, nothing is planned.
+- **Looks:** stay parked (D47).
+- **Comment density:** wanted, as a one-off cleanup.
+- **Technical section** (Display P3, 16-bit PNG, mozjpeg, WebGPU, LIC/Gabor): to be evaluated. Performance is the priority; Display P3 may matter for gamut.
+- **Planes advanced panel:** needs a new discussion and brainstorm before any build.
+
+## D60. Mesh bands get three styles (A, B, C)
+
+- **Decision (2026-10-08):** a bold-bands option for the mesh was prototyped as two new styles beside today's. The user liked all three, so the bands row has an `A|B|C` segmented switch to the right of the slider, the active letter lit. Mesh only; ramps band their position, planes, aurora and grid have no bands.
+- **Styles** (`Finish.bandStyle`, in code `weights`, `facets`, `layers`): A bands each point's influence in steps (today's look, the default). B bands the share of the two strongest points, so the image is flat polygons with stepped mixes and crisp borders. C blends smoothly, then steps the Oklab lightness at band centers (so the mean lightness holds), giving contour layers while hue and chroma stay smooth.
+- **Same sliders:** bands sets the step count (24 down to 3) and edge softens the steps, for all three. On a mesh the readout is the 0.00–1.00 amount, not the step count: the count isn't a visible band count in any style (C steps lightness over 0–1, so an image spanning less shows fewer). Ramps keep the integer.
+- **Why letters:** the styles are abstract; names would mean little in the panel. The names live in the code only.
+- **Saves:** `bandStyle` defaults to `weights` when missing, so older saves, favourites and PNG-embedded designs render as before. No schema version bump (D44). Shuffles reset it to A.
+- **Reference:** the CPU mesh evaluator implements B and C; browser tests compare the GPU with it for each style.
+- **Seen on the sheets:** B is the boldest at every slider position but angular (Voronoi-like borders); C is the most organic but subtle at 3 steps; A is soft below about 0.6.
+
+## D61. Brushed warp reworked, not removed
+
+- **Decision (2026-10-08):** the user called brushed one of their least favorite shapes (it looked too perfect and predictable). Instead of removing it (which needed a migration of saved designs, D44), it was reworked and judged by eye on contact sheets of six seeds.
+- **Problem:** one straight stroke direction and a single noise layer gave regular sawtooth wedges, all pointing the same way.
+- **Change (`bristle`, `src/engine/warp.ts` and `shaders/warp/bristle.glsl`):** the stroke direction drifts up to 0.8 rad across the frame, so strokes curve and fan out; a finer bristle layer (14× across) mixes in; lines wobble across; the strength varies per stroke and along it (mask 0.15–1), so some strokes are bold and some barely show.
+- **Compatibility:** saved designs keep the shape name, seed, amount and size, so they open and render, but with the new look. No schema change.
+- **Relief:** the strokes are smooth ridges, so relief (D46) lights them well: satin gives silk or brushed-metal grooves, glass thin bright rims. Nothing in relief depends on the warp shape.
+- **Not changed:** shuffle weight stays 0.4 (D35); worth revisiting with M12's relief and shuffle review.
+
+## D62. Bicubic patch mesh not built; the grid gets lines
+
+- **Decision (2026-10-08):** the bicubic patch mesh (D11, promoted to a prototype in M11) was evaluated against the grid (D43), which is already a bendable grid of colored nodes. Tangent handles and per-patch corner colors only refine the same family of soft blobs, so no separate pattern was built.
+- **Findings on contact sheets:** with the warp off, a shuffled grid looks like a softer mesh. Bending the nodes past about 1.5× the shuffle's jitter tears (Newton pull-back on folds), not silky folds; real folds would need a patch-by-patch renderer.
+- **Tried:** cloth shading (lightness by the grid's stretch, the Jacobian determinant): pillowy but not exotic, dropped. Grid lines drawn along the bent grid: liked by the user, kept.
+- **Grid lines** (`GridMesh.lines`, [0, 1], missing = 0, no schema version bump): the lines of the rest grid, bent with it. Opacity reaches 1 at 0.5 and the width goes from 0.002 to 0.008 of the frame height, so a preview and an export match. The distance to a line is computed analytically from the inverse Jacobian (no screen derivatives), so the CPU reference has the same math. A line pushes the lightness by up to 0.32 toward the other end of the scale (smoothly, pivoting at 0.58), so it shows on both light and dark colors and doesn't break where the background crosses the pivot.
+- **Shuffle:** a layout shuffle turns lines on 60% of the time at 0.25–0.7, drawn last so the other layout values match earlier shuffles.
+- **Still open:** whether the grid now earns its place next to the mesh. The user judges it after trying it.
+- **Name:** the panel calls the grid pattern "net" (2026-10-08), since it is a bendable surface of colors with optional lines, not just a grid. Only the label changed; the kind stays `grid` in saves and code, so there is no migration.
+
+## D63. M12 UI decisions: lighting group, shuffle ranges, one noise
 
 - **Lighting (2026-10-08):** relief's three controls sit in one bordered group called "lighting": **amount** (was relief), **direction** (was light) and **surface** (unchanged: satin or glass). The saved fields keep their names (`relief`, `reliefLight`, `reliefStyle`); only the panel labels change, so there is no migration.
 - **Shuffle ranges:** relief strength is now 0.1–0.5 (was 0.2–0.5) and halftone 0.1–0.35 (was 0.15–0.35). Chances stay at 15% and 12%.

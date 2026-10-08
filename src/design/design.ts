@@ -132,6 +132,8 @@ export interface GridMesh {
   nodes: GridNode[];
   /** Half width and height of the rest grid, composition units. */
   rest: [number, number];
+  /** Lines drawn along the bent grid, [0, 1] (opacity, then width); missing or 0 = none (D62). */
+  lines?: number;
 }
 
 /** Aurora blend for new designs: sharper than the look before blend existed (0.6). */
@@ -196,6 +198,15 @@ export interface Warp {
  * put while the image turns. Bands steps ramp gradients along their ramp and
  * meshes along each point's influence.
  */
+/**
+ * How bands cut a mesh. weights: each point's influence in steps (terraces
+ * around each point). facets: the share of the two strongest points in
+ * steps, flat polygons. layers: the blended lightness in steps, contour
+ * layers. Ramps band their position and ignore this. The panel calls them A, B and C.
+ */
+export const BAND_STYLES = ['weights', 'facets', 'layers'] as const;
+export type BandStyle = (typeof BAND_STYLES)[number];
+
 export interface Finish {
   /** Darkening toward the frame corners, [0, 1]; 0 = off. */
   vignette: number;
@@ -203,7 +214,9 @@ export interface Finish {
   bands: number;
   /** Softness of the band edges, [0, 1]: 0 = crisp lines, 1 = soft terraces. */
   bandEdge: number;
-  /** The one fine texture over the finished image (D60): lithograph, xerox or halftone. */
+  /** Mesh only; missing in older saves = weights. */
+  bandStyle: BandStyle;
+  /** The one fine texture over the finished image (D63): lithograph, xerox or halftone. */
   noise: Noise;
   /** Relief (D46): the pattern lit as a height map (lighter = higher), [0, 1]; 0 = off. */
   relief: number;
@@ -213,7 +226,7 @@ export interface Finish {
 }
 
 /**
- * Noise (D60): the print-like textures as one choice. Lithograph (paper tooth, toner specks, darker edges)
+ * Noise (D63): the print-like textures as one choice. Lithograph (paper tooth, toner specks, darker edges)
  * and xerox (a thresholded few-tone screen on top) are per OUTPUT pixel (D4 exception), after the sRGB
  * transfer, and so is grain (analog film grain); halftone is ink dots on paper, in image units. `amount` in [0, 1]; 0 = off.
  */
@@ -261,6 +274,7 @@ export const noFinish: Finish = {
   vignette: 0,
   bands: 0,
   bandEdge: 0,
+  bandStyle: 'weights',
   noise: { type: 'lithograph', amount: 0 },
   relief: 0,
   reliefStyle: 'satin',

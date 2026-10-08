@@ -1,4 +1,4 @@
-// Lists that change how the image looks preview each option as the arrow keys move through it (D60).
+// Lists that change how the image looks preview each option as the arrow keys move through it (D63).
 // (Pixel comparisons can't be used on an open list: a screenshot takes focus away and closes it.)
 import { expect, openApp, test } from './support/app';
 

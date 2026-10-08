@@ -1,4 +1,4 @@
-// Analog film grain (finish stage, D7, D60): per OUTPUT pixel (D4), on sRGB-encoded values,
+// Analog film grain (finish stage, D7, D63): per OUTPUT pixel (D4), on sRGB-encoded values,
 // before dither. Two layers of smooth value noise over output pixels, renormalized so the variance does
 // not dip between lattice points: a fine one (under 1 px, so about white) for the crisp tooth and a coarser one (≈2 px)
 // for the clumping of real film. Lattice values are ≈ gaussian (sum of four 16-bit uniforms) for luma,

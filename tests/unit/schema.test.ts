@@ -19,7 +19,7 @@ describe('design schema', () => {
     const d = loadDesign(v1Linear);
     expect(d.base).toMatchObject({ kind: 'linear', angle: 30, scale: 0.35, seed: 1, noiseStyle: 'contour' });
     expect(d.transform).toEqual(identityTransform);
-    // The version 1 grain (0.35) stays grain (D60).
+    // The version 1 grain (0.35) stays grain (D63).
     expect(d.finish).toEqual({ ...noFinish, noise: { type: 'grain', amount: 0.35 } });
   });
 
@@ -45,7 +45,14 @@ describe('design schema', () => {
     expect(d.finish.relief).toBe(0);
   });
 
-  it('turns every stop of a version 5 ramp into a perceptual blend, and leaves other patterns alone (D60)', () => {
+  it('gives a design saved before band styles the weights style', () => {
+    const saved = saveDesign(defaultDesign).design;
+    const { bandStyle: _bandStyle, ...finish } = saved.finish;
+    const d = loadDesign({ version: SCHEMA_VERSION, design: { ...saved, finish } });
+    expect(d.finish.bandStyle).toBe('weights');
+  });
+
+  it('turns every stop of a version 5 ramp into a perceptual blend, and leaves other patterns alone (D63)', () => {
     const saved = saveDesign(defaultDesign).design;
     const ramp = saved.base as RampGradient;
     const stops = ramp.stops.map((s, i) => ({
@@ -59,7 +66,7 @@ describe('design schema', () => {
     expect(loadDesign({ version: 5, design: mesh }).base).toEqual(mesh.base);
   });
 
-  describe('version 4 to 5: grain, print and halftone become one noise (D60)', () => {
+  describe('version 4 to 5: grain, print and halftone become one noise (D63)', () => {
     const fromV4 = (grain: number, print: number, halftone: number) =>
       loadDesign({
         version: 4,

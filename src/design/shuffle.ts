@@ -119,6 +119,8 @@ export const GRID_SHUFFLE = {
   jitter: 0.35,
   /** Palette colors dealt over the nodes. */
   colors: 5,
+  /** Lines along the bent grid (D62): how often a layout shuffle draws them, and how strong. */
+  lines: { chance: 0.6, range: [0.25, 0.7] as Range },
 };
 
 export const AURORA_SHUFFLE = {
@@ -144,7 +146,7 @@ export const STYLE_SHUFFLE = {
   print: { chance: 0.25, range: [0.15, 0.4] as Range },
   /** Not for planes, which are flat already. */
   bands: { chance: 0.15, range: [0.2, 0.7] as Range },
-  /** Subtle (2026-10-07; ranges set in M12, D60). Light from the upper left. */
+  /** Subtle (2026-10-07; ranges set in M12, D63). Light from the upper left. */
   relief: { chance: 0.15, range: [0.1, 0.5] as Range, light: [100, 170] as Range },
   halftone: { chance: 0.12, range: [0.1, 0.35] as Range },
   planesRoughness: { clean: 0.25, range: [0.3, 1] as Range },
@@ -361,13 +363,14 @@ function shuffleFinish(rng: Rng, flat: boolean): Finish {
   const reliefStyle = rng.next() < 0.5 ? 'satin' : 'glass';
   const reliefLight = Math.round(rng.range(...s.relief.light));
   const halftone = maybe(s.halftone);
-  // Noise (D60) is one texture: when both rolls hit, a coin picks the winner.
+  // Noise (D63) is one texture: when both rolls hit, a coin picks the winner.
   const pickHalftone = halftone > 0 && (print === 0 || rng.next() < 0.5);
   return {
     vignette,
     noise: pickHalftone ? { type: 'halftone', amount: halftone } : { type: 'lithograph', amount: print },
     bands: flat ? 0 : bands,
     bandEdge,
+    bandStyle: noFinish.bandStyle,
     relief,
     reliefStyle: relief > 0 ? reliefStyle : noFinish.reliefStyle,
     reliefLight: relief > 0 ? reliefLight : noFinish.reliefLight,
@@ -449,7 +452,13 @@ function shuffleGrid(base: GridMesh, ctx: ShuffleContext): { pattern: GridMesh; 
   else if (geo === base.nodes) colors = base.nodes.map((n) => copyColor(n.color));
   else colors = dealGridColors(colorRng, baseColors(base), rows, cols);
   const nodes = geo.map((n, i) => ({ x: n.x, y: n.y, color: colors[i] }));
-  return { pattern: { kind: 'grid', rows, cols, nodes, rest }, palette: palette && paletteInfo(palette) };
+  // Drawn last, so the other layout values match earlier shuffles.
+  const lines = opts.layout
+    ? layoutRng.next() < GRID_SHUFFLE.lines.chance
+      ? round4(layoutRng.range(...GRID_SHUFFLE.lines.range))
+      : 0
+    : (base.lines ?? 0);
+  return { pattern: { kind: 'grid', rows, cols, nodes, rest, lines }, palette: palette && paletteInfo(palette) };
 }
 
 /** Aurora: a new layout is a new seed, ribbon count, glow and blend. */

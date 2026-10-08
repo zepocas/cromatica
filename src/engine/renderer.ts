@@ -26,7 +26,14 @@ import {
 } from './ramp-shape';
 import { MAX_PLANES, PLANES_SHADER_CONSTANTS, preparePlanes } from './planes';
 import { AURORA_SHADER_CONSTANTS, MAX_RIBBONS, prepareAurora } from './aurora';
-import { GRID_MAX_STEP, GRID_MIN_DET, GRID_STEPS, MAX_GRID_NODES, prepareGrid } from './grid';
+import {
+  GRID_LINE_SHADER_CONSTANTS,
+  GRID_MAX_STEP,
+  GRID_MIN_DET,
+  GRID_STEPS,
+  MAX_GRID_NODES,
+  prepareGrid,
+} from './grid';
 import { GAMUT_CLIP_STEPS, prepareMesh } from '../color/mesh';
 import { BLUE_NOISE_SIZE, DITHER_CHANNEL_OFFSETS, blueNoiseRanks } from './blue-noise';
 import { prepareFinish, VIGNETTE_INNER } from './finish';
@@ -125,7 +132,13 @@ function gridUniforms(grid: GridMesh) {
   const colors = new Float32Array(MAX_GRID_NODES * 3);
   offsets.set(g.offsets);
   colors.set(g.colors);
-  return { u_gridSize: [g.cols, g.rows], u_gridRest: [g.hw, g.hh], u_gridOffset: offsets, u_gridColor: colors };
+  return {
+    u_gridSize: [g.cols, g.rows],
+    u_gridRest: [g.hw, g.hh],
+    u_gridOffset: offsets,
+    u_gridColor: colors,
+    u_gridLines: g.lines,
+  };
 }
 
 /** Base-pattern variant defines: one of BASE_RAMP (with its shape), BASE_MESH, BASE_PLANES. */
@@ -145,6 +158,7 @@ function baseDefines(base: Design['base']): Defines {
       ...defines,
       MAX_GRID_NODES,
       GAMUT_CLIP_STEPS,
+      ...GRID_LINE_SHADER_CONSTANTS,
       GRID_STEPS,
       GRID_MIN_DET: GRID_MIN_DET.toExponential(),
       GRID_MAX_STEP: String(GRID_MAX_STEP),
@@ -312,6 +326,7 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
         u_vignetteScale: finish.vignetteScale,
         u_bandSteps: finish.bandSteps,
         u_bandEdge: finish.bandEdge,
+        u_bandMode: finish.bandStyle,
         u_printMix: finish.printMix,
         u_printInk: finish.printInk,
         u_printScreen: finish.printScreen,

@@ -3,6 +3,7 @@
 // validated against the current schema.
 import { z } from 'zod';
 import {
+  BAND_STYLES,
   identityTransform,
   MAX_GRID,
   MAX_MESH_POINTS,
@@ -82,6 +83,7 @@ const grid = z
     cols: gridSide,
     nodes: z.array(z.object({ x: z.number(), y: z.number(), color: oklch })),
     rest: z.tuple([z.number().positive(), z.number().positive()]),
+    lines: unit.optional(),
   })
   .refine((g) => g.nodes.length === g.rows * g.cols, { message: 'grid needs rows × cols nodes', path: ['nodes'] });
 
@@ -99,6 +101,7 @@ const designSchema = z.object({
     vignette: unit,
     bands: unit,
     bandEdge: unit,
+    bandStyle: z.enum(BAND_STYLES).default('weights'),
     noise: z.object({ type: z.enum(NOISE_TYPES), amount: unit }),
     relief: unit,
     reliefStyle: z.enum(RELIEF_STYLES),
@@ -148,7 +151,7 @@ const migrations: Record<number, (save: Json) => Json> = {
     const finish = isObject(design.finish) ? design.finish : {};
     return { ...save, version: 4, design: { ...design, finish: { ...FINISH_V4, ...finish } } };
   },
-  // D60: grain, print and halftone become one noise. Print and halftone keep their amounts; grain stays grain.
+  // D63: grain, print and halftone become one noise. Print and halftone keep their amounts; grain stays grain.
   4: (save) => {
     const design = isObject(save.design) ? save.design : {};
     const { grain, ...rest } = design;
@@ -165,7 +168,7 @@ const migrations: Record<number, (save: Json) => Json> = {
           : { type: 'grain', amount: grainAmount };
     return { ...save, version: 5, design: { ...rest, finish: { ...finish, noise } } };
   },
-  // D60: the per-stop blend choice is gone; every ramp blends perceptually.
+  // D63: the per-stop blend choice is gone; every ramp blends perceptually.
   5: (save) => {
     const design = isObject(save.design) ? save.design : {};
     const base = isObject(design.base) ? design.base : {};
