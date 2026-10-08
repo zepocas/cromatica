@@ -51,19 +51,6 @@
         onchange={(on) => (editor.layoutLocked = on)}
       />
     </div>
-    {#if editor.kind === 'mesh' || editor.kind === 'grid'}
-      {@const handles = editor.kind === 'mesh' ? 'points' : 'nodes'}
-      <div class="row">
-        <span>show</span>
-        <Toggle
-          checked={editor.showHandles}
-          label={handles}
-          ariaLabel={`${editor.showHandles ? 'Hide' : 'Show'} ${handles}`}
-          title={`Show or hide the ${handles} on the image (H)`}
-          onchange={(on) => (editor.showHandles = on)}
-        />
-      </div>
-    {/if}
     <div class="row">
       <span>recent</span>
       <button
