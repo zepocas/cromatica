@@ -1,5 +1,11 @@
 # cromatica
 
+[![CI](https://github.com/zepocas/cromatica/actions/workflows/ci.yml/badge.svg)](https://github.com/zepocas/cromatica/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/zepocas/cromatica/actions/workflows/codeql.yml/badge.svg)](https://github.com/zepocas/cromatica/actions/workflows/codeql.yml)
+[![License: MIT](https://img.shields.io/github/license/zepocas/cromatica)](LICENSE)
+[![Live demo](https://img.shields.io/badge/demo-zepocas.github.io%2Fcromatica-black)](https://zepocas.github.io/cromatica/)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-support-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/zepocas)
+
 Generate abstract gradient wallpapers in your browser, at crisp, device-native resolutions. Everything runs client-side: no account, no upload.
 
 **Try it: [zepocas.github.io/cromatica](https://zepocas.github.io/cromatica/)**
