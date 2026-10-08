@@ -114,7 +114,9 @@ export function previewProbe(page: Page) {
   const canvas = page.getByTestId('preview-canvas');
   const settled = async () => {
     await expect(canvas).toHaveAttribute('data-settled', 'true');
-    return canvas.screenshot({ style: 'aside, [data-testid="mesh-overlay"] { visibility: hidden; }' });
+    return canvas.screenshot({
+      style: 'aside, [data-testid="mesh-overlay"], [data-testid="context-overlay"] { visibility: hidden; }',
+    });
   };
   /** Poll until the settled preview differs from `before`. */
   const expectPreviewChanged = async (before: Buffer) => {

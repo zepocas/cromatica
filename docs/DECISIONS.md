@@ -371,7 +371,16 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Panels:** `mid` theme, a step lighter than before (#1b1b1a on a #0b0b0d canvas). A lighter variant (#232322) was too light. The canvas stays as dark as before.
 - **Not done:** a flyout for the extra color settings (it covers the point handles).
 
-## D56. M10 (light/dark pairs) dropped
+## D56. M9 scope: four platforms, measured zones, contrast and busyness
+
+- **Platforms:** Windows, macOS, Android and iOS ship together in M9, one current device each.
+- **Zones are measured** from official screenshots and design guidelines (Apple HIG, Material, Windows), not drawn by eye, and stored with their OS version (D48).
+- **Legibility** flags mid-tones only: zones where neither white nor black text reaches WCAG AA (3:1 for clocks, 4.5:1 for small text) over the zone's worst 10% of pixels. A busyness check (local detail) was built and dropped: the mockup itself shows how busy the area behind the text is, and more checks felt like overkill to the user.
+- **Export set** (several sizes as a ZIP) moves to M11; M9 stays overlays only.
+- **A "view" section** in the panel holds the "os context" picker and takes over the "show points/nodes" toggle. Every context is always listed; portrait outputs list the phone screens first. Arrowing through the list previews each one.
+- **No crop frames:** dropped after building them. How an OS fits a wallpaper is not standard: macOS and Windows "Fill" crop the centre, but iOS lets the user pan and zoom, and Android depends on the launcher and picker. cromatica exports at each device's exact size, so there is nothing for the OS to crop; several devices are served by the M11 export set.
+
+## D57. M10 (light/dark pairs) dropped
 
 - **Decision (2026-10-08):** the feature is not shipped. It was built on `feat/light-dark-pairs` and works: the light palette moved into the low-key band (L 0.12–0.55, D26), each dark color hand-editable, a preview switch, and a two-file export. It was dropped as too niche for what it adds.
 - **Why:** a dark version is already a few steps away. The key select regenerates a generated palette in "low" from the same seed (D28), and any palette can be edited by hand and exported again. A pair export only merges two of those exports, and no OS treats two files as one wallpaper.

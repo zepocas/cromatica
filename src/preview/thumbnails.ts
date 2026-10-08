@@ -9,7 +9,7 @@ import { CONTEXT_ATTRIBUTES, type Renderer } from '../engine/types';
  */
 export interface Thumbnails {
   /** Draw `design` into `target` at its drawing-buffer size, replacing any pending draw for it. */
-  draw(target: HTMLCanvasElement, design: Design): void;
+  draw(target: HTMLCanvasElement, design: Design, ondrawn?: () => void): void;
   /** Drop the pending draw for `target`, if any. */
   cancel(target: HTMLCanvasElement): void;
   dispose(): void;
@@ -21,14 +21,14 @@ export function createThumbnails(): Thumbnails {
   if (!gl) throw new Error('WebGL2 is not available');
   let renderer: Renderer | null = createRenderer(gl);
   // Insertion order is draw order; a redraw request moves to the back.
-  const pending = new Map<HTMLCanvasElement, Design>();
+  const pending = new Map<HTMLCanvasElement, { design: Design; ondrawn?: () => void }>();
   let frame = 0;
 
   function drawNext() {
     frame = 0;
     const next = pending.entries().next();
     if (next.done || !renderer) return;
-    const [target, design] = next.value;
+    const [target, { design, ondrawn }] = next.value;
     pending.delete(target);
     const output = { width: target.width, height: target.height };
     if (output.width > 0 && output.height > 0 && target.isConnected) {
@@ -36,6 +36,7 @@ export function createThumbnails(): Thumbnails {
       canvas.height = output.height;
       renderer.render(design, output, { x: 0, y: 0, ...output }, { dither: true });
       target.getContext('2d')?.drawImage(canvas, 0, 0);
+      ondrawn?.();
     }
     schedule();
   }
@@ -45,9 +46,9 @@ export function createThumbnails(): Thumbnails {
   }
 
   return {
-    draw(target, design) {
+    draw(target, design, ondrawn) {
       pending.delete(target);
-      pending.set(target, design);
+      pending.set(target, { design, ondrawn });
       schedule();
     },
     cancel(target) {

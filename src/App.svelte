@@ -11,6 +11,8 @@
   import MeshOverlay from './ui/MeshOverlay.svelte';
   import MoreLikeThis from './ui/MoreLikeThis.svelte';
   import GridOverlay from './ui/GridOverlay.svelte';
+  import ContextOverlay from './ui/ContextOverlay.svelte';
+  import { CONTEXT_SCREENS } from './context/screens';
   import Preview from './ui/Preview.svelte';
   import { dismissTips, tipsDismissed } from './ui/tips';
   import Tips from './ui/Tips.svelte';
@@ -32,6 +34,9 @@
   let customHeight = $state(1080);
   let format = $state<ExportFormat>('png');
   let collapsed = $state(false);
+  let contextId = $state('');
+  let contextPreview = $state<string | null>(null);
+  const contextScreen = $derived(CONTEXT_SCREENS.find((s) => s.id === (contextPreview ?? contextId)) ?? null);
   // First visit only; `?default` (tests) never shows them.
   let tips = $state(!builtIn && !tipsDismissed());
   /** The "more like this" grid covers the preview. */
@@ -180,6 +185,9 @@
   zoomable={!exploring}
 >
   {#snippet overlay()}
+    {#if !exploring && contextScreen}
+      <ContextOverlay design={renderDesign} {aspect} screen={contextScreen} />
+    {/if}
     {#if exploring}
       <MoreLikeThis
         design={renderDesign}
@@ -207,6 +215,8 @@
   bind:customHeight
   {output}
   bind:format
+  bind:contextId
+  bind:contextPreview
   bind:collapsed
   bind:exploring
   bind:tips
