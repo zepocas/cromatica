@@ -370,3 +370,12 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Bottom of the panel:** colors and favourites sit just above the footer, so they are next to shuffle and download. This holds only while the panel has spare height; on a shorter window the content fills the panel, which scrolls as before. "+ more" expands in place, growing upward into the spare height while there is any, then downward.
 - **Panels:** `mid` theme, a step lighter than before (#1b1b1a on a #0b0b0d canvas). A lighter variant (#232322) was too light. The canvas stays as dark as before.
 - **Not done:** a flyout for the extra color settings (it covers the point handles).
+
+## D56. M9 scope: four platforms, measured zones, contrast and busyness
+
+- **Platforms:** Windows, macOS, Android and iOS ship together in M9, one current device each.
+- **Zones are measured** from official screenshots and design guidelines (Apple HIG, Material, Windows), not drawn by eye, and stored with their OS version (D48).
+- **Legibility** flags mid-tones only: zones where neither white nor black text reaches WCAG AA (3:1 for clocks, 4.5:1 for small text) over the zone's worst 10% of pixels. A busyness check (local detail) was built and dropped: the mockup itself shows how busy the area behind the text is, and more checks felt like overkill to the user.
+- **Export set** (several sizes as a ZIP) moves to M11; M9 stays overlays only.
+- **A "view" section** in the panel holds the "os context" picker and takes over the "show points/nodes" toggle. Every context is always listed; portrait outputs list the phone screens first. Arrowing through the list previews each one.
+- **No crop frames:** dropped after building them. How an OS fits a wallpaper is not standard: macOS and Windows "Fill" crop the centre, but iOS lets the user pan and zoom, and Android depends on the launcher and picker. cromatica exports at each device's exact size, so there is nothing for the OS to crop; several devices are served by the M11 export set.

@@ -313,21 +313,17 @@ Each milestone uses the same structure:
   - **Saves:** version 4 adds `relief`, `reliefStyle`, `reliefLight` and `halftone`; older designs load with both off.
   - **Checks:** both match the CPU reference within 1 level, tile and worker renders are identical, off is bit-identical. Relief costs about 4.5× the render time on SwiftShader (five pattern reads per pixel); the user tried it live and reported no slowdown; not measured on a real GPU.
 
-### M9 — Context preview and legibility
+### M9 — Context preview and legibility ✅
 
 - **Goal:** show how a wallpaper will look with the operating system on top of it, and warn when icons or the clock would be hard to read.
 - **Scope:**
   - **Mockups** for Windows (taskbar, desktop icons), macOS (menu bar, dock, notch), Android (status bar, navigation, home icons, lock-screen clock) and iOS (lock-screen clock and widgets, Dynamic Island, home icon grid).
-  - **Crop frames:** several devices' aspect ratios overlaid on the preview, since one composition exports to many ratios (D4).
-  - **Legibility:** a luminance and busyness check under each platform's icon and clock zones, with a warning (too busy, or mid-tone against light or dark text), and a "calm zone" guide.
+  - **Legibility:** a contrast check under each platform's text zones (clock, date, status, labels, menu bar), with a warning where the area is mid-tone against both light and dark text, and a dotted guide around the checked zones.
 - **UI:** overlays only, never part of an export (D48). Related to the M11 full-screen preview, which could host the same mockups.
 - **Done when:**
   - Each platform's zones are drawn at the right proportions for at least one current device.
-  - The warning flags a busy area under the clock and stays quiet on a calm one.
-- **Open questions:**
-  - Which zones ship first and how they're sourced.
-  - The contrast threshold and what counts as busy.
-  - Whether a batch "export set" (several sizes as a ZIP) belongs here or in M11.
+  - The warning flags a zone no text color reads over and stays quiet on a calm one.
+- **Settled (D56):** all four platforms at once, zones measured from official screenshots and guidelines, legibility checks contrast only (busyness dropped), export set moved to M11. Crop frames dropped: OSes don't fit wallpapers in one standard way.
 
 ### M10 — Light/dark pairs
 
@@ -351,6 +347,7 @@ Each milestone uses the same structure:
   - 1:1 loupe
   - Adaptive preview resolution tuning
   - **Full-screen preview:** shows the wallpaper edge to edge with no panel, to make up for the smaller preview next to the docked sidebar. Esc or a small × in a corner exits. Use the Fullscreen API where available; the render stays at screen resolution so the grain reads true. Handles stay hidden.
+  - **Export set:** several sizes as a ZIP (moved from M9, D56).
   - Export progress and cancel
   - Context-loss recovery
   - Shader compile warm-up
