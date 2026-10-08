@@ -154,7 +154,7 @@ test.describe('radial and conic gradients', () => {
 test.describe('finish: vignette and bands', () => {
   const withFinish = (d: Design, vignette: number, bands: number, bandEdge = 0, print = 0): Design => ({
     ...d,
-    finish: { ...noFinish, vignette, bands, bandEdge, print },
+    finish: { ...noFinish, vignette, bands, bandEdge, noise: { type: 'lithograph', amount: print } },
   });
 
   test('vignette matches the CPU reference on linear and mesh', async ({ page }) => {

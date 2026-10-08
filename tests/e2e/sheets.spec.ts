@@ -7,9 +7,9 @@ import { join } from 'node:path';
 import type { Oklch } from '../../src/color/types';
 import {
   AURORA_BLEND,
-  defaultGrain,
   type Design,
   noFinish,
+  type Noise,
   type RampGradient,
   type ReliefStyle,
   type Warp,
@@ -22,6 +22,7 @@ import { LEGACY_AURORA_BLEND } from '../../src/design/schema';
 import { shuffleDesign } from '../../src/design/shuffle';
 import { previewProbe } from './support/app';
 import {
+  defaultNoise,
   gridColors,
   gridDesign,
   linear,
@@ -31,6 +32,7 @@ import {
   threeStops,
   warp,
   withLook,
+  withNoise,
 } from './support/designs';
 
 const midTonesFive = linear(0, [
@@ -47,7 +49,7 @@ const DIR = process.env.SHEETS_DIR ?? '/tmp';
 test.skip(!process.env.SHEETS, 'visual sheets: set SHEETS=1');
 
 test.describe('warp contact sheets', () => {
-  const sheetBase: Design = { ...meshDefault, grain: defaultGrain };
+  const sheetBase: Design = withNoise(meshDefault, defaultNoise);
   const sheets: [string, string[], (shape: WarpShape, i: number) => Warp][] = [
     ['warps-amount.png', ['amount 0.2', 'amount 0.5', 'amount 0.8'], (s, i) => warp(s, [0.2, 0.5, 0.8][i], 0.35, 1)],
     ['warps-size.png', ['size 0.1', 'size 0.5', 'size 0.9'], (s, i) => warp(s, 0.4, [0.1, 0.5, 0.9][i], 1)],
@@ -57,7 +59,7 @@ test.describe('warp contact sheets', () => {
       await openEngineHarness(page);
       const rows = WARP_SHAPES.map((shape) => ({
         label: shape,
-        designs: columns.map((_, i) => withLook(sheetBase, make(shape, i), defaultGrain)),
+        designs: columns.map((_, i) => withLook(sheetBase, make(shape, i), defaultNoise)),
       }));
       const png = await engineHarness(page, 'contactSheet', rows, columns, 480, 270);
       writeFileSync(join(DIR, file), Buffer.from(png, 'base64'));
@@ -108,7 +110,6 @@ test.describe('planes contact sheets', () => {
   ];
   const planes = (colors: Oklch[], count: number, roughness: number, seed: number, blend = 0): Design => ({
     ...meshDefault,
-    grain: defaultGrain,
     base: { kind: 'planes', colors, count, roughness, blend, seed },
   });
   const sheets: [string, string[], (colors: Oklch[], i: number, row: number) => Design][] = [
@@ -138,7 +139,6 @@ test('noise-cells.png', async ({ page }) => {
   const cols = ['scale 0.1', 'scale 0.35', 'scale 0.7'];
   const field = (kind: 'noise' | 'cells', stops: Design, scale: number, seed: number): Design => ({
     ...stops,
-    grain: defaultGrain,
     base: { ...(stops.base as RampGradient), kind, scale, seed },
   });
   const ridged = (d: Design): Design => ({ ...d, base: { ...(d.base as RampGradient), noiseStyle: 'ridged' } });
@@ -188,7 +188,6 @@ test('aurora.png', async ({ page }) => {
     label,
     designs: [0.2, 0.5, 0.9].map((glow): Design => ({
       ...meshDefault,
-      grain: defaultGrain,
       base: { kind: 'aurora', colors, count: 0.5, glow, blend: AURORA_BLEND, seed: r + 3 },
     })),
   }));
@@ -201,7 +200,6 @@ test('aurora.png', async ({ page }) => {
     label,
     designs: blends.map((blend): Design => ({
       ...meshDefault,
-      grain: defaultGrain,
       base: { kind: 'aurora', colors, count: 0.5, glow: 0.5, blend, seed: r + 3 },
     })),
   }));
@@ -222,7 +220,7 @@ test('grid.png', async ({ page }) => {
     ] as const
   ).map(([label, r, c]) => ({
     label,
-    designs: [0, 1, 2.5].map((bend) => ({ ...gridDesign(r, c, bend, gridColors), grain: defaultGrain })),
+    designs: [0, 1, 2.5].map((bend) => withNoise(gridDesign(r, c, bend, gridColors), defaultNoise)),
   }));
   const png = await engineHarness(page, 'contactSheet', rows, cols, 640, 360);
   writeFileSync(join(DIR, 'grid.png'), Buffer.from(png, 'base64'));
@@ -246,21 +244,20 @@ test('six shuffles in a row', async ({ page }) => {
 
 test('print.png', async ({ page }) => {
   await openEngineHarness(page);
-  const amounts = [0.15, 0.3, 0.5, 0.8];
-  const cols = amounts.map((a) => `print ${a}`);
+  const looksOfNoise: Noise[] = [
+    { type: 'lithograph', amount: 0.3 },
+    { type: 'lithograph', amount: 0.7 },
+    { type: 'lithograph', amount: 1 },
+    { type: 'xerox', amount: 0.5 },
+    { type: 'xerox', amount: 1 },
+  ];
+  const cols = looksOfNoise.map((n) => `${n.type} ${n.amount}`);
   const looks: [string, Design][] = [
     ['planes', planesDesign(0.4, 0.5)],
     ['mesh', meshDefault],
     ['mid tones', midTones],
   ];
-  const rows = looks.map(([label, d]) => ({
-    label,
-    designs: amounts.map((print) => ({
-      ...d,
-      grain: defaultGrain,
-      finish: { ...noFinish, print },
-    })),
-  }));
+  const rows = looks.map(([label, d]) => ({ label, designs: looksOfNoise.map((noise) => withNoise(d, noise)) }));
   const png = await engineHarness(page, 'contactSheet', rows, cols, 800, 450);
   writeFileSync(join(DIR, process.env.PRINT_SHEET ?? 'print.png'), Buffer.from(png, 'base64'));
 });
@@ -276,7 +273,7 @@ test('brushed.png', async ({ page }) => {
   ];
   const rows = looks.map(([label, d]) => ({
     label,
-    designs: sizes.map((size) => withLook(d, warp('bristle', 0.5, size, 3), defaultGrain)),
+    designs: sizes.map((size) => withLook(d, warp('bristle', 0.5, size, 3), defaultNoise)),
   }));
   const png = await engineHarness(page, 'contactSheet', rows, cols, 800, 450);
   writeFileSync(join(DIR, process.env.BRUSHED_SHEET ?? 'brushed.png'), Buffer.from(png, 'base64'));
@@ -288,7 +285,7 @@ test('variations.png', async ({ page }) => {
   const strengths = [0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95, 1];
   const cols = ['original', ...strengths.map((s) => `${s}`)];
   const rows = [];
-  let d: Design = { ...meshDefault, grain: defaultGrain };
+  let d: Design = withNoise(meshDefault, defaultNoise);
   for (let seed = 11; rows.length < 6; seed++) {
     d = shuffleDesign(d, { colors: true, layout: true, style: true, seed }).design;
     const base = d;
@@ -346,7 +343,6 @@ test('relief.png', async ({ page }) => {
     label,
     designs: settings.map(([, reliefStyle, relief]) => ({
       ...d,
-      grain: defaultGrain,
       finish: { ...noFinish, ...d.finish, relief, reliefStyle },
     })),
   }));
@@ -377,7 +373,6 @@ test('relief-light.png', async ({ page }) => {
     label,
     designs: lights.map((reliefLight) => ({
       ...d,
-      grain: defaultGrain,
       finish: { ...noFinish, relief: 0.7, reliefStyle, reliefLight },
     })),
   }));
@@ -402,7 +397,10 @@ test('halftone.png', async ({ page }) => {
   const amounts = [0, 0.2, 0.4, 0.6, 0.8, 1];
   const rows = looks.map(([label, d]) => ({
     label,
-    designs: amounts.map((halftone) => ({ ...d, grain: defaultGrain, finish: { ...noFinish, ...d.finish, halftone } })),
+    designs: amounts.map((halftone) => ({
+      ...d,
+      finish: { ...noFinish, ...d.finish, noise: { type: 'halftone' as const, amount: halftone } },
+    })),
   }));
   const cols = amounts.map((a) => (a === 0 ? 'off' : `halftone ${a}`));
   // Whole images, then 1:1 crops of a 1920×1080 export, where the dots are their real size.

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { defaultDesign, defaultMesh, identityTransform, noFinish, type Design } from '../../src/design/design';
+import {
+  defaultDesign,
+  defaultMesh,
+  identityTransform,
+  noFinish,
+  type Design,
+  type RampGradient,
+} from '../../src/design/design';
 import { DesignLoadError, LEGACY_AURORA_BLEND, loadDesign, saveDesign, SCHEMA_VERSION } from '../../src/design/schema';
 import { shuffleDesign } from '../../src/design/shuffle';
 import v1Linear from './fixtures/design-v1-linear.json';
@@ -12,7 +19,8 @@ describe('design schema', () => {
     const d = loadDesign(v1Linear);
     expect(d.base).toMatchObject({ kind: 'linear', angle: 30, scale: 0.35, seed: 1, noiseStyle: 'contour' });
     expect(d.transform).toEqual(identityTransform);
-    expect(d.finish).toEqual(noFinish);
+    // The version 1 grain (0.35) stays grain (D63).
+    expect(d.finish).toEqual({ ...noFinish, noise: { type: 'grain', amount: 0.35 } });
   });
 
   it('keeps the fields a version 1 design did set', () => {
@@ -32,7 +40,8 @@ describe('design schema', () => {
     const saved = saveDesign(defaultDesign).design;
     const finish = { vignette: 0.3, bands: 0.2, bandEdge: 0.5, print: 0.1 };
     const d = loadDesign({ version: 3, design: { ...saved, finish } });
-    expect(d.finish).toEqual({ ...noFinish, ...finish });
+    const { print, ...kept } = finish;
+    expect(d.finish).toEqual({ ...noFinish, ...kept, noise: { type: 'lithograph', amount: print / 0.7 } });
     expect(d.finish.relief).toBe(0);
   });
 
@@ -41,6 +50,62 @@ describe('design schema', () => {
     const { bandStyle: _bandStyle, ...finish } = saved.finish;
     const d = loadDesign({ version: SCHEMA_VERSION, design: { ...saved, finish } });
     expect(d.finish.bandStyle).toBe('weights');
+  });
+
+  it('turns every stop of a version 5 ramp into a perceptual blend, and leaves other patterns alone (D63)', () => {
+    const saved = saveDesign(defaultDesign).design;
+    const ramp = saved.base as RampGradient;
+    const stops = ramp.stops.map((s, i) => ({
+      ...s,
+      blend: (['oklch-long', 'oklab-chroma', 'oklch-short'] as const)[i % 3],
+    }));
+    const d = loadDesign({ version: 5, design: { ...saved, base: { ...ramp, stops } } });
+    expect((d.base as typeof ramp).stops.map((s) => s.blend)).toEqual(ramp.stops.map(() => 'oklab'));
+    expect((d.base as typeof ramp).stops.map((s) => s.color)).toEqual(ramp.stops.map((s) => s.color));
+    const mesh = saveDesign({ ...defaultDesign, base: defaultMesh }).design;
+    expect(loadDesign({ version: 5, design: mesh }).base).toEqual(mesh.base);
+  });
+
+  describe('version 4 to 5: grain, print and halftone become one noise (D63)', () => {
+    const fromV4 = (grain: number, print: number, halftone: number) =>
+      loadDesign({
+        version: 4,
+        design: {
+          ...saveDesign(defaultDesign).design,
+          grain: { amount: grain, size: 0 },
+          finish: {
+            vignette: 0.2,
+            bands: 0,
+            bandEdge: 0,
+            print,
+            relief: 0,
+            reliefStyle: 'satin',
+            reliefLight: 135,
+            halftone,
+          },
+        },
+      }).finish;
+
+    it('keeps a gentle print as lithograph, rescaled so it looks the same', () => {
+      expect(fromV4(0.35, 0.35, 0).noise).toEqual({ type: 'lithograph', amount: 0.5 });
+    });
+
+    it('turns a print past the lithograph range into a xerox of the same amount', () => {
+      expect(fromV4(0.35, 0.85, 0).noise).toEqual({ type: 'xerox', amount: 0.85 });
+    });
+
+    it('keeps halftone when there is no print', () => {
+      expect(fromV4(0.35, 0, 0.4).noise).toEqual({ type: 'halftone', amount: 0.4 });
+    });
+
+    it('keeps grain alone as grain, and nothing as off', () => {
+      expect(fromV4(0.4, 0, 0).noise).toEqual({ type: 'grain', amount: 0.4 });
+      expect(fromV4(0, 0, 0).noise).toEqual({ type: 'grain', amount: 0 });
+    });
+
+    it('keeps the other finishes', () => {
+      expect(fromV4(0.35, 0.35, 0).vignette).toBe(0.2);
+    });
   });
 
   it('saves the current version', () => {
@@ -68,7 +133,14 @@ describe('design schema', () => {
       { version: SCHEMA_VERSION + 1, design: defaultDesign },
       { ...v1Linear, engineVersion: 2 },
       { ...v1Linear, warp: { ...v1Linear.warp, shape: 'gone' } },
-      { ...v1Linear, grain: { amount: 2, size: 0 } },
+      {
+        version: SCHEMA_VERSION,
+        design: { ...saveDesign(defaultDesign).design, finish: { ...noFinish, noise: { type: 'xerox', amount: 2 } } },
+      },
+      {
+        version: SCHEMA_VERSION,
+        design: { ...saveDesign(defaultDesign).design, finish: { ...noFinish, noise: { type: 'sepia', amount: 0.5 } } },
+      },
       { ...v1Mesh, base: { ...v1Mesh.base, points: [] } },
       { ...v1Linear, base: { ...v1Linear.base, kind: 'spiral' } },
     ];

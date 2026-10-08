@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { noFinish } from '../../src/design/design';
+import { prepareGrain } from '../../src/engine/grain';
 import { bandLevel, prepareFinish, stepLightness, VIGNETTE_INNER, vignetteFactor } from '../../src/engine/finish';
 
 const frame = { width: 1600, height: 900 };
@@ -7,13 +8,13 @@ const corner: [number, number] = [1600 / 900 / 2, 0.5];
 
 describe('vignette', () => {
   it('is exactly 1 everywhere when off', () => {
-    const f = prepareFinish({ ...noFinish, vignette: 0, bands: 0, bandEdge: 0, print: 0 }, frame);
+    const f = prepareFinish({ ...noFinish, vignette: 0, bands: 0, bandEdge: 0 }, frame);
     expect(vignetteFactor(f, ...corner)).toBe(1);
     expect(prepareFinish(undefined, frame).vignette).toBe(0);
   });
 
   it('leaves the middle alone and darkens the corners by up to 75%', () => {
-    const f = prepareFinish({ ...noFinish, vignette: 1, bands: 0, bandEdge: 0, print: 0 }, frame);
+    const f = prepareFinish({ ...noFinish, vignette: 1, bands: 0, bandEdge: 0 }, frame);
     expect(vignetteFactor(f, 0, 0)).toBe(1);
     const inner = VIGNETTE_INNER * Math.hypot(...corner);
     expect(vignetteFactor(f, inner * 0.99, 0)).toBe(1);
@@ -25,25 +26,25 @@ describe('vignette', () => {
 
 describe('bands', () => {
   it('is the identity when off', () => {
-    const f = prepareFinish({ ...noFinish, vignette: 0, bands: 0, bandEdge: 0, print: 0 }, frame);
+    const f = prepareFinish({ ...noFinish, vignette: 0, bands: 0, bandEdge: 0 }, frame);
     for (const t of [0, 0.123, 0.5, 1]) expect(bandLevel(f, t)).toBe(t);
   });
 
   it('steps the ramp, keeping both ends exact', () => {
     for (const bands of [0.01, 0.5, 1]) {
-      const f = prepareFinish({ ...noFinish, vignette: 0, bands, bandEdge: 0, print: 0 }, frame);
+      const f = prepareFinish({ ...noFinish, vignette: 0, bands, bandEdge: 0 }, frame);
       expect(bandLevel(f, 0)).toBe(0);
       expect(bandLevel(f, 1)).toBe(1);
       const levels = new Set<number>();
       for (let i = 0; i <= 1000; i++) levels.add(bandLevel(f, i / 1000));
       expect(levels.size).toBe(f.bandSteps);
     }
-    expect(prepareFinish({ ...noFinish, vignette: 0, bands: 0.01, bandEdge: 0, print: 0 }, frame).bandSteps).toBe(24);
-    expect(prepareFinish({ ...noFinish, vignette: 0, bands: 1, bandEdge: 0, print: 0 }, frame).bandSteps).toBe(3);
+    expect(prepareFinish({ ...noFinish, vignette: 0, bands: 0.01, bandEdge: 0 }, frame).bandSteps).toBe(24);
+    expect(prepareFinish({ ...noFinish, vignette: 0, bands: 1, bandEdge: 0 }, frame).bandSteps).toBe(3);
   });
 
   it('a soft edge rises smoothly into the next step, still flat inside and exact at the ends', () => {
-    const f = prepareFinish({ ...noFinish, vignette: 0, bands: 0.5, bandEdge: 0.4, print: 0 }, frame);
+    const f = prepareFinish({ ...noFinish, vignette: 0, bands: 0.5, bandEdge: 0.4 }, frame);
     const n = f.bandSteps;
     expect(bandLevel(f, 0)).toBe(0);
     expect(bandLevel(f, 1)).toBe(1);
@@ -61,17 +62,48 @@ describe('bands', () => {
   });
 });
 
-describe('print', () => {
-  it('is off at 0, fades in, and goes from litho ink texture to a xerox screen', () => {
-    const at = (print: number) => prepareFinish({ ...noFinish, vignette: 0, bands: 0, bandEdge: 0, print }, frame);
-    expect(at(0).printMix).toBe(0);
-    expect(at(0.1).printMix).toBeGreaterThan(0);
-    expect(at(0.1).printMix).toBeLessThan(1);
-    expect(at(0.5).printMix).toBe(1);
-    expect(at(0.3).printScreen).toBe(0);
-    expect(at(1).printScreen).toBe(1);
-    expect(at(1).printInk).toBeGreaterThan(at(0.3).printInk);
-    expect(at(1).printSpeckle).toBeGreaterThan(at(0.3).printSpeckle);
+describe('noise', () => {
+  const at = (type: 'lithograph' | 'xerox' | 'halftone', amount: number) =>
+    prepareFinish({ ...noFinish, noise: { type, amount } }, frame);
+
+  it('is off at 0 and for halftone, which is not a print texture', () => {
+    expect(at('lithograph', 0).printMix).toBe(0);
+    expect(at('xerox', 0).printMix).toBe(0);
+    expect(at('halftone', 1).printMix).toBe(0);
+  });
+
+  it('lithograph fades in and never blends the xerox screen', () => {
+    expect(at('lithograph', 0.1).printMix).toBeGreaterThan(0);
+    expect(at('lithograph', 0.1).printMix).toBeLessThan(1);
+    expect(at('lithograph', 0.7).printMix).toBe(1);
+    expect(at('lithograph', 1).printScreen).toBe(0);
+  });
+
+  it('xerox adds the thresholded screen and grows with its amount', () => {
+    expect(at('xerox', 1).printScreen).toBe(1);
+    expect(at('xerox', 0.3).printScreen).toBeGreaterThan(0);
+    expect(at('xerox', 1).printInk).toBeGreaterThan(at('xerox', 0.3).printInk);
+    expect(at('xerox', 1).printSpeckle).toBeGreaterThan(at('xerox', 0.3).printSpeckle);
+  });
+
+  it('lithograph tops out where the old print slider started to turn xerox', () => {
+    expect(at('lithograph', 1).printInk).toBeCloseTo(at('xerox', 0.7).printInk, 10);
+  });
+});
+
+describe('grain', () => {
+  const seed = (amount: number) => prepareGrain({ type: 'grain', amount }).seed;
+
+  it('is off for the other noise types and at 0', () => {
+    expect(prepareGrain({ type: 'xerox', amount: 1 }).sigma).toBe(0);
+    expect(prepareGrain({ type: 'grain', amount: 0 }).sigma).toBe(0);
+    expect(prepareGrain(undefined).sigma).toBe(0);
+  });
+
+  it('gets a different pattern at every notch of the amount, and the same one for the same amount', () => {
+    expect(seed(0.5)).toBe(seed(0.5));
+    expect(seed(0.5)).not.toBe(seed(0.51));
+    expect(new Set(Array.from({ length: 101 }, (_, i) => seed(i / 100))).size).toBe(101);
   });
 });
 

@@ -1,6 +1,6 @@
 // The design: everything that defines an image, independent of resolution
 // (D4). A base pattern (linear gradient or color-point mesh), a warp, film
-// grain and a whole-image transform. Versioned by engineVersion; the full
+// noise and a whole-image transform. Versioned by engineVersion; the full
 // saved-design schema comes with M6.
 import type { Oklch } from '../color/types';
 
@@ -193,17 +193,6 @@ export interface Warp {
 }
 
 /**
- * Film grain (finish stage, D7). Defined per OUTPUT pixel (D4 exception),
- * applied after the sRGB transfer and before dither; strongest in midtones.
- */
-export interface Grain {
-  /** [0, 1]; 0 = off. */
-  amount: number;
-  /** [0, 1]; 0 = finest (≈1 px), 1 = coarse (≈3 px). */
-  size: number;
-}
-
-/**
  * Finishing effects (M4.5, D33), after the base pattern. Vignette is defined
  * on the frame (composition coords, before transform and warp), so it stays
  * put while the image turns. Bands steps ramp gradients along their ramp and
@@ -227,15 +216,25 @@ export interface Finish {
   bandEdge: number;
   /** Mesh only; missing in older saves = weights. */
   bandStyle: BandStyle;
-  /** Print texture, [0, 1]: lithograph at the low end, xerox at the high end; 0 = off. */
-  print: number;
+  /** The one fine texture over the finished image (D63): lithograph, xerox or halftone. */
+  noise: Noise;
   /** Relief (D46): the pattern lit as a height map (lighter = higher), [0, 1]; 0 = off. */
   relief: number;
   reliefStyle: ReliefStyle;
   /** Where the light comes from, degrees counter-clockwise from the right, [0, 360). Fixed on screen. */
   reliefLight: number;
-  /** Halftone ink dots on paper, [0, 1]: the contrast between ink and paper; 0 = off. Dots are in image units. */
-  halftone: number;
+}
+
+/**
+ * Noise (D63): the print-like textures as one choice. Lithograph (paper tooth, toner specks, darker edges)
+ * and xerox (a thresholded few-tone screen on top) are per OUTPUT pixel (D4 exception), after the sRGB
+ * transfer, and so is grain (analog film grain); halftone is ink dots on paper, in image units. `amount` in [0, 1]; 0 = off.
+ */
+export const NOISE_TYPES = ['lithograph', 'xerox', 'halftone', 'grain'] as const;
+export type NoiseType = (typeof NOISE_TYPES)[number];
+export interface Noise {
+  type: NoiseType;
+  amount: number;
 }
 
 /** Satin: soft shading and sheen. Glass: the pattern refracted under the surface, bright rims. */
@@ -244,8 +243,8 @@ export type ReliefStyle = (typeof RELIEF_STYLES)[number];
 
 /**
  * Whole-image transform (D24), applied to composition coords before the
- * warp, so the warp turns, scales and mirrors with the pattern. Grain and
- * dither stay on the output pixel grid. Pattern coords are
+ * warp, so the warp turns, scales and mirrors with the pattern. Lithograph and
+ * xerox noise and dither stay on the output pixel grid. Pattern coords are
  *   q = S · R(-rotate) · p / zoom,   S = diag(flipX ? -1 : 1, flipY ? -1 : 1)
  * (src/engine/transform.ts). Flipping in pattern space means a flip button
  * that mirrors the image as seen on screen must also negate `rotate`.
@@ -263,7 +262,6 @@ export interface Design {
   engineVersion: 1;
   base: BasePattern;
   warp: Warp;
-  grain: Grain;
   /** Missing (designs saved before transforms existed) = identity. */
   transform?: Transform;
   /** Missing = no finish. */
@@ -272,18 +270,15 @@ export interface Design {
 
 export const defaultWarp: Warp = { shape: 'domain', amount: 0.3, size: 0.35, seed: 1 };
 export const noWarp: Warp = { shape: 'none', amount: 0, size: 0.5, seed: 1 };
-export const defaultGrain: Grain = { amount: 0.35, size: 0 };
-export const noGrain: Grain = { amount: 0, size: 0 };
 export const noFinish: Finish = {
   vignette: 0,
   bands: 0,
   bandEdge: 0,
   bandStyle: 'weights',
-  print: 0,
+  noise: { type: 'lithograph', amount: 0 },
   relief: 0,
   reliefStyle: 'satin',
   reliefLight: 135,
-  halftone: 0,
 };
 export const identityTransform: Transform = { rotate: 0, zoom: 1, flipX: false, flipY: false };
 export const MIN_ZOOM = 0.5;
@@ -298,7 +293,6 @@ export const MAX_RADIUS = 1.2;
 export const defaultDesign: Design = {
   engineVersion: 1,
   warp: noWarp,
-  grain: noGrain,
   base: {
     kind: 'linear',
     angle: 30,

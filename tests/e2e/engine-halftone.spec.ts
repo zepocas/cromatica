@@ -10,7 +10,7 @@ test.beforeEach(async ({ page }) => {
 
 const withHalftone = (d: Design, halftone: number, extra: Partial<Finish> = {}): Design => ({
   ...d,
-  finish: { ...noFinish, halftone, ...extra },
+  finish: { ...noFinish, noise: { type: 'halftone', amount: halftone }, ...extra },
 });
 
 test('halftone 0 is bit-identical to no halftone', async ({ page }) => {

@@ -1,5 +1,5 @@
 // Integer hashes (mirrored bit-exactly by src/engine/noise.ts). Used by the
-// warp stage and the grain, so every value is a pure function of its inputs.
+// warp stage, the print texture and the grain, so every value is a pure function of its inputs.
 
 // pcg3d (Jarzynski & Olano 2020).
 uvec3 pcg3d(uvec3 v) {

@@ -4,11 +4,15 @@ import type { Rgb } from '../../src/color/types';
 import { noFinish } from '../../src/design/design';
 import { applyHalftone, halftoneContrast } from '../../src/engine/halftone';
 
-const contrast = (amount: number) => halftoneContrast({ ...noFinish, halftone: amount });
+const contrast = (amount: number) => halftoneContrast({ ...noFinish, noise: { type: 'halftone', amount } });
 const PIXEL = 1 / 1080;
 const Y = (c: Rgb) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
 
 describe('halftone', () => {
+  it('is off for the other noise types', () => {
+    expect(halftoneContrast({ ...noFinish, noise: { type: 'xerox', amount: 1 } })).toBe(0);
+  });
+
   it('is off at 0', () => {
     expect(contrast(0)).toBe(0);
   });
@@ -40,7 +44,9 @@ describe('halftone', () => {
     for (let i = 0; i < 400; i++) {
       lightness.add(Math.round(linearSrgbToOklab(applyHalftone(k, color, i * fine, 0.1, fine))[0] * 100));
     }
-    expect(lightness.has(Math.round(L * (1 - k) * 100))).toBe(true);
-    expect(lightness.has(Math.round((L + k * (1 - L)) * 100))).toBe(true);
+    // Near, not exact: at high contrast the paper tone of a saturated color is trimmed to fit the gamut.
+    const reaches = (target: number) => [...lightness].some((l) => Math.abs(l - Math.round(target * 100)) <= 3);
+    expect(reaches(L * (1 - k))).toBe(true);
+    expect(reaches(L + k * (1 - L))).toBe(true);
   });
 });

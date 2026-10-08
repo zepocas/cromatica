@@ -12,8 +12,8 @@ export const VIGNETTE_INNER = 0.35;
 /** Print texture: tooth modulation of the ink at print 1, and the screen's tones per channel. */
 const PRINT_INK = 0.35;
 const PRINT_LEVELS = 3;
-/** Print range over which the thresholded screen (xerox) is blended in. */
-const PRINT_SCREEN: [from: number, to: number] = [0.7, 1];
+/** Lithograph's top end on the print scale: just where the old slider started to blend the xerox screen in. */
+const LITHO_MAX = 0.7;
 /** Print amount over which the effect fades in, so the slider starts gently. */
 const PRINT_FADE_IN = 0.25;
 /** Fraction of pixels that get a toner speck at print 1. */
@@ -48,9 +48,21 @@ export interface PreparedFinish {
   printEdge: number;
 }
 
+/**
+ * The print scale (ink, speckle, edges) and screen mix of the noise: lithograph is the gentle end,
+ * xerox the same texture at full range with the thresholded screen blended in; halftone is not print.
+ */
+function printLook(finish: Finish | undefined): { print: number; screen: number } {
+  const noise = finish?.noise;
+  const amount = clamp01(noise?.amount ?? 0);
+  if (noise?.type === 'lithograph') return { print: LITHO_MAX * amount, screen: 0 };
+  if (noise?.type === 'xerox') return { print: amount, screen: smoothstep(0, 1, amount) };
+  return { print: 0, screen: 0 };
+}
+
 export function prepareFinish(finish: Finish | undefined, output: OutputSize): PreparedFinish {
   const bands = clamp01(finish?.bands ?? 0);
-  const print = clamp01(finish?.print ?? 0);
+  const { print, screen } = printLook(finish);
   return {
     vignette: VIGNETTE_MAX * clamp01(finish?.vignette ?? 0),
     vignetteScale: 1 / (0.5 * Math.hypot(output.width / output.height, 1)),
@@ -59,7 +71,7 @@ export function prepareFinish(finish: Finish | undefined, output: OutputSize): P
     bandStyle: Math.max(0, BAND_STYLES.indexOf(finish?.bandStyle ?? 'weights')),
     printMix: smoothstep(0, PRINT_FADE_IN, print),
     printInk: PRINT_INK * print,
-    printScreen: smoothstep(PRINT_SCREEN[0], PRINT_SCREEN[1], print),
+    printScreen: screen,
     printLevels: PRINT_LEVELS,
     printSpeckle: PRINT_SPECKLE * print * print,
     printEdge: PRINT_EDGE * print,

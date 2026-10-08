@@ -12,12 +12,15 @@ import {
   MIN_ZOOM,
   MAX_ZOOM,
   noFinish,
+  NOISE_TYPES,
   RELIEF_STYLES,
   WARP_SHAPES,
   type Design,
 } from './design';
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 6;
+/** Where lithograph ends on the version-4 print scale; above it a print was a xerox. */
+const LITHO_END = 0.7;
 /** Aurora blend that reproduces auroras saved before blend existed. */
 export const LEGACY_AURORA_BLEND = 0.6;
 
@@ -33,7 +36,7 @@ const rampGradient = z.object({
       z.object({
         position: unit,
         color: oklch,
-        blend: z.enum(['oklab', 'oklab-chroma', 'oklch-short', 'oklch-long']),
+        blend: z.literal('oklab'),
       }),
     )
     .min(1)
@@ -88,7 +91,6 @@ const designSchema = z.object({
   engineVersion: z.literal(1),
   base: z.union([rampGradient, pointMesh, planes, aurora, grid]),
   warp: z.object({ shape: z.enum(WARP_SHAPES), amount: unit, size: unit, seed }),
-  grain: z.object({ amount: unit, size: unit }),
   transform: z.object({
     rotate: z.number().min(0).lt(360),
     zoom: z.number().min(MIN_ZOOM).max(MAX_ZOOM),
@@ -100,11 +102,10 @@ const designSchema = z.object({
     bands: unit,
     bandEdge: unit,
     bandStyle: z.enum(BAND_STYLES).default('weights'),
-    print: unit,
+    noise: z.object({ type: z.enum(NOISE_TYPES), amount: unit }),
     relief: unit,
     reliefStyle: z.enum(RELIEF_STYLES),
     reliefLight: z.number().min(0).lt(360),
-    halftone: unit,
   }),
 });
 
@@ -116,17 +117,29 @@ export type SavedDesign = z.infer<typeof designSchema>;
 type Json = Record<string, unknown>;
 const isObject = (x: unknown): x is Json => typeof x === 'object' && x !== null && !Array.isArray(x);
 
+/** The finish as version 4 stored it: what migrations fill in, frozen so later changes to noFinish don't leak into them. */
+const FINISH_V4 = {
+  vignette: 0,
+  bands: 0,
+  bandEdge: 0,
+  print: 0,
+  relief: 0,
+  reliefStyle: 'satin',
+  reliefLight: 135,
+  halftone: 0,
+};
+
 /** The defaults that missing optional fields of a Design stand for. */
-function withDefaults(design: Json): Json {
+function withDefaults(design: Json, finish: object = noFinish): Json {
   const base = isObject(design.base) ? design.base : {};
   const ramp = 'stops' in base ? { scale: 0.35, seed: 1, noiseStyle: 'contour', ...base } : base;
-  return { transform: identityTransform, finish: noFinish, ...design, base: ramp };
+  return { transform: identityTransform, finish, ...design, base: ramp };
 }
 
 /** migrations[v] turns a version-v save into a version v + 1 save. */
 const migrations: Record<number, (save: Json) => Json> = {
   // Version 1 is a bare Design as kept in memory before M6.
-  1: (design) => ({ version: 2, design: withDefaults(design) }),
+  1: (design) => ({ version: 2, design: withDefaults(design, FINISH_V4) }),
   2: (save) => {
     const design = isObject(save.design) ? save.design : {};
     const base = isObject(design.base) ? design.base : {};
@@ -136,7 +149,33 @@ const migrations: Record<number, (save: Json) => Json> = {
   3: (save) => {
     const design = isObject(save.design) ? save.design : {};
     const finish = isObject(design.finish) ? design.finish : {};
-    return { ...save, version: 4, design: { ...design, finish: { ...noFinish, ...finish } } };
+    return { ...save, version: 4, design: { ...design, finish: { ...FINISH_V4, ...finish } } };
+  },
+  // D63: grain, print and halftone become one noise. Print and halftone keep their amounts; grain stays grain.
+  4: (save) => {
+    const design = isObject(save.design) ? save.design : {};
+    const { grain, ...rest } = design;
+    const { print, halftone, ...finish } = isObject(design.finish) ? design.finish : ({} as Json);
+    const num = (x: unknown) => (typeof x === 'number' && x > 0 ? x : 0);
+    const grainAmount = isObject(grain) ? num(grain.amount) : 0;
+    const noise =
+      num(print) > 0
+        ? num(print) < LITHO_END
+          ? { type: 'lithograph', amount: num(print) / LITHO_END }
+          : { type: 'xerox', amount: num(print) }
+        : num(halftone) > 0
+          ? { type: 'halftone', amount: num(halftone) }
+          : { type: 'grain', amount: grainAmount };
+    return { ...save, version: 5, design: { ...rest, finish: { ...finish, noise } } };
+  },
+  // D63: the per-stop blend choice is gone; every ramp blends perceptually.
+  5: (save) => {
+    const design = isObject(save.design) ? save.design : {};
+    const base = isObject(design.base) ? design.base : {};
+    const stops = Array.isArray(base.stops)
+      ? base.stops.map((s: unknown) => (isObject(s) ? { ...s, blend: 'oklab' } : s))
+      : base.stops;
+    return { ...save, version: 6, design: { ...design, base: 'stops' in base ? { ...base, stops } : base } };
   },
 };
 

@@ -346,16 +346,11 @@ Each milestone uses the same structure:
 
 - **Goal:** settle what the panel's finishes and color controls are called and which of them stay, before the references are fixed. After M11.
 - **Scope, in this order:**
-  - **Colors "blend" dropdown** (per stop: perceptual, vivid, hue short/long way): feels like overkill to the user (2026-10-07); reconsider whether to keep it.
-  - **Relief's name:** the finish works, but "relief" may not be the right word for it in the panel; reconsider.
-  - **Relief controls and shuffle weight:** consider grouping relief's settings (relief, light, surface) visually, e.g. with a border, and revisit whether and how often shuffles turn relief on, and how strongly (user, 2026-10-07; M8 shipped 15% at 0.2–0.5).
-  - **Noise, print and halftone sliders:** reconsider them together (D53, 2026-10-07). Noise and print look alike, and noise is the softer, more redundant one. Decide whether to merge them, drop one, or rename ("noise" is the better name; "noise (print)" is an option). Halftone (M8) joins them: the user floated "noise (halftone)" and a single noise section holding all the noise-like finishes.
-  - **Keep row split into colors, pattern, adjust** (2026-10-08): the footer's `keep` toggles stay next to the shuffle button, where locking is noticed (per-section lock icons on the headers were considered and rejected: less visible and far from the shuffle button). Replace the two toggles with three, `keep [ ] colors [ ] pattern [ ] adjust`:
-    - **colors:** the palette, as today.
-    - **pattern:** gradient kind, node or point layout, and the warp (shape, amount, size, seed).
-    - **adjust:** the finishes (vignette, print, bands, relief, halftone), the transform and the noise (grain).
-    - **Fit:** about 270 px of the 286 px panel; trim the label gap. Fallback: shorter words (`color`, `shape`, `finish`).
-    - **Open questions:** warp goes with pattern (confirm); the adjust values get their own random stream so locking pattern doesn't change what the finishes shuffle to, and with nothing locked the stream order stays as today so existing shuffles don't change; "more like this" respects the same flags; the keeps are not saved with the design (D44), as today.
+  - ~~**Colors "blend" dropdown**~~ Done (D63): removed; every ramp blends perceptually.
+  - ~~**Relief's name**~~ Done (D63): the controls form a bordered "lighting" group: amount, direction, surface.
+  - ~~**Relief controls and shuffle weight**~~ Done (D63): relief 0.1–0.5, halftone 0.1–0.35, chances unchanged.
+  - ~~**Noise, print and halftone sliders**~~ Done (D63, D53): one "noise" group with a type (lithograph, xerox, halftone, grain) and an amount; old saves migrate. Arrow-key previews now cover every list that can show one.
+  - ~~**Keep row split into colors, pattern, adjust**~~ Done (D64): the footer's keep row is `keep [ ] colors [ ] pattern [ ] adjust`. Pattern holds the kind, layout, warp shape and its variation (the old "layout" lock); adjust holds the warp amount and size and the finishes (bands, noise, vignette, lighting); the transform is never shuffled. The finishes get the same roll whether or not the pattern is locked, "more like this" is unaffected (it already keeps palette, kind, finishes and transform), and the locks are not saved with the design (D44).
   - **Showcase examples / reference designs** (moved from M5; last, after the finish cleanup above, 2026-10-08): for each pattern, render candidates from shuffles and contact sheets, let the user pick about 3 by eye, and save them as fixed design files. They serve as showcase examples and as test fixtures.
 - **Done when:** each decision is recorded in DECISIONS, and each pattern has about 3 saved reference designs used as showcase and golden-image fixtures. The showcase examples come last because merging or renaming the finishes would change the designs.
 
@@ -364,6 +359,7 @@ Each milestone uses the same structure:
 - **Goal:** ready for real use. Independent of how designs look, so it can overlap with M12.
 - **Scope:**
   - Adaptive preview resolution tuning
+  - **Sharp preview when zoomed in** (user, 2026-10-08): the preview zooms by scaling a canvas drawn for the fitted view, so fine textures such as grain go soft. Redraw at the zoomed scale (only the visible part), within the frame budget.
   - **Full-screen preview:** shows the wallpaper edge to edge with no panel, to make up for the smaller preview next to the docked sidebar. Esc or a small × in a corner exits. Use the Fullscreen API where available; the render stays at screen resolution so the grain reads true. Handles stay hidden.
   - Context-loss recovery
   - Shader compile warm-up
