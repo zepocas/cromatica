@@ -350,12 +350,7 @@ Each milestone uses the same structure:
   - ~~**Relief's name**~~ Done (D63): the controls form a bordered "lighting" group: amount, direction, surface.
   - ~~**Relief controls and shuffle weight**~~ Done (D63): relief 0.1–0.5, halftone 0.1–0.35, chances unchanged.
   - ~~**Noise, print and halftone sliders**~~ Done (D63, D53): one "noise" group with a type (lithograph, xerox, halftone, grain) and an amount; old saves migrate. Arrow-key previews now cover every list that can show one.
-  - **Keep row split into colors, pattern, adjust** (2026-10-08): the footer's `keep` toggles stay next to the shuffle button, where locking is noticed (per-section lock icons on the headers were considered and rejected: less visible and far from the shuffle button). Replace the two toggles with three, `keep [ ] colors [ ] pattern [ ] adjust`:
-    - **colors:** the palette, as today.
-    - **pattern:** gradient kind, node or point layout, and the warp (shape, amount, size, seed).
-    - **adjust:** the finishes (vignette, print, bands, relief, halftone), the transform and the noise (grain).
-    - **Fit:** about 270 px of the 286 px panel; trim the label gap. Fallback: shorter words (`color`, `shape`, `finish`).
-    - **Open questions:** warp goes with pattern (confirm); the adjust values get their own random stream so locking pattern doesn't change what the finishes shuffle to, and with nothing locked the stream order stays as today so existing shuffles don't change; "more like this" respects the same flags; the keeps are not saved with the design (D44), as today.
+  - ~~**Keep row split into colors, pattern, adjust**~~ Done (D64): the footer's keep row is `keep [ ] colors [ ] pattern [ ] adjust`. Pattern holds the kind, layout, warp shape and its variation (the old "layout" lock); adjust holds the warp amount and size and the finishes (bands, noise, vignette, lighting); the transform is never shuffled. The finishes get the same roll whether or not the pattern is locked, "more like this" is unaffected (it already keeps palette, kind, finishes and transform), and the locks are not saved with the design (D44).
   - **Showcase examples / reference designs** (moved from M5; last, after the finish cleanup above, 2026-10-08): for each pattern, render candidates from shuffles and contact sheets, let the user pick about 3 by eye, and save them as fixed design files. They serve as showcase examples and as test fixtures.
 - **Done when:** each decision is recorded in DECISIONS, and each pattern has about 3 saved reference designs used as showcase and golden-image fixtures. The showcase examples come last because merging or renaming the finishes would change the designs.
 

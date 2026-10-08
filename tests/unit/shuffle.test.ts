@@ -227,6 +227,65 @@ describe('style shuffle (pattern kind and finishes)', () => {
     return b.stops.map((s) => s.color);
   };
 
+  it('re-rolls only the finishes when the pattern is kept (D64)', () => {
+    let changed = 0;
+    for (let sd = 0; sd < 100; sd++) {
+      const d = shuffled(meshDesign, { colors: false, layout: false, finish: true, seed: sd });
+      expect(d.base).toEqual(meshDesign.base);
+      // The warp's shape and seed belong to the pattern; its amount and size are adjust settings.
+      expect(d.warp.shape).toBe(meshDesign.warp.shape);
+      expect(d.warp.seed).toBe(meshDesign.warp.seed);
+      if (JSON.stringify(d.finish) !== JSON.stringify(meshDesign.finish)) changed++;
+    }
+    expect(changed).toBeGreaterThan(80);
+  });
+
+  it('rolls the warp amount and size with adjust, and the warp shape and seed with the pattern (D64)', () => {
+    let amountMoved = 0;
+    let shapeMoved = 0;
+    for (let sd = 1; sd <= 100; sd++) {
+      const adjustOnly = shuffled(meshDesign, { colors: false, layout: false, finish: true, levels: true, seed: sd });
+      if (adjustOnly.warp.amount !== meshDesign.warp.amount && adjustOnly.warp.size !== meshDesign.warp.size)
+        amountMoved++;
+      const patternOnly = shuffled(meshDesign, {
+        colors: false,
+        layout: true,
+        style: true,
+        finish: false,
+        levels: false,
+        seed: sd,
+      });
+      expect(patternOnly.warp.amount).toBe(meshDesign.warp.amount);
+      expect(patternOnly.warp.size).toBe(meshDesign.warp.size);
+      if (patternOnly.warp.shape !== meshDesign.warp.shape) shapeMoved++;
+    }
+    expect(amountMoved).toBeGreaterThan(80);
+    expect(shapeMoved).toBeGreaterThan(50);
+  });
+
+  it('keeps the finishes when only the pattern is shuffled (D64)', () => {
+    const kinds = new Set<string>();
+    for (let sd = 0; sd < 100; sd++) {
+      const d = shuffled(meshDesign, { colors: false, layout: true, style: true, finish: false, seed: sd });
+      expect(d.finish).toEqual(meshDesign.finish);
+      kinds.add(d.base.kind);
+    }
+    expect(kinds.size).toBeGreaterThan(4);
+  });
+
+  it('gives the finishes the same roll whether or not the pattern is locked (D64)', () => {
+    let compared = 0;
+    for (let sd = 0; sd < 200; sd++) {
+      const full = shuffled(meshDesign, style(sd));
+      // Planes and aurora have no bands, which is the one thing the finishes depend on the kind for.
+      if (full.base.kind === 'planes' || full.base.kind === 'aurora') continue;
+      const kept = shuffled(meshDesign, { colors: false, layout: false, finish: true, seed: sd });
+      expect(kept.finish).toEqual(full.finish);
+      compared++;
+    }
+    expect(compared).toBeGreaterThan(100);
+  });
+
   it('picks every pattern kind, and finishes on and off', () => {
     const kinds = new Set<string>();
     let printed = 0;
@@ -265,8 +324,8 @@ describe('style shuffle (pattern kind and finishes)', () => {
         expect(f.noise.amount).toBeLessThanOrEqual(0.35);
       }
     }
-    expect(relief).toBeGreaterThan(30);
-    expect(relief).toBeLessThan(100);
+    expect(relief).toBeGreaterThan(80);
+    expect(relief).toBeLessThan(170);
     expect(surfaces).toEqual(new Set(['satin', 'glass']));
     expect(halftone).toBeGreaterThan(20);
     expect(halftone).toBeLessThan(80);

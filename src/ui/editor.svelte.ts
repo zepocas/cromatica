@@ -100,7 +100,10 @@ export class EditorState {
   transform = $state<Transform>({ ...identityTransform });
   /** Shuffle locks: a locked part is kept as is. */
   colorsLocked = $state(false);
-  layoutLocked = $state(false);
+  /** Pattern: kind, layout and warp. */
+  patternLocked = $state(false);
+  /** Adjust: the finishes (noise, vignette, bands, lighting). The transform is never shuffled. */
+  adjustLocked = $state(false);
   selectedPoint = $state(0);
   /** Index into grid.nodes. */
   selectedNode = $state(0);
@@ -117,14 +120,14 @@ export class EditorState {
   readonly palette = new PaletteEditor({
     kind: () => (this.kind === 'mesh' || this.kind === 'grid' ? this.kind : 'ramp'),
     colorItems: () => this.colorItems,
-    regenerate: (options, seed) => this.applyShuffle(true, false, false, options, seed),
+    regenerate: (options, seed) => this.applyShuffle(true, false, false, false, options, seed),
   });
 
   readonly reel = new Reel<EditorSnapshot>();
 
   /** Opens on a full shuffle of the mesh (palette, layout and warp). */
   constructor(opts: { shuffle?: boolean } = {}) {
-    if (opts.shuffle ?? true) this.applyShuffle(true, true);
+    if (opts.shuffle ?? true) this.applyShuffle(true, true, false, undefined);
   }
 
   /** Plain (non-proxy) design with stops sorted, as the renderer and worker expect. */
@@ -158,18 +161,21 @@ export class EditorState {
   // ---- Shuffle --------------------------------------------------------------
 
   get canShuffle(): boolean {
-    return !(this.colorsLocked && this.layoutLocked);
+    return !(this.colorsLocked && this.patternLocked && this.adjustLocked);
   }
 
-  /** Shuffle everything except the locked parts: a layout shuffle also picks the pattern kind and finishes. */
+  /** Shuffle everything except the locked parts: the pattern shuffle also picks the pattern kind. */
   shuffle(): void {
-    if (this.canShuffle)
-      this.reeled(() => this.applyShuffle(!this.colorsLocked, !this.layoutLocked, !this.layoutLocked));
+    if (this.canShuffle) {
+      this.reeled(() =>
+        this.applyShuffle(!this.colorsLocked, !this.patternLocked, !this.patternLocked, !this.adjustLocked),
+      );
+    }
   }
 
   /** New palette only, whatever the locks say. */
   shuffleColors(): void {
-    this.reeled(() => this.applyShuffle(true, false));
+    this.reeled(() => this.applyShuffle(true, false, false, false));
   }
 
   /** Step to the previous (-1) or next (1) shuffle; false at either end. */
@@ -188,11 +194,17 @@ export class EditorState {
   private applyShuffle(
     colors: boolean,
     layout: boolean,
-    style = false,
+    style: boolean,
+    /** The adjust section: finishes and warp amount and size. Undefined: the default for `layout`. */
+    adjust: boolean | undefined,
     palette = this.palette.shuffleOptions(),
     seed = randomSeed(),
   ): void {
-    const next = shuffleDesign(this.design, { colors, layout, style, palette, seed }, this.aspect);
+    const next = shuffleDesign(
+      this.design,
+      { colors, layout, style, finish: adjust, levels: adjust, palette, seed },
+      this.aspect,
+    );
     this.setDesign(next.design);
     // Built around the base hue already.
     if (next.palette) this.palette.adopt({ info: next.palette, seed });
