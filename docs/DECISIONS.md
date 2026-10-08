@@ -370,3 +370,11 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Bottom of the panel:** colors and favourites sit just above the footer, so they are next to shuffle and download. This holds only while the panel has spare height; on a shorter window the content fills the panel, which scrolls as before. "+ more" expands in place, growing upward into the spare height while there is any, then downward.
 - **Panels:** `mid` theme, a step lighter than before (#1b1b1a on a #0b0b0d canvas). A lighter variant (#232322) was too light. The canvas stays as dark as before.
 - **Not done:** a flyout for the extra color settings (it covers the point handles).
+
+## D56. M10 (light/dark pairs) dropped
+
+- **Decision (2026-10-08):** the feature is not shipped. It was built on `feat/light-dark-pairs` and works: the light palette moved into the low-key band (L 0.12–0.55, D26), each dark color hand-editable, a preview switch, and a two-file export. It was dropped as too niche for what it adds.
+- **Why:** a dark version is already a few steps away. The key select regenerates a generated palette in "low" from the same seed (D28), and any palette can be edited by hand and exported again. A pair export only merges two of those exports, and no OS treats two files as one wallpaper.
+- **macOS dynamic HEIC:** a macOS light/dark wallpaper is a 2-image HEVC HEIC with `apple_desktop:apr` XMP. Apple publishes no spec; the research rests on community sources. No browser encoder fits: libheif-js only decodes, x265 is GPL with HEVC patent questions, and WebCodecs HEVC encoding depends on the hardware (Safari about 91%, Chrome about 22–48%, Firefox about 0%). See `docs/research/heic-dynamic-wallpaper.md`.
+- **Other platforms:** no primary source shows a one-file light/dark pair for Windows. iOS only has Apple's own adaptive wallpapers and a Shortcuts workaround (search snippets only). Android was left out of scope.
+- **If it returns:** see the backlog entry in the roadmap.
