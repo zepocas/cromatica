@@ -132,6 +132,8 @@ export interface GridMesh {
   nodes: GridNode[];
   /** Half width and height of the rest grid, composition units. */
   rest: [number, number];
+  /** Lines drawn along the bent grid, [0, 1] (opacity, then width); missing or 0 = none (D62). */
+  lines?: number;
 }
 
 /** Aurora blend for new designs: sharper than the look before blend existed (0.6). */

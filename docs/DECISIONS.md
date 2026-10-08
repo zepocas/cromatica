@@ -425,3 +425,13 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Compatibility:** saved designs keep the shape name, seed, amount and size, so they open and render, but with the new look. No schema change.
 - **Relief:** the strokes are smooth ridges, so relief (D46) lights them well: satin gives silk or brushed-metal grooves, glass thin bright rims. Nothing in relief depends on the warp shape.
 - **Not changed:** shuffle weight stays 0.4 (D35); worth revisiting with M12's relief and shuffle review.
+
+## D62. Bicubic patch mesh not built; the grid gets lines
+
+- **Decision (2026-10-08):** the bicubic patch mesh (D11, promoted to a prototype in M11) was evaluated against the grid (D43), which is already a bendable grid of colored nodes. Tangent handles and per-patch corner colors only refine the same family of soft blobs, so no separate pattern was built.
+- **Findings on contact sheets:** with the warp off, a shuffled grid looks like a softer mesh. Bending the nodes past about 1.5× the shuffle's jitter tears (Newton pull-back on folds), not silky folds; real folds would need a patch-by-patch renderer.
+- **Tried:** cloth shading (lightness by the grid's stretch, the Jacobian determinant): pillowy but not exotic, dropped. Grid lines drawn along the bent grid: liked by the user, kept.
+- **Grid lines** (`GridMesh.lines`, [0, 1], missing = 0, no schema version bump): the lines of the rest grid, bent with it. Opacity reaches 1 at 0.5 and the width goes from 0.002 to 0.008 of the frame height, so a preview and an export match. The distance to a line is computed analytically from the inverse Jacobian (no screen derivatives), so the CPU reference has the same math. A line pushes the lightness by up to 0.32 toward the other end of the scale (smoothly, pivoting at 0.58), so it shows on both light and dark colors and doesn't break where the background crosses the pivot.
+- **Shuffle:** a layout shuffle turns lines on 60% of the time at 0.25–0.7, drawn last so the other layout values match earlier shuffles.
+- **Still open:** whether the grid now earns its place next to the mesh. The user judges it after trying it.
+- **Name:** the panel calls the grid pattern "net" (2026-10-08), since it is a bendable surface of colors with optional lines, not just a grid. Only the label changed; the kind stays `grid` in saves and code, so there is no migration.

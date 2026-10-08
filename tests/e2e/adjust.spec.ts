@@ -160,3 +160,12 @@ test('the band style segments pick A, B or C on a mesh and are absent on other s
   await choose(page.getByLabel('Gradient', { exact: true }), 'linear');
   await expect(group).toHaveCount(0);
 });
+
+test('grid: the lines slider draws the bent grid over the colors', async ({ page }) => {
+  await openApp(page);
+  const { settled, expectPreviewChanged } = previewProbe(page);
+  await choose(page.getByLabel('Gradient', { exact: true }), 'grid');
+  const before = await settled();
+  await page.getByLabel('Lines').fill('0.6');
+  await expectPreviewChanged(before);
+});

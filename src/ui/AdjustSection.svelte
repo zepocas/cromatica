@@ -113,6 +113,16 @@
       oninput={(v) => editor.setGridSize(editor.grid.rows, v)}
       display={String}
     />
+    <SliderRow
+      label="lines"
+      title="Draw the net's own lines over the colors"
+      min={0}
+      max={1}
+      step={0.01}
+      value={editor.grid.lines ?? 0}
+      oninput={(v) => (editor.grid.lines = v)}
+      display={(v) => (v === 0 ? 'off' : fixed2(v))}
+    />
   {:else if editor.kind === 'aurora'}
     <SliderRow
       label="ribbons"

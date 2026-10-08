@@ -153,7 +153,7 @@ function createPatternReference(design: Design, output: OutputSize, halfFloat: b
   }
   if (base.kind === 'grid') {
     const grid = prepareGrid(base);
-    return (u, v) => meshGamutClip(evaluateGrid(grid, ...at(u, v)));
+    return (u, v) => meshGamutClip(evaluateGrid(grid, ...at(u, v), 1 / output.height));
   }
   if (base.kind === 'aurora') {
     const aurora = prepareAurora(base);

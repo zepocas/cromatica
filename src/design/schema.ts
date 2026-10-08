@@ -80,6 +80,7 @@ const grid = z
     cols: gridSide,
     nodes: z.array(z.object({ x: z.number(), y: z.number(), color: oklch })),
     rest: z.tuple([z.number().positive(), z.number().positive()]),
+    lines: unit.optional(),
   })
   .refine((g) => g.nodes.length === g.rows * g.cols, { message: 'grid needs rows × cols nodes', path: ['nodes'] });
 
