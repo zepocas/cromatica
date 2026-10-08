@@ -379,3 +379,11 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Export set** (several sizes as a ZIP) moves to M11; M9 stays overlays only.
 - **A "view" section** in the panel holds the "os context" picker and takes over the "show points/nodes" toggle. Every context is always listed; portrait outputs list the phone screens first. Arrowing through the list previews each one.
 - **No crop frames:** dropped after building them. How an OS fits a wallpaper is not standard: macOS and Windows "Fill" crop the centre, but iOS lets the user pan and zoom, and Android depends on the launcher and picker. cromatica exports at each device's exact size, so there is nothing for the OS to crop; several devices are served by the M11 export set.
+
+## D57. M10 (light/dark pairs) dropped
+
+- **Decision (2026-10-08):** the feature is not shipped. It was built on `feat/light-dark-pairs` and works: the light palette moved into the low-key band (L 0.12–0.55, D26), each dark color hand-editable, a preview switch, and a two-file export. It was dropped as too niche for what it adds.
+- **Why:** a dark version is already a few steps away. The key select regenerates a generated palette in "low" from the same seed (D28), and any palette can be edited by hand and exported again. A pair export only merges two of those exports, and no OS treats two files as one wallpaper.
+- **macOS dynamic HEIC:** a macOS light/dark wallpaper is a 2-image HEVC HEIC with `apple_desktop:apr` XMP. Apple publishes no spec; the research rests on community sources. No browser encoder fits: libheif-js only decodes, x265 is GPL with HEVC patent questions, and WebCodecs HEVC encoding depends on the hardware (Safari about 91%, Chrome about 22–48%, Firefox about 0%). See `docs/research/heic-dynamic-wallpaper.md`.
+- **Other platforms:** no primary source shows a one-file light/dark pair for Windows. iOS only has Apple's own adaptive wallpapers and a Shortcuts workaround (search snippets only). Android was left out of scope.
+- **If it returns:** see the backlog entry in the roadmap.

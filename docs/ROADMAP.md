@@ -325,17 +325,12 @@ Each milestone uses the same structure:
   - The warning flags a zone no text color reads over and stays quiet on a calm one.
 - **Settled (D56):** all four platforms at once, zones measured from official screenshots and guidelines, legibility checks contrast only (busyness dropped), export set moved to M11. Crop frames dropped: OSes don't fit wallpapers in one standard way.
 
-### M10 — Light/dark pairs
+### M10 — Light/dark pairs ✖ dropped
 
 - **Goal:** one composition exported as a light and a dark variant.
-- **Scope:**
-  - A second variant of the same design at another value key, derived from the key and temperature controls (D26, D27).
-  - Export both. macOS can use one dynamic HEIC that switches with the appearance; other platforms get a pair of files.
-- **Done when:** both variants share the composition exactly and differ only in color, and the macOS file switches with the system appearance.
-- **Open questions:**
-  - Automatic key shift or an editable second palette.
-  - HEIC encoding in the browser (a WASM encoder?) and its size.
-  - Conventions on Windows and Android.
+- **Decision (2026-10-08, D57):** dropped. It was built (an automatic dark variant, hand-editable, exported as two files) and works, but it only saves a few clicks: to get a dark version, pick "low" in the key select (D26, D28) or edit the colors, then export again. No OS reads a pair of files as one wallpaper, and the one single-file route, a macOS dynamic HEIC, has no browser encoder worth shipping (`docs/research/heic-dynamic-wallpaper.md`).
+- **Kept:** the code is on the unmerged branch `feat/light-dark-pairs`.
+- **Backlog:** a macOS script that merges two exported PNGs into a dynamic HEIC; "dark colors from an image".
 
 ### M11 — Polish
 
@@ -397,6 +392,7 @@ Each milestone uses the same structure:
 - ~~Blend: sharper at the top of the slider.~~ Done in M4.5: the far end now reaches near-hard edges (D34).
 - Bands on the mesh, if they should ever be bolder (D33): step the lightness (strong topographic look, but no line between colors of similar lightness), step the blend between the two strongest points (closest to ramp bands), or draw contour lines at band boundaries (the only way to show bands between near-identical colors). Kept as is for now: the user likes the current look.
 - Bicubic patch mesh (Figma/SwiftUI-style bendable grid)
+- **Light/dark pair** (dropped from M10 on 2026-10-08, D57): the code is on the branch `feat/light-dark-pairs`. If it returns: a macOS script (pillow-heif or `heif-enc` plus `exiv2`, or Swift `CGImageDestination`) that merges two exported PNGs into a dynamic HEIC, and a "dark colors from an image" drop target. The pair was not saved across reloads; saving it needs a schema version and changes to autosave, favourites and the PNG chunk.
 - Display P3 output, as an internal flag with no UI
 - 16-bit PNG export
 - mozjpeg (WASM) for 4:4:4 JPEG
