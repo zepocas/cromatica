@@ -41,6 +41,7 @@
     placeholder="custom"
     options={KEY_OPTIONS}
     onchange={(k) => palette.setKey(k)}
+    onactive={(k) => editor.previewChange(k && k !== palette.info?.key ? (t) => t.palette.setKey(k) : null)}
   />
 </div>
 <div class="row">

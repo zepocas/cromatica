@@ -14,6 +14,7 @@
     editor: EditorState;
     favourites: Favourites;
     presetId: string;
+    presetPreview: string | null;
     customWidth: number;
     customHeight: number;
     /** Export size in pixels (from the preset or the custom size). */
@@ -41,6 +42,7 @@
     editor = $bindable(),
     favourites,
     presetId = $bindable(),
+    presetPreview = $bindable(),
     customWidth = $bindable(),
     customHeight = $bindable(),
     output,
@@ -100,7 +102,7 @@
   </header>
 
   {#if !collapsed}
-    <PatternSection bind:editor bind:presetId bind:customWidth bind:customHeight {output} />
+    <PatternSection bind:editor bind:presetId bind:presetPreview bind:customWidth bind:customHeight {output} />
     <AdjustSection bind:editor />
     <!-- With spare height these sit at the bottom, above the footer; a full panel scrolls as before. -->
     <div class="bottom">
