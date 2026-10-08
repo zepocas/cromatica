@@ -11,6 +11,8 @@ const gestureHandle: Zone = { kind: 'indicator', label: 'gesture handle', x: 0, 
 
 const center = (z: Zone): Zone => ({ ...z, anchorX: 'center' });
 const bottom = (z: Zone): Zone => ({ ...z, anchorY: 'bottom' });
+/** Launchers spread their grids and docks across wider phones, keeping the side margins. */
+const stretch = (margin: number, z: Zone): Zone => ({ ...z, anchorX: 'stretch', x: margin });
 
 export const CONTEXT_SCREENS: ContextScreen[] = [
   {
@@ -87,7 +89,7 @@ export const CONTEXT_SCREENS: ContextScreen[] = [
         x: 2,
         y: 2,
         w: 75,
-        h: 400,
+        h: 300,
         grid: { cols: 1, rows: 4, icon: 48 },
         check: true,
       },
@@ -145,7 +147,7 @@ export const CONTEXT_SCREENS: ContextScreen[] = [
     zones: [
       { kind: 'text', label: 'status', x: 40, y: 19, w: 60, h: STATUS_FONT, text: '9:41', check: true },
       center(island),
-      center({
+      stretch(26, {
         kind: 'icons',
         label: 'app icons',
         x: 0,
@@ -157,7 +159,7 @@ export const CONTEXT_SCREENS: ContextScreen[] = [
       }),
       bottom(center({ kind: 'widget', label: 'search', x: 0, y: 136, w: 70, h: 26, radius: 13 })),
       bottom(
-        center({
+        stretch(12, {
           kind: 'dock',
           label: 'dock',
           x: 0,
@@ -208,7 +210,7 @@ export const CONTEXT_SCREENS: ContextScreen[] = [
         align: 'left',
         check: true,
       },
-      {
+      stretch(0, {
         kind: 'icons',
         label: 'app icons',
         x: 0,
@@ -217,11 +219,19 @@ export const CONTEXT_SCREENS: ContextScreen[] = [
         h: 480,
         grid: { cols: 5, rows: 4, icon: 56 },
         check: true,
-      },
+      }),
       bottom(
-        center({ kind: 'icons', label: 'hotseat', x: 0, y: 75, w: 379, h: 88, grid: { cols: 5, rows: 1, icon: 56 } }),
+        stretch(16, {
+          kind: 'icons',
+          label: 'hotseat',
+          x: 0,
+          y: 75,
+          w: 379,
+          h: 88,
+          grid: { cols: 5, rows: 1, icon: 56 },
+        }),
       ),
-      bottom(center({ kind: 'widget', label: 'search', x: 0, y: 19, w: 379, h: 52, radius: 26 })),
+      bottom(stretch(16, { kind: 'widget', label: 'search', x: 0, y: 19, w: 379, h: 52, radius: 26 })),
       bottom(center(gestureHandle)),
     ],
   },

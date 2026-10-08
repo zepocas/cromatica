@@ -35,8 +35,8 @@
   let format = $state<ExportFormat>('png');
   let collapsed = $state(false);
   let contextId = $state('');
-  let crops = $state(false);
-  const contextScreen = $derived(CONTEXT_SCREENS.find((s) => s.id === contextId) ?? null);
+  let contextPreview = $state<string | null>(null);
+  const contextScreen = $derived(CONTEXT_SCREENS.find((s) => s.id === (contextPreview ?? contextId)) ?? null);
   // First visit only; `?default` (tests) never shows them.
   let tips = $state(!builtIn && !tipsDismissed());
   /** The "more like this" grid covers the preview. */
@@ -185,8 +185,8 @@
   zoomable={!exploring}
 >
   {#snippet overlay()}
-    {#if !exploring && (contextScreen || crops)}
-      <ContextOverlay design={renderDesign} {aspect} screen={contextScreen} {crops} />
+    {#if !exploring && contextScreen}
+      <ContextOverlay design={renderDesign} {aspect} screen={contextScreen} />
     {/if}
     {#if exploring}
       <MoreLikeThis
@@ -216,7 +216,7 @@
   {output}
   bind:format
   bind:contextId
-  bind:crops
+  bind:contextPreview
   bind:collapsed
   bind:exploring
   bind:tips

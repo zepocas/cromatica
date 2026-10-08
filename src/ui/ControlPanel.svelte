@@ -20,7 +20,7 @@
     output: { width: number; height: number };
     format: ExportFormat;
     contextId: string;
-    crops: boolean;
+    contextPreview: string | null;
     /** Collapsed to a one-line bar floating over a full-width preview. */
     collapsed: boolean;
     exploring: boolean;
@@ -46,7 +46,7 @@
     output,
     format = $bindable(),
     contextId = $bindable(),
-    crops = $bindable(),
+    contextPreview = $bindable(),
     collapsed = $bindable(),
     exploring = $bindable(),
     tips = $bindable(),
@@ -105,7 +105,7 @@
     <!-- With spare height these sit at the bottom, above the footer; a full panel scrolls as before. -->
     <div class="bottom">
       <ColorsSection bind:editor />
-      <ViewSection bind:editor bind:contextId bind:crops portrait={output.height > output.width} />
+      <ViewSection bind:editor bind:contextId bind:contextPreview portrait={output.height > output.width} />
       <FavouritesSection {favourites} design={editor.design} onopen={(d) => editor.setDesign(d)} />
     </div>
   {/if}

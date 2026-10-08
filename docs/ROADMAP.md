@@ -318,13 +318,12 @@ Each milestone uses the same structure:
 - **Goal:** show how a wallpaper will look with the operating system on top of it, and warn when icons or the clock would be hard to read.
 - **Scope:**
   - **Mockups** for Windows (taskbar, desktop icons), macOS (menu bar, dock, notch), Android (status bar, navigation, home icons, lock-screen clock) and iOS (lock-screen clock and widgets, Dynamic Island, home icon grid).
-  - **Crop frames:** several devices' aspect ratios overlaid on the preview, since one composition exports to many ratios (D4).
   - **Legibility:** a luminance and busyness check under each platform's icon and clock zones, with a warning (too busy, or mid-tone against light or dark text), and a "calm zone" guide.
 - **UI:** overlays only, never part of an export (D48). Related to the M11 full-screen preview, which could host the same mockups.
 - **Done when:**
   - Each platform's zones are drawn at the right proportions for at least one current device.
   - The warning flags a busy area under the clock and stays quiet on a calm one.
-- **Settled (D56):** all four platforms at once, zones measured from official screenshots and guidelines, legibility checks contrast and busyness, export set moved to M11.
+- **Settled (D56):** all four platforms at once, zones measured from official screenshots and guidelines, legibility checks contrast and busyness, export set moved to M11. Crop frames dropped: OSes don't fit wallpapers in one standard way.
 
 ### M10 — Light/dark pairs
 

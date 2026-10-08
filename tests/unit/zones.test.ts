@@ -28,4 +28,10 @@ describe('zone placement', () => {
     const r = placeZone(screen, zone({ anchorX: 'center' }), 2);
     expect(r.x + r.w / 2).toBeCloseTo(0.5, 6);
   });
+
+  it('stretches across the frame, less the side margin', () => {
+    const r = placeZone(screen, zone({ x: 100, anchorX: 'stretch' }), 2);
+    expect(r.x).toBeCloseTo(0.05, 6);
+    expect(r.x + r.w).toBeCloseTo(0.95, 6);
+  });
 });

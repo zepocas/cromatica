@@ -11,7 +11,7 @@ export interface Zone {
   y: number;
   w: number;
   h: number;
-  /** `stretch` spans the frame's width and ignores x and w. */
+  /** `stretch` spans the frame's width less `x` on each side, and ignores w. */
   anchorX?: 'left' | 'center' | 'right' | 'stretch';
   anchorY?: 'top' | 'bottom';
   radius?: number;
@@ -45,7 +45,9 @@ export interface ContextScreen {
 export function placeZone(screen: ContextScreen, zone: Zone, aspect: number): ZoneRect {
   const width = aspect * screen.height;
   const top = zone.anchorY === 'bottom' ? screen.height - zone.y - zone.h : zone.y;
-  if (zone.anchorX === 'stretch') return { x: 0, y: top / screen.height, w: 1, h: zone.h / screen.height };
+  if (zone.anchorX === 'stretch') {
+    return { x: zone.x / width, y: top / screen.height, w: 1 - (2 * zone.x) / width, h: zone.h / screen.height };
+  }
   const left =
     zone.anchorX === 'right'
       ? width - zone.x - zone.w

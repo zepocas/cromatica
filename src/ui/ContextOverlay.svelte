@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { visibleCrops } from '../context/crops';
   import { assessZone, lightnessMap, type Legibility } from '../context/legibility';
   import { placeZone, type ContextScreen } from '../context/zones';
   import { noFinish, noGrain, type Design } from '../design/design';
@@ -8,24 +7,24 @@
   interface Props {
     design: Design;
     aspect: number;
-    screen: ContextScreen | null;
-    crops: boolean;
+    screen: ContextScreen;
   }
 
-  let { design, aspect, screen, crops }: Props = $props();
+  let { design, aspect, screen }: Props = $props();
 
   /** Tall enough for clock-sized detail, small enough to redo on every edit. */
   const ANALYSIS_HEIGHT = 256;
   const ANALYSIS_DELAY = 150;
 
   let analysis: HTMLCanvasElement;
-  let legibility = $state<(Legibility | null)[]>([]);
+  /** Per zone, for the screen it was measured on, so another screen's verdicts never show. */
+  let legibility = $state<{ screen: string; verdicts: (Legibility | null)[] } | null>(null);
 
-  const placed = $derived(screen ? screen.zones.map((z) => ({ zone: z, rect: placeZone(screen, z, aspect) })) : []);
-  const cropFrames = $derived(crops ? visibleCrops(aspect) : []);
+  const placed = $derived(screen.zones.map((z) => ({ zone: z, rect: placeZone(screen, z, aspect) })));
+  const verdicts = $derived(legibility?.screen === screen.id ? legibility.verdicts : []);
 
   $effect(() => {
-    if (!screen) return;
+    const id = screen.id;
     const zones = placed;
     // Pixel-sized textures don't matter at text size, and would read as busy here.
     const calm: Design = {
@@ -41,7 +40,10 @@
         if (!ctx) return;
         const { data, width, height } = ctx.getImageData(0, 0, analysis.width, analysis.height);
         const map = lightnessMap(data, width, height);
-        legibility = zones.map(({ zone, rect }) => (zone.check ? assessZone(map, rect, zone.kind === 'clock') : null));
+        legibility = {
+          screen: id,
+          verdicts: zones.map(({ zone, rect }) => (zone.check ? assessZone(map, rect, zone.kind === 'clock') : null)),
+        };
       });
     }, ANALYSIS_DELAY);
     return () => {
@@ -57,7 +59,7 @@
 <canvas class="analysis" bind:this={analysis}></canvas>
 <div class="context" data-testid="context-overlay">
   {#each placed as { zone, rect }, i (i)}
-    {@const verdict = legibility[i]}
+    {@const verdict = verdicts[i]}
     <div
       class="zone {zone.kind}"
       class:checked={zone.check}
@@ -81,7 +83,7 @@
           style:grid-template-rows="repeat({g.rows}, 1fr)"
         >
           {#each { length: g.cols * g.rows } as _, k (k)}
-            <span class="icon" style:width={pct((g.icon * g.cols) / zone.w)} style:aspect-ratio="1"></span>
+            <span class="icon" style:height="{(100 * g.icon) / zone.h}cqh"></span>
           {/each}
         </div>
       {:else if zone.text}
@@ -94,11 +96,6 @@
       {#if verdict && verdict.issues.length > 0}
         <span class="tag" role="status">{zone.label}: {verdict.issues.map((x) => ISSUE_TEXT[x]).join(', ')}</span>
       {/if}
-    </div>
-  {/each}
-  {#each cropFrames as crop (crop.label)}
-    <div class="crop" data-crop={crop.label} style:left={pct((1 - crop.width) / 2)} style:width={pct(crop.width)}>
-      <span>{crop.label}</span>
     </div>
   {/each}
 </div>
@@ -123,6 +120,12 @@
     position: absolute;
     box-sizing: border-box;
     container-type: size;
+  }
+  /* The macOS menu bar since 26: frosted glass, no tint of its own. */
+  .area {
+    backdrop-filter: blur(12px) saturate(1.3);
+    -webkit-backdrop-filter: blur(12px) saturate(1.3);
+    background: rgb(255 255 255 / 0.05);
   }
   .bar {
     background: rgb(28 28 28 / 0.82);
@@ -168,6 +171,7 @@
     place-items: center;
   }
   .icon {
+    aspect-ratio: 1;
     border-radius: 22%;
     background: rgb(255 255 255 / 0.4);
   }
@@ -186,29 +190,9 @@
     padding: 1px 5px;
     white-space: nowrap;
     font:
-      11px/1.4 ui-monospace,
+      calc(11px / var(--zoom, 1)) / 1.4 ui-monospace,
       monospace;
     color: #000;
     background: #ffb020;
-  }
-  .crop {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    border-left: 1px dashed rgb(255 255 255 / 0.7);
-    border-right: 1px dashed rgb(255 255 255 / 0.7);
-    box-shadow:
-      inset 1px 0 rgb(0 0 0 / 0.3),
-      inset -1px 0 rgb(0 0 0 / 0.3);
-  }
-  .crop span {
-    position: absolute;
-    bottom: 6px;
-    left: 6px;
-    font:
-      11px/1.2 ui-monospace,
-      monospace;
-    color: #fff;
-    text-shadow: 0 0 3px #000;
   }
 </style>
