@@ -6,7 +6,7 @@ import { gamutMapToLinearSrgb } from '../../../src/color/gamut';
 import { linearSrgbToOklab, oklabToLinearSrgb, oklabToOklch, srgbDecode } from '../../../src/color/oklab';
 import { bakeRamp, RAMP_SIZE } from '../../../src/color/ramp';
 import type { Rgb } from '../../../src/color/types';
-import { type Design, type RampGradient, noGrain, noWarp, type PointMesh } from '../../../src/design/design';
+import { type Design, type RampGradient, noFinish, noWarp, type PointMesh } from '../../../src/design/design';
 import { applyMat2, transformMatrix } from '../../../src/engine/transform';
 import { bandLevel, prepareFinish, vignetteFactor } from '../../../src/engine/finish';
 import { prepareRampShape, rampT } from '../../../src/engine/ramp-shape';
@@ -568,7 +568,7 @@ const harness = {
    */
   compareWarpReference(design: Design, width: number, height: number, tolerance: number) {
     const output = { width, height };
-    const d: Design = { ...design, grain: noGrain };
+    const d: Design = design;
     const image = render(d, output, false);
     const ref = createReference(d, output);
     const warp = createWarp(d.warp ?? noWarp);
@@ -638,7 +638,7 @@ const harness = {
   grainStats(design: Design, width: number, height: number) {
     const output = { width, height };
     const on = render(design, output, true);
-    const off = render({ ...design, grain: noGrain }, output, true);
+    const off = render({ ...design, finish: { ...noFinish, ...design.finish, noise: noFinish.noise } }, output, true);
     const n = width * height;
     const mean = [0, 0, 0];
     const diff = new Float64Array(n);

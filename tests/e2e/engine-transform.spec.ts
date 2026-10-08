@@ -1,7 +1,16 @@
 // Renderer: whole-image transforms (D24).
 import { expect, test } from '@playwright/test';
-import { defaultGrain } from '../../src/design/design';
-import { linear, threeStops, meshDefault, warp, withLook, turn, type StopSpec } from './support/designs';
+import {
+  defaultNoise,
+  linear,
+  threeStops,
+  meshDefault,
+  warp,
+  withLook,
+  withNoise,
+  turn,
+  type StopSpec,
+} from './support/designs';
 import { engineHarness, openEngineHarness } from './support/harness';
 
 test.beforeEach(async ({ page }) => {
@@ -50,11 +59,11 @@ test.describe('transform', () => {
       expect(r.maxDiff, JSON.stringify(r.worstAny)).toBeLessThanOrEqual(2);
     });
 
-    test(`${name}: transformed 1531×917 single pass equals 256 px tiles (grain on)`, async ({ page }) => {
+    test(`${name}: transformed 1531×917 single pass equals 256 px tiles (noise on)`, async ({ page }) => {
       const r = await engineHarness(
         page,
         'compareTiled',
-        turn({ ...base, grain: defaultGrain }, { rotate: 117, zoom: 0.6, flipY: true }),
+        turn(withNoise(base, defaultNoise), { rotate: 117, zoom: 0.6, flipY: true }),
         1531,
         917,
         256,

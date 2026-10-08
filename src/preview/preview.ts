@@ -1,4 +1,4 @@
-import type { Design } from '../design/design';
+import { noFinish, type Design } from '../design/design';
 import { createRenderer } from '../engine/renderer';
 import { CONTEXT_ATTRIBUTES, type OutputSize, type Renderer } from '../engine/types';
 
@@ -32,14 +32,14 @@ const INTERACTIVE_SCALE = 0.5;
 const MAX_DPR = 2;
 /**
  * Full-resolution frames cheaper than this stay at full resolution while
- * editing. Dropping resolution changes how grain looks (it is per output
+ * editing. Dropping resolution changes how noise looks (it is per output
  * pixel), so it is only worth it on GPUs that can't keep up.
  */
 const FRAME_BUDGET_MS = 12;
 
-/** The design without the fine textures (grain, print, halftone), to tell texture-only edits apart. */
+/** The design without the fine texture (noise), to tell texture-only edits apart. */
 function withoutTextures(d: Design): string {
-  return JSON.stringify({ ...d, grain: null, finish: d.finish && { ...d.finish, print: 0, halftone: 0 } });
+  return JSON.stringify({ ...d, finish: d.finish && { ...d.finish, noise: noFinish.noise } });
 }
 
 export function createPreview(
@@ -124,7 +124,7 @@ export function createPreview(
   }
 
   // On slow GPUs, drop to low resolution while changes keep arriving; sharpen once idle.
-  // Edits to grain, print or halftone stay at full resolution: those textures are a few
+  // Edits to the noise stay at full resolution: those textures are a few
   // pixels fine, so a half-resolution frame would show a different texture, then snap.
   function interact(textureOnly: boolean): void {
     if (!opts.fixedSize && !textureOnly && fullFrameMs > FRAME_BUDGET_MS) {

@@ -30,10 +30,10 @@ import { GRID_MAX_STEP, GRID_MIN_DET, GRID_STEPS, MAX_GRID_NODES, prepareGrid } 
 import { GAMUT_CLIP_STEPS, prepareMesh } from '../color/mesh';
 import { BLUE_NOISE_SIZE, DITHER_CHANNEL_OFFSETS, blueNoiseRanks } from './blue-noise';
 import { prepareFinish, VIGNETTE_INNER } from './finish';
-import { GRAIN_CHROMA, prepareGrain } from './grain';
 import { buildShaderSources, variantKey, type Defines } from './shaders';
 import { NEIGHBOUR_SHADER_CONSTANTS } from './neighbours';
 import { prepareRelief, RELIEF_SHADER_CONSTANTS, type PreparedRelief } from './relief';
+import { GRAIN_CHROMA, prepareGrain } from './grain';
 import { HALFTONE_SHADER_CONSTANTS, HALFTONE_TABLE, halftoneContrast } from './halftone';
 import { prepareWarp, WARP_SHADER_CONSTANTS, type PreparedWarp } from './warp';
 import type { OutputSize, RenderOptions, Renderer, Tile } from './types';
@@ -256,7 +256,7 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
     render(design: Design, output: OutputSize, tile: Tile, opts: RenderOptions = {}) {
       const base = design.base;
       const warp = prepareWarp(design.warp);
-      const grain = prepareGrain(design.grain);
+      const grain = prepareGrain(design.finish?.noise);
       const finish = prepareFinish(design.finish, output);
       const relief = prepareRelief(design.finish);
       const halftone = halftoneContrast(design.finish);
@@ -304,8 +304,10 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
         ...baseUniforms,
         ...warpUniforms(warp),
         u_grainAmp: grain.sigma,
-        u_grainScale: 1 / grain.sizePx,
+        u_grainScale: grain.scale,
+        u_grainClumpScale: grain.clumpScale,
         u_grainChroma: GRAIN_CHROMA,
+        u_grainSeed: grain.seed,
         u_vignette: finish.vignette,
         u_vignetteScale: finish.vignetteScale,
         u_bandSteps: finish.bandSteps,

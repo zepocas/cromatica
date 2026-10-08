@@ -7,6 +7,7 @@ import {
   type Design,
   type RampGradient,
   MAX_MESH_POINTS,
+  noFinish,
   type PointMesh,
   WARP_SHAPES,
 } from '../../src/design/design';
@@ -20,9 +21,9 @@ const meshDesign: Design = {
   engineVersion: 1,
   base: defaultMesh,
   warp: defaultWarp,
-  grain: { amount: 0.4, size: 0.3 },
+  finish: { ...noFinish, noise: { type: 'xerox', amount: 0.4 } },
 };
-const linearDesign: Design = { ...defaultDesign, grain: { amount: 0.2, size: 0.1 } };
+const linearDesign: Design = { ...defaultDesign, finish: { ...noFinish, noise: { type: 'halftone', amount: 0.2 } } };
 const all = (seed: number) => ({ colors: true, layout: true, seed });
 
 const mesh = (d: Design) => d.base as PointMesh;
@@ -42,7 +43,7 @@ describe('shuffleDesign', () => {
     expect(out).toEqual(meshDesign);
     expect(out.base).not.toBe(meshDesign.base);
     expect(mesh(out).points[0].color).not.toBe(defaultMesh.points[0].color);
-    expect(out.grain).not.toBe(meshDesign.grain);
+    expect(out.finish!.noise).not.toBe(meshDesign.finish!.noise);
   });
 
   it('is deterministic for (design, opts, aspect)', () => {
@@ -72,11 +73,11 @@ describe('shuffleDesign', () => {
     }
   });
 
-  it('keeps base kind and grain', () => {
+  it('keeps base kind and noise', () => {
     for (let s = 0; s < 20; s++) {
       expect(shuffled(meshDesign, all(s)).base.kind).toBe('mesh');
       expect(shuffled(linearDesign, all(s)).base.kind).toBe('linear');
-      expect(shuffled(meshDesign, all(s)).grain).toEqual(meshDesign.grain);
+      expect(shuffled(meshDesign, all(s)).finish!.noise).toEqual(meshDesign.finish!.noise);
     }
   });
 
@@ -233,8 +234,8 @@ describe('style shuffle (pattern kind and finishes)', () => {
     for (let s = 0; s < 200; s++) {
       const d = shuffled(meshDesign, style(s));
       kinds.add(d.base.kind);
-      if (d.finish!.print > 0) printed++;
-      expect(d.finish!.print).toBeLessThanOrEqual(0.4);
+      if (d.finish!.noise.type === 'lithograph' && d.finish!.noise.amount > 0) printed++;
+      if (d.finish!.noise.type === 'lithograph') expect(d.finish!.noise.amount).toBeLessThanOrEqual(0.4);
       if (d.finish!.bands > 0) banded++;
       if (d.base.kind === 'planes' || d.base.kind === 'aurora') expect(d.finish!.bands).toBe(0);
     }
@@ -253,12 +254,16 @@ describe('style shuffle (pattern kind and finishes)', () => {
       if (f.relief > 0) {
         relief++;
         surfaces.add(f.reliefStyle);
+        expect(f.relief).toBeGreaterThanOrEqual(0.1);
         expect(f.relief).toBeLessThanOrEqual(0.5);
         expect(f.reliefLight).toBeGreaterThanOrEqual(100);
         expect(f.reliefLight).toBeLessThanOrEqual(170);
       }
-      if (f.halftone > 0) halftone++;
-      expect(f.halftone).toBeLessThanOrEqual(0.35);
+      if (f.noise.type === 'halftone' && f.noise.amount > 0) {
+        halftone++;
+        expect(f.noise.amount).toBeGreaterThanOrEqual(0.1);
+        expect(f.noise.amount).toBeLessThanOrEqual(0.35);
+      }
     }
     expect(relief).toBeGreaterThan(30);
     expect(relief).toBeLessThan(100);

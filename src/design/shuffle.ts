@@ -144,9 +144,9 @@ export const STYLE_SHUFFLE = {
   print: { chance: 0.25, range: [0.15, 0.4] as Range },
   /** Not for planes, which are flat already. */
   bands: { chance: 0.15, range: [0.2, 0.7] as Range },
-  /** Subtle (2026-10-07); weights to revisit in M12. Light from the upper left. */
-  relief: { chance: 0.15, range: [0.2, 0.5] as Range, light: [100, 170] as Range },
-  halftone: { chance: 0.12, range: [0.15, 0.35] as Range },
+  /** Subtle (2026-10-07; ranges set in M12, D60). Light from the upper left. */
+  relief: { chance: 0.15, range: [0.1, 0.5] as Range, light: [100, 170] as Range },
+  halftone: { chance: 0.12, range: [0.1, 0.35] as Range },
   planesRoughness: { clean: 0.25, range: [0.3, 1] as Range },
   planesBlend: { chance: 0.3, range: [0.2, 0.8] as Range },
 };
@@ -169,7 +169,7 @@ const copyColor = (c: Oklch): Oklch => [c[0], c[1], c[2]];
 
 /**
  * Pure: a new design with fresh colors and/or layout, deterministic for
- * (design, opts, aspect). Keeps the pattern kind, grain and finish. Mesh layouts keep
+ * (design, opts, aspect). Keeps the pattern kind and finish. Mesh layouts keep
  * points mostly inside the frame of the given aspect and avoid clumping; when
  * both colors and layout are shuffled, the point count may change by ±1.
  */
@@ -204,9 +204,9 @@ export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 
   let base = shuffled.pattern;
   if (base.kind === 'mesh' && opts.layout && design.transform) base = toPatternSpace(base, design.transform);
   const warp = opts.layout ? shuffleWarp(ctx.layoutRng) : { ...design.warp };
-  const out: Design = { engineVersion: design.engineVersion, base, warp, grain: { ...design.grain } };
+  const out: Design = { engineVersion: design.engineVersion, base, warp };
   if (design.transform) out.transform = { ...design.transform };
-  if (finish) out.finish = { ...finish };
+  if (finish) out.finish = { ...finish, noise: { ...finish.noise } };
   return { design: out, palette: shuffled.palette };
 }
 
@@ -356,20 +356,21 @@ function shuffleFinish(rng: Rng, flat: boolean): Finish {
   const print = maybe(s.print);
   const bands = maybe(s.bands);
   const bandEdge = round4(rng.next());
-  // Drawn last, so shuffles from before relief and halftone existed come out the same.
+  // Drawn after the others, so shuffles from before relief and halftone existed come out the same.
   const relief = maybe(s.relief);
   const reliefStyle = rng.next() < 0.5 ? 'satin' : 'glass';
   const reliefLight = Math.round(rng.range(...s.relief.light));
   const halftone = maybe(s.halftone);
+  // Noise (D60) is one texture: when both rolls hit, a coin picks the winner.
+  const pickHalftone = halftone > 0 && (print === 0 || rng.next() < 0.5);
   return {
     vignette,
-    print,
+    noise: pickHalftone ? { type: 'halftone', amount: halftone } : { type: 'lithograph', amount: print },
     bands: flat ? 0 : bands,
     bandEdge,
     relief,
     reliefStyle: relief > 0 ? reliefStyle : noFinish.reliefStyle,
     reliefLight: relief > 0 ? reliefLight : noFinish.reliefLight,
-    halftone,
   };
 }
 

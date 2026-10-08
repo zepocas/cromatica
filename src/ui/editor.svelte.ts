@@ -8,7 +8,6 @@ import {
   MAX_RADIUS,
   MIN_RADIUS,
   defaultDesign,
-  defaultGrain,
   defaultMesh,
   defaultWarp,
   identityTransform,
@@ -20,7 +19,6 @@ import {
   type ColorStop,
   type Design,
   type Finish,
-  type Grain,
   type AuroraPattern,
   type GridMesh,
   MAX_GRID,
@@ -55,7 +53,6 @@ export interface EditorSnapshot {
   aurora: AuroraLayout;
   grid: GridMesh;
   warp: Warp;
-  grain: Grain;
   finish: Finish;
   transform: Transform;
   palette: PaletteSnapshot;
@@ -99,8 +96,7 @@ export class EditorState {
   aurora = $state<AuroraLayout>({ count: 0.5, glow: 0.5, blend: AURORA_BLEND, seed: 1 });
   grid = $state<GridMesh>(defaultGrid());
   warp = $state<Warp>({ ...defaultWarp });
-  grain = $state<Grain>({ ...defaultGrain });
-  finish = $state<Finish>({ ...noFinish });
+  finish = $state<Finish>(structuredClone(noFinish));
   transform = $state<Transform>({ ...identityTransform });
   /** Shuffle locks: a locked part is kept as is. */
   colorsLocked = $state(false);
@@ -154,8 +150,7 @@ export class EditorState {
       engineVersion: 1,
       base,
       warp: { ...this.warp },
-      grain: { ...this.grain },
-      finish: { ...this.finish },
+      finish: { ...this.finish, noise: { ...this.finish.noise } },
       transform: { ...this.transform },
     };
   }
@@ -223,8 +218,7 @@ export class EditorState {
     }
     this.kind = base.kind;
     this.warp = { ...design.warp };
-    this.grain = { ...design.grain };
-    this.finish = { ...noFinish, ...design.finish };
+    this.finish = structuredClone({ ...noFinish, ...design.finish });
     this.transform = { ...(design.transform ?? identityTransform) };
     this.clampSelection();
   }
@@ -253,7 +247,6 @@ export class EditorState {
       aurora: $state.snapshot(this.aurora),
       grid: $state.snapshot(this.grid) as GridMesh,
       warp: $state.snapshot(this.warp),
-      grain: $state.snapshot(this.grain),
       finish: $state.snapshot(this.finish),
       transform: $state.snapshot(this.transform),
       palette: this.palette.snapshot(),
@@ -269,7 +262,6 @@ export class EditorState {
     this.aurora = copy.aurora;
     this.grid = copy.grid;
     this.warp = copy.warp;
-    this.grain = copy.grain;
     this.finish = copy.finish;
     this.transform = copy.transform;
     this.palette.restore(copy.palette);

@@ -1,6 +1,6 @@
 out vec4 fragColor;
 
-// Output order (D5, D7, D33, D46): pattern (transform → warp → base, linear RGB) → relief → vignette → halftone → sRGB transfer → print →
+// Output order (D5, D7, D33, D46, D60): pattern (transform → warp → base, linear RGB) → relief → vignette → halftone → sRGB transfer → print →
 // grain → dither → 8-bit quantization by the framebuffer.
 void main() {
   ivec2 px = outputPixel();

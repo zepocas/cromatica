@@ -347,9 +347,9 @@ Each milestone uses the same structure:
 - **Goal:** settle what the panel's finishes and color controls are called and which of them stay, before the references are fixed. After M11.
 - **Scope, in this order:**
   - **Colors "blend" dropdown** (per stop: perceptual, vivid, hue short/long way): feels like overkill to the user (2026-10-07); reconsider whether to keep it.
-  - **Relief's name:** the finish works, but "relief" may not be the right word for it in the panel; reconsider.
-  - **Relief controls and shuffle weight:** consider grouping relief's settings (relief, light, surface) visually, e.g. with a border, and revisit whether and how often shuffles turn relief on, and how strongly (user, 2026-10-07; M8 shipped 15% at 0.2–0.5).
-  - **Noise, print and halftone sliders:** reconsider them together (D53, 2026-10-07). Noise and print look alike, and noise is the softer, more redundant one. Decide whether to merge them, drop one, or rename ("noise" is the better name; "noise (print)" is an option). Halftone (M8) joins them: the user floated "noise (halftone)" and a single noise section holding all the noise-like finishes.
+  - ~~**Relief's name**~~ Done (D60): the controls form a bordered "lighting" group: amount, direction, surface.
+  - ~~**Relief controls and shuffle weight**~~ Done (D60): relief 0.1–0.5, halftone 0.1–0.35, chances unchanged.
+  - ~~**Noise, print and halftone sliders**~~ Done (D60, D53): one "noise" group with a type (lithograph, xerox, halftone, grain) and an amount; old saves migrate. Arrow-key previews now cover every list that can show one.
   - **Showcase examples / reference designs** (moved from M5; last, after the finish cleanup above, 2026-10-08): for each pattern, render candidates from shuffles and contact sheets, let the user pick about 3 by eye, and save them as fixed design files. They serve as showcase examples and as test fixtures.
 - **Done when:** each decision is recorded in DECISIONS, and each pattern has about 3 saved reference designs used as showcase and golden-image fixtures. The showcase examples come last because merging or renaming the finishes would change the designs.
 
@@ -358,6 +358,7 @@ Each milestone uses the same structure:
 - **Goal:** ready for real use. Independent of how designs look, so it can overlap with M12.
 - **Scope:**
   - Adaptive preview resolution tuning
+  - **Sharp preview when zoomed in** (user, 2026-10-08): the preview zooms by scaling a canvas drawn for the fitted view, so fine textures such as grain go soft. Redraw at the zoomed scale (only the visible part), within the frame budget.
   - **Full-screen preview:** shows the wallpaper edge to edge with no panel, to make up for the smaller preview next to the docked sidebar. Esc or a small × in a corner exits. Use the Fullscreen API where available; the render stays at screen resolution so the grain reads true. Handles stay hidden.
   - Context-loss recovery
   - Shader compile warm-up

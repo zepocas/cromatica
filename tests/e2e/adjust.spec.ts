@@ -66,10 +66,10 @@ test('noise slider changes the preview', async ({ page }) => {
   await openApp(page);
   const { settled, expectPreviewChanged } = previewProbe(page);
   let before = await settled();
-  await page.getByLabel('Noise').fill('0');
+  await page.getByLabel('Noise amount').fill('1');
   await expectPreviewChanged(before);
   before = await settled();
-  await page.getByLabel('Noise').fill('1');
+  await page.getByLabel('Noise amount').fill('0');
   await expectPreviewChanged(before);
 });
 
