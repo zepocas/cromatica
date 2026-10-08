@@ -1,5 +1,11 @@
 # cromatica
 
+[![CI](https://github.com/zepocas/cromatica/actions/workflows/ci.yml/badge.svg)](https://github.com/zepocas/cromatica/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/zepocas/cromatica/actions/workflows/codeql.yml/badge.svg)](https://github.com/zepocas/cromatica/actions/workflows/codeql.yml)
+[![License: MIT](https://img.shields.io/github/license/zepocas/cromatica)](LICENSE)
+[![Live demo](https://img.shields.io/badge/demo-zepocas.github.io%2Fcromatica-black)](https://zepocas.github.io/cromatica/)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-support-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/zepocas)
+
 Generate abstract gradient wallpapers in your browser, at crisp, device-native resolutions. Everything runs client-side: no account, no upload.
 
 **Try it: [zepocas.github.io/cromatica](https://zepocas.github.io/cromatica/)**
@@ -48,6 +54,10 @@ Phase 1 is in progress; see the roadmap for where things stand.
   - Use `{ exact: true }` for labels that are substrings of others ("Harmony" and "Keep harmony", "Rotate" and "Rotate left").
 - **Panel style** (`src/app.css` under `.panel`): monochrome, monospace, lowercase labels; `[ bracketed ]` buttons and glyph icons; dropdowns via `Dropdown.svelte` (native select popups can't be sized and scroll in Firefox-based browsers); sections via `src/ui/Section.svelte`; new controls go behind "+ more" unless they're core.
 - **Commits:** one commit per milestone step, Conventional Commits.
+
+## Support
+
+If cromatica is useful to you, you can [buy me a coffee on Ko-fi](https://ko-fi.com/zepocas) ☕
 
 ## License
 
