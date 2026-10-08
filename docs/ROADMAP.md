@@ -313,17 +313,17 @@ Each milestone uses the same structure:
   - **Saves:** version 4 adds `relief`, `reliefStyle`, `reliefLight` and `halftone`; older designs load with both off.
   - **Checks:** both match the CPU reference within 1 level, tile and worker renders are identical, off is bit-identical. Relief costs about 4.5× the render time on SwiftShader (five pattern reads per pixel); the user tried it live and reported no slowdown; not measured on a real GPU.
 
-### M9 — Context preview and legibility
+### M9 — Context preview and legibility ✅
 
 - **Goal:** show how a wallpaper will look with the operating system on top of it, and warn when icons or the clock would be hard to read.
 - **Scope:**
   - **Mockups** for Windows (taskbar, desktop icons), macOS (menu bar, dock, notch), Android (status bar, navigation, home icons, lock-screen clock) and iOS (lock-screen clock and widgets, Dynamic Island, home icon grid).
-  - **Legibility:** a luminance and busyness check under each platform's icon and clock zones, with a warning (too busy, or mid-tone against light or dark text), and a "calm zone" guide.
+  - **Legibility:** a contrast check under each platform's text zones (clock, date, status, labels, menu bar), with a warning where the area is mid-tone against both light and dark text, and a dotted guide around the checked zones.
 - **UI:** overlays only, never part of an export (D48). Related to the M11 full-screen preview, which could host the same mockups.
 - **Done when:**
   - Each platform's zones are drawn at the right proportions for at least one current device.
-  - The warning flags a busy area under the clock and stays quiet on a calm one.
-- **Settled (D56):** all four platforms at once, zones measured from official screenshots and guidelines, legibility checks contrast and busyness, export set moved to M11. Crop frames dropped: OSes don't fit wallpapers in one standard way.
+  - The warning flags a zone no text color reads over and stays quiet on a calm one.
+- **Settled (D56):** all four platforms at once, zones measured from official screenshots and guidelines, legibility checks contrast only (busyness dropped), export set moved to M11. Crop frames dropped: OSes don't fit wallpapers in one standard way.
 
 ### M10 — Light/dark pairs
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { assessZone, lightnessMap, type Legibility } from '../context/legibility';
+  import { assessZone, luminanceMap, type Legibility } from '../context/legibility';
   import { placeZone, type ContextScreen } from '../context/zones';
   import { noFinish, noGrain, type Design } from '../design/design';
   import { thumbnails } from '../preview/thumbnails';
@@ -26,7 +26,7 @@
   $effect(() => {
     const id = screen.id;
     const zones = placed;
-    // Pixel-sized textures don't matter at text size, and would read as busy here.
+    // Pixel-sized textures don't matter at text size, and their dots would count as the worst pixels.
     const calm: Design = {
       ...design,
       grain: noGrain,
@@ -39,7 +39,7 @@
       thumbnails().draw(analysis, calm, () => {
         if (!ctx) return;
         const { data, width, height } = ctx.getImageData(0, 0, analysis.width, analysis.height);
-        const map = lightnessMap(data, width, height);
+        const map = luminanceMap(data, width, height);
         legibility = {
           screen: id,
           verdicts: zones.map(({ zone, rect }) => (zone.check ? assessZone(map, rect, zone.kind === 'clock') : null)),
@@ -53,7 +53,6 @@
   });
 
   const pct = (v: number) => `${(v * 100).toFixed(3)}%`;
-  const ISSUE_TEXT = { midtone: 'mid-tone', busy: 'busy' } as const;
 </script>
 
 <canvas class="analysis" bind:this={analysis}></canvas>
@@ -63,12 +62,11 @@
     <div
       class="zone {zone.kind}"
       class:checked={zone.check}
-      class:warn={verdict && verdict.issues.length > 0}
+      class:warn={verdict?.midtone}
       class:dark-text={verdict?.text === 'black'}
       data-zone={zone.label}
-      data-issues={verdict?.issues.join(' ') ?? ''}
+      data-warn={verdict?.midtone ? 'mid-tone' : ''}
       data-contrast={verdict?.contrast.toFixed(2)}
-      data-busyness={verdict?.busyness.toFixed(2)}
       style:left={pct(rect.x)}
       style:top={pct(rect.y)}
       style:width={pct(rect.w)}
@@ -93,8 +91,8 @@
           style:text-align={zone.align ?? 'center'}>{zone.text}</span
         >
       {/if}
-      {#if verdict && verdict.issues.length > 0}
-        <span class="tag" role="status">{zone.label}: {verdict.issues.map((x) => ISSUE_TEXT[x]).join(', ')}</span>
+      {#if verdict?.midtone}
+        <span class="tag" role="status">{zone.label}: mid-tone</span>
       {/if}
     </div>
   {/each}

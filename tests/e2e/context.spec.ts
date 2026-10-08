@@ -17,18 +17,21 @@ test('every context draws over the preview without changing it', async ({ page }
   await expect(overlay).toHaveCount(0);
 });
 
-test('the clock warning flags a busy area and stays quiet on a calm one', async ({ page }) => {
+test('the warning flags a zone no text color reads over and stays quiet on a calm one', async ({ page }) => {
   await openApp(page);
+  // The default mesh is one flat pink behind the iOS clock...
   await choose(page.getByLabel('Size preset'), '1206x2622');
   await choose(page.getByLabel('OS context'), 'ios-lock');
   const clock = page.locator('[data-zone="clock"]');
-  await expect(clock).toHaveAttribute('data-issues', '');
+  await expect(clock).toHaveAttribute('data-contrast', /\d/);
+  await expect(clock).toHaveAttribute('data-warn', '');
 
-  // Many crisp planes cross the clock; the default mesh is smooth there.
-  await choose(page.getByLabel('Gradient', { exact: true }), 'planes');
-  await page.getByLabel('Planes', { exact: true }).fill('1');
-  await expect(clock).toHaveAttribute('data-issues', /busy/);
-  await expect(clock.getByRole('status')).toContainText('busy');
+  // ...but runs from dark navy to light orange under the macOS menu bar.
+  await choose(page.getByLabel('Size preset'), '3840x2160');
+  await choose(page.getByLabel('OS context'), 'macos');
+  const menuBar = page.locator('[data-zone="menu bar"]');
+  await expect(menuBar).toHaveAttribute('data-warn', 'mid-tone');
+  await expect(menuBar.getByRole('status')).toContainText('mid-tone');
 });
 
 test('phone outputs list the phone contexts first', async ({ page }) => {

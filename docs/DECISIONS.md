@@ -375,7 +375,7 @@ Decisions made during the architecture review. Reopen one only if new informatio
 
 - **Platforms:** Windows, macOS, Android and iOS ship together in M9, one current device each.
 - **Zones are measured** from official screenshots and design guidelines (Apple HIG, Material, Windows), not drawn by eye, and stored with their OS version (D48).
-- **Legibility** flags two things under clock and icon zones: mid-tone lightness, which fails with both white and black text, and busyness (local detail). Thresholds are tuned with the user on sheets and live.
+- **Legibility** flags mid-tones only: zones where neither white nor black text reaches WCAG AA (3:1 for clocks, 4.5:1 for small text) over the zone's worst 10% of pixels. A busyness check (local detail) was built and dropped: the mockup itself shows how busy the area behind the text is, and more checks felt like overkill to the user.
 - **Export set** (several sizes as a ZIP) moves to M11; M9 stays overlays only.
 - **A "view" section** in the panel holds the "os context" picker and takes over the "show points/nodes" toggle. Every context is always listed; portrait outputs list the phone screens first. Arrowing through the list previews each one.
 - **No crop frames:** dropped after building them. How an OS fits a wallpaper is not standard: macOS and Windows "Fill" crop the centre, but iOS lets the user pan and zoom, and Android depends on the launcher and picker. cromatica exports at each device's exact size, so there is nothing for the OS to crop; several devices are served by the M11 export set.
