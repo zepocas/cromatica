@@ -21,13 +21,13 @@ Date: 2026-10-08. Status of sources: Apple publishes NO spec for the wallpaper m
 
 ## 2. Browser-capable encoders
 
-| Option | Licence | Size | Multi-image + XMP | Maturity |
-|---|---|---|---|---|
-| libheif-js (catdad) | LGPL-3.0 | 8.4 MB npm package | DECODE ONLY, no encode API | maintained, but not usable for writing [npm] |
-| libheif built by us with Emscripten | LGPL-3.0 core; x265 plugin is GPL, kvazaar is BSD-style per libheif README [libheif] | UNVERIFIED (not published) | libheif C API supports multiple images and metadata [libheif]; JS bindings would be ours to write | libheif has an official emscripten build script [libheif]; HEVC encoder in WASM = real build effort |
-| elheif (libheif + libde265 + kvazaar) | repo says MIT, wrapped libs keep their own licences | not documented | only `jsEncodeImage(rgba,w,h)`; no metadata or multi-image API documented [elheif] | 1 star, 2 commits: prototype |
-| @saschazar/wasm-heif | n/a | n/a | decode; its author reports not compiling x265 for Emscripten [npm search result, UNVERIFIED] | old |
-| Own HEIF muxer + WebCodecs HEVC (section 3) | ours | ~0 (a few hundred lines) | yes, we write the boxes | only works where HEVC encode exists |
+| Option                                      | Licence                                                                              | Size                       | Multi-image + XMP                                                                                 | Maturity                                                                                            |
+| ------------------------------------------- | ------------------------------------------------------------------------------------ | -------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| libheif-js (catdad)                         | LGPL-3.0                                                                             | 8.4 MB npm package         | DECODE ONLY, no encode API                                                                        | maintained, but not usable for writing [npm]                                                        |
+| libheif built by us with Emscripten         | LGPL-3.0 core; x265 plugin is GPL, kvazaar is BSD-style per libheif README [libheif] | UNVERIFIED (not published) | libheif C API supports multiple images and metadata [libheif]; JS bindings would be ours to write | libheif has an official emscripten build script [libheif]; HEVC encoder in WASM = real build effort |
+| elheif (libheif + libde265 + kvazaar)       | repo says MIT, wrapped libs keep their own licences                                  | not documented             | only `jsEncodeImage(rgba,w,h)`; no metadata or multi-image API documented [elheif]                | 1 star, 2 commits: prototype                                                                        |
+| @saschazar/wasm-heif                        | n/a                                                                                  | n/a                        | decode; its author reports not compiling x265 for Emscripten [npm search result, UNVERIFIED]      | old                                                                                                 |
+| Own HEIF muxer + WebCodecs HEVC (section 3) | ours                                                                                 | ~0 (a few hundred lines)   | yes, we write the boxes                                                                           | only works where HEVC encode exists                                                                 |
 
 HEVC patents: x265 is GPL and any hosted use also raises HEVC patent-pool questions (not a licence conclusion, needs legal review). UNVERIFIED for kvazaar licence: libheif README calls it a BSD alternative; the third-party summary said GPL. Check kvazaar's repo before relying on it.
 
