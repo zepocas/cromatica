@@ -310,6 +310,7 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
         u_vignetteScale: finish.vignetteScale,
         u_bandSteps: finish.bandSteps,
         u_bandEdge: finish.bandEdge,
+        u_bandMode: finish.bandStyle,
         u_printMix: finish.printMix,
         u_printInk: finish.printInk,
         u_printScreen: finish.printScreen,

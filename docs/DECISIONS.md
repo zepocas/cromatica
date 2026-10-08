@@ -406,3 +406,13 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Comment density:** wanted, as a one-off cleanup.
 - **Technical section** (Display P3, 16-bit PNG, mozjpeg, WebGPU, LIC/Gabor): to be evaluated. Performance is the priority; Display P3 may matter for gamut.
 - **Planes advanced panel:** needs a new discussion and brainstorm before any build.
+
+## D60. Mesh bands get three styles (A, B, C)
+
+- **Decision (2026-10-08):** a bold-bands option for the mesh was prototyped as two new styles beside today's. The user liked all three, so the bands row has an `A|B|C` segmented switch to the right of the slider, the active letter lit. Mesh only; ramps band their position, planes, aurora and grid have no bands.
+- **Styles** (`Finish.bandStyle`, in code `weights`, `facets`, `layers`): A bands each point's influence in steps (today's look, the default). B bands the share of the two strongest points, so the image is flat polygons with stepped mixes and crisp borders. C blends smoothly, then steps the Oklab lightness at band centers (so the mean lightness holds), giving contour layers while hue and chroma stay smooth.
+- **Same sliders:** bands sets the step count (24 down to 3) and edge softens the steps, for all three. On a mesh the readout is the 0.00–1.00 amount, not the step count: the count isn't a visible band count in any style (C steps lightness over 0–1, so an image spanning less shows fewer). Ramps keep the integer.
+- **Why letters:** the styles are abstract; names would mean little in the panel. The names live in the code only.
+- **Saves:** `bandStyle` defaults to `weights` when missing, so older saves, favourites and PNG-embedded designs render as before. No schema version bump (D44). Shuffles reset it to A.
+- **Reference:** the CPU mesh evaluator implements B and C; browser tests compare the GPU with it for each style.
+- **Seen on the sheets:** B is the boldest at every slider position but angular (Voronoi-like borders); C is the most organic but subtle at 3 steps; A is soft below about 0.6.

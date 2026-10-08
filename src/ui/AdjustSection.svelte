@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { MAX_GRID, MIN_GRID, noFinish } from '../design/design';
+  import { BAND_STYLES, MAX_GRID, MIN_GRID, noFinish } from '../design/design';
   import { prepareFinish } from '../engine/finish';
   import { ribbonCount } from '../engine/aurora';
   import { planeCount } from '../engine/planes';
@@ -17,6 +17,9 @@
 
   const fixed2 = (v: number) => v.toFixed(2);
   const bandSteps = (bands: number) => prepareFinish({ ...noFinish, bands }, { width: 1, height: 1 }).bandSteps;
+  // Mesh band styles show as A, B and C in the panel (D60).
+  const LETTERS = ['A', 'B', 'C'];
+  const BAND_TITLES = ['Terraces around each point', 'Flat facets between points', 'Lightness layers'];
   const degrees = (v: number) => `${Math.round(v)}°`;
   const warpOff = $derived(editor.warp.shape === 'none');
 </script>
@@ -196,15 +199,42 @@
     />
   {/if}
   {#if editor.kind !== 'planes' && editor.kind !== 'aurora' && editor.kind !== 'grid'}
-    <SliderRow
-      label="bands"
-      title="The image in flat steps, like a topographic map"
-      min={0}
-      max={1}
-      step={0.01}
-      bind:value={editor.finish.bands}
-      display={(v) => (v === 0 ? 'off' : String(bandSteps(v)))}
-    />
+    <!-- Ramps band their position, so the readout is the step count; on a mesh the steps mean something different per style, so it shows the amount. -->
+    {#if editor.kind === 'mesh'}
+      <div class="row">
+        <label for="bands">bands</label>
+        <input
+          id="bands"
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          aria-label="Bands"
+          title="The image in flat steps, like a topographic map"
+          bind:value={editor.finish.bands}
+        />
+        <output>{editor.finish.bands === 0 ? 'off' : fixed2(editor.finish.bands)}</output>
+        <span class="seg" role="group" aria-label="Band style">
+          {#each BAND_STYLES as style, i (style)}
+            <button
+              aria-pressed={editor.finish.bandStyle === style}
+              title={BAND_TITLES[i]}
+              onclick={() => (editor.finish.bandStyle = style)}>{LETTERS[i]}</button
+            >
+          {/each}
+        </span>
+      </div>
+    {:else}
+      <SliderRow
+        label="bands"
+        title="The image in flat steps, like a topographic map"
+        min={0}
+        max={1}
+        step={0.01}
+        bind:value={editor.finish.bands}
+        display={(v) => (v === 0 ? 'off' : String(bandSteps(v)))}
+      />
+    {/if}
     <SliderRow
       label="edge"
       title="Band edges: crisp lines ↔ soft terraces"

@@ -337,7 +337,7 @@ Each milestone uses the same structure:
 - **Goal:** settle the visual effects work. Polish was split into four milestones on 2026-10-08 (D58): M11 effects, M12 UI decisions, M13 performance and UX, M14 lean panel.
 - **Scope, in this order:**
   - **Backlog review** ✅ (2026-10-08, D59): design in the JPEG stays as a try (with share links), advanced favourites and the light/dark pair are dropped, looks stay parked, the comment cleanup is wanted, the technical section is to be evaluated and the planes panel needs a brainstorm.
-  - **Bold bands on the mesh** (from the backlog, 2026-10-08; D33): step the lightness, step the blend between the two strongest points, or draw contour lines at band boundaries. Today's bands stay as they are until one is picked.
+  - **Bold bands on the mesh** ✅ (2026-10-08, D60): three styles behind an A|B|C switch in the bands row. A is today's weight terraces (default), B flat facets between the two strongest points, C stepped lightness layers. All three tried by eye on a contact sheet; the user liked all of them, so none was dropped.
   - **Brushed warp:** one of the user's least favorite shapes (2026-10-05); decide whether to remove it. Saved designs that use it would need a migration (D44).
   - **Bicubic patch mesh** (from the backlog, 2026-10-08): a bendable Figma/SwiftUI-style grid. Prototype first, in parallel with the R&D agent's investigation.
 - **Done when:** the backlog is reviewed, one bold-bands option is picked or dropped, brushed warp is kept or removed (with a migration if removed), and the bicubic prototype is judged by the user: promote it, park it or drop it.

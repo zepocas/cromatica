@@ -1,6 +1,6 @@
 // Renderer: the color-point mesh — tiling, CPU reference, gamut clip, robustness.
 import { expect, test } from '@playwright/test';
-import { type Design, defaultMesh } from '../../src/design/design';
+import { BAND_STYLES, type Design, defaultMesh, noFinish } from '../../src/design/design';
 import { threeStops, meshDefault, mesh16, primaries, farAway, extreme } from './support/designs';
 import { engineHarness, openEngineHarness, logBench, bench } from './support/harness';
 
@@ -71,6 +71,23 @@ test.describe('mesh vs CPU reference (dither off)', () => {
       expect(r.clip).toBeLessThanOrEqual(0.02);
       expect(r.gpu).toBeLessThanOrEqual(0.02);
     });
+  }
+});
+
+test.describe('mesh band styles vs CPU reference (dither off)', () => {
+  for (const style of BAND_STYLES) {
+    for (const [name, d] of [
+      ['default', meshDefault],
+      ['16 points', mesh16],
+    ] as const) {
+      test(`${style}, ${name}`, async ({ page }) => {
+        const banded: Design = { ...d, finish: { ...noFinish, bands: 0.5, bandEdge: 0.6, bandStyle: style } };
+        const r = await engineHarness(page, 'compareReference', banded, 640, 360);
+        logBench(`mesh bands ${style} ${name}: max ${r.maxDiff}`);
+        expect(r.alphaOk).toBe(true);
+        expect(r.maxDiff, JSON.stringify(r.worst)).toBeLessThanOrEqual(1);
+      });
+    }
   }
 });
 

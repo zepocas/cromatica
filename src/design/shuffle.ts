@@ -366,6 +366,7 @@ function shuffleFinish(rng: Rng, flat: boolean): Finish {
     print,
     bands: flat ? 0 : bands,
     bandEdge,
+    bandStyle: noFinish.bandStyle,
     relief,
     reliefStyle: relief > 0 ? reliefStyle : noFinish.reliefStyle,
     reliefLight: relief > 0 ? reliefLight : noFinish.reliefLight,

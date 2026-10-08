@@ -3,6 +3,7 @@
 // validated against the current schema.
 import { z } from 'zod';
 import {
+  BAND_STYLES,
   identityTransform,
   MAX_GRID,
   MAX_MESH_POINTS,
@@ -97,6 +98,7 @@ const designSchema = z.object({
     vignette: unit,
     bands: unit,
     bandEdge: unit,
+    bandStyle: z.enum(BAND_STYLES).default('weights'),
     print: unit,
     relief: unit,
     reliefStyle: z.enum(RELIEF_STYLES),

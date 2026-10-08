@@ -143,3 +143,20 @@ test('vignette darkens the image; bands and edge work on every style', async ({ 
   await page.getByLabel('Vignette').fill('0.8');
   await expectPreviewChanged(before);
 });
+
+test('the band style segments pick A, B or C on a mesh and are absent on other styles', async ({ page }) => {
+  await openApp(page);
+  const { settled, expectPreviewChanged } = previewProbe(page);
+  await choose(page.getByLabel('Gradient', { exact: true }), 'mesh');
+  const group = page.getByRole('group', { name: 'Band style' });
+  await page.getByLabel('Bands').fill('0.5');
+  await expect(group.getByRole('button', { name: 'A' })).toHaveAttribute('aria-pressed', 'true');
+  for (const letter of ['B', 'C', 'A']) {
+    const before = await settled();
+    await group.getByRole('button', { name: letter }).click();
+    await expect(group.getByRole('button', { name: letter })).toHaveAttribute('aria-pressed', 'true');
+    await expectPreviewChanged(before);
+  }
+  await choose(page.getByLabel('Gradient', { exact: true }), 'linear');
+  await expect(group).toHaveCount(0);
+});
