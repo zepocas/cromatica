@@ -395,3 +395,14 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Showcase examples come last in M12:** they double as golden-image fixtures, so they wait until the finishes are settled.
 - **M14 is a trial** that can run in parallel with almost any milestone. The status bar is built only if settings move into it to slim the left panel.
 - **Backlog reorder:** bicubic patch mesh (prototype, parallel R&D investigation), share links (investigate; may be its own milestone), digital/glitch as a post-processing stage, the ink-blobs look as an optional panel of 3 to 4 settings, and the planes advanced panel (to be confirmed) now sit at the top.
+
+## D59. M11 backlog review outcome
+
+- **Decision (2026-10-08):** the backlog review that opens M11 is done.
+- **Design in the JPEG:** kept as an experiment, next to share links. Not dropped.
+- **Favourites, advanced:** dropped. M7's favourites list is enough; a JSON export and import stays under share links.
+- **Light/dark pair:** dropped for good (confirms D57). The branch stays, nothing is planned.
+- **Looks:** stay parked (D47).
+- **Comment density:** wanted, as a one-off cleanup.
+- **Technical section** (Display P3, 16-bit PNG, mozjpeg, WebGPU, LIC/Gabor): to be evaluated. Performance is the priority; Display P3 may matter for gamut.
+- **Planes advanced panel:** needs a new discussion and brainstorm before any build.
