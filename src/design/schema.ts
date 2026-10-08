@@ -3,6 +3,7 @@
 // validated against the current schema.
 import { z } from 'zod';
 import {
+  BAND_STYLES,
   identityTransform,
   MAX_GRID,
   MAX_MESH_POINTS,
@@ -79,6 +80,7 @@ const grid = z
     cols: gridSide,
     nodes: z.array(z.object({ x: z.number(), y: z.number(), color: oklch })),
     rest: z.tuple([z.number().positive(), z.number().positive()]),
+    lines: unit.optional(),
   })
   .refine((g) => g.nodes.length === g.rows * g.cols, { message: 'grid needs rows × cols nodes', path: ['nodes'] });
 
@@ -97,6 +99,7 @@ const designSchema = z.object({
     vignette: unit,
     bands: unit,
     bandEdge: unit,
+    bandStyle: z.enum(BAND_STYLES).default('weights'),
     print: unit,
     relief: unit,
     reliefStyle: z.enum(RELIEF_STYLES),

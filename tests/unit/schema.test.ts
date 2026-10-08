@@ -36,6 +36,13 @@ describe('design schema', () => {
     expect(d.finish.relief).toBe(0);
   });
 
+  it('gives a design saved before band styles the weights style', () => {
+    const saved = saveDesign(defaultDesign).design;
+    const { bandStyle: _bandStyle, ...finish } = saved.finish;
+    const d = loadDesign({ version: SCHEMA_VERSION, design: { ...saved, finish } });
+    expect(d.finish.bandStyle).toBe('weights');
+  });
+
   it('saves the current version', () => {
     expect(saveDesign(defaultDesign).version).toBe(SCHEMA_VERSION);
   });

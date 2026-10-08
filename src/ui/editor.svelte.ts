@@ -522,7 +522,7 @@ export class EditorState {
     cols = clamp(Math.round(cols), MIN_GRID, MAX_GRID);
     const g = $state.snapshot(this.grid) as GridMesh;
     if (rows === g.rows && cols === g.cols) return;
-    const prepared = prepareGrid(g);
+    const prepared = prepareGrid({ ...g, lines: 0 });
     const resized = { ...g, rows, cols };
     const nodes = [];
     for (let r = 0; r < rows; r++) {

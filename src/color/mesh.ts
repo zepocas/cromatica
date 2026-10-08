@@ -74,10 +74,25 @@ export function prepareMesh(mesh: PointMesh): PreparedMesh {
   return { count, exponent: meshExponent(mesh.sharpness), geometry, colors };
 }
 
-/** Optional banding of each point's weight relative to the strongest (finish bands, D33). */
-type BandWeight = (relative: number) => number;
+/**
+ * Finish bands on a mesh (D33, D60). `level` bands a weight relative to the
+ * strongest, `stepLightness` bands an Oklab lightness; both are src/engine/finish.ts.
+ */
+export interface MeshBanding {
+  style: 'weights' | 'facets' | 'layers';
+  /** Band steps; below 2 = off. */
+  steps: number;
+  level: (relative: number) => number;
+  stepLightness: (l: number) => number;
+}
 
-function preparedWeights(m: PreparedMesh, x: number, y: number, out: number[], band?: BandWeight): number[] {
+function preparedWeights(
+  m: PreparedMesh,
+  x: number,
+  y: number,
+  out: number[],
+  band?: (relative: number) => number,
+): number[] {
   let max = -Infinity;
   for (let i = 0; i < m.count; i++) {
     const dx = x - m.geometry[i * 3];
@@ -97,15 +112,31 @@ function preparedWeights(m: PreparedMesh, x: number, y: number, out: number[], b
 }
 
 /** Returns a fast evaluator of the blended Oklab color at composition (x, y), optionally in bands. */
-export function createMeshEvaluator(mesh: PointMesh, band?: BandWeight): (x: number, y: number) => Oklab {
+export function createMeshEvaluator(mesh: PointMesh, banding?: MeshBanding): (x: number, y: number) => Oklab {
   const m = prepareMesh(mesh);
   const w: number[] = new Array(m.count);
+  const on = banding !== undefined && banding.steps >= 2;
+  const weightBands = on && banding.style === 'weights' ? banding.level : undefined;
+  const color = (i: number, k: number) => m.colors[i * 3 + k];
   return (x, y) => {
-    preparedWeights(m, x, y, w, band);
+    if (on && banding.style === 'facets') {
+      // The two strongest points; their share in steps, so each band is a flat mix.
+      const e = preparedWeights(m, x, y, w); // normalized weights, same order as relative ones
+      let i1 = 0;
+      for (let i = 0; i < m.count; i++) if (e[i] >= e[i1]) i1 = i;
+      let i2 = -1;
+      for (let i = 0; i < m.count; i++) if (i !== i1 && (i2 < 0 || e[i] > e[i2])) i2 = i;
+      if (i2 < 0) return [color(i1, 0), color(i1, 1), color(i1, 2)];
+      const w2 = e[i2] / e[i1];
+      const t = 0.5 * banding.level((2 * w2) / (1 + w2));
+      return [0, 1, 2].map((k) => color(i1, k) + (color(i2, k) - color(i1, k)) * t) as Oklab;
+    }
+    preparedWeights(m, x, y, w, weightBands);
     const lab: Oklab = [0, 0, 0];
     for (let i = 0; i < m.count; i++) {
       for (let k = 0; k < 3; k++) lab[k] += w[i] * m.colors[i * 3 + k];
     }
+    if (on && banding.style === 'layers') lab[0] = banding.stepLightness(lab[0]);
     return lab;
   };
 }

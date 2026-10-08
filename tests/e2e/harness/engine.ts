@@ -8,7 +8,7 @@ import { bakeRamp, RAMP_SIZE } from '../../../src/color/ramp';
 import type { Rgb } from '../../../src/color/types';
 import { type Design, type RampGradient, noGrain, noWarp, type PointMesh } from '../../../src/design/design';
 import { applyMat2, transformMatrix } from '../../../src/engine/transform';
-import { bandLevel, prepareFinish, vignetteFactor } from '../../../src/engine/finish';
+import { bandLevel, meshBanding, prepareFinish, vignetteFactor } from '../../../src/engine/finish';
 import { prepareRampShape, rampT } from '../../../src/engine/ramp-shape';
 import { evaluatePlanes, preparePlanes } from '../../../src/engine/planes';
 import { evaluateAurora, prepareAurora } from '../../../src/engine/aurora';
@@ -148,12 +148,12 @@ function createPatternReference(design: Design, output: OutputSize, halfFloat: b
   const finish = prepareFinish(design.finish, output);
   const base = design.base;
   if (base.kind === 'mesh') {
-    const evaluate = createMeshEvaluator(base, (r) => bandLevel(finish, r));
+    const evaluate = createMeshEvaluator(base, meshBanding(finish));
     return (u, v) => meshGamutClip(evaluate(...at(u, v)));
   }
   if (base.kind === 'grid') {
     const grid = prepareGrid(base);
-    return (u, v) => meshGamutClip(evaluateGrid(grid, ...at(u, v)));
+    return (u, v) => meshGamutClip(evaluateGrid(grid, ...at(u, v), 1 / output.height));
   }
   if (base.kind === 'aurora') {
     const aurora = prepareAurora(base);

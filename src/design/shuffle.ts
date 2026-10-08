@@ -119,6 +119,8 @@ export const GRID_SHUFFLE = {
   jitter: 0.35,
   /** Palette colors dealt over the nodes. */
   colors: 5,
+  /** Lines along the bent grid (D62): how often a layout shuffle draws them, and how strong. */
+  lines: { chance: 0.6, range: [0.25, 0.7] as Range },
 };
 
 export const AURORA_SHUFFLE = {
@@ -366,6 +368,7 @@ function shuffleFinish(rng: Rng, flat: boolean): Finish {
     print,
     bands: flat ? 0 : bands,
     bandEdge,
+    bandStyle: noFinish.bandStyle,
     relief,
     reliefStyle: relief > 0 ? reliefStyle : noFinish.reliefStyle,
     reliefLight: relief > 0 ? reliefLight : noFinish.reliefLight,
@@ -448,7 +451,13 @@ function shuffleGrid(base: GridMesh, ctx: ShuffleContext): { pattern: GridMesh; 
   else if (geo === base.nodes) colors = base.nodes.map((n) => copyColor(n.color));
   else colors = dealGridColors(colorRng, baseColors(base), rows, cols);
   const nodes = geo.map((n, i) => ({ x: n.x, y: n.y, color: colors[i] }));
-  return { pattern: { kind: 'grid', rows, cols, nodes, rest }, palette: palette && paletteInfo(palette) };
+  // Drawn last, so the other layout values match earlier shuffles.
+  const lines = opts.layout
+    ? layoutRng.next() < GRID_SHUFFLE.lines.chance
+      ? round4(layoutRng.range(...GRID_SHUFFLE.lines.range))
+      : 0
+    : (base.lines ?? 0);
+  return { pattern: { kind: 'grid', rows, cols, nodes, rest, lines }, palette: palette && paletteInfo(palette) };
 }
 
 /** Aurora: a new layout is a new seed, ribbon count, glow and blend. */
