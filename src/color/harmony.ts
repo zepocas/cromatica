@@ -54,17 +54,16 @@ const RULE_WEIGHTS: Record<HarmonyRule, number> = {
 export const PALETTE_MOODS: readonly PaletteMood[] = ['natural', 'vivid', 'muted', 'earthy', 'pastel', 'neon'];
 
 /**
- * How mood 'any' resolves: mostly natural, the photogradient-like look.
- * Pastel and neon are explicit picks only: pastel repeats natural + high key,
- * and neon is too loud to come up at random.
+ * How mood 'any' resolves (sums to 1): mostly natural, the photogradient-like look.
+ * Pastel comes up now and then, neon rarely: it is loud (user, 2026-10-08, D64).
  */
 const MOOD_WEIGHTS: Record<PaletteMood, number> = {
-  natural: 0.45,
-  vivid: 0.2,
-  muted: 0.2,
-  earthy: 0.15,
-  pastel: 0,
-  neon: 0,
+  natural: 0.38,
+  vivid: 0.17,
+  muted: 0.16,
+  earthy: 0.12,
+  pastel: 0.15,
+  neon: 0.02,
 };
 
 /** How key 'any' resolves: mostly full, so shuffles keep their range. */
