@@ -60,7 +60,7 @@ Each milestone uses the same structure:
   - Dark shallow gradient: the longest flat run falls from 1023 px to 23 px with dither, and the 16×16 block error from 0.28 to 0.008 LSB.
 - **Resolved:** the lookup texture has 4096 entries (fewer when the GPU's texture limit is smaller); the default blend is Perceptual; at most 8 stops; no lightness curve for now. See D18 and D19.
 - **Still open:**
-  - A 5K PNG export now takes about 3.8 s in SwiftShader, because dither noise compresses poorly and `CompressionStream` has no level setting. Consider a faster deflate (for example fflate at a low level) in M11.
+  - A 5K PNG export now takes about 3.8 s in SwiftShader, because dither noise compresses poorly and `CompressionStream` has no level setting. Consider a faster deflate (for example fflate at a low level) in M13.
   - The ramp size differs slightly on GPUs whose MAX_TEXTURE_SIZE is below 4096.
 
 ### M2 — Color-point mesh ✅
@@ -82,7 +82,7 @@ Each milestone uses the same structure:
 - **Still open (to tune):**
   - **Size is relative:** weights are normalized and there is no background color, so a point's size only matters relative to the other points. If every point is small, you get flat cells instead of separate blobs. Consider an absolute falloff or a background color.
   - The "Defined" end of the Blend slider gives cell-like regions with straight borders rather than round blobs. That may be fine, but review it with real use.
-  - **Panel overlap:** the floating panel can cover point handles (the default mesh's first point sits under it). Make the panel collapsible or movable (M11).
+  - **Panel overlap:** the floating panel can cover point handles (the default mesh's first point sits under it). Make the panel collapsible or movable (M14).
 
 > **Re-plan (after M2):** a comparison with photogradient.com showed that most of its look comes from three things: strong film grain, a menu of warp shapes, and shuffled, natural-looking palettes. Those moved forward into M3. Curated palettes and palette-from-image are now M4, and the remaining patterns are M5. See D22.
 
@@ -117,7 +117,7 @@ Each milestone uses the same structure:
   - Space shuffles everywhere except text, number and color inputs, selects and editable content.
 - **Still open:**
   - Vivid palettes with 5–6 colors can look garish (tune in M4).
-  - Grain in the preview differs from the export at DPR below 1 (the 1:1 loupe comes in M11).
+  - Grain in the preview differs from the export at DPR below 1 (the 1:1 loupe was dropped from M11, 2026-10-08).
   - `warpPoint` ignores aspect (seeded centers sit in a 16:9 box).
 
 ### M3.5 — UI refinement (photogradient-style panel) and transforms ✅
@@ -243,12 +243,12 @@ Each milestone uses the same structure:
   - Aurora ribbons.
   - A **grid Bézier mesh** style (photogradient's core style; revisits D11).
   - **Planes** (collage, after synthetic cubism and the King Krule sleeve art): N seeded, rotated polygons or Voronoi-style cells, each a flat palette color, with noise-roughened edges (torn paper), overlap order for the layered look and a subtle paper grain. Evaluated per pixel with no state, so it stays tile-independent. Controls: plane count and edge roughness. Pairs with the print texture finish from M4.5 and the muted and earthy moods.
-- **Done when:** each pattern has golden-image tests (CPU-reference and tile checks in the browser suite). The reference designs moved to M11's showcase examples (decided 2026-10-05).
+- **Done when:** each pattern has golden-image tests (CPU-reference and tile checks in the browser suite). The reference designs moved to M12's showcase examples (decided 2026-10-05).
 - **Progress:**
   - Planes built (D37): count, torn and a new-layout button. It uses the ramp's colors, works with warps and finishes, and has contact sheets in `sheets.spec.ts`. Still to do: tune by eye, and possibly Voronoi-style cells as a second planes layout.
   - fBm noise fields and Worley cells built as the `noise` and `cells` gradient types (D41).
   - Aurora ribbons built as the `aurora` gradient type (D42).
-  - Grid Bézier mesh built as the `grid` gradient type (D43): 2–5 × 2–5 draggable nodes, auto-smooth curves, a fold guard in the editor. Reference designs moved to M11.
+  - Grid Bézier mesh built as the `grid` gradient type (D43): 2–5 × 2–5 draggable nodes, auto-smooth curves, a fold guard in the editor. Reference designs moved to M12.
 
 ### M6 — Saving ✅
 
@@ -319,11 +319,11 @@ Each milestone uses the same structure:
 - **Scope:**
   - **Mockups** for Windows (taskbar, desktop icons), macOS (menu bar, dock, notch), Android (status bar, navigation, home icons, lock-screen clock) and iOS (lock-screen clock and widgets, Dynamic Island, home icon grid).
   - **Legibility:** a contrast check under each platform's text zones (clock, date, status, labels, menu bar), with a warning where the area is mid-tone against both light and dark text, and a dotted guide around the checked zones.
-- **UI:** overlays only, never part of an export (D48). Related to the M11 full-screen preview, which could host the same mockups.
+- **UI:** overlays only, never part of an export (D48). Related to the M13 full-screen preview, which could host the same mockups.
 - **Done when:**
   - Each platform's zones are drawn at the right proportions for at least one current device.
   - The warning flags a zone no text color reads over and stays quiet on a calm one.
-- **Settled (D56):** all four platforms at once, zones measured from official screenshots and guidelines, legibility checks contrast only (busyness dropped), export set moved to M11. Crop frames dropped: OSes don't fit wallpapers in one standard way.
+- **Settled (D56):** all four platforms at once, zones measured from official screenshots and guidelines, legibility checks contrast only (busyness dropped), export set moved to M11, then dropped on 2026-10-08. Crop frames dropped: OSes don't fit wallpapers in one standard way.
 
 ### M10 — Light/dark pairs ✖ dropped
 
@@ -332,39 +332,57 @@ Each milestone uses the same structure:
 - **Kept:** the code is on the unmerged branch `feat/light-dark-pairs`.
 - **Backlog:** a macOS script that merges two exported PNGs into a dynamic HEIC; "dark colors from an image".
 
-### M11 — Polish
+### M11 — Effects
 
-- **Goal:** ready for real use.
-- **Scope:**
+- **Goal:** settle the visual effects work. Polish was split into four milestones on 2026-10-08 (D58): M11 effects, M12 UI decisions, M13 performance and UX, M14 lean panel.
+- **Scope, in this order:**
   - **Backlog review:** at the start of M11, go through the backlog and decide what to promote, keep or drop. First candidate: design in the JPEG.
-  - Device preset list
-  - Custom pixel sizes
-  - 1:1 loupe
-  - Adaptive preview resolution tuning
-  - **Full-screen preview:** shows the wallpaper edge to edge with no panel, to make up for the smaller preview next to the docked sidebar. Esc or a small × in a corner exits. Use the Fullscreen API where available; the render stays at screen resolution so the grain reads true. Handles stay hidden.
-  - **Export set:** several sizes as a ZIP (moved from M9, D56).
-  - Export progress and cancel
-  - Context-loss recovery
-  - Shader compile warm-up
-  - Keyboard shortcuts
-  - **Showcase examples / reference designs** (moved from M5): for each pattern, render candidates from shuffles and contact sheets, let the user pick about 3 by eye, and save them as fixed design files. They serve as showcase examples and as test fixtures.
+  - **Bold bands on the mesh** (from the backlog, 2026-10-08; D33): step the lightness, step the blend between the two strongest points, or draw contour lines at band boundaries. Today's bands stay as they are until one is picked.
   - **Brushed warp:** one of the user's least favorite shapes (2026-10-05); decide whether to remove it. Saved designs that use it would need a migration (D44).
+  - **Bicubic patch mesh** (from the backlog, 2026-10-08): a bendable Figma/SwiftUI-style grid. Prototype first, in parallel with the R&D agent's investigation.
+- **Done when:** the backlog is reviewed, one bold-bands option is picked or dropped, brushed warp is kept or removed (with a migration if removed), and the bicubic prototype is judged by the user: promote it, park it or drop it.
+
+### M12 — UI decisions
+
+- **Goal:** settle what the panel's finishes and color controls are called and which of them stay, before the references are fixed. After M11.
+- **Scope, in this order:**
   - **Colors "blend" dropdown** (per stop: perceptual, vivid, hue short/long way): feels like overkill to the user (2026-10-07); reconsider whether to keep it.
   - **Relief's name:** the finish works, but "relief" may not be the right word for it in the panel; reconsider.
   - **Relief controls and shuffle weight:** consider grouping relief's settings (relief, light, surface) visually, e.g. with a border, and revisit whether and how often shuffles turn relief on, and how strongly (user, 2026-10-07; M8 shipped 15% at 0.2–0.5).
   - **Noise, print and halftone sliders:** reconsider them together (D53, 2026-10-07). Noise and print look alike, and noise is the softer, more redundant one. Decide whether to merge them, drop one, or rename ("noise" is the better name; "noise (print)" is an option). Halftone (M8) joins them: the user floated "noise (halftone)" and a single noise section holding all the noise-like finishes.
-  - Status bar under the preview, IDE-style, for global and view settings: show points (moved to the bottom of the panel in M6 for now), the 1:1 loupe and preview zoom, output size, autosave state. Idea from 2026-10-05; only worth it once it holds several of these.
+  - **Showcase examples / reference designs** (moved from M5; last, after the finish cleanup above, 2026-10-08): for each pattern, render candidates from shuffles and contact sheets, let the user pick about 3 by eye, and save them as fixed design files. They serve as showcase examples and as test fixtures.
+- **Done when:** each decision is recorded in DECISIONS, and each pattern has about 3 saved reference designs used as showcase and golden-image fixtures. The showcase examples come last because merging or renaming the finishes would change the designs.
+
+### M13 — Performance and UX
+
+- **Goal:** ready for real use. Independent of how designs look, so it can overlap with M12.
+- **Scope:**
+  - Adaptive preview resolution tuning
+  - **Full-screen preview:** shows the wallpaper edge to edge with no panel, to make up for the smaller preview next to the docked sidebar. Esc or a small × in a corner exits. Use the Fullscreen API where available; the render stays at screen resolution so the grain reads true. Handles stay hidden.
+  - Context-loss recovery
+  - Shader compile warm-up
+  - Keyboard shortcuts
+  - A faster deflate for 5K PNG export (see M5's note), if the export still feels slow.
 - **Done when:**
   - Tested on Chrome, Safari and Firefox on macOS, and Chrome on Windows
   - Exports at every preset resolution succeed
 - **Open questions:**
-  - Final device preset list (verify native resolutions)
   - Hosting
   - Product name (currently a placeholder)
 
-### M12 — Mobile layout
+### M14 — Lean panel (trial and error)
 
-- **Goal:** the editor is usable on a phone and a tablet, not only on a desktop window. Added 2026-10-07; after M11 on purpose, so the desktop layout is settled first (D55).
+- **Goal:** try to make the left panel leaner. Added 2026-10-08. A trial-and-error session that can run in parallel with almost any other milestone.
+- **Scope:**
+  - **Status bar under the preview** (only if it earns its place, 2026-10-08): IDE-style, for global and view settings. Not needed on its own; worth building only if settings move into it from the left panel to declutter it (show points, preview zoom, output size, autosave state and others to be picked).
+- **Done when:** the user either keeps a leaner panel with a bottom status bar or drops the idea. It is worth building only if settings move into the bar.
+- **Open questions:**
+  - Which settings move (show points, preview zoom, output size, autosave state, others).
+  - What it means for the mobile panel (M15).
+
+### M15 — Mobile layout
+
+- **Goal:** the editor is usable on a phone and a tablet, not only on a desktop window. Added 2026-10-07; after M14 on purpose, so the desktop layout is settled first (D55, D58).
 - **Scope:**
   - **Layout:** the docked left panel (about 300px, monospace, small targets) does not fit a narrow screen. Find a layout for it: a bottom sheet, tabs, or a full-screen panel over the preview. The colors and favourites sections at the bottom of the panel (12 favourite columns across the panel width) need a mobile counterpart.
   - **Touch:** touch-sized controls, drag handles for mesh points, grid nodes and stops with a finger, no hover-only affordances (the favourite ×, picker previews on hover).
@@ -389,22 +407,22 @@ Each milestone uses the same structure:
 
 ## Later — Backlog (unordered)
 
+- **Bicubic patch mesh** (promoted to prototype, 2026-10-08): Figma/SwiftUI-style bendable grid. Also in M11's scope (effects); an investigation runs in parallel with the R&D agent.
+- **Share links** (investigate; may become its own milestone, 2026-10-08): the save envelope compressed into the URL hash. Grid designs (25 nodes) make long URLs. A JSON file export and import would be the cheaper way to keep a design outside the browser.
+- **Digital / glitch as a post-processing stage** (wanted as a novelty feature, to give a real try, 2026-10-08): the glitch should act on the boundaries between colors and shapes in the rendered image (tearing, offsets and channel splits that follow edges), not move coordinates. A first try as a warp shape (hashed blocks shifted sideways plus scanline jitter) and an RGB split finish was built and reverted. It was underwhelming: on soft gradients a shifted block of similar color barely shows. The earlier attempt shows it likely needs an image-space stage, for example edge detection on the pattern evaluated at neighboring points, with displacement applied where colors change. That stays per pixel and stateless (D4), but costs extra pattern evaluations.
+- **Liquid-jazz "ink blobs" look, as an optional niche panel** (2026-10-08): get close to the reference with an advanced, optional panel of 3, at most 4, settings, not the full prototype depth. seeded smin-capsule blobs rendered as stipple in flat inks (reference: stippled vinyl cover). A prototype exists in `prototype-stipple.html` and `prototype/stipple/` (untracked, not part of the app). Open findings: union all blobs into one silhouette and use per-ink fields only for the color inside it; use a black base with white as an ink; fill more of the frame. Decide later whether it is a style of this product or a separate one.
+- **Planes advanced panel** (the user may be misremembering this one; confirm before building, 2026-10-08): under "+ more" for planes, add controls to move planes (drag, nudge, or reorder the stack) and bring over the interesting settings from the stipple / ink-blobs prototype (`prototype-stipple.html`). Requested 2026-10-04.
+- **Mobile layout / authoring:** tracked as milestone M15, not here (promoted 2026-10-07, D55; renumbered D58).
 - ~~Blend: sharper at the top of the slider.~~ Done in M4.5: the far end now reaches near-hard edges (D34).
-- Bands on the mesh, if they should ever be bolder (D33): step the lightness (strong topographic look, but no line between colors of similar lightness), step the blend between the two strongest points (closest to ramp bands), or draw contour lines at band boundaries (the only way to show bands between near-identical colors). Kept as is for now: the user likes the current look.
-- Bicubic patch mesh (Figma/SwiftUI-style bendable grid)
 - **Light/dark pair** (dropped from M10 on 2026-10-08, D57): the code is on the branch `feat/light-dark-pairs`. If it returns: a macOS script (pillow-heif or `heif-enc` plus `exiv2`, or Swift `CGImageDestination`) that merges two exported PNGs into a dynamic HEIC, and a "dark colors from an image" drop target. The pair was not saved across reloads; saving it needs a schema version and changes to autosave, favourites and the PNG chunk.
 - Display P3 output, as an internal flag with no UI
 - 16-bit PNG export
 - mozjpeg (WASM) for 4:4:4 JPEG
 - WebGPU backend
 - User-saved palettes
-- ~~Mobile authoring~~ Promoted to M12 (2026-10-07).
+- ~~Mobile authoring~~ Promoted to M15 (2026-10-07; was M12).
 - **Stipple / halftone finish:** moved to M8 (2026-10-05). The ink-blobs look below stays here.
-- **Liquid-jazz "ink blobs" look:** seeded smin-capsule blobs rendered as stipple in flat inks (reference: stippled vinyl cover). A prototype exists in `prototype-stipple.html` and `prototype/stipple/` (untracked, not part of the app). Open findings: union all blobs into one silhouette and use per-ink fields only for the color inside it; use a black base with white as an ink; fill more of the frame. Decide later whether it is a style of this product or a separate one.
 - Flow-field advection (LIC) and Gabor noise, if more warp variety is wanted after M4.5
-- **Planes advanced panel:** under "+ more" for planes, add controls to move planes (drag, nudge, or reorder the stack) and bring over the interesting settings from the stipple / ink-blobs prototype (`prototype-stipple.html`). Requested 2026-10-04.
-- **Digital / glitch** (postponed from M5 on 2026-10-04; needs a different approach): the glitch should act on the boundaries between colors and shapes in the rendered image (tearing, offsets and channel splits that follow edges), not move coordinates. A first try as a warp shape (hashed blocks shifted sideways plus scanline jitter) and an RGB split finish was built and reverted. It was underwhelming: on soft gradients a shifted block of similar color barely shows. Likely needs an image-space stage, for example edge detection on the pattern evaluated at neighboring points, with displacement applied where colors change. That stays per pixel and stateless (D4), but costs extra pattern evaluations.
-- **Share links** (moved from M6 on 2026-10-05): the save envelope compressed into the URL hash. Grid designs (25 nodes) make long URLs. A JSON file export and import would be the cheaper way to keep a design outside the browser.
 - **Looks (curated bundles)** (parked 2026-10-05, D47): named presets such as Zine, Dusk or Riso that set pattern, mood, key and finish together, so shuffle could stay inside a look. It would help adoption, but M7's onboarding tips cover most of that for now.
 - **Favourites, advanced** (2026-10-05): a real library with thumbnails, folders and a JSON file export and import. M7 only keeps a short plain list (D45).
 - **Design in the JPEG** (2026-10-05, follows D45): embed the save envelope in an exported JPEG and reopen it on drop, as the PNG does. A COM or APP1 (XMP) segment can carry it, spliced in after `canvas.convertToBlob` because the browser encoder has no metadata hook, with a segment reader for drop. Each segment holds about 64 KB, so measure a typical `saveDesign` JSON first. Weaker than PNG: JPEGs are re-encoded and stripped more often when shared. Reassess at the start of M11 (see its scope).

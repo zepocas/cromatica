@@ -144,7 +144,7 @@ export const STYLE_SHUFFLE = {
   print: { chance: 0.25, range: [0.15, 0.4] as Range },
   /** Not for planes, which are flat already. */
   bands: { chance: 0.15, range: [0.2, 0.7] as Range },
-  /** Subtle (2026-10-07); weights to revisit in M11. Light from the upper left. */
+  /** Subtle (2026-10-07); weights to revisit in M12. Light from the upper left. */
   relief: { chance: 0.15, range: [0.2, 0.5] as Range, light: [100, 170] as Range },
   halftone: { chance: 0.12, range: [0.15, 0.35] as Range },
   planesRoughness: { clean: 0.25, range: [0.3, 1] as Range },
