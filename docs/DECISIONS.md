@@ -370,3 +370,11 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Bottom of the panel:** colors and favourites sit just above the footer, so they are next to shuffle and download. This holds only while the panel has spare height; on a shorter window the content fills the panel, which scrolls as before. "+ more" expands in place, growing upward into the spare height while there is any, then downward.
 - **Panels:** `mid` theme, a step lighter than before (#1b1b1a on a #0b0b0d canvas). A lighter variant (#232322) was too light. The canvas stays as dark as before.
 - **Not done:** a flyout for the extra color settings (it covers the point handles).
+
+## D56. M9 scope: four platforms, measured zones, contrast and busyness
+
+- **Platforms:** Windows, macOS, Android and iOS ship together in M9, one current device each.
+- **Zones are measured** from official screenshots and design guidelines (Apple HIG, Material, Windows), not drawn by eye, and stored with their OS version (D48).
+- **Legibility** flags two things under clock and icon zones: mid-tone lightness, which fails with both white and black text, and busyness (local detail). Thresholds are tuned with the user on sheets and live.
+- **Export set** (several sizes as a ZIP) moves to M11; M9 stays overlays only.
+- **A "view" section** in the panel holds the context and crop controls and takes over the "show points/nodes" toggle. Every context is always listed; a mobile output only changes which one is picked first.

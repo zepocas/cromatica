@@ -324,10 +324,7 @@ Each milestone uses the same structure:
 - **Done when:**
   - Each platform's zones are drawn at the right proportions for at least one current device.
   - The warning flags a busy area under the clock and stays quiet on a calm one.
-- **Open questions:**
-  - Which zones ship first and how they're sourced.
-  - The contrast threshold and what counts as busy.
-  - Whether a batch "export set" (several sizes as a ZIP) belongs here or in M11.
+- **Settled (D56):** all four platforms at once, zones measured from official screenshots and guidelines, legibility checks contrast and busyness, export set moved to M11.
 
 ### M10 — Light/dark pairs
 
@@ -351,6 +348,7 @@ Each milestone uses the same structure:
   - 1:1 loupe
   - Adaptive preview resolution tuning
   - **Full-screen preview:** shows the wallpaper edge to edge with no panel, to make up for the smaller preview next to the docked sidebar. Esc or a small × in a corner exits. Use the Fullscreen API where available; the render stays at screen resolution so the grain reads true. Handles stay hidden.
+  - **Export set:** several sizes as a ZIP (moved from M9, D56).
   - Export progress and cancel
   - Context-loss recovery
   - Shader compile warm-up
