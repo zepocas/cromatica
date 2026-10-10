@@ -36,7 +36,6 @@ const rampGradient = z.object({
       z.object({
         position: unit,
         color: oklch,
-        blend: z.literal('oklab'),
       }),
     )
     .min(1)
@@ -168,15 +167,8 @@ const migrations: Record<number, (save: Json) => Json> = {
           : { type: 'grain', amount: grainAmount };
     return { ...save, version: 5, design: { ...rest, finish: { ...finish, noise } } };
   },
-  // D63: the per-stop blend choice is gone; every ramp blends perceptually.
-  5: (save) => {
-    const design = isObject(save.design) ? save.design : {};
-    const base = isObject(design.base) ? design.base : {};
-    const stops = Array.isArray(base.stops)
-      ? base.stops.map((s: unknown) => (isObject(s) ? { ...s, blend: 'oklab' } : s))
-      : base.stops;
-    return { ...save, version: 6, design: { ...design, base: 'stops' in base ? { ...base, stops } : base } };
-  },
+  // D63/D66: the per-stop blend field is gone; every ramp blends perceptually. Old stops keep a stray blend key, which the schema strips.
+  5: (save) => ({ ...save, version: 6 }),
 };
 
 function versionOf(save: Json): number {

@@ -1,5 +1,5 @@
-import type { BlendMode, ColorStop } from '../design/design';
-import { clamp01, shortestTurn } from '../math';
+import type { ColorStop } from '../design/design';
+import { clamp01 } from '../math';
 import { gamutMapToLinearSrgb, rgbInGamut } from './gamut';
 import { oklabToLinearSrgb, oklabToOklch, oklchToOklab } from './oklab';
 import type { Oklab } from './types';
@@ -10,37 +10,17 @@ export const RAMP_SIZE = 4096;
 /*
  * Spline design
  * -------------
- * Every segment (stop i → i+1) is interpolated per channel in the coordinate
- * space of its blend mode: (L, a, b) for 'oklab', (L, C, h) for the hue modes.
+ * Every segment (stop i → i+1) is interpolated per channel in Oklab (L, a, b).
  * Each channel is v0 + Δ·e(u), where e is a cubic Hermite ease whose end
  * slopes come from monotone (Fritsch–Carlson family, PCHIP weighted harmonic
  * mean) tangents computed across stops. PCHIP keeps every channel monotone
  * inside a segment, so nothing overshoots the stop values.
  *
- * Tangents at an interior stop:
- * - L is shared by all modes, so it always gets the PCHIP tangent.
- * - The other two channels get PCHIP when both neighbouring segments use the
- *   same space (hue modes share L, C, h); otherwise their tangent is 0. With
- *   C' = h' = 0 (or a' = b' = 0) the Oklab derivative on both sides reduces
- *   to (L', 0, 0), so even a mode change is C1 in Oklab.
- * - Ends of a run (hard edges) use the one-sided secant, except a first/last
- *   stop that borders a hold region inside [0, 1], which eases in with slope 0
- *   so the hold does not create a Mach band.
- *
- * Hue handling:
- * - 'oklch-short' / 'oklch-long': hue linear (in the eased parameter) along
- *   the shorter / longer arc, CSS Color 4 style. A near-gray end
- *   (C < HUE_EPS) takes the other end's hue.
- * - 'oklab-chroma': L and C interpolate, hue rotates along the shorter arc
- *   but its progress is weighted by chroma ("premultiplied" by C, like alpha):
- *   s = e·C1 / ((1−e)·C0 + e·C1). Equal chromas give a uniform rotation; as
- *   one end goes gray the rotation collapses onto it, so the path tends
- *   continuously to the straight Oklab line with no gray dip. PCHIP for this
- *   channel runs on the weighted path's natural end slopes (δ·C1/C0 at the
- *   start, δ·C0/C1 at the end), so hue stays C1 and monotone across stops.
+ * Ends of a run (hard edges) use the one-sided secant, except a first/last
+ * stop that borders a hold region inside [0, 1], which eases in with slope 0
+ * so the hold does not create a Mach band.
  */
 
-const HUE_EPS = 1e-4;
 const MAX_SLOPE = 3;
 
 type Vec3 = [number, number, number];
@@ -48,10 +28,6 @@ type Vec3 = [number, number, number];
 interface Segment {
   x0: number;
   len: number;
-  lch: boolean;
-  premult: boolean;
-  c0: number;
-  c1: number;
   v0: Vec3;
   d: Vec3;
   alpha: Vec3;
@@ -66,52 +42,18 @@ interface CompiledRamp {
   segments: Segment[];
 }
 
-/** Hue travel of a segment: the shorter arc, or the longer one for 'oklch-long'. */
-function hueTravel(h0: number, h1: number, mode: BlendMode): number {
-  const short = shortestTurn(h0, h1);
-  if (mode !== 'oklch-long') return short;
-  // CSS Color 4 'longer': equal hues go all the way around.
-  return short > 0 ? short - 360 : short + 360;
-}
-
 function makeSegment(a: ColorStop, b: ColorStop): Segment {
   const x0 = clamp01(a.position);
   const len = clamp01(b.position) - x0;
-  const zero: Vec3 = [0, 0, 0];
-  if (a.blend === 'oklab') {
-    const la = oklchToOklab(a.color);
-    const lb = oklchToOklab(b.color);
-    return {
-      x0,
-      len,
-      lch: false,
-      premult: false,
-      c0: 0,
-      c1: 0,
-      v0: la,
-      d: [lb[0] - la[0], lb[1] - la[1], lb[2] - la[2]],
-      alpha: [...zero],
-      beta: [...zero],
-    };
-  }
-  // Round-trip through Oklab to normalize negative chroma / wild hues.
-  const [l0, c0, h0raw] = oklabToOklch(oklchToOklab(a.color));
-  const [l1, c1, h1raw] = oklabToOklch(oklchToOklab(b.color));
-  let h0 = h0raw;
-  let dh = 0;
-  if (Math.min(c0, c1) >= HUE_EPS) dh = hueTravel(h0raw, h1raw, a.blend);
-  else if (c0 < c1) h0 = h1raw;
+  const la = oklchToOklab(a.color);
+  const lb = oklchToOklab(b.color);
   return {
     x0,
     len,
-    lch: true,
-    premult: a.blend === 'oklab-chroma',
-    c0,
-    c1,
-    v0: [l0, c0, h0],
-    d: [l1 - l0, c1 - c0, dh],
-    alpha: [...zero],
-    beta: [...zero],
+    v0: la,
+    d: [lb[0] - la[0], lb[1] - la[1], lb[2] - la[2]],
+    alpha: [0, 0, 0],
+    beta: [0, 0, 0],
   };
 }
 
@@ -147,29 +89,9 @@ function compile(input: ColorStop[]): CompiledRamp {
   return { first, last, x0, x1, segments: segs.filter((s): s is Segment => s !== null) };
 }
 
-/**
- * Natural end slopes of each segment (dv/dx with a linear ease). For
- * oklab-chroma hue the chroma weighting makes them δ·C1/C0 at the start and
- * δ·C0/C1 at the end.
- */
-function naturalSlopes(segs: (Segment | null)[]): { start: Vec3[]; end: Vec3[] } {
-  const start: Vec3[] = [];
-  const end: Vec3[] = [];
-  for (const s of segs) {
-    const ns: Vec3 = [0, 0, 0];
-    const ne: Vec3 = [0, 0, 0];
-    if (s) {
-      for (let k = 0; k < 3; k++) {
-        const sec = s.d[k] / s.len;
-        const premult = k === 2 && s.premult && sec !== 0;
-        ns[k] = premult ? (sec * s.c1) / s.c0 : sec;
-        ne[k] = premult ? (sec * s.c0) / s.c1 : sec;
-      }
-    }
-    start.push(ns);
-    end.push(ne);
-  }
-  return { start, end };
+/** Natural end slopes of each segment (dv/dx with a linear ease): its plain secants. */
+function naturalSlopes(segs: (Segment | null)[]): Vec3[] {
+  return segs.map((s) => (s ? [s.d[0] / s.len, s.d[1] / s.len, s.d[2] / s.len] : [0, 0, 0]));
 }
 
 /**
@@ -178,7 +100,7 @@ function naturalSlopes(segs: (Segment | null)[]): { start: Vec3[]; end: Vec3[] }
  * the first and last stop positions (holds lie outside them).
  */
 function fitEases(segs: (Segment | null)[], x0: number, x1: number): void {
-  const { start: natStart, end: natEnd } = naturalSlopes(segs);
+  const nat = naturalSlopes(segs);
   for (let i = 0; i < segs.length; i++) {
     const s = segs[i];
     if (!s) continue;
@@ -188,20 +110,12 @@ function fitEases(segs: (Segment | null)[], x0: number, x1: number): void {
       if (s.d[k] === 0) continue;
       let m0: number;
       let m1: number;
-      if (left) {
-        const shared = k === 0 || left.lch === s.lch;
-        m0 = shared ? pchipTangent(natEnd[i - 1][k], natStart[i][k], left.len, s.len) : 0;
-      } else {
-        m0 = i === 0 && x0 > 0 ? 0 : natStart[i][k];
-      }
-      if (right) {
-        const shared = k === 0 || right.lch === s.lch;
-        m1 = shared ? pchipTangent(natEnd[i][k], natStart[i + 1][k], s.len, right.len) : 0;
-      } else {
-        m1 = i === segs.length - 1 && x1 < 1 ? 0 : natEnd[i][k];
-      }
-      s.alpha[k] = clampSlope(m0 / natStart[i][k]);
-      s.beta[k] = clampSlope(m1 / natEnd[i][k]);
+      if (left) m0 = pchipTangent(nat[i - 1][k], nat[i][k], left.len, s.len);
+      else m0 = i === 0 && x0 > 0 ? 0 : nat[i][k];
+      if (right) m1 = pchipTangent(nat[i][k], nat[i + 1][k], s.len, right.len);
+      else m1 = i === segs.length - 1 && x1 < 1 ? 0 : nat[i][k];
+      s.alpha[k] = clampSlope(m0 / nat[i][k]);
+      s.beta[k] = clampSlope(m1 / nat[i][k]);
     }
   }
 }
@@ -214,16 +128,7 @@ function evalSegment(s: Segment, u: number): Oklab {
   const e0 = h01 + s.alpha[0] * h10 - s.beta[0] * h11;
   const e1 = h01 + s.alpha[1] * h10 - s.beta[1] * h11;
   const e2 = h01 + s.alpha[2] * h10 - s.beta[2] * h11;
-  const l = s.v0[0] + s.d[0] * e0;
-  if (!s.lch) return [l, s.v0[1] + s.d[1] * e1, s.v0[2] + s.d[2] * e2];
-  const c = Math.max(0, s.v0[1] + s.d[1] * e1);
-  let p = e2;
-  if (s.premult) {
-    const den = (1 - e2) * s.c0 + e2 * s.c1;
-    if (den > 0) p = (e2 * s.c1) / den;
-  }
-  const h = ((s.v0[2] + s.d[2] * p) * Math.PI) / 180;
-  return [l, c * Math.cos(h), c * Math.sin(h)];
+  return [s.v0[0] + s.d[0] * e0, s.v0[1] + s.d[1] * e1, s.v0[2] + s.d[2] * e2];
 }
 
 function evalCompiled(r: CompiledRamp, t: number): Oklab {
