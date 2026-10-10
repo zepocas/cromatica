@@ -36,6 +36,7 @@ export const CONTEXT_SCREENS: ContextScreen[] = [
         h: 14,
         text: ' Finder   File   Edit   View   Go   Window   Help',
         align: 'left',
+        follows: 'menu bar',
       },
       {
         kind: 'text',
@@ -47,6 +48,7 @@ export const CONTEXT_SCREENS: ContextScreen[] = [
         anchorX: 'right',
         text: 'Wed 7 Oct  9:41',
         align: 'right',
+        follows: 'menu bar',
       },
       center({ kind: 'cutout', label: 'notch', x: 0, y: 0, w: 220, h: 38, radius: 10 }),
       {
@@ -57,7 +59,7 @@ export const CONTEXT_SCREENS: ContextScreen[] = [
         w: 100,
         h: 384,
         anchorX: 'right',
-        grid: { cols: 1, rows: 4, icon: 64 },
+        grid: { cols: 1, rows: 4, icon: 64, set: 'mac-desktop' },
         check: true,
       },
       bottom(
@@ -69,7 +71,7 @@ export const CONTEXT_SCREENS: ContextScreen[] = [
           w: 860,
           h: 64,
           radius: 22,
-          grid: { cols: 15, rows: 1, icon: 48 },
+          grid: { cols: 15, rows: 1, icon: 48, set: 'mac-dock' },
         }),
       ),
     ],
@@ -89,8 +91,8 @@ export const CONTEXT_SCREENS: ContextScreen[] = [
         x: 2,
         y: 2,
         w: 75,
-        h: 300,
-        grid: { cols: 1, rows: 4, icon: 48 },
+        h: 344,
+        grid: { cols: 1, rows: 4, icon: 48, set: 'win-desktop' },
         check: true,
       },
       bottom({ kind: 'bar', label: 'taskbar', x: 0, y: 0, w: 0, h: 48, anchorX: 'stretch' }),
@@ -102,7 +104,7 @@ export const CONTEXT_SCREENS: ContextScreen[] = [
           y: 12,
           w: 308,
           h: 24,
-          grid: { cols: 7, rows: 1, icon: 24 },
+          grid: { cols: 7, rows: 1, icon: 24, set: 'win-taskbar' },
         }),
       ),
       bottom({

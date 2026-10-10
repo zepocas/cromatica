@@ -1,3 +1,4 @@
+import type { IconSet } from './icons';
 import type { ZoneRect } from './legibility';
 
 /** `area`: no fill, for text drawn straight on the wallpaper (the macOS menu bar since 26). */
@@ -15,13 +16,15 @@ export interface Zone {
   anchorX?: 'left' | 'center' | 'right' | 'stretch';
   anchorY?: 'top' | 'bottom';
   radius?: number;
-  /** An icon grid: `icon`-point squares on an even cols × rows layout filling the rect. */
-  grid?: { cols: number; rows: number; icon: number };
+  /** An icon grid: `icon`-point squares on an even cols × rows layout filling the rect. With a `set`, they are stand-in folders or apps instead of plain boxes. */
+  grid?: { cols: number; rows: number; icon: number; set?: IconSet };
   /** Sample text filling the zone's height, one line per `\n`, e.g. a clock. */
   text?: string;
   align?: 'left' | 'center' | 'right';
   /** Text sits on the wallpaper here, so the legibility check reads this zone. */
   check?: boolean;
+  /** Takes its text color from the verdict of the zone with this label, e.g. menu text on the menu bar. */
+  follows?: string;
 }
 
 export interface ContextScreen {

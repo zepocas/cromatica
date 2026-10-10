@@ -56,3 +56,38 @@ test('arrowing through the list previews each context; Escape goes back', async 
   await expect(overlay).toHaveCount(0);
   await expect(context).toHaveAttribute('data-value', 'off');
 });
+
+test('macOS and Windows draw folder and app-icon stand-ins, the phones keep plain boxes', async ({ page }) => {
+  await openApp(page);
+  const overlay = page.getByTestId('context-overlay');
+  await choose(page.getByLabel('OS context'), 'macos');
+  await expect(overlay.locator('[data-zone="desktop icons"] [data-icon="folder"]')).toHaveCount(4);
+  await expect(overlay.locator('[data-zone="desktop icons"]')).toContainText('lorem');
+  await expect(overlay.locator('[data-zone="dock"] [data-icon="app"]')).toHaveCount(15);
+  await choose(page.getByLabel('OS context'), 'windows');
+  await expect(overlay.locator('[data-zone="desktop icons"] [data-icon="folder"]')).toHaveCount(4);
+  await expect(overlay.locator('[data-zone="desktop icons"]')).toContainText('ipsum dolor');
+  await expect(overlay.locator('[data-zone="taskbar apps"] [data-icon="app"]')).toHaveCount(7);
+  await choose(page.getByLabel('OS context'), 'ios-home');
+  await expect(overlay.locator('[data-icon]')).toHaveCount(0);
+});
+
+test('the macOS menu text follows the menu bar: dark on a light wallpaper, white on a dark one', async ({ page }) => {
+  await openApp(page);
+  await choose(page.getByLabel('OS context'), 'macos');
+  const menus = page.locator('[data-zone="menus"] .text');
+  const clock = page.locator('[data-zone="menu clock"] .text');
+  const hexes = page.locator('li input.hex');
+  const setAll = async (hex: string) => {
+    for (let i = 0; i < (await hexes.count()); i++) {
+      await hexes.nth(i).fill(hex);
+      await hexes.nth(i).press('Enter');
+    }
+  };
+  await setAll('#F4EEDD');
+  await expect(menus).toHaveCSS('color', 'rgb(17, 17, 17)');
+  await expect(clock).toHaveCSS('color', 'rgb(17, 17, 17)');
+  await setAll('#14182B');
+  await expect(menus).toHaveCSS('color', 'rgb(255, 255, 255)');
+  await expect(clock).toHaveCSS('color', 'rgb(255, 255, 255)');
+});
