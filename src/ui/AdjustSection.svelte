@@ -32,6 +32,8 @@
   const LETTERS = ['A', 'B', 'C'];
   const BAND_TITLES = ['Terraces around each point', 'Flat facets between points', 'Lightness layers'];
   const degrees = (v: number) => `${Math.round(v)}°`;
+  let noiseFolded = $state(false);
+  let lightingFolded = $state(false);
   const warpOff = $derived(editor.warp.shape === 'none');
 </script>
 
@@ -266,61 +268,83 @@
       display={fixed2}
     />
   {/if}
-  <fieldset class="group">
-    <legend>noise</legend>
-    <div class="row">
-      <span>type</span>
-      <Dropdown
-        ariaLabel="Noise type"
-        value={editor.finish.noise.type}
-        options={NOISE_OPTIONS}
-        onchange={(v) => setNoiseType(v)}
-        onactive={(v) =>
-          editor.previewChange(v && v !== editor.finish.noise.type ? (t) => (t.finish.noise = noiseOf(v)) : null)}
+  <fieldset class="group" class:folded={noiseFolded}>
+    <legend>
+      <button
+        class="fold"
+        aria-expanded={!noiseFolded}
+        aria-label="{noiseFolded ? 'Expand' : 'Collapse'} noise"
+        title={noiseFolded ? 'Expand' : 'Collapse'}
+        onclick={() => (noiseFolded = !noiseFolded)}
+        ><span aria-hidden="true">{noiseFolded ? '▸' : '▾'}</span> noise</button
+      >
+    </legend>
+    {#if !noiseFolded}
+      <div class="row">
+        <span>type</span>
+        <Dropdown
+          ariaLabel="Noise type"
+          value={editor.finish.noise.type}
+          options={NOISE_OPTIONS}
+          onchange={(v) => setNoiseType(v)}
+          onactive={(v) =>
+            editor.previewChange(v && v !== editor.finish.noise.type ? (t) => (t.finish.noise = noiseOf(v)) : null)}
+        />
+      </div>
+      <SliderRow
+        label="amount"
+        ariaLabel="Noise amount"
+        min={0}
+        max={1}
+        step={0.01}
+        bind:value={editor.finish.noise.amount}
+        display={(v) => (v === 0 ? 'off' : v.toFixed(2))}
       />
-    </div>
-    <SliderRow
-      label="amount"
-      ariaLabel="Noise amount"
-      min={0}
-      max={1}
-      step={0.01}
-      bind:value={editor.finish.noise.amount}
-      display={(v) => (v === 0 ? 'off' : v.toFixed(2))}
-    />
+    {/if}
   </fieldset>
 
-  <fieldset class="group">
-    <legend>lighting</legend>
-    <SliderRow
-      label="amount"
-      title="Light the image as a raised surface: lighter parts stand higher"
-      min={0}
-      max={1}
-      step={0.01}
-      bind:value={editor.finish.relief}
-      display={(v) => (v === 0 ? 'off' : v.toFixed(2))}
-    />
-    <SliderRow
-      label="direction"
-      title="Where the light comes from"
-      min={0}
-      max={359}
-      step={1}
-      disabled={editor.finish.relief === 0}
-      bind:value={editor.finish.reliefLight}
-      display={degrees}
-    />
-    <Choice
-      label="surface"
-      ariaLabel="Relief surface"
-      options={[
-        { value: 'satin', title: 'Soft shading and sheen' },
-        { value: 'glass', title: 'The image refracted under glass, bright rims' },
-      ]}
-      value={editor.finish.reliefStyle}
-      onchange={(v) => (editor.finish.reliefStyle = v)}
-    />
+  <fieldset class="group" class:folded={lightingFolded}>
+    <legend>
+      <button
+        class="fold"
+        aria-expanded={!lightingFolded}
+        aria-label="{lightingFolded ? 'Expand' : 'Collapse'} lighting"
+        title={lightingFolded ? 'Expand' : 'Collapse'}
+        onclick={() => (lightingFolded = !lightingFolded)}
+        ><span aria-hidden="true">{lightingFolded ? '▸' : '▾'}</span> lighting</button
+      >
+    </legend>
+    {#if !lightingFolded}
+      <SliderRow
+        label="amount"
+        title="Light the image as a raised surface: lighter parts stand higher"
+        min={0}
+        max={1}
+        step={0.01}
+        bind:value={editor.finish.relief}
+        display={(v) => (v === 0 ? 'off' : v.toFixed(2))}
+      />
+      <SliderRow
+        label="direction"
+        title="Where the light comes from"
+        min={0}
+        max={359}
+        step={1}
+        disabled={editor.finish.relief === 0}
+        bind:value={editor.finish.reliefLight}
+        display={degrees}
+      />
+      <Choice
+        label="surface"
+        ariaLabel="Relief surface"
+        options={[
+          { value: 'satin', title: 'Soft shading and sheen' },
+          { value: 'glass', title: 'The image refracted under glass, bright rims' },
+        ]}
+        value={editor.finish.reliefStyle}
+        onchange={(v) => (editor.finish.reliefStyle = v)}
+      />
+    {/if}
   </fieldset>
 
   {#snippet more()}
@@ -390,9 +414,20 @@
     border: 1px solid var(--rule);
   }
 
+  /* Folded: just the title on its rule, no empty box under it. */
+  .group.folded {
+    padding-block: 0;
+    border-width: 1px 0 0;
+  }
+
   .group legend {
     padding: 0 4px;
     color: var(--dim);
+  }
+
+  .fold {
+    color: inherit;
+    cursor: pointer;
   }
 
   .spacer {
