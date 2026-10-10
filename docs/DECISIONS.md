@@ -257,8 +257,13 @@ Decisions made during the architecture review. Reopen one only if new informatio
 ## D39. The main shuffle randomizes the style too
 
 - **Why:** shuffle only re-rolled the active gradient type, so it never showed what else the app can do. The user wants it to be a full randomize and a quick showcase.
-- **Change:** `shuffleDesign` takes `style` (used together with `layout`): on its own random stream, it picks the pattern kind (mesh 35%, planes 30%, linear 15%, radial and conic 10% each) and the finishes (vignette 30%, print 25%, bands 15% and never on planes), plus planes roughness and blend. The colors carry over to the new kind (ramps hold up to 8). The main shuffle sets `style` unless layout is locked, so "keep layout" also keeps the kind and finishes. Color-only shuffles and the opening shuffle keep the kind (the app still opens on a mesh). Grain and the transform are never shuffled.
+- **Change:** `shuffleDesign` takes `style` (used together with `layout`): on its own random stream, it picks the pattern kind (mesh 35%, planes 30%, linear 15%, radial and conic 10% each) and the finishes (vignette 30%, print 25%, bands 15% and never on planes), plus planes roughness and blend. The colors carry over to the new kind (ramps hold up to 8). The main shuffle sets `style` unless layout is locked, so "keep layout" also keeps the kind and finishes. Color-only shuffles and the opening shuffle keep the kind (the app still opens on a mesh). Grain is never shuffled. Rotation is (see D39a).
 - **Sizes:** the size menu lists resolutions only, grouped into desktop, mobile (current iPhone and Android natives) and tablet, with no device names. The default is 3840 × 2160.
+
+### D39a. The main shuffle also rotates
+
+- **Why:** shuffles felt stale, since every result sat at the same orientation.
+- **Change:** with `layout` and `style`, the Adjust rotation is drawn from 0–359° on its own stream (so other draws keep their values for a seed), for every pattern kind. Turning moves where the colors sit, so it pays off on symmetric patterns (radial, conic, linear, grid) too; a shuffled grid is laid out over the bounding box of the turned (and zoomed) frame, so its edges never clamp into view. Zoom and flips are kept. Mesh points are laid out on screen and mapped through the new transform, so they land in view. Color-only and plain layout shuffles leave the rotation alone.
 
 ## D41. Noise and cells: ramp shapes driven by noise
 

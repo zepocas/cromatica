@@ -11,7 +11,7 @@ import {
   WARP_SHAPES,
 } from '../../src/design/design';
 import { RAMP_SHUFFLE, MESH_SHUFFLE, shuffleDesign, WARP_SHUFFLE_TABLE } from '../../src/design/shuffle';
-import { applyMat2, inverseTransformMatrix } from '../../src/engine/transform';
+import { applyMat2, inverseTransformMatrix, transformMatrix } from '../../src/engine/transform';
 
 /** Just the design of a shuffle. */
 const shuffled = (...args: Parameters<typeof shuffleDesign>) => shuffleDesign(...args).design;
@@ -70,6 +70,45 @@ describe('shuffleDesign', () => {
         expect(p.radius * 2).toBeCloseTo(plain.points[i].radius, 3);
       });
     }
+  });
+
+  it('turns the image (whatever the pattern) on a style shuffle, keeping zoom and flips, and lays mesh points out in view', () => {
+    const transform = { rotate: 0, zoom: 2, flipX: true, flipY: false };
+    const styled = (s: number) => ({ ...all(s), style: true });
+    const turned = new Set<number>();
+    for (let s = 0; s < 40; s++) {
+      const out = shuffled({ ...meshDesign, transform }, styled(s), 16 / 9);
+      expect(out.transform).toMatchObject({ zoom: 2, flipX: true, flipY: false });
+      turned.add(out.transform!.rotate);
+      expect(out.transform!.rotate).toBeGreaterThanOrEqual(0);
+      expect(out.transform!.rotate).toBeLessThan(360);
+    }
+    expect(turned.size).toBeGreaterThan(5);
+    // Same seed, same turn; and plain layout shuffles leave the rotation alone.
+    expect(shuffled(meshDesign, styled(7))).toEqual(shuffled(meshDesign, styled(7)));
+    expect(shuffled({ ...meshDesign, transform }, all(3)).transform).toEqual(transform);
+  });
+
+  it('lays a grid out over the turned frame, so every screen corner falls inside it', () => {
+    const aspect = 16 / 9;
+    let grids = 0;
+    for (let s = 0; s < 80; s++) {
+      const out = shuffled(meshDesign, { ...all(s), style: true }, aspect);
+      if (out.base.kind !== 'grid') continue;
+      grids++;
+      const [hw, hh] = out.base.rest;
+      for (const [x, y] of [
+        [aspect / 2, 0.5],
+        [-aspect / 2, 0.5],
+        [aspect / 2, -0.5],
+        [-aspect / 2, -0.5],
+      ]) {
+        const [qx, qy] = applyMat2(transformMatrix(out.transform), x, y);
+        expect(Math.abs(qx)).toBeLessThanOrEqual(hw + 1e-3);
+        expect(Math.abs(qy)).toBeLessThanOrEqual(hh + 1e-3);
+      }
+    }
+    expect(grids).toBeGreaterThan(3);
   });
 
   it('keeps base kind and grain', () => {

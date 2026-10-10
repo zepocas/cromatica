@@ -13,6 +13,7 @@ import {
   type ColorStop,
   type Design,
   type Finish,
+  identityTransform,
   type RampGradient,
   MAX_MESH_POINTS,
   MAX_STOPS,
@@ -49,6 +50,8 @@ export interface ShuffleResult {
 interface ShuffleContext {
   opts: ShuffleOptions;
   aspect: number;
+  /** Half width and height of the visible frame in pattern space: the frame turned and scaled by the transform. */
+  extent: [number, number];
   colorRng: Rng;
   layoutRng: Rng;
   /** A palette for n colors, from the color stream and the palette options. */
@@ -157,6 +160,7 @@ export const STYLE_SHUFFLE = {
 const COLOR_STREAM = 0x9e3779b9;
 const LAYOUT_STREAM = 0x85ebca6b;
 const STYLE_STREAM = 0xc2b2ae35;
+const ROTATE_STREAM = 0x27d4eb2f;
 
 /** Shuffled mesh radii stay in this range (composition units). */
 const RADIUS_LIMITS: Range = [0.05, 2];
@@ -178,9 +182,16 @@ const copyColor = (c: Oklch): Oklch => [c[0], c[1], c[2]];
 export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 / 9): ShuffleResult {
   const seed = opts.seed >>> 0;
   const colorRng = createRng((seed ^ COLOR_STREAM) >>> 0);
+  const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 16 / 9;
+  let transform = design.transform;
+  if (opts.layout && opts.style) {
+    const rotate = createRng((seed ^ ROTATE_STREAM) >>> 0).int(360);
+    transform = { ...(transform ?? identityTransform), rotate };
+  }
   const ctx: ShuffleContext = {
     opts,
-    aspect: Number.isFinite(aspect) && aspect > 0 ? aspect : 16 / 9,
+    aspect: safeAspect,
+    extent: frameExtent(safeAspect, transform),
     colorRng,
     layoutRng: createRng((seed ^ LAYOUT_STREAM) >>> 0),
     makePalette: (n) => generatePalette(colorRng, n, opts.palette),
@@ -204,12 +215,27 @@ export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 
             ? shuffleGrid(b, ctx)
             : shuffleRamp(b, ctx);
   let base = shuffled.pattern;
-  if (base.kind === 'mesh' && opts.layout && design.transform) base = toPatternSpace(base, design.transform);
+  if (base.kind === 'mesh' && opts.layout && transform) base = toPatternSpace(base, transform);
   const warp = opts.layout ? shuffleWarp(ctx.layoutRng) : { ...design.warp };
   const out: Design = { engineVersion: design.engineVersion, base, warp, grain: { ...design.grain } };
-  if (design.transform) out.transform = { ...design.transform };
+  if (transform) out.transform = { ...transform };
   if (finish) out.finish = { ...finish };
   return { design: out, palette: shuffled.palette };
+}
+
+/** Bounding box (half sizes) of the frame as the pattern sees it, so a bounded layout can cover it under any turn or zoom. */
+function frameExtent(aspect: number, transform: Transform | undefined): [number, number] {
+  const fw = aspect / 2;
+  const fh = 0.5;
+  if (!transform) return [fw, fh];
+  const [c, s] = [
+    Math.abs(Math.cos((transform.rotate * Math.PI) / 180)),
+    Math.abs(Math.sin((transform.rotate * Math.PI) / 180)),
+  ];
+  const zoom = clampZoom(transform.zoom);
+  // Quarter turns are exact (cos 90° is 6e-17, not 0).
+  const snap = (x: number) => (x < 1e-9 ? 0 : x > 1 - 1e-9 ? 1 : x);
+  return [(snap(c) * fw + snap(s) * fh) / zoom, (snap(s) * fw + snap(c) * fh) / zoom];
 }
 
 function paletteInfo({ rule, mood, key }: GeneratedPalette): PaletteInfo {
@@ -393,17 +419,23 @@ function shufflePlanes(
   };
 }
 
-/** Even grid over the frame of the given aspect, nodes jittered (edges along their edge, corners fixed). */
-export function gridLayout(rng: Rng | null, rows: number, cols: number, aspect: number): GridMesh['nodes'] {
-  const hw = aspect / 2;
+/** Even grid over the frame of the given aspect (or over `extent`, half width and height), nodes jittered (edges along their edge, corners fixed). */
+export function gridLayout(
+  rng: Rng | null,
+  rows: number,
+  cols: number,
+  aspect: number,
+  extent: [number, number] = [aspect / 2, 0.5],
+): GridMesh['nodes'] {
+  const [hw, hh] = extent;
   const nodes: GridMesh['nodes'] = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       let x = -hw + (2 * hw * c) / (cols - 1);
-      let y = -0.5 + r / (rows - 1);
+      let y = -hh + (2 * hh * r) / (rows - 1);
       if (rng) {
         const jx = (rng.range(-1, 1) * GRID_SHUFFLE.jitter * 2 * hw) / (cols - 1);
-        const jy = (rng.range(-1, 1) * GRID_SHUFFLE.jitter) / (rows - 1);
+        const jy = (rng.range(-1, 1) * GRID_SHUFFLE.jitter * 2 * hh) / (rows - 1);
         if (c > 0 && c < cols - 1) x += jx;
         if (r > 0 && r < rows - 1) y += jy;
       }
@@ -438,13 +470,13 @@ function dealGridColors(rng: Rng, palette: Oklch[], rows: number, cols: number):
 
 /** Grid: a new layout is a new size and jittered nodes over the frame; new colors are a small palette dealt over the nodes. */
 function shuffleGrid(base: GridMesh, ctx: ShuffleContext): { pattern: GridMesh; palette: PaletteInfo | null } {
-  const { opts, layoutRng, colorRng, aspect } = ctx;
+  const { opts, layoutRng, colorRng, extent } = ctx;
   const size = () =>
     clamp(GRID_SHUFFLE.size[0] + layoutRng.int(GRID_SHUFFLE.size[1] - GRID_SHUFFLE.size[0] + 1), MIN_GRID, MAX_GRID);
   const rows = opts.layout ? size() : base.rows;
   const cols = opts.layout ? size() : base.cols;
-  const geo = opts.layout ? gridLayout(layoutRng, rows, cols, aspect) : base.nodes;
-  const rest: [number, number] = opts.layout ? [round4(aspect / 2), 0.5] : base.rest;
+  const geo = opts.layout ? gridLayout(layoutRng, rows, cols, 0, extent) : base.nodes;
+  const rest: [number, number] = opts.layout ? [round4(extent[0]), round4(extent[1])] : base.rest;
   const palette = opts.colors ? ctx.makePalette(Math.min(GRID_SHUFFLE.colors, rows * cols)) : null;
   let colors: Oklch[];
   if (palette) colors = dealGridColors(colorRng, palette.colors, rows, cols);
