@@ -378,12 +378,18 @@ Each milestone uses the same structure:
 - **Goal:** try to make the left panel leaner. Added 2026-10-08. A trial-and-error session that can run in parallel with almost any other milestone.
 - **Scope:**
   - **Status bar under the preview** (only if it earns its place, 2026-10-08): IDE-style, for global and view settings. Not needed on its own; worth building only if settings move into it from the left panel to declutter it (show points, preview zoom, output size, autosave state and others to be picked).
-  - **Status bar trial wanted** (user, 2026-10-10): the user wants to try moving settings into a bottom status bar to relieve the left panel. Start with a throwaway version to see how it feels, and move only global and view settings (points/nodes toggle, preview zoom, output size, autosave state, and the full-screen button from M13); design settings stay in the panel.
+  - ✅ **Status bar** (D73, user, 2026-10-11, kept after the trial): a bottom bar next to the docked panel (full width when the panel is collapsed), hidden in full screen. Left to right: file format, shuffle lock (colors, pattern, adjust), recent shuffles, os context, mesh points / grid nodes on or off; on the right the zoom and the ⛶ full-screen button. Dropped from the panel: the view section, the keep and recent rows, the format list, the full-screen header button. Output size and autosave state were tried in the bar and dropped (size is in the panel; the autosave readout flickered and meant nothing to the user).
+  - ✅ **Shuffle lock** (D73): the keep checkboxes became padlocks (shut = shuffling leaves it alone) under the name "shuffle lock". Locked parts are not dimmed, because they can still be edited by hand.
+  - ✅ **Panel buttons** (D73): action buttons use one bordered style instead of `[ brackets ]`; shuffle is filled, more like this outlined; neither shows its key on the label (the tooltips do). Custom size boxes only show when the size is "custom". Favourites changes are undo steps.
+  - ✅ **Shuffle nudge** (D73): until a first-time visitor has shuffled once, the shuffle button's fill pulses. Stored in the browser; never with `?default` or a collapsed panel.
   - **Per-color settings** (open, 2026-10-10): whether the single-color hue, lightness and intensity controls stay, given the color picker. The base-hue control, which keeps color relationships, is not in question. Undecided; settle it in this milestone, since it is the same question as slimming the panel.
-- **Done when:** the user either keeps a leaner panel with a bottom status bar or drops the idea. It is worth building only if settings move into the bar.
+- **Done when:** the user either keeps a leaner panel with a bottom status bar or drops the idea. It is worth building only if settings move into the bar. The bar is kept; per-color settings and the narrow-window layout are still open.
 - **Open questions:**
   - Which settings move (show points, preview zoom, output size, autosave state, others).
   - What it means for the mobile panel (M15).
+  - **Narrow windows:** the bar is about 1200px wide and does not wrap or collapse, so it overflows below that (deferred, user, 2026-10-11). Likely answers: fold groups into a menu or wrap to two lines; settle it with M15.
+  - Locks on the section headers (a padlock on pattern, adjust and colors) instead of or besides the bar.
+  - A first-time "easy mode" (the collapsed panel, with the device's resolution preselected): not decided; the shuffle nudge is the cheap first step.
 
 ### M15 — Mobile layout
 

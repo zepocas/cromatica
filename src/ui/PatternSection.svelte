@@ -66,6 +66,15 @@
     bristle: 'brushed',
   };
 
+  /** Picking "custom" starts from the size shown, not from the last custom one. */
+  function chooseSize(id: string) {
+    if (id === CUSTOM_PRESET_ID && presetId !== CUSTOM_PRESET_ID) {
+      customWidth = output.width;
+      customHeight = output.height;
+    }
+    presetId = id;
+  }
+
   /** Typing a size switches to custom, starting from the current size. */
   function setSize(axis: 'width' | 'height', v: number) {
     const size = clamp(Math.round(Number.isFinite(v) ? v : 1), 1, MAX_SIZE);
@@ -112,30 +121,32 @@
       ariaLabel="Size preset"
       value={presetId}
       options={SIZE_OPTIONS}
-      onchange={(id) => (presetId = id)}
+      onchange={chooseSize}
       onactive={(id) => (presetPreview = id)}
     />
   </div>
-  <div class="row">
-    <span></span>
-    <input
-      type="number"
-      min="1"
-      max={MAX_SIZE}
-      aria-label="Width"
-      value={output.width}
-      onchange={(e) => setSize('width', e.currentTarget.valueAsNumber)}
-    />
-    <span class="dim">×</span>
-    <input
-      type="number"
-      min="1"
-      max={MAX_SIZE}
-      aria-label="Height"
-      value={output.height}
-      onchange={(e) => setSize('height', e.currentTarget.valueAsNumber)}
-    />
-  </div>
+  {#if presetId === CUSTOM_PRESET_ID}
+    <div class="row">
+      <span></span>
+      <input
+        type="number"
+        min="1"
+        max={MAX_SIZE}
+        aria-label="Width"
+        value={output.width}
+        onchange={(e) => setSize('width', e.currentTarget.valueAsNumber)}
+      />
+      <span class="dim">×</span>
+      <input
+        type="number"
+        min="1"
+        max={MAX_SIZE}
+        aria-label="Height"
+        value={output.height}
+        onchange={(e) => setSize('height', e.currentTarget.valueAsNumber)}
+      />
+    </div>
+  {/if}
 </Section>
 
 <style>

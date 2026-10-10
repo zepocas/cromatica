@@ -527,3 +527,13 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Splice:** the worker adds the segment after `canvas.convertToBlob`, right after the JFIF header, with `Blob.slice`, so the encoded file is never copied into memory. The reader walks the segment headers up to the image data (`src/export/jpeg.ts`); `readExportedDesign` sniffs PNG, then JPEG.
 - **Checked:** Chrome's encoder output reopens through a drop (e2e), and macOS `sips` still decodes it.
 - **Not checked:** which services and editors keep the segment. Anything that re-encodes strips it, as D45 expected.
+
+## D73. A bottom status bar for global and view settings; shuffle lock; bordered buttons
+
+- **Decision (2026-10-11):** the M14 trial is kept. A status bar sits under the preview, next to the docked panel (full width when the panel is collapsed) and hidden in full screen. It holds the settings that are about the whole app or the view, not the design: file format, the shuffle lock, recent shuffles, os context, the mesh points / grid nodes toggle, zoom and full screen. Design settings stay in the panel. Groups are divided by full-height rules, not characters.
+- **Tried and dropped:** the output size (it is in the panel already) and an autosave readout ("saving… / saved"): it flickered on every edit and the user read it as images being saved.
+- **Shuffle lock:** the keep checkboxes are padlocks (shut: shuffling leaves that part alone) under the label "shuffle lock". Locked parts are not dimmed, because they can still be edited by hand. A padlock on each section header is a possible next step.
+- **Buttons:** one bordered style for actions (shuffle filled, more like this outlined, download, reset, remix, got it, close, again); brackets stay only on the toggles and choosers, which show state. Key hints are in the tooltips, not on the labels (reverses the labeled keys of D68). The format list is a dropdown in the bar, not a button.
+- **Panel:** the custom width and height boxes show only when the size is "custom" (choosing it starts from the size shown). Adding or removing a favourite is an undo step: one history covers the design and the favourites list.
+- **Shuffle nudge:** until a first visitor has shuffled once, the shuffle button's fill pulses (a color change, so it stays with reduced motion on). The flag is stored in the browser; `?default` and the collapsed panel never pulse.
+- **Open:** the bar is about 1200px wide and does not wrap, so narrow windows overflow (deferred, to be settled with M15); the per-color hue, lightness and intensity controls (M14); whether the first-time experience needs an easy mode.

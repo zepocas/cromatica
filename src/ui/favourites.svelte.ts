@@ -66,6 +66,13 @@ export class Favourites {
     this.write();
   }
 
+  /** Puts back an earlier list, for undo and redo. */
+  restore(items: Favourite[]): void {
+    this.items = items;
+    this.notice = '';
+    this.write();
+  }
+
   private read(): Favourite[] {
     try {
       const raw = this.storage.getItem(FAVOURITES_KEY);

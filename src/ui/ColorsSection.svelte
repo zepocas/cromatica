@@ -147,9 +147,10 @@
     />
     <span class="spacer"></span>
     <button
+      class="btn"
       aria-label="Remix colors"
       title="Shift the whole palette at random, keeping how the colors relate"
-      onclick={() => palette.remix()}>[ remix ]</button
+      onclick={() => palette.remix()}>remix</button
     >
   </div>
 
@@ -196,9 +197,10 @@
     <div class="row" role="status" title="Adjusted from the original colors">
       <em class="adjusted">~ {adjustedSummary}</em>
       <button
+        class="btn"
         aria-label="Reset adjustments"
         title="Back to the original colors"
-        onclick={() => palette.resetAdjustments()}>[ reset ]</button
+        onclick={() => palette.resetAdjustments()}>reset</button
       >
     </div>
   {/if}

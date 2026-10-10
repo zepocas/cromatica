@@ -106,7 +106,7 @@ test('transform: rotate, flip, zoom and reset move the image and the handles tog
 
   // Zoom 2× doubles distances from the center.
   before = await settled();
-  await page.getByLabel('Zoom').fill('1');
+  await page.getByRole('slider', { name: 'Zoom', exact: true }).fill('1');
   await expect(page.locator('output', { hasText: '2.0×' })).toBeVisible();
   await expectPreviewChanged(before);
   [x, y] = await onScreen();
