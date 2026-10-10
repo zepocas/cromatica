@@ -53,7 +53,8 @@ vec2 gridOffset(vec2 q, out vec2 jx, out vec2 jy) {
   return o;
 }
 
-vec3 gridColor(vec2 p) {
+// Rest-grid point q with F(q) = p, by Newton steps.
+vec2 gridPull(vec2 p) {
   vec2 q = p;
   for (int k = 0; k < GRID_STEPS; k++) {
     vec2 jx, jy;
@@ -68,6 +69,12 @@ vec3 gridColor(vec2 p) {
     if (len > GRID_MAX_STEP) s *= GRID_MAX_STEP / len;
     q -= s;
   }
+  return q;
+}
+
+// p: the warped point, for the colors; pl: where the lines are drawn (part-way back to the unwarped point).
+vec3 gridColor(vec2 p, vec2 pl) {
+  vec2 q = gridPull(p);
   int cx, cy;
   float fx, fy, sx, sy;
   gridAxis(q.x, u_gridRest.x, u_gridSize.x, cx, fx, sx);
@@ -84,8 +91,9 @@ vec3 gridColor(vec2 p) {
   if (u_gridLines > 0.0) {
     // Distance to the nearest grid line in pattern units: its distance in grid
     // parameters over the pixel gradient of that parameter (inverse Jacobian).
+    vec2 ql = pl == p ? q : gridPull(pl);
     vec2 jx, jy;
-    gridOffset(q, jx, jy);
+    gridOffset(ql, jx, jy);
     float a = 1.0 + jx.x;
     float b = jy.x;
     float c = jx.y;
@@ -93,7 +101,7 @@ vec3 gridColor(vec2 p) {
     float det = a * d - b * c;
     if (abs(det) >= GRID_MIN_DET) {
       vec2 k = vec2(u_gridSize - 1);
-      vec2 g = (q + u_gridRest) / (2.0 * u_gridRest) * k;
+      vec2 g = (ql + u_gridRest) / (2.0 * u_gridRest) * k;
       vec2 grad = k / (2.0 * u_gridRest) * vec2(length(vec2(d, b)), length(vec2(c, a))) / abs(det);
       vec2 near = abs(g - clamp(floor(g + 0.5), vec2(0.0), k));
       float dist = min(near.x / grad.x, near.y / grad.y);

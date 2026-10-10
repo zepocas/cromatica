@@ -12,7 +12,7 @@ import { bandLevel, meshBanding, prepareFinish, vignetteFactor } from '../../../
 import { prepareRampShape, rampT } from '../../../src/engine/ramp-shape';
 import { evaluatePlanes, preparePlanes } from '../../../src/engine/planes';
 import { evaluateAurora, prepareAurora } from '../../../src/engine/aurora';
-import { evaluateGrid, prepareGrid } from '../../../src/engine/grid';
+import { evaluateGrid, GRID_LINE_WARP, prepareGrid } from '../../../src/engine/grid';
 import { createRenderer } from '../../../src/engine/renderer';
 import { applyRelief, prepareRelief } from '../../../src/engine/relief';
 import { applyHalftone, halftoneContrast } from '../../../src/engine/halftone';
@@ -153,7 +153,12 @@ function createPatternReference(design: Design, output: OutputSize, halfFloat: b
   }
   if (base.kind === 'grid') {
     const grid = prepareGrid(base);
-    return (u, v) => meshGamutClip(evaluateGrid(grid, ...at(u, v), 1 / output.height));
+    return (u, v) => {
+      const t = applyMat2(m, u, v);
+      const p = warp(...t);
+      const lineAt: [number, number] = [t[0] + GRID_LINE_WARP * (p[0] - t[0]), t[1] + GRID_LINE_WARP * (p[1] - t[1])];
+      return meshGamutClip(evaluateGrid(grid, ...p, 1 / output.height, lineAt));
+    };
   }
   if (base.kind === 'aurora') {
     const aurora = prepareAurora(base);

@@ -67,4 +67,15 @@ describe('grid lines', () => {
     expect(evaluateGrid(on, 0, 0)).toEqual(evaluateGrid(off, 0, 0));
     expect(evaluateGrid(on, 0, 0, pixel)).not.toEqual(evaluateGrid(off, 0, 0, pixel));
   });
+
+  it('are drawn at lineAt when it differs from the point, while the color stays that of the point', () => {
+    const g = prepareGrid(flat(3, 3, 1));
+    const plain = evaluateGrid(g, 0.4, 0.25, pixel);
+    expect(evaluateGrid(g, 0.4, 0.25, pixel, [0.4, 0.25])).toEqual(plain);
+    const moved = evaluateGrid(g, 0.4, 0.25, pixel, [0, 0]);
+    expect(moved[0]).not.toBe(plain[0]);
+    expect(moved.slice(1)).toEqual(plain.slice(1));
+    // And a line under the point is gone when the lines are drawn elsewhere.
+    expect(evaluateGrid(g, 0, 0, pixel, [0.4, 0.25])).toEqual(evaluateGrid(prepareGrid(flat(3, 3, 0)), 0, 0, pixel));
+  });
 });
