@@ -67,7 +67,7 @@ const MOOD_WEIGHTS: Record<PaletteMood, number> = {
 };
 
 /** How key 'any' resolves: mostly full, so shuffles keep their range. */
-const KEY_WEIGHTS: Record<ValueKey, number> = { high: 0.15, low: 0.15, full: 0.7 };
+const KEY_WEIGHTS: Record<ValueKey, number> = { high: 0.08, low: 0.15, full: 0.77 };
 
 /** Lightness band of the high and low keys; full uses the mood's band. */
 export const KEY_BANDS: Record<Exclude<ValueKey, 'full'>, [number, number]> = {
