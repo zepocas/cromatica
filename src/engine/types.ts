@@ -49,6 +49,8 @@ export interface Renderer {
    * (already flipped from GL's bottom-up order). Length = w*h*4.
    */
   readPixels(width: number, height: number): Uint8Array;
+  /** How many shader programs have been compiled so far; a frame that raises it paid for a compile. */
+  readonly compiled: number;
   dispose(): void;
 }
 
