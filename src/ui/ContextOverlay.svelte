@@ -59,11 +59,12 @@
 <div class="context" data-testid="context-overlay">
   {#each placed as { zone, rect }, i (i)}
     {@const verdict = verdicts[i]}
+    {@const source = zone.follows ? verdicts[screen.zones.findIndex((z) => z.label === zone.follows)] : verdict}
     <div
       class="zone {zone.kind}"
       class:checked={zone.check}
       class:warn={verdict?.midtone}
-      class:dark-text={verdict?.text === 'black'}
+      class:dark-text={source?.text === 'black'}
       data-zone={zone.label}
       data-warn={verdict?.midtone ? 'mid-tone' : ''}
       data-contrast={verdict?.contrast.toFixed(2)}

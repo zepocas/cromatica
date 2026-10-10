@@ -56,3 +56,23 @@ test('arrowing through the list previews each context; Escape goes back', async 
   await expect(overlay).toHaveCount(0);
   await expect(context).toHaveAttribute('data-value', 'off');
 });
+
+test('the macOS menu text follows the menu bar: dark on a light wallpaper, white on a dark one', async ({ page }) => {
+  await openApp(page);
+  await choose(page.getByLabel('OS context'), 'macos');
+  const menus = page.locator('[data-zone="menus"] .text');
+  const clock = page.locator('[data-zone="menu clock"] .text');
+  const hexes = page.locator('li input.hex');
+  const setAll = async (hex: string) => {
+    for (let i = 0; i < (await hexes.count()); i++) {
+      await hexes.nth(i).fill(hex);
+      await hexes.nth(i).press('Enter');
+    }
+  };
+  await setAll('#F4EEDD');
+  await expect(menus).toHaveCSS('color', 'rgb(17, 17, 17)');
+  await expect(clock).toHaveCSS('color', 'rgb(17, 17, 17)');
+  await setAll('#14182B');
+  await expect(menus).toHaveCSS('color', 'rgb(255, 255, 255)');
+  await expect(clock).toHaveCSS('color', 'rgb(255, 255, 255)');
+});

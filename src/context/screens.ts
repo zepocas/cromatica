@@ -36,6 +36,7 @@ export const CONTEXT_SCREENS: ContextScreen[] = [
         h: 14,
         text: ' Finder   File   Edit   View   Go   Window   Help',
         align: 'left',
+        follows: 'menu bar',
       },
       {
         kind: 'text',
@@ -47,6 +48,7 @@ export const CONTEXT_SCREENS: ContextScreen[] = [
         anchorX: 'right',
         text: 'Wed 7 Oct  9:41',
         align: 'right',
+        follows: 'menu bar',
       },
       center({ kind: 'cutout', label: 'notch', x: 0, y: 0, w: 220, h: 38, radius: 10 }),
       {

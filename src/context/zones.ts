@@ -22,6 +22,8 @@ export interface Zone {
   align?: 'left' | 'center' | 'right';
   /** Text sits on the wallpaper here, so the legibility check reads this zone. */
   check?: boolean;
+  /** Takes its text color from the verdict of the zone with this label, e.g. menu text on the menu bar. */
+  follows?: string;
 }
 
 export interface ContextScreen {
