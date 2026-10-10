@@ -358,13 +358,14 @@ Each milestone uses the same structure:
 
 - **Goal:** ready for real use. Independent of how designs look, so it can overlap with M12.
 - **Scope:**
-  - Adaptive preview resolution tuning
+  - ✅ Adaptive preview resolution (D69): no more noise popping while editing with a noise on, a gradual drop instead of a fixed half, and a cost estimate that ignores shader compiles. Thresholds still to be tuned on a real GPU.
   - **Sharp preview when zoomed in** (user, 2026-10-08): the preview zooms by scaling a canvas drawn for the fitted view, so fine textures such as grain go soft. Redraw at the zoomed scale (only the visible part), within the frame budget.
   - ✅ **Full-screen preview** (D67): `F` or a ⛶ button in the panel header; the browser's full screen, no in-window variant, OS context kept. The button should move to the status bar if M14's trial goes ahead. Shows the wallpaper edge to edge with no panel, to make up for the smaller preview next to the docked sidebar. Esc or a small × in a corner exits. Use the Fullscreen API where available; the render stays at screen resolution so the grain reads true. Handles stay hidden.
   - ✅ Context-loss recovery: the preview already dropped its renderer on `webglcontextlost` and rebuilt it on `webglcontextrestored`; now covered by an e2e test (lose, edit while lost, restore, redraw).
-  - Shader compile warm-up
+  - Shader compile warm-up: skipped for now (D69); compiles measured 3–10 ms in SwiftShader, not on a real GPU.
   - ✅ Keyboard shortcuts (D68): K keeps a favourite, 1 2 3 toggle the keep locks, P folds the panel, ? opens a shortcut card (⌨ in the header), ⌘S downloads; more like this is a labeled button beside shuffle.
-  - A faster deflate for 5K PNG export (see M5's note), if the export still feels slow.
+  - ~~A faster deflate for 5K PNG export~~: dropped (D69); the export feels fine.
+  - **Sharp preview when zoomed in** (found 2026-10-10): the zoomed preview is the fitted canvas scaled by CSS, so it and its grain are soft. Open; see D69.
 - **Done when:**
   - Tested on Chrome, Safari and Firefox on macOS, and Chrome on Windows
   - Exports at every preset resolution succeed
