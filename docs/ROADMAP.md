@@ -361,7 +361,7 @@ Each milestone uses the same structure:
   - Adaptive preview resolution tuning
   - **Sharp preview when zoomed in** (user, 2026-10-08): the preview zooms by scaling a canvas drawn for the fitted view, so fine textures such as grain go soft. Redraw at the zoomed scale (only the visible part), within the frame budget.
   - ✅ **Full-screen preview** (D67): `F` or a ⛶ button in the panel header; the browser's full screen, no in-window variant, OS context kept. The button should move to the status bar if M14's trial goes ahead. Shows the wallpaper edge to edge with no panel, to make up for the smaller preview next to the docked sidebar. Esc or a small × in a corner exits. Use the Fullscreen API where available; the render stays at screen resolution so the grain reads true. Handles stay hidden.
-  - Context-loss recovery
+  - ✅ Context-loss recovery: the preview already dropped its renderer on `webglcontextlost` and rebuilt it on `webglcontextrestored`; now covered by an e2e test (lose, edit while lost, restore, redraw).
   - Shader compile warm-up
   - Keyboard shortcuts
   - A faster deflate for 5K PNG export (see M5's note), if the export still feels slow.
