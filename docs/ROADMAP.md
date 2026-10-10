@@ -362,10 +362,10 @@ Each milestone uses the same structure:
   - **Sharp preview when zoomed in** (user, 2026-10-08): the preview zooms by scaling a canvas drawn for the fitted view, so fine textures such as grain go soft. Redraw at the zoomed scale (only the visible part), within the frame budget.
   - ✅ **Full-screen preview** (D67): `F` or a ⛶ button in the panel header; the browser's full screen, no in-window variant, OS context kept. The button should move to the status bar if M14's trial goes ahead. Shows the wallpaper edge to edge with no panel, to make up for the smaller preview next to the docked sidebar. Esc or a small × in a corner exits. Use the Fullscreen API where available; the render stays at screen resolution so the grain reads true. Handles stay hidden.
   - ✅ Context-loss recovery: the preview already dropped its renderer on `webglcontextlost` and rebuilt it on `webglcontextrestored`; now covered by an e2e test (lose, edit while lost, restore, redraw).
-  - Shader compile warm-up: skipped for now (D69); compiles measured 3–10 ms in SwiftShader, not on a real GPU.
+  - Shader compile warm-up: skipped (user, 2026-10-10, D69). On a real GPU (M4) a new program variant costs a median 158 ms to compile and nearly every shuffle needs one; a background compile would only stop the freeze, not the wait. Revisit with fewer variants (warp, relief and halftone as runtime branches) if it bothers.
   - ✅ Keyboard shortcuts (D68): K keeps a favourite, 1 2 3 toggle the keep locks, P folds the panel, ? opens a shortcut card (⌨ in the header), ⌘S downloads; more like this is a labeled button beside shuffle.
   - ~~A faster deflate for 5K PNG export~~: dropped (D69); the export feels fine.
-  - **Sharp preview when zoomed in** (found 2026-10-10): the zoomed preview is the fitted canvas scaled by CSS, so it and its grain are soft. Open; see D69.
+  - **Sharp, true zoom** (open, D70): the zoomed preview is the fitted canvas stretched by CSS, so it and its grain are soft. A native-resolution zoom was tried and dropped: its grain re-rolled with every zoom step and was not the export's grain. A true version needs the noise on the export's pixel grid and 100% = export pixels; see D70.
 - **Done when:**
   - Tested on Chrome, Safari and Firefox on macOS, and Chrome on Windows
   - Exports at every preset resolution succeed
