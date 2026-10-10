@@ -476,3 +476,10 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Status bar:** the user wants to try moving global and view settings into a bottom status bar (M14). Not built yet.
 - **Per-color settings:** still undecided whether the single-color hue, lightness and intensity controls stay (M14).
 - **Shuffle tuning:** the user wants a way to make shuffle avoid things they don't like. Parked as M16; the smallest option (exclusion toggles) is the suggested start.
+
+## D67. Full-screen preview is the browser's full screen
+
+- **Decision (2026-10-10):** `F` or the ⛶ button in the panel header (it stays when the panel is collapsed) calls the Fullscreen API on the page. The panel, the handles and the tips are hidden, zoom and pan are off, and the canvas fills the screen at its real pixel density. A × in the top-right corner appears on pointer movement and fades after 2 s. Esc (the browser's own) and `F` leave. The app state only follows `fullscreenchange`, so it can't disagree with the browser.
+- **No in-window variant:** collapsing the panel already gives a full-width preview, so a second mode that only hides the panel adds nothing. Where the API is missing (iPhone Safari) the button is not shown.
+- **OS context stays:** the chosen OS mockup (D48) is drawn in full screen too, since judging the wallpaper under the real dock, menu bar and clock is much of the point.
+- **Later (M14):** if the status bar happens, the full-screen button moves there.

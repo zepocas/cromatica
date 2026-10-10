@@ -360,7 +360,7 @@ Each milestone uses the same structure:
 - **Scope:**
   - Adaptive preview resolution tuning
   - **Sharp preview when zoomed in** (user, 2026-10-08): the preview zooms by scaling a canvas drawn for the fitted view, so fine textures such as grain go soft. Redraw at the zoomed scale (only the visible part), within the frame budget.
-  - **Full-screen preview:** shows the wallpaper edge to edge with no panel, to make up for the smaller preview next to the docked sidebar. Esc or a small × in a corner exits. Use the Fullscreen API where available; the render stays at screen resolution so the grain reads true. Handles stay hidden.
+  - ✅ **Full-screen preview** (D67): `F` or a ⛶ button in the panel header; the browser's full screen, no in-window variant, OS context kept. The button should move to the status bar if M14's trial goes ahead. Shows the wallpaper edge to edge with no panel, to make up for the smaller preview next to the docked sidebar. Esc or a small × in a corner exits. Use the Fullscreen API where available; the render stays at screen resolution so the grain reads true. Handles stay hidden.
   - Context-loss recovery
   - Shader compile warm-up
   - Keyboard shortcuts
@@ -377,7 +377,7 @@ Each milestone uses the same structure:
 - **Goal:** try to make the left panel leaner. Added 2026-10-08. A trial-and-error session that can run in parallel with almost any other milestone.
 - **Scope:**
   - **Status bar under the preview** (only if it earns its place, 2026-10-08): IDE-style, for global and view settings. Not needed on its own; worth building only if settings move into it from the left panel to declutter it (show points, preview zoom, output size, autosave state and others to be picked).
-  - **Status bar trial wanted** (user, 2026-10-10): the user wants to try moving settings into a bottom status bar to relieve the left panel. Start with a throwaway version to see how it feels, and move only global and view settings (points/nodes toggle, preview zoom, output size, autosave state); design settings stay in the panel.
+  - **Status bar trial wanted** (user, 2026-10-10): the user wants to try moving settings into a bottom status bar to relieve the left panel. Start with a throwaway version to see how it feels, and move only global and view settings (points/nodes toggle, preview zoom, output size, autosave state, and the full-screen button from M13); design settings stay in the panel.
   - **Per-color settings** (open, 2026-10-10): whether the single-color hue, lightness and intensity controls stay, given the color picker. The base-hue control, which keeps color relationships, is not in question. Undecided; settle it in this milestone, since it is the same question as slimming the panel.
 - **Done when:** the user either keeps a leaner panel with a bottom status bar or drops the idea. It is worth building only if settings move into the bar.
 - **Open questions:**
@@ -409,6 +409,19 @@ Each milestone uses the same structure:
   - Saved per browser, not with the design.
   - Whether it changes the shuffle's draw order, which would change existing shuffles for a seed (D64 kept the order stable).
 - **Done when:** the user can exclude at least the options they dislike, and a shuffle never produces them.
+
+### M17 — Realistic context icons
+
+- **Goal:** judge a wallpaper's colors against what really sits on it. The M9 mockups draw neutral boxes for icons; real desktops have a blue folder and glossy, saturated app icons. Added 2026-10-10 (user); independent of the other milestones.
+- **Scope:**
+  - **macOS:** desktop items drawn as the familiar blue folder; the dock gets generic app icons in a few primary colors with a gloss finish, plus a black one to show how a dark item reads.
+  - **Windows:** the same idea for the desktop icons and the taskbar: a yellow folder and a few generic colored app icons, in Windows' own flatter style, with a dark one.
+  - Generic shapes, not real app icons or logos.
+- **UI:** overlays only, never part of an export (D48), like the rest of the context preview.
+- **Open questions:**
+  - Whether the legibility check (M9) should also look at the icons, not just the text zones.
+  - Whether Android and iOS follow once macOS and Windows are done.
+- **Done when:** on macOS and Windows, the preview shows folder and app-icon stand-ins close enough to the real ones to judge color clashes at a glance.
 
 ---
 
