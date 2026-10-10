@@ -30,6 +30,8 @@
   // Class instance (not proxied); $state only so it can be bound down the panel tree.
   let editor = $state(initial);
   let presetId = $state(DEFAULT_PRESET_ID);
+  /** The size preset being looked at in its open list: only the preview's frame changes. */
+  let presetPreview = $state<string | null>(null);
   let customWidth = $state(1920);
   let customHeight = $state(1080);
   let format = $state<ExportFormat>('png');
@@ -56,6 +58,8 @@
 
   const renderDesign = $derived(editor.design);
   const aspect = $derived(output.width / output.height);
+  const previewPreset = $derived(presetPreview ? SIZE_PRESETS.find((p) => p.id === presetPreview) : undefined);
+  const previewAspect = $derived(previewPreset ? previewPreset.width / previewPreset.height : aspect);
   $effect(() => {
     editor.aspect = aspect;
   });
@@ -178,14 +182,14 @@
 
 <Preview
   design={editor.preview ?? renderDesign}
-  {aspect}
+  aspect={previewAspect}
   paused={exporting}
   docked={!collapsed}
   {view}
   zoomable={!exploring}
 >
   {#snippet overlay()}
-    {#if !exploring && contextScreen}
+    {#if !exploring && contextScreen && !previewPreset}
       <ContextOverlay design={renderDesign} {aspect} screen={contextScreen} />
     {/if}
     {#if exploring}
@@ -198,7 +202,7 @@
         }}
         onclose={() => (exploring = false)}
       />
-    {:else if editor.preview}
+    {:else if editor.preview || previewPreset}
       <!-- A picker preview: the handles belong to the design underneath. -->
     {:else if editor.kind === 'mesh'}
       <MeshOverlay {editor} {aspect} />
@@ -211,6 +215,7 @@
   bind:editor
   {favourites}
   bind:presetId
+  bind:presetPreview
   bind:customWidth
   bind:customHeight
   {output}

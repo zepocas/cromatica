@@ -1,11 +1,10 @@
 // Designs shared by the engine tests.
 import type { Oklch } from '../../../src/color/types';
 import {
-  type BlendMode,
   defaultMesh,
   type Design,
-  type Grain,
-  noGrain,
+  noFinish,
+  type Noise,
   noWarp,
   type Transform,
   type Warp,
@@ -13,32 +12,31 @@ import {
   type WarpShape,
 } from '../../../src/design/design';
 
-export type StopSpec = [position: number, color: Oklch, blend?: BlendMode];
+export type StopSpec = [position: number, color: Oklch];
 
 export function linear(angle: number, stops: StopSpec[]): Design {
   return {
     engineVersion: 1,
     warp: noWarp,
-    grain: noGrain,
     base: {
       kind: 'linear',
       angle,
-      stops: stops.map(([position, color, blend = 'oklab']) => ({ position, color, blend })),
+      stops: stops.map(([position, color]) => ({ position, color })),
     },
   };
 }
 
 export const threeStops = (angle: number) =>
   linear(angle, [
-    [0, [0.3, 0.12, 280], 'oklab'],
-    [0.4, [0.62, 0.2, 350], 'oklch-short'],
+    [0, [0.3, 0.12, 280]],
+    [0.4, [0.62, 0.2, 350]],
     [1, [0.86, 0.13, 77]],
   ]);
 
 // Mid-tone gradient whose channels stay away from 0 and 255, so the dither is never clipped.
 export const midTones = linear(20, [
   [0, [0.5, 0.08, 250]],
-  [0.5, [0.62, 0.09, 150], 'oklab-chroma'],
+  [0.5, [0.62, 0.09, 150]],
   [1, [0.72, 0.08, 40]],
 ]);
 
@@ -46,12 +44,11 @@ export function mesh(sharpness: number, points: [x: number, y: number, color: Ok
   return {
     engineVersion: 1,
     warp: noWarp,
-    grain: noGrain,
     base: { kind: 'mesh', sharpness, points: points.map(([x, y, color, radius]) => ({ x, y, color, radius })) },
   };
 }
 
-export const meshDefault: Design = { engineVersion: 1, warp: noWarp, grain: noGrain, base: defaultMesh };
+export const meshDefault: Design = { engineVersion: 1, warp: noWarp, base: defaultMesh };
 
 // 16 points (MAX_MESH_POINTS) with vivid, partly out-of-gamut colors and varied radii.
 export const mesh16 = mesh(
@@ -98,7 +95,11 @@ export const SHAPES = WARP_SHAPES.filter((s) => s !== 'none');
 export const STEPPED: readonly WarpShape[] = ['rows', 'columns', 'voronoi'];
 
 export const warp = (shape: WarpShape, amount = 0.5, size = 0.5, seed = 7): Warp => ({ shape, amount, size, seed });
-export const withLook = (d: Design, w: Warp, grain: Grain = noGrain): Design => ({ ...d, warp: w, grain });
+/** A mid-strength lithograph, for tests that need the per-pixel texture on. */
+export const defaultNoise: Noise = { type: 'lithograph', amount: 0.35 };
+export const withNoise = (d: Design, noise: Noise): Design => ({ ...d, finish: { ...noFinish, ...d.finish, noise } });
+export const withLook = (d: Design, w: Warp, noise: Noise = noFinish.noise): Design =>
+  withNoise({ ...d, warp: w }, noise);
 export const bases: [string, Design][] = [
   ['linear', threeStops(30)],
   ['mesh', mesh16],
@@ -114,7 +115,6 @@ export const gray = (l: number): Design => mesh(0.5, [[0, 0, [l, 0, 0], 0.5]]);
 export const planesDesign = (count: number, roughness: number, blend = 0, seed = 5): Design => ({
   engineVersion: 1,
   warp: noWarp,
-  grain: noGrain,
   base: {
     kind: 'planes',
     colors: [
@@ -146,7 +146,7 @@ export function gridDesign(rows: number, cols: number, bend: number, colors: Okl
       nodes.push({ x: x0 + dx, y: y0 + dy, color: colors[(r * cols + c) % colors.length] });
     }
   }
-  return { engineVersion: 1, warp: noWarp, grain: noGrain, base: { kind: 'grid', rows, cols, nodes, rest: [hw, 0.5] } };
+  return { engineVersion: 1, warp: noWarp, base: { kind: 'grid', rows, cols, nodes, rest: [hw, 0.5] } };
 }
 
 export const gridColors: Oklch[] = [

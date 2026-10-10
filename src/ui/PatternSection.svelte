@@ -9,6 +9,8 @@
   interface Props {
     editor: EditorState;
     presetId: string;
+    /** The size preset under the arrow keys or pointer while the list is open; null otherwise. */
+    presetPreview: string | null;
     customWidth: number;
     customHeight: number;
     /** Export size in pixels (from the preset or the custom size). */
@@ -19,6 +21,7 @@
   let {
     editor = $bindable(),
     presetId = $bindable(),
+    presetPreview = $bindable(),
     customWidth = $bindable(),
     customHeight = $bindable(),
     output,
@@ -105,7 +108,13 @@
   </div>
   <div class="row">
     <span>size</span>
-    <Dropdown ariaLabel="Size preset" value={presetId} options={SIZE_OPTIONS} onchange={(id) => (presetId = id)} />
+    <Dropdown
+      ariaLabel="Size preset"
+      value={presetId}
+      options={SIZE_OPTIONS}
+      onchange={(id) => (presetId = id)}
+      onactive={(id) => (presetPreview = id)}
+    />
   </div>
   <div class="row">
     <span></span>

@@ -11,10 +11,15 @@ Generate abstract gradient wallpapers in your browser, at crisp, device-native r
 **Try it: [zepocas.github.io/cromatica](https://zepocas.github.io/cromatica/)**
 
 <p>
-  <img src="docs/examples/marble.jpg" alt="Marbled swirls in cream and black" width="49%" />
-  <img src="docs/examples/aurora.jpg" alt="Soft aurora in dusty purple and sage" width="49%" />
-  <img src="docs/examples/gradient.jpg" alt="Aqua to orange to violet gradient with grain" width="49%" />
-  <img src="docs/examples/planes.jpg" alt="Torn, layered earthy planes" width="49%" />
+  <img src="docs/examples/blobs.jpg" alt="Soft blobs of blue and red with film grain" width="32%" />
+  <img src="docs/examples/dusk-bands.jpg" alt="Dusk bands in terracotta and olive" width="32%" />
+  <img src="docs/examples/midnight-clouds.jpg" alt="Midnight clouds in navy and teal" width="32%" />
+  <img src="docs/examples/cut-paper.jpg" alt="Cut-paper planes in tan and rust on black" width="32%" />
+  <img src="docs/examples/ember.jpg" alt="Glowing ember relief on brown" width="32%" />
+  <img src="docs/examples/cells.jpg" alt="Mesh cells in violet and green" width="32%" />
+  <img src="docs/examples/chocolate.jpg" alt="Glossy chocolate-red folds" width="32%" />
+  <img src="docs/examples/smoke.jpg" alt="Smoke swirl in slate and rose" width="32%" />
+  <img src="docs/examples/violet-strips.jpg" alt="Violet and white strips" width="32%" />
 </p>
 
 ## Features

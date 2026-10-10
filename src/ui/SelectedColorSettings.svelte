@@ -1,7 +1,5 @@
 <script lang="ts">
-  import type { BlendMode } from '../design/design';
   import ColorControls from './ColorControls.svelte';
-  import Dropdown from './controls/Dropdown.svelte';
   import SliderRow from './controls/SliderRow.svelte';
   import { MAX_RADIUS, MIN_RADIUS, type EditorState } from './editor.svelte';
 
@@ -9,21 +7,10 @@
     editor: EditorState;
     /** Index of the selected point or stop. */
     selected: number;
-    /** The selected stop is the last by position (it has no segment to blend into). */
-    isLastStop: boolean;
-    /** Ramps blend between stops; planes don't. */
-    showBlend?: boolean;
   }
 
   // Bindable so child bindings into the editor's state pass Svelte's ownership checks.
-  let { editor = $bindable(), selected, isLastStop, showBlend = true }: Props = $props();
-
-  const BLEND_OPTIONS: { value: BlendMode; label: string }[] = [
-    { value: 'oklab', label: 'perceptual' },
-    { value: 'oklab-chroma', label: 'vivid' },
-    { value: 'oklch-short', label: 'hue, short way' },
-    { value: 'oklch-long', label: 'hue, long way' },
-  ];
+  let { editor = $bindable(), selected }: Props = $props();
 </script>
 
 {#if editor.kind === 'grid'}
@@ -41,16 +28,4 @@
   />
 {:else}
   <ColorControls color={editor.ramp.stops[selected].color} onchange={(c) => editor.palette.setColor(selected, c)} />
-  {#if showBlend}
-    <div class="row">
-      <span>blend</span>
-      <Dropdown
-        ariaLabel="Blend to next stop"
-        value={editor.ramp.stops[selected].blend}
-        options={BLEND_OPTIONS}
-        disabled={isLastStop}
-        onchange={(b) => (editor.ramp.stops[selected].blend = b)}
-      />
-    </div>
-  {/if}
 {/if}

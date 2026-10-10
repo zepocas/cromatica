@@ -1,14 +1,13 @@
 // Renderer: aurora — CPU reference and tiling.
 import { expect, test } from '@playwright/test';
 import type { Design } from '../../src/design/design';
-import { noGrain, noWarp } from '../../src/design/design';
+import { noWarp } from '../../src/design/design';
 import { warp, withLook } from './support/designs';
 import { engineHarness, openEngineHarness } from './support/harness';
 
 const aurora = (count: number, glow: number, blend: number): Design => ({
   engineVersion: 1,
   warp: noWarp,
-  grain: noGrain,
   base: {
     kind: 'aurora',
     colors: [

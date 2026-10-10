@@ -441,3 +441,44 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Shuffle:** a layout shuffle turns lines on 60% of the time at 0.25–0.7, drawn last so the other layout values match earlier shuffles.
 - **Still open:** whether the grid now earns its place next to the mesh. The user judges it after trying it.
 - **Name:** the panel calls the grid pattern "net" (2026-10-08), since it is a bendable surface of colors with optional lines, not just a grid. Only the label changed; the kind stays `grid` in saves and code, so there is no migration.
+
+## D63. M12 UI decisions: lighting group, shuffle ranges, one noise
+
+- **Lighting (2026-10-08):** relief's three controls sit in one bordered group called "lighting": **amount** (was relief), **direction** (was light) and **surface** (unchanged: satin or glass). The saved fields keep their names (`relief`, `reliefLight`, `reliefStyle`); only the panel labels change, so there is no migration.
+- **Shuffle ranges:** relief strength is now 0.1–0.5 (was 0.2–0.5) and halftone 0.1–0.35 (was 0.15–0.35). Chances stay at 15% and 12%.
+- **One noise (D53):** print, halftone and grain are merged into one "noise" group: a type (**lithograph**, **xerox**, **halftone**, **grain**) and one **amount**. One type at a time, so halftone no longer combines with print. "Less is more" (user, 2026-10-08).
+- **Grain came back (2026-10-08):** the first cut dropped it, then the user wanted an analog, vintage grain with good resolution as a fourth type. It is the old film-grain stage with two layers of smooth noise, a fine one (under 1 px, about white) and a clumpier one (about 1.9 px), a little chroma, strongest in midtones, and no size setting. Per output pixel (D4), like lithograph and xerox.
+- **Grain shimmers while you adjust (2026-10-08):** the grain's pattern is seeded by the amount (one pattern per slider notch), so dragging the slider shows fresh grain, like the grain dials in Arc and Zen (the user's memory of them; their implementation was not checked). It is still a pure function of the saved design, so exports match the preview and tiles stay seamless; nothing new is saved. Lithograph and xerox keep one fixed pattern, as one physical sheet of paper would, and halftone is a regular screen.
+- **Blend is gone (2026-10-08):** the per-stop blend choice (perceptual, vivid, hue short or long way) is removed from the panel and every ramp blends perceptually; the user found it overkill and not understandable. Saves move to schema version 6 with every stop set to perceptual. The engine's other blend modes stay in the code for now (nothing can select them), so a later cleanup can drop them. The lightness, intensity and hue sliders stay, behind "+ more": the picker and hex field only reach sRGB, and the sliders go beyond it (the "!" marker) and move one perceptual axis at a time. Revisit them in M14 if the panel needs slimming.
+- **Halftone maximum:** the ink/paper contrast at amount 1 goes from 0.75 to 0.85 of the way to black and white. Higher (0.9) pushed the paper tone of saturated colors out of gamut.
+- **Picking a type while noise is off** turns it on at 0.4, so the choice (and its preview) shows.
+- **Previews on arrow keys, everywhere it can show:** a list previews each option on the canvas as the arrow keys or pointer move through it, and Escape puts it back. Already true for gradient, warp shape, mood, harmony and OS context; added for noise type, per-stop blend, value key and size preset (the preview frame takes the preset's shape). The export format list has nothing to show on the canvas.
+- **Saved form:** `finish.noise = { type, amount }` replaces `design.grain`, `finish.print` and `finish.halftone` (schema version 5). The film-grain stage is removed from the shader; its CPU parameters and tests go with it.
+- **Migration (version 4 to 5):** one noise is picked, in this order. A print below 0.7 becomes a lithograph of `print / 0.7` (the same pixels as before); a print of 0.7 or more becomes a xerox of the same amount (its screen now fades in from the start, so these look a little stronger). Otherwise a halftone keeps its amount. Otherwise the grain keeps its amount as the grain type (its old size setting is gone).
+- **Engine mapping:** lithograph runs the print texture at 0 to 0.7 of the old scale with no screen; xerox runs it at the full scale with the thresholded screen blended in over the whole range; halftone keeps its dots; grain uses the film-grain shader.
+- **Shuffle:** when the print and halftone rolls both hit, a coin picks one, so the odds of each are a little lower than before.
+
+## D64. Shuffle locks: colors, pattern, adjust
+
+- **Decision (2026-10-08):** the footer's `keep` toggles go from two (colors, layout) to three: **colors**, **pattern** (the pattern kind, layout and warp: the old layout lock) and **adjust** (the finishes: noise, vignette, bands, lighting). Pattern and adjust used to share one lock, so keeping the look of a pattern meant keeping its finishes too; now a shuffle can change the finishes only, or the pattern only.
+- **The warp is split along the panel:** the warp shape and its variation seed sit in the pattern section, so they follow the pattern lock; the warp amount and size sit in the adjust section, so they follow the adjust lock (user, 2026-10-08: with the pattern kept, almost nothing was left to shuffle in adjust). The rotation is shuffled with the pattern (D39a); zoom and flips never are, so the transform needs no lock of its own.
+- **Wider warp shuffle (user, 2026-10-08):** each shape's amount range now runs about 0.08 to 0.85 (was about 0.2 to 0.55) and its size range about 0.05 to 0.85 (was 0.2 to 0.55), so shuffles reach both near-flat and strongly bent warps. The weights are unchanged.
+- **Lighting comes up more often (user, 2026-10-08):** a shuffle turns it on 30% of the time (was 15%); its strength range (0.1–0.5), light direction and surface odds are unchanged.
+- **Palette moods on a shuffle (user, 2026-10-08):** mood "any" now resolves to natural 38%, vivid 17%, muted 16%, earthy 12%, pastel 15% and neon 2% (was natural 45, vivid 20, muted 20, earthy 15, never pastel or neon). Palettes for a given seed change with it. Pastel and neon are narrow in lightness and chroma, so a few palettes (monochrome pastel of six or more colors) come slightly short of the spacing and lightness spread the generator aims at; the tests allow for that, and the generator is left alone. Harmony rule odds are unchanged.
+- **Noise sits last** in the main adjust settings, below the warp, the pattern-specific sliders and the bands.
+- **Same roll either way:** the pattern kind is still drawn when the pattern is kept, so the finishes of a shuffle come out the same whether or not the pattern is locked; with nothing locked the draw order is unchanged, so existing shuffles don't change.
+- **Shuffle button** is disabled only when all three are locked. The locks are not saved with the design (D44), as before.
+- **"More like this"** is not affected: it already keeps the palette, kind, finishes and transform and only nudges the layout and warp.
+- **Fit:** the row takes the label column down to 4ch and the gap to 2 px to fit the 273 px panel; the fallback would be shorter words (`color`, `shape`, `finish`).
+
+## D65. Showcase images, no golden-image fixtures
+
+- **Decision (2026-10-10):** the README shows nine images the user generated and picked in the app (a 3×3 grid, `docs/examples/`, 1200×675 JPEGs cropped from the 4K PNG exports), replacing the old four. Each pattern does not get three reference designs, and there are no golden-image fixtures: pixel-comparison tests would break on every deliberate change to a finish, and the unit and e2e tests already cover behaviour.
+- **Originals:** the 4K PNG exports (5–17 MB each, each carrying its design) are not committed.
+
+## D66. Blend modes removed from the code; status bar, per-color settings and shuffle tuning parked
+
+- **Decision (2026-10-10):** the unreachable per-stop blend modes (`oklab-chroma`, `oklch-short`, `oklch-long`) and the stop's `blend` field are gone from the code (D63 had only removed the choice from the UI). Ramps blend in Oklab, as before, so no design changes. Saves still load: the stop schema ignores an old `blend` key and the save version stays 6.
+- **Status bar:** the user wants to try moving global and view settings into a bottom status bar (M14). Not built yet.
+- **Per-color settings:** still undecided whether the single-color hue, lightness and intensity controls stay (M14).
+- **Shuffle tuning:** the user wants a way to make shuffle avoid things they don't like. Parked as M16; the smallest option (exclusion toggles) is the suggested start.

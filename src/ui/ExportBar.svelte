@@ -34,7 +34,7 @@
 
 <footer class:compact>
   {#if !compact}
-    <div class="row">
+    <div class="row keep">
       <span>keep</span>
       <Toggle
         checked={editor.colorsLocked}
@@ -44,11 +44,18 @@
         onchange={(on) => (editor.colorsLocked = on)}
       />
       <Toggle
-        checked={editor.layoutLocked}
-        label="layout"
-        ariaLabel="Lock layout"
-        title="Keep the layout and warp when shuffling"
-        onchange={(on) => (editor.layoutLocked = on)}
+        checked={editor.patternLocked}
+        label="pattern"
+        ariaLabel="Lock pattern"
+        title="Keep the pattern kind, layout, warp shape and variation when shuffling"
+        onchange={(on) => (editor.patternLocked = on)}
+      />
+      <Toggle
+        checked={editor.adjustLocked}
+        label="adjust"
+        ariaLabel="Lock adjust"
+        title="Keep the warp amount and size, bands, noise, vignette and lighting when shuffling"
+        onchange={(on) => (editor.adjustLocked = on)}
       />
     </div>
     <div class="row">
@@ -85,7 +92,7 @@
       class="primary"
       aria-label="Shuffle"
       disabled={!editor.canShuffle}
-      title={editor.canShuffle ? 'Shuffle (Space)' : 'Unlock colors or layout to shuffle'}
+      title={editor.canShuffle ? 'Shuffle (Space)' : 'Unlock colors, pattern or adjust to shuffle'}
       onclick={() => editor.shuffle()}>[ shuffle<kbd> ␣</kbd> ]</button
     >
     {#if exporting}
@@ -110,6 +117,15 @@
 </footer>
 
 <style>
+  /* Three toggles share the row with their label: trim the label column and the gaps to fit the panel. */
+  footer .row.keep {
+    gap: 2px;
+  }
+
+  footer .row.keep > span:first-child {
+    width: 4ch;
+  }
+
   /* Pinned to the bottom; the sections scroll above it on short screens. */
   footer {
     position: sticky;

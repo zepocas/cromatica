@@ -206,12 +206,7 @@
   {#snippet more()}
     <PaletteSettings {editor} selectedHue={colors[selected][2]} />
     <hr />
-    <SelectedColorSettings
-      bind:editor
-      {selected}
-      isLastStop={!isMesh && order[order.length - 1] === selected}
-      showBlend={!isPlanes}
-    />
+    <SelectedColorSettings bind:editor {selected} />
   {/snippet}
 </Section>
 

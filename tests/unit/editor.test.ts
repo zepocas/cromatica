@@ -158,12 +158,11 @@ describe('points and stops', () => {
     expect(e.mesh.points).toHaveLength(1);
   });
 
-  it('a new stop takes the blend of the segment it splits; at least two stops are kept', () => {
+  it('a new stop sits at its position; at least two stops are kept', () => {
     const e = fresh();
     e.kind = 'linear';
-    e.ramp.stops[0].blend = 'oklch-long';
     const i = e.addStop(0.25)!;
-    expect(e.ramp.stops[i]).toMatchObject({ position: 0.25, blend: 'oklch-long' });
+    expect(e.ramp.stops[i]).toMatchObject({ position: 0.25 });
     while (e.canRemoveColor) e.removeColor(0);
     expect(e.ramp.stops).toHaveLength(2);
   });
