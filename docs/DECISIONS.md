@@ -483,3 +483,10 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **No in-window variant:** collapsing the panel already gives a full-width preview, so a second mode that only hides the panel adds nothing. Where the API is missing (iPhone Safari) the button is not shown.
 - **OS context stays:** the chosen OS mockup (D48) is drawn in full screen too, since judging the wallpaper under the real dock, menu bar and clock is much of the point.
 - **Later (M14):** if the status bar happens, the full-screen button moves there.
+
+## D68. Keyboard shortcuts, a shortcut card, and a labeled more-like-this button
+
+- **Decision (2026-10-10):** new keys, all ignored in text fields like the existing ones: `K` keeps or releases the current design in favourites (the ♡), `1` `2` `3` toggle keep colors, pattern and adjust, `P` folds or unfolds the panel, `?` opens the shortcut card, and ⌘S or Ctrl+S downloads (even from a text field, since the browser's save-page dialog is no use here).
+- **Shortcut card:** a ⌨ button in the panel header (and `?`) opens a card listing every shortcut in three groups (explore, keep, view); Esc or "close" closes it. The ? tips button keeps the short first-visit tips, which now list more like this second and point to `?`. The two cards never show together.
+- **More like this:** the small ⊞ icon on the "recent" row became a labeled `[ more like this M ]` button beside shuffle; download and the format list moved to a row below. The collapsed bar stays shuffle and download.
+- **Not bound:** export format and size presets (rarely changed mid-flow), and extra arrow-key actions (the panel's controls own them).

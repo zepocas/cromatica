@@ -363,7 +363,7 @@ Each milestone uses the same structure:
   - ✅ **Full-screen preview** (D67): `F` or a ⛶ button in the panel header; the browser's full screen, no in-window variant, OS context kept. The button should move to the status bar if M14's trial goes ahead. Shows the wallpaper edge to edge with no panel, to make up for the smaller preview next to the docked sidebar. Esc or a small × in a corner exits. Use the Fullscreen API where available; the render stays at screen resolution so the grain reads true. Handles stay hidden.
   - ✅ Context-loss recovery: the preview already dropped its renderer on `webglcontextlost` and rebuilt it on `webglcontextrestored`; now covered by an e2e test (lose, edit while lost, restore, redraw).
   - Shader compile warm-up
-  - Keyboard shortcuts
+  - ✅ Keyboard shortcuts (D68): K keeps a favourite, 1 2 3 toggle the keep locks, P folds the panel, ? opens a shortcut card (⌨ in the header), ⌘S downloads; more like this is a labeled button beside shuffle.
   - A faster deflate for 5K PNG export (see M5's note), if the export still feels slow.
 - **Done when:**
   - Tested on Chrome, Safari and Firefox on macOS, and Chrome on Windows
