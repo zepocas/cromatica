@@ -411,7 +411,7 @@ Each milestone uses the same structure:
   - Whether it changes the shuffle's draw order, which would change existing shuffles for a seed (D64 kept the order stable).
 - **Done when:** the user can exclude at least the options they dislike, and a shuffle never produces them.
 
-### M17 — Realistic context icons
+### M17 — Realistic context icons ✅
 
 - **Goal:** judge a wallpaper's colors against what really sits on it. The M9 mockups draw neutral boxes for icons; real desktops have a blue folder and glossy, saturated app icons. Added 2026-10-10 (user); independent of the other milestones.
 - **Scope:**
@@ -419,10 +419,16 @@ Each milestone uses the same structure:
   - **Windows:** the same idea for the desktop icons and the taskbar: a yellow folder and a few generic colored app icons, in Windows' own flatter style, with a dark one.
   - Generic shapes, not real app icons or logos.
 - **UI:** overlays only, never part of an export (D48), like the rest of the context preview.
-- **Open questions:**
-  - Whether the legibility check (M9) should also look at the icons, not just the text zones.
-  - Whether Android and iOS follow once macOS and Windows are done.
 - **Done when:** on macOS and Windows, the preview shows folder and app-icon stand-ins close enough to the real ones to judge color clashes at a glance.
+- **Outcome (2026-10-10, D71):**
+  - **macOS:** four blue folders on the desktop and 15 glossy squircle app icons in the dock, with one black and one near-white to show how dark and light items read.
+  - **Windows:** four yellow folders and seven flat app icons in the taskbar, one of them dark. The desktop zone is 344 pt tall (about 86 pt per row) so labels fit.
+  - **Names:** desktop folders carry lowercase lorem ipsum names, always white with a shadow, as both OSes draw them.
+  - **Code:** a grid can name an icon set (`src/context/icons.ts`); `src/ui/ContextIcon.svelte` draws it in CSS and inline SVG, with no assets. iOS and Android keep plain boxes.
+  - **Fix on the way:** the macOS menu text and clock now follow the menu bar's legibility verdict; before, they stayed white on light wallpapers.
+- **Parked (open questions):**
+  - Whether the legibility check (M9) should also look at the icons and folder names, not just the text zones.
+  - Whether Android and iOS follow, and a light-theme Windows taskbar.
 
 ---
 
