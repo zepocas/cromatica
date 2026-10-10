@@ -15,6 +15,7 @@
   import { CONTEXT_SCREENS } from './context/screens';
   import Preview from './ui/Preview.svelte';
   import { dismissTips, tipsDismissed } from './ui/tips';
+  import Shortcuts from './ui/Shortcuts.svelte';
   import Tips from './ui/Tips.svelte';
   import { CanvasView } from './ui/view.svelte';
   import { CUSTOM_PRESET_ID, DEFAULT_PRESET_ID, SIZE_PRESETS } from './ui/presets';
@@ -41,6 +42,7 @@
   const contextScreen = $derived(CONTEXT_SCREENS.find((s) => s.id === (contextPreview ?? contextId)) ?? null);
   // First visit only; `?default` (tests) never shows them.
   let tips = $state(!builtIn && !tipsDismissed());
+  let shortcuts = $state(false);
   /** The "more like this" grid covers the preview. */
   let exploring = $state(false);
   /** The preview alone, in the browser's full screen; the panel, handles and overlays are hidden. */
@@ -101,6 +103,12 @@
     if (e.key.toLowerCase() === 'f' && !e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target)) {
       if (fullscreen) exitFullscreen();
       else enterFullscreen();
+      return;
+    }
+    // The browser's own save-page dialog is no use here, so ⌘S downloads, even from a text field.
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      void startExport();
       return;
     }
     if (!(e.metaKey || e.ctrlKey) || e.altKey || isTypingTarget(e.target)) return;
@@ -249,6 +257,7 @@
     bind:collapsed
     bind:exploring
     bind:tips
+    bind:shortcuts
     canUndo={history.canUndo}
     canRedo={history.canRedo}
     onundo={undo}
@@ -261,7 +270,9 @@
     onfullscreen={canFullscreen ? enterFullscreen : undefined}
   />
 {/if}
-{#if tips && !fullscreen}
+{#if shortcuts && !fullscreen}
+  <Shortcuts onclose={() => (shortcuts = false)} />
+{:else if tips && !fullscreen}
   <Tips
     onclose={() => {
       tips = false;

@@ -43,6 +43,13 @@ export class Favourites {
     return this.items.find((f) => JSON.stringify(f.design) === key);
   }
 
+  /** The heart: keeps `design`, or lets it go when it is already kept. */
+  toggle(design: Design): void {
+    const found = this.find(design);
+    if (found) this.remove(found.id);
+    else this.add(design);
+  }
+
   /** Newest first; past the limit the oldest goes. */
   add(design: Design): void {
     if (this.find(design)) return;
