@@ -8,7 +8,6 @@ import {
   MAX_RADIUS,
   MIN_RADIUS,
   defaultDesign,
-  defaultGrain,
   defaultMesh,
   defaultWarp,
   identityTransform,
@@ -20,7 +19,6 @@ import {
   type ColorStop,
   type Design,
   type Finish,
-  type Grain,
   type AuroraPattern,
   type GridMesh,
   MAX_GRID,
@@ -55,7 +53,6 @@ export interface EditorSnapshot {
   aurora: AuroraLayout;
   grid: GridMesh;
   warp: Warp;
-  grain: Grain;
   finish: Finish;
   transform: Transform;
   palette: PaletteSnapshot;
@@ -99,12 +96,14 @@ export class EditorState {
   aurora = $state<AuroraLayout>({ count: 0.5, glow: 0.5, blend: AURORA_BLEND, seed: 1 });
   grid = $state<GridMesh>(defaultGrid());
   warp = $state<Warp>({ ...defaultWarp });
-  grain = $state<Grain>({ ...defaultGrain });
-  finish = $state<Finish>({ ...noFinish });
+  finish = $state<Finish>(structuredClone(noFinish));
   transform = $state<Transform>({ ...identityTransform });
   /** Shuffle locks: a locked part is kept as is. */
   colorsLocked = $state(false);
-  layoutLocked = $state(false);
+  /** Pattern: kind, layout and warp. */
+  patternLocked = $state(false);
+  /** Adjust: the finishes (noise, vignette, bands, lighting). The transform is never shuffled. */
+  adjustLocked = $state(false);
   selectedPoint = $state(0);
   /** Index into grid.nodes. */
   selectedNode = $state(0);
@@ -121,14 +120,14 @@ export class EditorState {
   readonly palette = new PaletteEditor({
     kind: () => (this.kind === 'mesh' || this.kind === 'grid' ? this.kind : 'ramp'),
     colorItems: () => this.colorItems,
-    regenerate: (options, seed) => this.applyShuffle(true, false, false, options, seed),
+    regenerate: (options, seed) => this.applyShuffle(true, false, false, false, options, seed),
   });
 
   readonly reel = new Reel<EditorSnapshot>();
 
   /** Opens on a full shuffle of the mesh (palette, layout and warp). */
   constructor(opts: { shuffle?: boolean } = {}) {
-    if (opts.shuffle ?? true) this.applyShuffle(true, true);
+    if (opts.shuffle ?? true) this.applyShuffle(true, true, false, undefined);
   }
 
   /** Plain (non-proxy) design with stops sorted, as the renderer and worker expect. */
@@ -154,8 +153,7 @@ export class EditorState {
       engineVersion: 1,
       base,
       warp: { ...this.warp },
-      grain: { ...this.grain },
-      finish: { ...this.finish },
+      finish: { ...this.finish, noise: { ...this.finish.noise } },
       transform: { ...this.transform },
     };
   }
@@ -163,18 +161,21 @@ export class EditorState {
   // ---- Shuffle --------------------------------------------------------------
 
   get canShuffle(): boolean {
-    return !(this.colorsLocked && this.layoutLocked);
+    return !(this.colorsLocked && this.patternLocked && this.adjustLocked);
   }
 
-  /** Shuffle everything except the locked parts: a layout shuffle also picks the pattern kind and finishes. */
+  /** Shuffle everything except the locked parts: the pattern shuffle also picks the pattern kind. */
   shuffle(): void {
-    if (this.canShuffle)
-      this.reeled(() => this.applyShuffle(!this.colorsLocked, !this.layoutLocked, !this.layoutLocked));
+    if (this.canShuffle) {
+      this.reeled(() =>
+        this.applyShuffle(!this.colorsLocked, !this.patternLocked, !this.patternLocked, !this.adjustLocked),
+      );
+    }
   }
 
   /** New palette only, whatever the locks say. */
   shuffleColors(): void {
-    this.reeled(() => this.applyShuffle(true, false));
+    this.reeled(() => this.applyShuffle(true, false, false, false));
   }
 
   /** Step to the previous (-1) or next (1) shuffle; false at either end. */
@@ -193,11 +194,17 @@ export class EditorState {
   private applyShuffle(
     colors: boolean,
     layout: boolean,
-    style = false,
+    style: boolean,
+    /** The adjust section: finishes and warp amount and size. Undefined: the default for `layout`. */
+    adjust: boolean | undefined,
     palette = this.palette.shuffleOptions(),
     seed = randomSeed(),
   ): void {
-    const next = shuffleDesign(this.design, { colors, layout, style, palette, seed }, this.aspect);
+    const next = shuffleDesign(
+      this.design,
+      { colors, layout, style, finish: adjust, levels: adjust, palette, seed },
+      this.aspect,
+    );
     this.setDesign(next.design);
     // Built around the base hue already.
     if (next.palette) this.palette.adopt({ info: next.palette, seed });
@@ -223,8 +230,7 @@ export class EditorState {
     }
     this.kind = base.kind;
     this.warp = { ...design.warp };
-    this.grain = { ...design.grain };
-    this.finish = { ...noFinish, ...design.finish };
+    this.finish = structuredClone({ ...noFinish, ...design.finish });
     this.transform = { ...(design.transform ?? identityTransform) };
     this.clampSelection();
   }
@@ -253,7 +259,6 @@ export class EditorState {
       aurora: $state.snapshot(this.aurora),
       grid: $state.snapshot(this.grid) as GridMesh,
       warp: $state.snapshot(this.warp),
-      grain: $state.snapshot(this.grain),
       finish: $state.snapshot(this.finish),
       transform: $state.snapshot(this.transform),
       palette: this.palette.snapshot(),
@@ -269,7 +274,6 @@ export class EditorState {
     this.aurora = copy.aurora;
     this.grid = copy.grid;
     this.warp = copy.warp;
-    this.grain = copy.grain;
     this.finish = copy.finish;
     this.transform = copy.transform;
     this.palette.restore(copy.palette);
@@ -290,9 +294,8 @@ export class EditorState {
       byPosition.forEach((stop, k) => (stops[stop].color = colors[k]));
       return;
     }
-    const blend = stops[0]?.blend ?? 'oklab';
     const ramp = colors.length === 1 ? [colors[0], colors[0]] : colors;
-    this.ramp.stops = ramp.map((color, i) => ({ position: i / (ramp.length - 1), color, blend }));
+    this.ramp.stops = ramp.map((color, i) => ({ position: i / (ramp.length - 1), color }));
     this.selectedStop = 0;
   }
 
@@ -455,8 +458,7 @@ export class EditorState {
       const along = geo.map((g) => rampT(shape, ...this.toPattern(g.x, g.y)));
       const order = colors.map((_, i) => i).sort((i, j) => along[i] - along[j]);
       if (order.length === 1) order.push(order[0]);
-      const blend = this.ramp.stops[0]?.blend ?? 'oklab';
-      this.ramp.stops = order.map((i, k) => ({ position: k / (order.length - 1), color: [...colors[i]], blend }));
+      this.ramp.stops = order.map((i, k) => ({ position: k / (order.length - 1), color: [...colors[i]] }));
       this.selectedStop = 0;
     }
     this.palette.adopt(null);
@@ -464,13 +466,12 @@ export class EditorState {
 
   // ---- Linear stops ---------------------------------------------------------
 
-  /** A stop at position t, colored like the ramp there, with the blend of the segment it splits. */
+  /** A stop at position t, colored like the ramp there. */
   addStop(t: number): number | null {
     const stops = this.ramp.stops;
     if (stops.length >= MAX_STOPS) return null;
     const sorted = ($state.snapshot(stops) as ColorStop[]).sort((a, b) => a.position - b.position);
-    const left = sorted.findLast((s) => s.position <= t) ?? sorted[0];
-    stops.push({ position: t, color: oklabToOklch(evaluateRamp(sorted, t)), blend: left.blend });
+    stops.push({ position: t, color: oklabToOklch(evaluateRamp(sorted, t)) });
     this.selectedStop = stops.length - 1;
     return this.selectedStop;
   }

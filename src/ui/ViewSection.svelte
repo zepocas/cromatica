@@ -39,11 +39,8 @@
       onactive={(id) => (contextPreview = id === null ? null : id === OFF ? '' : id)}
       title="Show the OS on top of the image, and warn where its text would be hard to read"
     />
-  </div>
-  {#if editor.kind === 'mesh' || editor.kind === 'grid'}
-    {@const handles = editor.kind === 'mesh' ? 'points' : 'nodes'}
-    <div class="row">
-      <span>show</span>
+    {#if editor.kind === 'mesh' || editor.kind === 'grid'}
+      {@const handles = editor.kind === 'mesh' ? 'points' : 'nodes'}
       <Toggle
         checked={editor.showHandles}
         label={handles}
@@ -51,6 +48,6 @@
         title={`Show or hide the ${handles} on the image (H)`}
         onchange={(on) => (editor.showHandles = on)}
       />
-    </div>
-  {/if}
+    {/if}
+  </div>
 </Section>

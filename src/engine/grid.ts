@@ -18,6 +18,8 @@ export const GRID_LINE_WIDTH: [min: number, max: number] = [0.002, 0.008];
 export const GRID_LINE_PUSH = 0.32;
 export const GRID_LINE_PIVOT = 0.58;
 export const GRID_LINE_PIVOT_SLOPE = 4;
+/** How much of the warp's displacement the lines follow (the colors follow all of it): 1 = same as the colors, 0 = lines ignore the warp. */
+export const GRID_LINE_WARP = 0.5;
 /** Newton steps of the pull-back, the Jacobian determinant below which a plain step is taken, and the step cap. */
 export const GRID_STEPS = 8;
 export const GRID_MIN_DET = 1e-3;
@@ -35,6 +37,7 @@ export const GRID_LINE_SHADER_CONSTANTS = {
   GRID_LINE_PUSH: glslFloat(GRID_LINE_PUSH),
   GRID_LINE_PIVOT: glslFloat(GRID_LINE_PIVOT),
   GRID_LINE_PIVOT_SLOPE: glslFloat(GRID_LINE_PIVOT_SLOPE),
+  GRID_LINE_WARP: glslFloat(GRID_LINE_WARP),
 };
 
 export interface PreparedGrid {
@@ -211,12 +214,23 @@ export function lineCoverage(g: PreparedGrid, qx: number, qy: number, pixel: num
   return 1 - t * t * (3 - 2 * t);
 }
 
-/** Oklab color of the grid at pattern-space point (x, y); `pixel` (one output pixel in pattern units) is only used for lines. */
-export function evaluateGrid(g: PreparedGrid, x: number, y: number, pixel = 0): Oklab {
+/**
+ * Oklab color of the grid at pattern-space point (x, y). `pixel` (one output pixel in pattern units) is only
+ * used for lines, which are drawn at `lineAt` (default: the same point; with a warp, a point part-way back
+ * toward the unwarped one, so the lines bend less than the colors).
+ */
+export function evaluateGrid(
+  g: PreparedGrid,
+  x: number,
+  y: number,
+  pixel = 0,
+  lineAt: [number, number] = [x, y],
+): Oklab {
   const [qx, qy] = pullBack(g, x, y);
   const lab = colorAtRest(g, qx, qy);
   if (g.lines > 0 && pixel > 0) {
-    const line = lineCoverage(g, qx, qy, pixel);
+    const [lx, ly] = lineAt[0] === x && lineAt[1] === y ? [qx, qy] : pullBack(g, lineAt[0], lineAt[1]);
+    const line = lineCoverage(g, lx, ly, pixel);
     const dir = Math.min(1, Math.max(-1, (GRID_LINE_PIVOT - lab[0]) * GRID_LINE_PIVOT_SLOPE));
     const opacity = Math.min(1, g.lines / GRID_LINE_OPACITY_AT);
     lab[0] += GRID_LINE_PUSH * opacity * line * dir;

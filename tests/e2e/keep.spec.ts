@@ -27,8 +27,8 @@ test('← and → step through recent shuffles', async ({ page }) => {
 
 test('arrows nudge a focused handle instead of stepping', async ({ page }) => {
   await openApp(page);
-  // Layout locked, so the shuffle keeps the pattern and its handles.
-  await page.getByLabel('Lock layout').click();
+  // Pattern locked, so the shuffle keeps the pattern and its handles.
+  await page.getByLabel('Lock pattern').click();
   await page.getByRole('button', { name: /^Shuffle( Space)?$/ }).click();
   const hexes = await readHexes(page);
   const handle = page.locator('[data-point], [data-node]').first();

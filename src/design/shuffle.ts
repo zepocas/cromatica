@@ -13,6 +13,7 @@ import {
   type ColorStop,
   type Design,
   type Finish,
+  identityTransform,
   type RampGradient,
   MAX_MESH_POINTS,
   MAX_STOPS,
@@ -34,8 +35,12 @@ export interface ShuffleOptions {
   palette?: PaletteOptions;
   /** Re-randomize layout: mesh points + radii (or gradient angle + stop positions), mesh sharpness, warp shape/amount/size/seed. */
   layout: boolean;
-  /** With `layout`: also pick the pattern kind and the finishes (the app's main shuffle). */
+  /** With `layout`: also pick the pattern kind (the app's main shuffle). Unless `finish` is given, also the finishes. */
   style?: boolean;
+  /** Re-roll the finishes (noise, vignette, bands, lighting) on their own, whatever `layout` says (D64). */
+  finish?: boolean;
+  /** Re-roll the warp's amount and size, whatever else is rolled; default: with `layout`. The shape and seed follow `layout` (D64). */
+  levels?: boolean;
   seed: number;
 }
 
@@ -49,6 +54,8 @@ export interface ShuffleResult {
 interface ShuffleContext {
   opts: ShuffleOptions;
   aspect: number;
+  /** Half width and height of the visible frame in pattern space: the frame turned and scaled by the transform. */
+  extent: [number, number];
   colorRng: Rng;
   layoutRng: Rng;
   /** A palette for n colors, from the color stream and the palette options. */
@@ -63,20 +70,20 @@ type Range = [min: number, max: number];
  */
 export const WARP_SHUFFLE_TABLE: Record<WarpShape, { weight: number; amount: Range; size: Range }> = {
   none: { weight: 0.65, amount: [0, 0], size: [0.5, 0.5] },
-  domain: { weight: 1.2, amount: [0.2, 0.55], size: [0.2, 0.5] },
-  fbm: { weight: 1, amount: [0.2, 0.5], size: [0.2, 0.55] },
-  simplex: { weight: 1, amount: [0.2, 0.55], size: [0.2, 0.55] },
-  waves: { weight: 1, amount: [0.2, 0.55], size: [0.15, 0.5] },
-  rows: { weight: 0.8, amount: [0.25, 0.65], size: [0.2, 0.6] },
-  columns: { weight: 0.8, amount: [0.25, 0.65], size: [0.2, 0.6] },
-  circular: { weight: 0.8, amount: [0.15, 0.45], size: [0.2, 0.55] },
-  oval: { weight: 0.8, amount: [0.2, 0.55], size: [0.2, 0.55] },
-  worley: { weight: 0.8, amount: [0.15, 0.45], size: [0.2, 0.5] },
-  voronoi: { weight: 0.8, amount: [0.2, 0.55], size: [0.2, 0.5] },
-  curl: { weight: 1, amount: [0.2, 0.55], size: [0.2, 0.5] },
-  ridged: { weight: 1, amount: [0.2, 0.5], size: [0.2, 0.5] },
-  marble: { weight: 0.8, amount: [0.3, 0.7], size: [0.2, 0.5] },
-  bristle: { weight: 0.4, amount: [0.3, 0.7], size: [0.2, 0.5] },
+  domain: { weight: 1.2, amount: [0.08, 0.85], size: [0, 0.4] },
+  fbm: { weight: 1, amount: [0.08, 0.8], size: [0, 0.4] },
+  simplex: { weight: 1, amount: [0.08, 0.85], size: [0, 0.4] },
+  waves: { weight: 1, amount: [0.08, 0.85], size: [0, 0.4] },
+  rows: { weight: 0.8, amount: [0.13, 0.9], size: [0, 0.4] },
+  columns: { weight: 0.8, amount: [0.13, 0.9], size: [0, 0.4] },
+  circular: { weight: 0.8, amount: [0.08, 0.75], size: [0, 0.4] },
+  oval: { weight: 0.8, amount: [0.08, 0.85], size: [0, 0.4] },
+  worley: { weight: 0.8, amount: [0.08, 0.75], size: [0, 0.4] },
+  voronoi: { weight: 0.8, amount: [0.08, 0.85], size: [0, 0.4] },
+  curl: { weight: 1, amount: [0.08, 0.85], size: [0, 0.4] },
+  ridged: { weight: 1, amount: [0.08, 0.8], size: [0, 0.4] },
+  marble: { weight: 0.8, amount: [0.18, 0.9], size: [0, 0.4] },
+  bristle: { weight: 0.4, amount: [0.18, 0.9], size: [0, 0.4] },
 };
 
 export const MESH_SHUFFLE = {
@@ -146,9 +153,9 @@ export const STYLE_SHUFFLE = {
   print: { chance: 0.25, range: [0.15, 0.4] as Range },
   /** Not for planes, which are flat already. */
   bands: { chance: 0.15, range: [0.2, 0.7] as Range },
-  /** Subtle (2026-10-07); weights to revisit in M12. Light from the upper left. */
-  relief: { chance: 0.15, range: [0.2, 0.5] as Range, light: [100, 170] as Range },
-  halftone: { chance: 0.12, range: [0.15, 0.35] as Range },
+  /** Subtle (2026-10-07; ranges set in M12, D63). Light from the upper left. */
+  relief: { chance: 0.3, range: [0.1, 0.5] as Range, light: [100, 170] as Range },
+  halftone: { chance: 0.12, range: [0.1, 0.35] as Range },
   planesRoughness: { clean: 0.25, range: [0.3, 1] as Range },
   planesBlend: { chance: 0.3, range: [0.2, 0.8] as Range },
 };
@@ -157,6 +164,7 @@ export const STYLE_SHUFFLE = {
 const COLOR_STREAM = 0x9e3779b9;
 const LAYOUT_STREAM = 0x85ebca6b;
 const STYLE_STREAM = 0xc2b2ae35;
+const ROTATE_STREAM = 0x27d4eb2f;
 
 /** Shuffled mesh radii stay in this range (composition units). */
 const RADIUS_LIMITS: Range = [0.05, 2];
@@ -171,27 +179,42 @@ const copyColor = (c: Oklch): Oklch => [c[0], c[1], c[2]];
 
 /**
  * Pure: a new design with fresh colors and/or layout, deterministic for
- * (design, opts, aspect). Keeps the pattern kind, grain and finish. Mesh layouts keep
+ * (design, opts, aspect). Keeps the pattern kind and finish. Mesh layouts keep
  * points mostly inside the frame of the given aspect and avoid clumping; when
  * both colors and layout are shuffled, the point count may change by ±1.
  */
 export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 / 9): ShuffleResult {
   const seed = opts.seed >>> 0;
   const colorRng = createRng((seed ^ COLOR_STREAM) >>> 0);
+  const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 16 / 9;
+  let transform = design.transform;
+  if (opts.layout && opts.style) {
+    const rotate = createRng((seed ^ ROTATE_STREAM) >>> 0).int(360);
+    transform = { ...(transform ?? identityTransform), rotate };
+  }
   const ctx: ShuffleContext = {
     opts,
-    aspect: Number.isFinite(aspect) && aspect > 0 ? aspect : 16 / 9,
+    aspect: safeAspect,
+    extent: frameExtent(safeAspect, transform),
     colorRng,
     layoutRng: createRng((seed ^ LAYOUT_STREAM) >>> 0),
     makePalette: (n) => generatePalette(colorRng, n, opts.palette),
   };
   let b = design.base;
   let finish = design.finish;
-  if (opts.layout && opts.style) {
+  const pickKind = opts.layout && opts.style;
+  const pickFinish = opts.finish ?? pickKind;
+  if (pickKind || pickFinish) {
     const styleRng = createRng((seed ^ STYLE_STREAM) >>> 0);
-    b = withKind(b, pickWeighted(styleRng, STYLE_SHUFFLE.kinds));
-    if (b.kind === 'planes') b = { ...b, ...shufflePlanesStyle(styleRng) };
-    finish = shuffleFinish(styleRng, b.kind === 'planes' || b.kind === 'aurora');
+    // The kind and the planes style are drawn even when the pattern is kept, so the finishes come out
+    // the same whether or not the pattern is locked (D64).
+    const kind = pickWeighted(styleRng, STYLE_SHUFFLE.kinds);
+    const planesStyle = kind === 'planes' ? shufflePlanesStyle(styleRng) : null;
+    if (pickKind) {
+      b = withKind(b, kind);
+      if (b.kind === 'planes' && planesStyle) b = { ...b, ...planesStyle };
+    }
+    if (pickFinish) finish = shuffleFinish(styleRng, b.kind === 'planes' || b.kind === 'aurora');
   }
   const shuffled =
     b.kind === 'mesh'
@@ -204,26 +227,55 @@ export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 
             ? shuffleGrid(b, ctx)
             : shuffleRamp(b, ctx);
   let base = shuffled.pattern;
-  if (base.kind === 'mesh' && opts.layout && design.transform) base = toPatternSpace(base, design.transform);
-  const warp = opts.layout ? shuffleWarp(ctx.layoutRng) : { ...design.warp };
-  const out: Design = { engineVersion: design.engineVersion, base, warp, grain: { ...design.grain } };
-  if (design.transform) out.transform = { ...design.transform };
-  if (finish) out.finish = { ...finish };
+  if (base.kind === 'mesh' && opts.layout && transform) base = toPatternSpace(base, transform);
+  const levels = opts.levels ?? opts.layout;
+  const warp =
+    opts.layout || levels
+      ? shuffleWarp(ctx.layoutRng, design.warp, { shape: opts.layout, levels })
+      : { ...design.warp };
+  const out: Design = { engineVersion: design.engineVersion, base, warp };
+  if (transform) out.transform = { ...transform };
+  if (finish) out.finish = { ...finish, noise: { ...finish.noise } };
   return { design: out, palette: shuffled.palette };
+}
+
+/** Bounding box (half sizes) of the frame as the pattern sees it, so a bounded layout can cover it under any turn or zoom. */
+function frameExtent(aspect: number, transform: Transform | undefined): [number, number] {
+  const fw = aspect / 2;
+  const fh = 0.5;
+  if (!transform) return [fw, fh];
+  const [c, s] = [
+    Math.abs(Math.cos((transform.rotate * Math.PI) / 180)),
+    Math.abs(Math.sin((transform.rotate * Math.PI) / 180)),
+  ];
+  const zoom = clampZoom(transform.zoom);
+  // Quarter turns are exact (cos 90° is 6e-17, not 0).
+  const snap = (x: number) => (x < 1e-9 ? 0 : x > 1 - 1e-9 ? 1 : x);
+  return [(snap(c) * fw + snap(s) * fh) / zoom, (snap(s) * fw + snap(c) * fh) / zoom];
 }
 
 function paletteInfo({ rule, mood, key }: GeneratedPalette): PaletteInfo {
   return { rule, mood, key };
 }
 
-function shuffleWarp(rng: Rng): Warp {
-  const shape = pickWeighted(rng, WARP_WEIGHTS);
+/**
+ * A new warp. The shape and seed are the pattern's (kept unless `parts.shape`); the amount and size are
+ * the adjust section's (kept unless `parts.levels`). Everything is drawn either way, so with both set the
+ * result is the plain new warp, and a shuffle that keeps some parts rolls the rest from the same stream.
+ */
+function shuffleWarp(rng: Rng, current: Warp, parts: { shape: boolean; levels: boolean }): Warp {
+  const drawnShape = pickWeighted(rng, WARP_WEIGHTS);
+  const shape = parts.shape ? drawnShape : current.shape;
   const t = WARP_SHUFFLE_TABLE[shape];
+  const amount = round4(rng.range(t.amount[0], t.amount[1]));
+  const size = round4(rng.range(t.size[0], t.size[1]));
+  const seed = rng.uint32();
   return {
     shape,
-    amount: round4(rng.range(t.amount[0], t.amount[1])),
-    size: round4(rng.range(t.size[0], t.size[1])),
-    seed: rng.uint32(),
+    // A kept amount of 0 under a new shape would show nothing: roll one then.
+    amount: parts.levels || (current.amount === 0 && shape !== 'none') ? amount : current.amount,
+    size: parts.levels ? size : current.size,
+    seed: parts.shape ? seed : current.seed,
   };
 }
 
@@ -339,7 +391,7 @@ function withKind(base: BasePattern, kind: BasePattern['kind']): BasePattern {
     return { ...base, kind };
   }
   const ramp = n === 1 ? [colors[0], colors[0]] : colors.slice(0, n);
-  const stops = ramp.map((color, i) => ({ position: i / (ramp.length - 1), color, blend: 'oklab' as const }));
+  const stops = ramp.map((color, i) => ({ position: i / (ramp.length - 1), color }));
   return { kind, angle: 0, stops };
 }
 
@@ -358,21 +410,22 @@ function shuffleFinish(rng: Rng, flat: boolean): Finish {
   const print = maybe(s.print);
   const bands = maybe(s.bands);
   const bandEdge = round4(rng.next());
-  // Drawn last, so shuffles from before relief and halftone existed come out the same.
+  // Drawn after the others, so shuffles from before relief and halftone existed come out the same.
   const relief = maybe(s.relief);
   const reliefStyle = rng.next() < 0.5 ? 'satin' : 'glass';
   const reliefLight = Math.round(rng.range(...s.relief.light));
   const halftone = maybe(s.halftone);
+  // Noise (D63) is one texture: when both rolls hit, a coin picks the winner.
+  const pickHalftone = halftone > 0 && (print === 0 || rng.next() < 0.5);
   return {
     vignette,
-    print,
+    noise: pickHalftone ? { type: 'halftone', amount: halftone } : { type: 'lithograph', amount: print },
     bands: flat ? 0 : bands,
     bandEdge,
     bandStyle: noFinish.bandStyle,
     relief,
     reliefStyle: relief > 0 ? reliefStyle : noFinish.reliefStyle,
     reliefLight: relief > 0 ? reliefLight : noFinish.reliefLight,
-    halftone,
   };
 }
 
@@ -393,17 +446,23 @@ function shufflePlanes(
   };
 }
 
-/** Even grid over the frame of the given aspect, nodes jittered (edges along their edge, corners fixed). */
-export function gridLayout(rng: Rng | null, rows: number, cols: number, aspect: number): GridMesh['nodes'] {
-  const hw = aspect / 2;
+/** Even grid over the frame of the given aspect (or over `extent`, half width and height), nodes jittered (edges along their edge, corners fixed). */
+export function gridLayout(
+  rng: Rng | null,
+  rows: number,
+  cols: number,
+  aspect: number,
+  extent: [number, number] = [aspect / 2, 0.5],
+): GridMesh['nodes'] {
+  const [hw, hh] = extent;
   const nodes: GridMesh['nodes'] = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       let x = -hw + (2 * hw * c) / (cols - 1);
-      let y = -0.5 + r / (rows - 1);
+      let y = -hh + (2 * hh * r) / (rows - 1);
       if (rng) {
         const jx = (rng.range(-1, 1) * GRID_SHUFFLE.jitter * 2 * hw) / (cols - 1);
-        const jy = (rng.range(-1, 1) * GRID_SHUFFLE.jitter) / (rows - 1);
+        const jy = (rng.range(-1, 1) * GRID_SHUFFLE.jitter * 2 * hh) / (rows - 1);
         if (c > 0 && c < cols - 1) x += jx;
         if (r > 0 && r < rows - 1) y += jy;
       }
@@ -438,13 +497,13 @@ function dealGridColors(rng: Rng, palette: Oklch[], rows: number, cols: number):
 
 /** Grid: a new layout is a new size and jittered nodes over the frame; new colors are a small palette dealt over the nodes. */
 function shuffleGrid(base: GridMesh, ctx: ShuffleContext): { pattern: GridMesh; palette: PaletteInfo | null } {
-  const { opts, layoutRng, colorRng, aspect } = ctx;
+  const { opts, layoutRng, colorRng, extent } = ctx;
   const size = () =>
     clamp(GRID_SHUFFLE.size[0] + layoutRng.int(GRID_SHUFFLE.size[1] - GRID_SHUFFLE.size[0] + 1), MIN_GRID, MAX_GRID);
   const rows = opts.layout ? size() : base.rows;
   const cols = opts.layout ? size() : base.cols;
-  const geo = opts.layout ? gridLayout(layoutRng, rows, cols, aspect) : base.nodes;
-  const rest: [number, number] = opts.layout ? [round4(aspect / 2), 0.5] : base.rest;
+  const geo = opts.layout ? gridLayout(layoutRng, rows, cols, 0, extent) : base.nodes;
+  const rest: [number, number] = opts.layout ? [round4(extent[0]), round4(extent[1])] : base.rest;
   const palette = opts.colors ? ctx.makePalette(Math.min(GRID_SHUFFLE.colors, rows * cols)) : null;
   let colors: Oklch[];
   if (palette) colors = dealGridColors(colorRng, palette.colors, rows, cols);
@@ -517,7 +576,7 @@ function shuffleRamp(base: RampGradient, ctx: ShuffleContext): { pattern: RampGr
     colors = stops.map((s) => copyColor(s.color));
   }
 
-  const out: ColorStop[] = stops.map((s, i) => ({ position: positions[i], color: colors[i], blend: s.blend }));
+  const out: ColorStop[] = stops.map((_, i) => ({ position: positions[i], color: colors[i] }));
   const pattern: RampGradient = { ...base, angle, stops: out };
   if (opts.layout && (base.kind === 'noise' || base.kind === 'cells')) {
     pattern.scale = round4(layoutRng.range(...RAMP_SHUFFLE.scale));

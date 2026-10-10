@@ -1,6 +1,6 @@
 // Renderer: linear gradients — tiling, CPU reference, dither, aspect.
 import { expect, test } from '@playwright/test';
-import { type BlendMode, type Design, noFinish, type RampGradient } from '../../src/design/design';
+import { type Design, noFinish, type RampGradient } from '../../src/design/design';
 import { linear, meshDefault, threeStops, midTones, type StopSpec } from './support/designs';
 import { engineHarness, openEngineHarness, logBench } from './support/harness';
 
@@ -54,7 +54,6 @@ test.describe('correctness vs CPU reference (dither off)', () => {
   }
 
   test('hard edge, clamped ends and max stops', async ({ page }) => {
-    const blends: BlendMode[] = ['oklab', 'oklab-chroma', 'oklch-short', 'oklch-long'];
     const d = linear(
       63,
       Array.from({ length: 8 }, (_, i): StopSpec => [
@@ -62,7 +61,6 @@ test.describe('correctness vs CPU reference (dither off)', () => {
         // stops 3 and 4 share a position (hard edge).
         [0.1, 0.2, 0.3, 0.45, 0.45, 0.6, 0.8, 0.9][i],
         [0.25 + i * 0.09, 0.04 + (i % 3) * 0.05, (i * 47) % 360],
-        blends[i % 4],
       ]),
     );
     const r = await engineHarness(page, 'compareReference', d, 801, 503);
@@ -154,7 +152,7 @@ test.describe('radial and conic gradients', () => {
 test.describe('finish: vignette and bands', () => {
   const withFinish = (d: Design, vignette: number, bands: number, bandEdge = 0, print = 0): Design => ({
     ...d,
-    finish: { ...noFinish, vignette, bands, bandEdge, print },
+    finish: { ...noFinish, vignette, bands, bandEdge, noise: { type: 'lithograph', amount: print } },
   });
 
   test('vignette matches the CPU reference on linear and mesh', async ({ page }) => {

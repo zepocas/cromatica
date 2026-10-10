@@ -34,7 +34,7 @@
 
 <footer class:compact>
   {#if !compact}
-    <div class="row">
+    <div class="row keep">
       <span>keep</span>
       <Toggle
         checked={editor.colorsLocked}
@@ -44,11 +44,18 @@
         onchange={(on) => (editor.colorsLocked = on)}
       />
       <Toggle
-        checked={editor.layoutLocked}
-        label="layout"
-        ariaLabel="Lock layout"
-        title="Keep the layout and warp when shuffling"
-        onchange={(on) => (editor.layoutLocked = on)}
+        checked={editor.patternLocked}
+        label="pattern"
+        ariaLabel="Lock pattern"
+        title="Keep the pattern kind, layout, warp shape and variation when shuffling"
+        onchange={(on) => (editor.patternLocked = on)}
+      />
+      <Toggle
+        checked={editor.adjustLocked}
+        label="adjust"
+        ariaLabel="Lock adjust"
+        title="Keep the warp amount and size, bands, noise, vignette and lighting when shuffling"
+        onchange={(on) => (editor.adjustLocked = on)}
       />
     </div>
     <div class="row">
@@ -70,14 +77,6 @@
         disabled={!editor.reel.canForward}
         onclick={() => editor.stepReel(1)}>→</button
       >
-      <span class="spacer"></span>
-      <button
-        class="icon"
-        aria-label="More like this"
-        aria-pressed={exploring}
-        title="More like this: variations of this design (M)"
-        onclick={() => (exploring = !exploring)}>⊞</button
-      >
     </div>
   {/if}
   <div class="row actions">
@@ -85,14 +84,24 @@
       class="primary"
       aria-label="Shuffle"
       disabled={!editor.canShuffle}
-      title={editor.canShuffle ? 'Shuffle (Space)' : 'Unlock colors or layout to shuffle'}
+      title={editor.canShuffle ? 'Shuffle (Space)' : 'Unlock colors, pattern or adjust to shuffle'}
       onclick={() => editor.shuffle()}>[ shuffle<kbd> ␣</kbd> ]</button
     >
+    {#if !compact}
+      <button
+        aria-label="More like this"
+        aria-pressed={exploring}
+        title="More like this: variations of this design (M)"
+        onclick={() => (exploring = !exploring)}>[ more like this<kbd> M</kbd> ]</button
+      >
+    {/if}
+  </div>
+  <div class="row actions">
     {#if exporting}
       <progress max="100" value={percent} aria-label="Export progress"></progress>
       <button onclick={oncancel}>[ cancel ]</button>
     {:else}
-      <button class="strong" aria-label="Download" onclick={onexport}>[ download ]</button>
+      <button class="strong" aria-label="Download" title="Download (⌘S)" onclick={onexport}>[ download ]</button>
       {#if !compact}
         <span class="spacer"></span>
         <Dropdown
@@ -110,6 +119,15 @@
 </footer>
 
 <style>
+  /* Three toggles share the row with their label: trim the label column and the gaps to fit the panel. */
+  footer .row.keep {
+    gap: 2px;
+  }
+
+  footer .row.keep > span:first-child {
+    width: 4ch;
+  }
+
   /* Pinned to the bottom; the sections scroll above it on short screens. */
   footer {
     position: sticky;

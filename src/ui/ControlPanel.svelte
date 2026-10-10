@@ -14,6 +14,7 @@
     editor: EditorState;
     favourites: Favourites;
     presetId: string;
+    presetPreview: string | null;
     customWidth: number;
     customHeight: number;
     /** Export size in pixels (from the preset or the custom size). */
@@ -26,6 +27,8 @@
     exploring: boolean;
     /** The tips card is showing. */
     tips: boolean;
+    /** The shortcut list is showing. */
+    shortcuts: boolean;
     canUndo: boolean;
     canRedo: boolean;
     onundo: () => void;
@@ -35,12 +38,15 @@
     error: string;
     onexport: () => void;
     oncancel: () => void;
+    /** Show the preview alone, filling the screen. Absent where the browser can't. */
+    onfullscreen?: () => void;
   }
 
   let {
     editor = $bindable(),
     favourites,
     presetId = $bindable(),
+    presetPreview = $bindable(),
     customWidth = $bindable(),
     customHeight = $bindable(),
     output,
@@ -50,6 +56,7 @@
     collapsed = $bindable(),
     exploring = $bindable(),
     tips = $bindable(),
+    shortcuts = $bindable(),
     canUndo,
     canRedo,
     onundo,
@@ -59,9 +66,10 @@
     error,
     onexport,
     oncancel,
+    onfullscreen,
   }: Props = $props();
 
-  /** App shortcuts: Space shuffles, ← and → step through recent shuffles, [ and ] through warp shapes, M opens more like this. */
+  /** App shortcuts: Space shuffles, ← and → step through recent shuffles, [ and ] through warp shapes, M opens more like this, K keeps a favourite, 1 2 3 lock, P folds the panel, ? lists them all. */
   function onWindowKeyDown(e: KeyboardEvent) {
     if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
     if (e.key === ' ') {
@@ -77,6 +85,20 @@
     } else if (e.key === '[' || e.key === ']') {
       e.preventDefault();
       editor.cycleWarpShape(e.key === ']' ? 1 : -1);
+    } else if (e.key === 'k' || e.key === 'K') {
+      e.preventDefault();
+      if (!e.repeat) favourites.toggle(editor.design);
+    } else if (e.key === 'p' || e.key === 'P') {
+      e.preventDefault();
+      collapsed = !collapsed;
+    } else if (e.key === '1' || e.key === '2' || e.key === '3') {
+      e.preventDefault();
+      if (e.key === '1') editor.colorsLocked = !editor.colorsLocked;
+      else if (e.key === '2') editor.patternLocked = !editor.patternLocked;
+      else editor.adjustLocked = !editor.adjustLocked;
+    } else if (e.key === '?') {
+      e.preventDefault();
+      shortcuts = !shortcuts;
     }
   }
 </script>
@@ -87,7 +109,29 @@
   <header>
     <h1>cromatica</h1>
     <span class="spacer"></span>
-    <button class="icon" aria-label="Tips" aria-pressed={tips} title="Tips" onclick={() => (tips = !tips)}>?</button>
+    <button
+      class="icon"
+      aria-label="Tips"
+      aria-pressed={tips}
+      title="Tips"
+      onclick={() => {
+        tips = !tips;
+        if (tips) shortcuts = false;
+      }}>?</button
+    >
+    <button
+      class="icon"
+      aria-label="Shortcuts"
+      aria-pressed={shortcuts}
+      title="Keyboard shortcuts (?)"
+      onclick={() => {
+        shortcuts = !shortcuts;
+        if (shortcuts) tips = false;
+      }}>⌨</button
+    >
+    {#if onfullscreen}
+      <button class="icon" aria-label="Full screen" title="Full screen (F)" onclick={onfullscreen}>⛶</button>
+    {/if}
     <button class="icon" aria-label="Undo" title="Undo (⌘Z)" disabled={!canUndo} onclick={onundo}>↶</button>
     <button class="icon" aria-label="Redo" title="Redo (⇧⌘Z)" disabled={!canRedo} onclick={onredo}>↷</button>
     <button
@@ -100,7 +144,7 @@
   </header>
 
   {#if !collapsed}
-    <PatternSection bind:editor bind:presetId bind:customWidth bind:customHeight {output} />
+    <PatternSection bind:editor bind:presetId bind:presetPreview bind:customWidth bind:customHeight {output} />
     <AdjustSection bind:editor />
     <!-- With spare height these sit at the bottom, above the footer; a full panel scrolls as before. -->
     <div class="bottom">

@@ -37,10 +37,10 @@ import {
 import { GAMUT_CLIP_STEPS, prepareMesh } from '../color/mesh';
 import { BLUE_NOISE_SIZE, DITHER_CHANNEL_OFFSETS, blueNoiseRanks } from './blue-noise';
 import { prepareFinish, VIGNETTE_INNER } from './finish';
-import { GRAIN_CHROMA, prepareGrain } from './grain';
 import { buildShaderSources, variantKey, type Defines } from './shaders';
 import { NEIGHBOUR_SHADER_CONSTANTS } from './neighbours';
 import { prepareRelief, RELIEF_SHADER_CONSTANTS, type PreparedRelief } from './relief';
+import { GRAIN_CHROMA, prepareGrain } from './grain';
 import { HALFTONE_SHADER_CONSTANTS, HALFTONE_TABLE, halftoneContrast } from './halftone';
 import { prepareWarp, WARP_SHADER_CONSTANTS, type PreparedWarp } from './warp';
 import type { OutputSize, RenderOptions, Renderer, Tile } from './types';
@@ -204,7 +204,7 @@ function warpUniforms(w: PreparedWarp) {
 
 /** Cheap structural key of the stops; the ramp is re-baked only when it changes. */
 function stopsKey(stops: readonly ColorStop[]): string {
-  return stops.map((s) => `${s.position},${s.color[0]},${s.color[1]},${s.color[2]},${s.blend}`).join('|');
+  return stops.map((s) => `${s.position},${s.color[0]},${s.color[1]},${s.color[2]}`).join('|');
 }
 
 function createTexture(gl: WebGL2RenderingContext, filter: GLenum, wrap: GLenum): WebGLTexture {
@@ -220,6 +220,7 @@ function createTexture(gl: WebGL2RenderingContext, filter: GLenum, wrap: GLenum)
 export function createRenderer(gl: WebGL2RenderingContext): Renderer {
   // Program variants keyed by their #define set (base pattern × warp shape).
   const programs = new Map<string, twgl.ProgramInfo>();
+  let compiled = 0;
   const vao = gl.createVertexArray();
 
   // WebGL2 only guarantees MAX_TEXTURE_SIZE >= 2048; shrink the ramp if needed.
@@ -262,15 +263,19 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
       if (!created) throw new Error(`Shader compile failed (${key || 'default'}):\n${error}`);
       info = created;
       programs.set(key, info);
+      compiled++;
     }
     return info;
   }
 
   return {
+    get compiled() {
+      return compiled;
+    },
     render(design: Design, output: OutputSize, tile: Tile, opts: RenderOptions = {}) {
       const base = design.base;
       const warp = prepareWarp(design.warp);
-      const grain = prepareGrain(design.grain);
+      const grain = prepareGrain(design.finish?.noise);
       const finish = prepareFinish(design.finish, output);
       const relief = prepareRelief(design.finish);
       const halftone = halftoneContrast(design.finish);
@@ -318,8 +323,10 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
         ...baseUniforms,
         ...warpUniforms(warp),
         u_grainAmp: grain.sigma,
-        u_grainScale: 1 / grain.sizePx,
+        u_grainScale: grain.scale,
+        u_grainClumpScale: grain.clumpScale,
         u_grainChroma: GRAIN_CHROMA,
+        u_grainSeed: grain.seed,
         u_vignette: finish.vignette,
         u_vignetteScale: finish.vignetteScale,
         u_bandSteps: finish.bandSteps,

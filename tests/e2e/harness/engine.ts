@@ -6,13 +6,13 @@ import { gamutMapToLinearSrgb } from '../../../src/color/gamut';
 import { linearSrgbToOklab, oklabToLinearSrgb, oklabToOklch, srgbDecode } from '../../../src/color/oklab';
 import { bakeRamp, RAMP_SIZE } from '../../../src/color/ramp';
 import type { Rgb } from '../../../src/color/types';
-import { type Design, type RampGradient, noGrain, noWarp, type PointMesh } from '../../../src/design/design';
+import { type Design, type RampGradient, noFinish, noWarp, type PointMesh } from '../../../src/design/design';
 import { applyMat2, transformMatrix } from '../../../src/engine/transform';
 import { bandLevel, meshBanding, prepareFinish, vignetteFactor } from '../../../src/engine/finish';
 import { prepareRampShape, rampT } from '../../../src/engine/ramp-shape';
 import { evaluatePlanes, preparePlanes } from '../../../src/engine/planes';
 import { evaluateAurora, prepareAurora } from '../../../src/engine/aurora';
-import { evaluateGrid, prepareGrid } from '../../../src/engine/grid';
+import { evaluateGrid, GRID_LINE_WARP, prepareGrid } from '../../../src/engine/grid';
 import { createRenderer } from '../../../src/engine/renderer';
 import { applyRelief, prepareRelief } from '../../../src/engine/relief';
 import { applyHalftone, halftoneContrast } from '../../../src/engine/halftone';
@@ -153,7 +153,12 @@ function createPatternReference(design: Design, output: OutputSize, halfFloat: b
   }
   if (base.kind === 'grid') {
     const grid = prepareGrid(base);
-    return (u, v) => meshGamutClip(evaluateGrid(grid, ...at(u, v), 1 / output.height));
+    return (u, v) => {
+      const t = applyMat2(m, u, v);
+      const p = warp(...t);
+      const lineAt: [number, number] = [t[0] + GRID_LINE_WARP * (p[0] - t[0]), t[1] + GRID_LINE_WARP * (p[1] - t[1])];
+      return meshGamutClip(evaluateGrid(grid, ...p, 1 / output.height, lineAt));
+    };
   }
   if (base.kind === 'aurora') {
     const aurora = prepareAurora(base);
@@ -568,7 +573,7 @@ const harness = {
    */
   compareWarpReference(design: Design, width: number, height: number, tolerance: number) {
     const output = { width, height };
-    const d: Design = { ...design, grain: noGrain };
+    const d: Design = design;
     const image = render(d, output, false);
     const ref = createReference(d, output);
     const warp = createWarp(d.warp ?? noWarp);
@@ -638,7 +643,7 @@ const harness = {
   grainStats(design: Design, width: number, height: number) {
     const output = { width, height };
     const on = render(design, output, true);
-    const off = render({ ...design, grain: noGrain }, output, true);
+    const off = render({ ...design, finish: { ...noFinish, ...design.finish, noise: noFinish.noise } }, output, true);
     const n = width * height;
     const mean = [0, 0, 0];
     const diff = new Float64Array(n);

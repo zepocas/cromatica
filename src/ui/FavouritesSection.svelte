@@ -33,7 +33,7 @@
       aria-label={current ? 'Remove from favourites' : 'Add to favourites'}
       aria-pressed={!!current}
       title={current ? 'Remove from favourites' : 'Keep in favourites'}
-      onclick={() => (current ? favourites.remove(current.id) : favourites.add(design))}>{current ? '♥' : '♡'}</button
+      onclick={() => favourites.toggle(design)}>{current ? '♥' : '♡'}</button
     >
   {/snippet}
 

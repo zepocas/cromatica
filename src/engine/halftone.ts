@@ -11,7 +11,7 @@ import { clamp01 } from '../math';
 /** Screen pitch, composition units (image height = 1): ~4 px at 1080p. */
 const HALFTONE_CELL = 0.0035;
 /** Lightness gap between ink and paper at halftone 1, as a share of the way to black and white. */
-const HALFTONE_CONTRAST = 0.75;
+const HALFTONE_CONTRAST = 0.85;
 /** Ink gains chroma, paper loses it, per unit of contrast. */
 const INK_CHROMA = 0.3;
 const PAPER_FADE = 0.5;
@@ -54,7 +54,7 @@ export const HALFTONE_TABLE: readonly number[] = coverageTable();
 
 /** Ink/paper contrast for a finish; 0 = off. */
 export function halftoneContrast(finish: Finish | undefined): number {
-  return HALFTONE_CONTRAST * clamp01(finish?.halftone ?? 0);
+  return finish?.noise.type === 'halftone' ? HALFTONE_CONTRAST * clamp01(finish.noise.amount) : 0;
 }
 
 export const HALFTONE_SHADER_CONSTANTS = {

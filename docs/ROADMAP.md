@@ -243,7 +243,7 @@ Each milestone uses the same structure:
   - Aurora ribbons.
   - A **grid Bézier mesh** style (photogradient's core style; revisits D11).
   - **Planes** (collage, after synthetic cubism and the King Krule sleeve art): N seeded, rotated polygons or Voronoi-style cells, each a flat palette color, with noise-roughened edges (torn paper), overlap order for the layered look and a subtle paper grain. Evaluated per pixel with no state, so it stays tile-independent. Controls: plane count and edge roughness. Pairs with the print texture finish from M4.5 and the muted and earthy moods.
-- **Done when:** each pattern has golden-image tests (CPU-reference and tile checks in the browser suite). The reference designs moved to M12's showcase examples (decided 2026-10-05).
+- **Done when:** each pattern has golden-image tests (CPU-reference and tile checks in the browser suite). The reference designs moved to M12's showcase examples (decided 2026-10-05) (D65).
 - **Progress:**
   - Planes built (D37): count, torn and a new-layout button. It uses the ramp's colors, works with warps and finishes, and has contact sheets in `sheets.spec.ts`. Still to do: tune by eye, and possibly Voronoi-style cells as a second planes layout.
   - fBm noise fields and Worley cells built as the `noise` and `cells` gradient types (D41).
@@ -346,29 +346,26 @@ Each milestone uses the same structure:
 
 - **Goal:** settle what the panel's finishes and color controls are called and which of them stay, before the references are fixed. After M11.
 - **Scope, in this order:**
-  - **Colors "blend" dropdown** (per stop: perceptual, vivid, hue short/long way): feels like overkill to the user (2026-10-07); reconsider whether to keep it.
-  - **Relief's name:** the finish works, but "relief" may not be the right word for it in the panel; reconsider.
-  - **Relief controls and shuffle weight:** consider grouping relief's settings (relief, light, surface) visually, e.g. with a border, and revisit whether and how often shuffles turn relief on, and how strongly (user, 2026-10-07; M8 shipped 15% at 0.2–0.5).
-  - **Noise, print and halftone sliders:** reconsider them together (D53, 2026-10-07). Noise and print look alike, and noise is the softer, more redundant one. Decide whether to merge them, drop one, or rename ("noise" is the better name; "noise (print)" is an option). Halftone (M8) joins them: the user floated "noise (halftone)" and a single noise section holding all the noise-like finishes.
-  - **Keep row split into colors, pattern, adjust** (2026-10-08): the footer's `keep` toggles stay next to the shuffle button, where locking is noticed (per-section lock icons on the headers were considered and rejected: less visible and far from the shuffle button). Replace the two toggles with three, `keep [ ] colors [ ] pattern [ ] adjust`:
-    - **colors:** the palette, as today.
-    - **pattern:** gradient kind, node or point layout, and the warp (shape, amount, size, seed).
-    - **adjust:** the finishes (vignette, print, bands, relief, halftone), the transform and the noise (grain).
-    - **Fit:** about 270 px of the 286 px panel; trim the label gap. Fallback: shorter words (`color`, `shape`, `finish`).
-    - **Open questions:** warp goes with pattern (confirm); the adjust values get their own random stream so locking pattern doesn't change what the finishes shuffle to, and with nothing locked the stream order stays as today so existing shuffles don't change; "more like this" respects the same flags; the keeps are not saved with the design (D44), as today.
-  - **Showcase examples / reference designs** (moved from M5; last, after the finish cleanup above, 2026-10-08): for each pattern, render candidates from shuffles and contact sheets, let the user pick about 3 by eye, and save them as fixed design files. They serve as showcase examples and as test fixtures.
-- **Done when:** each decision is recorded in DECISIONS, and each pattern has about 3 saved reference designs used as showcase and golden-image fixtures. The showcase examples come last because merging or renaming the finishes would change the designs.
+  - ~~**Colors "blend" dropdown**~~ Done (D63): removed; every ramp blends perceptually.
+  - ~~**Relief's name**~~ Done (D63): the controls form a bordered "lighting" group: amount, direction, surface.
+  - ~~**Relief controls and shuffle weight**~~ Done (D63): relief 0.1–0.5, halftone 0.1–0.35, chances unchanged.
+  - ~~**Noise, print and halftone sliders**~~ Done (D63, D53): one "noise" group with a type (lithograph, xerox, halftone, grain) and an amount; old saves migrate. Arrow-key previews now cover every list that can show one.
+  - ~~**Keep row split into colors, pattern, adjust**~~ Done (D64): the footer's keep row is `keep [ ] colors [ ] pattern [ ] adjust`. Pattern holds the kind, layout, warp shape and its variation (the old "layout" lock); adjust holds the warp amount and size and the finishes (bands, noise, vignette, lighting); the transform is never shuffled. The finishes get the same roll whether or not the pattern is locked, "more like this" is unaffected (it already keeps palette, kind, finishes and transform), and the locks are not saved with the design (D44).
+  - ~~**Showcase examples / reference designs**~~ Done (D65): nine images picked by the user, shown in the README grid (`docs/examples/`). No golden-image fixtures.
+- **Done when:** each decision is recorded in DECISIONS, and the README shows the showcase images.
 
 ### M13 — Performance and UX
 
 - **Goal:** ready for real use. Independent of how designs look, so it can overlap with M12.
 - **Scope:**
-  - Adaptive preview resolution tuning
-  - **Full-screen preview:** shows the wallpaper edge to edge with no panel, to make up for the smaller preview next to the docked sidebar. Esc or a small × in a corner exits. Use the Fullscreen API where available; the render stays at screen resolution so the grain reads true. Handles stay hidden.
-  - Context-loss recovery
-  - Shader compile warm-up
-  - Keyboard shortcuts
-  - A faster deflate for 5K PNG export (see M5's note), if the export still feels slow.
+  - ✅ Adaptive preview resolution (D69): no more noise popping while editing with a noise on, a gradual drop instead of a fixed half, and a cost estimate that ignores shader compiles. Thresholds still to be tuned on a real GPU.
+  - **Sharp preview when zoomed in** (user, 2026-10-08): the preview zooms by scaling a canvas drawn for the fitted view, so fine textures such as grain go soft. Redraw at the zoomed scale (only the visible part), within the frame budget.
+  - ✅ **Full-screen preview** (D67): `F` or a ⛶ button in the panel header; the browser's full screen, no in-window variant, OS context kept. The button should move to the status bar if M14's trial goes ahead. Shows the wallpaper edge to edge with no panel, to make up for the smaller preview next to the docked sidebar. Esc or a small × in a corner exits. Use the Fullscreen API where available; the render stays at screen resolution so the grain reads true. Handles stay hidden.
+  - ✅ Context-loss recovery: the preview already dropped its renderer on `webglcontextlost` and rebuilt it on `webglcontextrestored`; now covered by an e2e test (lose, edit while lost, restore, redraw).
+  - Shader compile warm-up: skipped (user, 2026-10-10, D69). On a real GPU (M4) a new program variant costs a median 158 ms to compile and nearly every shuffle needs one; a background compile would only stop the freeze, not the wait. Revisit with fewer variants (warp, relief and halftone as runtime branches) if it bothers.
+  - ✅ Keyboard shortcuts (D68): K keeps a favourite, 1 2 3 toggle the keep locks, P folds the panel, ? opens a shortcut card (⌨ in the header), ⌘S downloads; more like this is a labeled button beside shuffle.
+  - ~~A faster deflate for 5K PNG export~~: dropped (D69); the export feels fine.
+  - **Sharp, true zoom** (open, D70): the zoomed preview is the fitted canvas stretched by CSS, so it and its grain are soft. A native-resolution zoom was tried and dropped: its grain re-rolled with every zoom step and was not the export's grain. A true version needs the noise on the export's pixel grid and 100% = export pixels; see D70.
 - **Done when:**
   - Tested on Chrome, Safari and Firefox on macOS, and Chrome on Windows
   - Exports at every preset resolution succeed
@@ -381,6 +378,8 @@ Each milestone uses the same structure:
 - **Goal:** try to make the left panel leaner. Added 2026-10-08. A trial-and-error session that can run in parallel with almost any other milestone.
 - **Scope:**
   - **Status bar under the preview** (only if it earns its place, 2026-10-08): IDE-style, for global and view settings. Not needed on its own; worth building only if settings move into it from the left panel to declutter it (show points, preview zoom, output size, autosave state and others to be picked).
+  - **Status bar trial wanted** (user, 2026-10-10): the user wants to try moving settings into a bottom status bar to relieve the left panel. Start with a throwaway version to see how it feels, and move only global and view settings (points/nodes toggle, preview zoom, output size, autosave state, and the full-screen button from M13); design settings stay in the panel.
+  - **Per-color settings** (open, 2026-10-10): whether the single-color hue, lightness and intensity controls stay, given the color picker. The base-hue control, which keeps color relationships, is not in question. Undecided; settle it in this milestone, since it is the same question as slimming the panel.
 - **Done when:** the user either keeps a leaner panel with a bottom status bar or drops the idea. It is worth building only if settings move into the bar.
 - **Open questions:**
   - Which settings move (show points, preview zoom, output size, autosave state, others).
@@ -398,6 +397,32 @@ Each milestone uses the same structure:
 - **Open questions:**
   - Whether the panel becomes a sheet or a separate screen.
   - Whether a smaller set of controls makes sense on mobile, or the same ones in a different frame.
+
+### M16 — Shuffle tuning
+
+- **Goal:** let the user steer shuffle away from results they don't like. Added 2026-10-10; no design yet, and independent of the other milestones.
+- **Options to pick from:**
+  1. **Exclusion toggles:** switches such as "no brushed warp", "no halftone", "no neon" that zero a weight in the shuffle tables (smallest, and the tables are already weight-based). Start here.
+  2. **Per-option odds sliders:** expose the weights themselves (kind, warp shape, finish chances, palette moods).
+  3. **Learning from dislikes:** a thumbs-down that nudges the weights (most work, least predictable).
+- **Open questions:**
+  - Where the controls live (a panel section, a dialog, or the M14 status bar).
+  - Saved per browser, not with the design.
+  - Whether it changes the shuffle's draw order, which would change existing shuffles for a seed (D64 kept the order stable).
+- **Done when:** the user can exclude at least the options they dislike, and a shuffle never produces them.
+
+### M17 — Realistic context icons
+
+- **Goal:** judge a wallpaper's colors against what really sits on it. The M9 mockups draw neutral boxes for icons; real desktops have a blue folder and glossy, saturated app icons. Added 2026-10-10 (user); independent of the other milestones.
+- **Scope:**
+  - **macOS:** desktop items drawn as the familiar blue folder; the dock gets generic app icons in a few primary colors with a gloss finish, plus a black one to show how a dark item reads.
+  - **Windows:** the same idea for the desktop icons and the taskbar: a yellow folder and a few generic colored app icons, in Windows' own flatter style, with a dark one.
+  - Generic shapes, not real app icons or logos.
+- **UI:** overlays only, never part of an export (D48), like the rest of the context preview.
+- **Open questions:**
+  - Whether the legibility check (M9) should also look at the icons, not just the text zones.
+  - Whether Android and iOS follow once macOS and Windows are done.
+- **Done when:** on macOS and Windows, the preview shows folder and app-icon stand-ins close enough to the real ones to judge color clashes at a glance.
 
 ---
 

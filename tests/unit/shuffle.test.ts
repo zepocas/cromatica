@@ -7,11 +7,12 @@ import {
   type Design,
   type RampGradient,
   MAX_MESH_POINTS,
+  noFinish,
   type PointMesh,
   WARP_SHAPES,
 } from '../../src/design/design';
 import { RAMP_SHUFFLE, MESH_SHUFFLE, shuffleDesign, WARP_SHUFFLE_TABLE } from '../../src/design/shuffle';
-import { applyMat2, inverseTransformMatrix } from '../../src/engine/transform';
+import { applyMat2, inverseTransformMatrix, transformMatrix } from '../../src/engine/transform';
 
 /** Just the design of a shuffle. */
 const shuffled = (...args: Parameters<typeof shuffleDesign>) => shuffleDesign(...args).design;
@@ -20,9 +21,9 @@ const meshDesign: Design = {
   engineVersion: 1,
   base: defaultMesh,
   warp: defaultWarp,
-  grain: { amount: 0.4, size: 0.3 },
+  finish: { ...noFinish, noise: { type: 'xerox', amount: 0.4 } },
 };
-const linearDesign: Design = { ...defaultDesign, grain: { amount: 0.2, size: 0.1 } };
+const linearDesign: Design = { ...defaultDesign, finish: { ...noFinish, noise: { type: 'halftone', amount: 0.2 } } };
 const all = (seed: number) => ({ colors: true, layout: true, seed });
 
 const mesh = (d: Design) => d.base as PointMesh;
@@ -42,7 +43,7 @@ describe('shuffleDesign', () => {
     expect(out).toEqual(meshDesign);
     expect(out.base).not.toBe(meshDesign.base);
     expect(mesh(out).points[0].color).not.toBe(defaultMesh.points[0].color);
-    expect(out.grain).not.toBe(meshDesign.grain);
+    expect(out.finish!.noise).not.toBe(meshDesign.finish!.noise);
   });
 
   it('is deterministic for (design, opts, aspect)', () => {
@@ -72,11 +73,50 @@ describe('shuffleDesign', () => {
     }
   });
 
-  it('keeps base kind and grain', () => {
+  it('turns the image (whatever the pattern) on a style shuffle, keeping zoom and flips, and lays mesh points out in view', () => {
+    const transform = { rotate: 0, zoom: 2, flipX: true, flipY: false };
+    const styled = (s: number) => ({ ...all(s), style: true });
+    const turned = new Set<number>();
+    for (let s = 0; s < 40; s++) {
+      const out = shuffled({ ...meshDesign, transform }, styled(s), 16 / 9);
+      expect(out.transform).toMatchObject({ zoom: 2, flipX: true, flipY: false });
+      turned.add(out.transform!.rotate);
+      expect(out.transform!.rotate).toBeGreaterThanOrEqual(0);
+      expect(out.transform!.rotate).toBeLessThan(360);
+    }
+    expect(turned.size).toBeGreaterThan(5);
+    // Same seed, same turn; and plain layout shuffles leave the rotation alone.
+    expect(shuffled(meshDesign, styled(7))).toEqual(shuffled(meshDesign, styled(7)));
+    expect(shuffled({ ...meshDesign, transform }, all(3)).transform).toEqual(transform);
+  });
+
+  it('lays a grid out over the turned frame, so every screen corner falls inside it', () => {
+    const aspect = 16 / 9;
+    let grids = 0;
+    for (let s = 0; s < 80; s++) {
+      const out = shuffled(meshDesign, { ...all(s), style: true }, aspect);
+      if (out.base.kind !== 'grid') continue;
+      grids++;
+      const [hw, hh] = out.base.rest;
+      for (const [x, y] of [
+        [aspect / 2, 0.5],
+        [-aspect / 2, 0.5],
+        [aspect / 2, -0.5],
+        [-aspect / 2, -0.5],
+      ]) {
+        const [qx, qy] = applyMat2(transformMatrix(out.transform), x, y);
+        expect(Math.abs(qx)).toBeLessThanOrEqual(hw + 1e-3);
+        expect(Math.abs(qy)).toBeLessThanOrEqual(hh + 1e-3);
+      }
+    }
+    expect(grids).toBeGreaterThan(3);
+  });
+
+  it('keeps base kind and noise', () => {
     for (let s = 0; s < 20; s++) {
       expect(shuffled(meshDesign, all(s)).base.kind).toBe('mesh');
       expect(shuffled(linearDesign, all(s)).base.kind).toBe('linear');
-      expect(shuffled(meshDesign, all(s)).grain).toEqual(meshDesign.grain);
+      expect(shuffled(meshDesign, all(s)).finish!.noise).toEqual(meshDesign.finish!.noise);
     }
   });
 
@@ -85,7 +125,7 @@ describe('shuffleDesign', () => {
       const m = mesh(shuffled(meshDesign, { colors: false, layout: true, seed: s }));
       expect(m.points.map((p) => p.color)).toEqual(defaultMesh.points.map((p) => p.color));
       const l = linear(shuffled(linearDesign, { colors: false, layout: true, seed: s }));
-      expect(l.stops.map((p) => [p.color, p.blend])).toEqual(linear(linearDesign).stops.map((p) => [p.color, p.blend]));
+      expect(l.stops.map((p) => p.color)).toEqual(linear(linearDesign).stops.map((p) => p.color));
     }
   });
 
@@ -175,7 +215,7 @@ describe('shuffleDesign', () => {
       base: {
         kind: 'linear',
         angle: 0,
-        stops: [0, 0.25, 0.5, 0.75, 1].map((position) => ({ position, color: [0.5, 0.1, 30], blend: 'oklab' })),
+        stops: [0, 0.25, 0.5, 0.75, 1].map((position) => ({ position, color: [0.5, 0.1, 30] })),
       },
     };
     for (let s = 0; s < 50; s++) {
@@ -226,6 +266,65 @@ describe('style shuffle (pattern kind and finishes)', () => {
     return b.stops.map((s) => s.color);
   };
 
+  it('re-rolls only the finishes when the pattern is kept (D64)', () => {
+    let changed = 0;
+    for (let sd = 0; sd < 100; sd++) {
+      const d = shuffled(meshDesign, { colors: false, layout: false, finish: true, seed: sd });
+      expect(d.base).toEqual(meshDesign.base);
+      // The warp's shape and seed belong to the pattern; its amount and size are adjust settings.
+      expect(d.warp.shape).toBe(meshDesign.warp.shape);
+      expect(d.warp.seed).toBe(meshDesign.warp.seed);
+      if (JSON.stringify(d.finish) !== JSON.stringify(meshDesign.finish)) changed++;
+    }
+    expect(changed).toBeGreaterThan(80);
+  });
+
+  it('rolls the warp amount and size with adjust, and the warp shape and seed with the pattern (D64)', () => {
+    let amountMoved = 0;
+    let shapeMoved = 0;
+    for (let sd = 1; sd <= 100; sd++) {
+      const adjustOnly = shuffled(meshDesign, { colors: false, layout: false, finish: true, levels: true, seed: sd });
+      if (adjustOnly.warp.amount !== meshDesign.warp.amount && adjustOnly.warp.size !== meshDesign.warp.size)
+        amountMoved++;
+      const patternOnly = shuffled(meshDesign, {
+        colors: false,
+        layout: true,
+        style: true,
+        finish: false,
+        levels: false,
+        seed: sd,
+      });
+      expect(patternOnly.warp.amount).toBe(meshDesign.warp.amount);
+      expect(patternOnly.warp.size).toBe(meshDesign.warp.size);
+      if (patternOnly.warp.shape !== meshDesign.warp.shape) shapeMoved++;
+    }
+    expect(amountMoved).toBeGreaterThan(80);
+    expect(shapeMoved).toBeGreaterThan(50);
+  });
+
+  it('keeps the finishes when only the pattern is shuffled (D64)', () => {
+    const kinds = new Set<string>();
+    for (let sd = 0; sd < 100; sd++) {
+      const d = shuffled(meshDesign, { colors: false, layout: true, style: true, finish: false, seed: sd });
+      expect(d.finish).toEqual(meshDesign.finish);
+      kinds.add(d.base.kind);
+    }
+    expect(kinds.size).toBeGreaterThan(4);
+  });
+
+  it('gives the finishes the same roll whether or not the pattern is locked (D64)', () => {
+    let compared = 0;
+    for (let sd = 0; sd < 200; sd++) {
+      const full = shuffled(meshDesign, style(sd));
+      // Planes and aurora have no bands, which is the one thing the finishes depend on the kind for.
+      if (full.base.kind === 'planes' || full.base.kind === 'aurora') continue;
+      const kept = shuffled(meshDesign, { colors: false, layout: false, finish: true, seed: sd });
+      expect(kept.finish).toEqual(full.finish);
+      compared++;
+    }
+    expect(compared).toBeGreaterThan(100);
+  });
+
   it('picks every pattern kind, and finishes on and off', () => {
     const kinds = new Set<string>();
     let printed = 0;
@@ -233,8 +332,8 @@ describe('style shuffle (pattern kind and finishes)', () => {
     for (let s = 0; s < 200; s++) {
       const d = shuffled(meshDesign, style(s));
       kinds.add(d.base.kind);
-      if (d.finish!.print > 0) printed++;
-      expect(d.finish!.print).toBeLessThanOrEqual(0.4);
+      if (d.finish!.noise.type === 'lithograph' && d.finish!.noise.amount > 0) printed++;
+      if (d.finish!.noise.type === 'lithograph') expect(d.finish!.noise.amount).toBeLessThanOrEqual(0.4);
       if (d.finish!.bands > 0) banded++;
       if (d.base.kind === 'planes' || d.base.kind === 'aurora') expect(d.finish!.bands).toBe(0);
     }
@@ -253,15 +352,19 @@ describe('style shuffle (pattern kind and finishes)', () => {
       if (f.relief > 0) {
         relief++;
         surfaces.add(f.reliefStyle);
+        expect(f.relief).toBeGreaterThanOrEqual(0.1);
         expect(f.relief).toBeLessThanOrEqual(0.5);
         expect(f.reliefLight).toBeGreaterThanOrEqual(100);
         expect(f.reliefLight).toBeLessThanOrEqual(170);
       }
-      if (f.halftone > 0) halftone++;
-      expect(f.halftone).toBeLessThanOrEqual(0.35);
+      if (f.noise.type === 'halftone' && f.noise.amount > 0) {
+        halftone++;
+        expect(f.noise.amount).toBeGreaterThanOrEqual(0.1);
+        expect(f.noise.amount).toBeLessThanOrEqual(0.35);
+      }
     }
-    expect(relief).toBeGreaterThan(30);
-    expect(relief).toBeLessThan(100);
+    expect(relief).toBeGreaterThan(80);
+    expect(relief).toBeLessThan(170);
     expect(surfaces).toEqual(new Set(['satin', 'glass']));
     expect(halftone).toBeGreaterThan(20);
     expect(halftone).toBeLessThan(80);

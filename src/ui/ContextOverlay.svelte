@@ -2,7 +2,7 @@
   import { iconFor, labelFor } from '../context/icons';
   import { assessZone, luminanceMap, type Legibility } from '../context/legibility';
   import { placeZone, type ContextScreen } from '../context/zones';
-  import { noFinish, noGrain, type Design } from '../design/design';
+  import { noFinish, type Design } from '../design/design';
   import { thumbnails } from '../preview/thumbnails';
   import ContextIcon from './ContextIcon.svelte';
 
@@ -31,8 +31,7 @@
     // Pixel-sized textures don't matter at text size, and their dots would count as the worst pixels.
     const calm: Design = {
       ...design,
-      grain: noGrain,
-      finish: { ...noFinish, ...design.finish, print: 0, halftone: 0 },
+      finish: { ...noFinish, ...design.finish, noise: noFinish.noise },
     };
     const timer = setTimeout(() => {
       analysis.width = Math.max(2, Math.round(ANALYSIS_HEIGHT * aspect));

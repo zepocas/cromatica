@@ -15,6 +15,7 @@
   import { CONTEXT_SCREENS } from './context/screens';
   import Preview from './ui/Preview.svelte';
   import { dismissTips, tipsDismissed } from './ui/tips';
+  import Shortcuts from './ui/Shortcuts.svelte';
   import Tips from './ui/Tips.svelte';
   import { CanvasView } from './ui/view.svelte';
   import { CUSTOM_PRESET_ID, DEFAULT_PRESET_ID, SIZE_PRESETS } from './ui/presets';
@@ -30,6 +31,8 @@
   // Class instance (not proxied); $state only so it can be bound down the panel tree.
   let editor = $state(initial);
   let presetId = $state(DEFAULT_PRESET_ID);
+  /** The size preset being looked at in its open list: only the preview's frame changes. */
+  let presetPreview = $state<string | null>(null);
   let customWidth = $state(1920);
   let customHeight = $state(1080);
   let format = $state<ExportFormat>('png');
@@ -39,8 +42,12 @@
   const contextScreen = $derived(CONTEXT_SCREENS.find((s) => s.id === (contextPreview ?? contextId)) ?? null);
   // First visit only; `?default` (tests) never shows them.
   let tips = $state(!builtIn && !tipsDismissed());
+  let shortcuts = $state(false);
   /** The "more like this" grid covers the preview. */
   let exploring = $state(false);
+  /** The preview alone, in the browser's full screen; the panel, handles and overlays are hidden. */
+  let fullscreen = $state(false);
+  const canFullscreen = typeof document !== 'undefined' && document.fullscreenEnabled;
   let exporting = $state(false);
   let progress = $state<ExportProgress | null>(null);
   let error = $state('');
@@ -56,6 +63,8 @@
 
   const renderDesign = $derived(editor.design);
   const aspect = $derived(output.width / output.height);
+  const previewPreset = $derived(presetPreview ? SIZE_PRESETS.find((p) => p.id === presetPreview) : undefined);
+  const previewAspect = $derived(previewPreset ? previewPreset.width / previewPreset.height : aspect);
   $effect(() => {
     editor.aspect = aspect;
   });
@@ -79,8 +88,29 @@
     if (s) editor.restore(s);
   }
 
+  function enterFullscreen() {
+    if (!canFullscreen || fullscreen) return;
+    // Refused without a user gesture, and in some embeds; the state only follows the browser's event.
+    document.documentElement.requestFullscreen().catch((err: unknown) => console.warn('fullscreen:', err));
+  }
+
+  function exitFullscreen() {
+    if (document.fullscreenElement) void document.exitFullscreen();
+  }
+
   /** ⌘Z undoes and ⇧⌘Z or Ctrl+Y redoes, except in text fields, which keep their own undo. */
   function onKeyDown(e: KeyboardEvent) {
+    if (e.key.toLowerCase() === 'f' && !e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target)) {
+      if (fullscreen) exitFullscreen();
+      else enterFullscreen();
+      return;
+    }
+    // The browser's own save-page dialog is no use here, so ⌘S downloads, even from a text field.
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      void startExport();
+      return;
+    }
     if (!(e.metaKey || e.ctrlKey) || e.altKey || isTypingTarget(e.target)) return;
     const key = e.key.toLowerCase();
     if (key === 'z' || key === 'y') {
@@ -168,6 +198,7 @@
 </script>
 
 <svelte:window
+  onfullscreenchange={() => (fullscreen = !!document.fullscreenElement)}
   ondragover={(e) => hasFiles(e) && e.preventDefault()}
   ondrop={onDrop}
   onpointerdowncapture={onPress}
@@ -178,17 +209,21 @@
 
 <Preview
   design={editor.preview ?? renderDesign}
-  {aspect}
+  aspect={previewAspect}
   paused={exporting}
-  docked={!collapsed}
+  docked={!collapsed && !fullscreen}
   {view}
-  zoomable={!exploring}
+  zoomable={!exploring && !fullscreen}
+  {fullscreen}
+  onexitfullscreen={exitFullscreen}
 >
   {#snippet overlay()}
-    {#if !exploring && contextScreen}
+    {#if !exploring && contextScreen && !previewPreset}
       <ContextOverlay design={renderDesign} {aspect} screen={contextScreen} />
     {/if}
-    {#if exploring}
+    {#if fullscreen}
+      <!-- The image and the OS context only: no handles. -->
+    {:else if exploring}
       <MoreLikeThis
         design={renderDesign}
         {aspect}
@@ -198,7 +233,7 @@
         }}
         onclose={() => (exploring = false)}
       />
-    {:else if editor.preview}
+    {:else if editor.preview || previewPreset}
       <!-- A picker preview: the handles belong to the design underneath. -->
     {:else if editor.kind === 'mesh'}
       <MeshOverlay {editor} {aspect} />
@@ -207,30 +242,37 @@
     {/if}
   {/snippet}
 </Preview>
-<ControlPanel
-  bind:editor
-  {favourites}
-  bind:presetId
-  bind:customWidth
-  bind:customHeight
-  {output}
-  bind:format
-  bind:contextId
-  bind:contextPreview
-  bind:collapsed
-  bind:exploring
-  bind:tips
-  canUndo={history.canUndo}
-  canRedo={history.canRedo}
-  onundo={undo}
-  onredo={redo}
-  {exporting}
-  {progress}
-  {error}
-  onexport={startExport}
-  oncancel={cancelExport}
-/>
-{#if tips}
+{#if !fullscreen}
+  <ControlPanel
+    bind:editor
+    {favourites}
+    bind:presetId
+    bind:presetPreview
+    bind:customWidth
+    bind:customHeight
+    {output}
+    bind:format
+    bind:contextId
+    bind:contextPreview
+    bind:collapsed
+    bind:exploring
+    bind:tips
+    bind:shortcuts
+    canUndo={history.canUndo}
+    canRedo={history.canRedo}
+    onundo={undo}
+    onredo={redo}
+    {exporting}
+    {progress}
+    {error}
+    onexport={startExport}
+    oncancel={cancelExport}
+    onfullscreen={canFullscreen ? enterFullscreen : undefined}
+  />
+{/if}
+{#if shortcuts && !fullscreen}
+  <Shortcuts onclose={() => (shortcuts = false)} />
+{:else if tips && !fullscreen}
   <Tips
     onclose={() => {
       tips = false;

@@ -22,21 +22,26 @@ export interface CompareSummary {
 // A 4-stop design at an awkward angle so tile seams would show up; every
 // blend mode and one out-of-sRGB color are exercised. Dither stays on (the
 // default), so parity also proves the dither is tile-independent. Warp and
-// grain are on too: both must be tile-independent as well.
+// noise are on too: both must be tile-independent as well.
 const testDesign: Design = {
   engineVersion: 1,
   warp: { shape: 'waves', amount: 0.45, size: 0.4, seed: 7 },
-  grain: { amount: 0.5, size: 0.6 },
   // Every finish on: preview, tiles and export must agree with them too.
-  finish: { ...noFinish, vignette: 0.6, bands: 0.4, bandEdge: 0.3, print: 0.5 },
+  finish: {
+    ...noFinish,
+    vignette: 0.6,
+    bands: 0.4,
+    bandEdge: 0.3,
+    noise: { type: 'lithograph' as const, amount: 0.7 },
+  },
   base: {
     kind: 'linear',
     angle: 37,
     stops: [
-      { position: 0, color: [0.25, 0.12, 265], blend: 'oklab-chroma' },
-      { position: 0.3, color: [0.68, 0.33, 350], blend: 'oklch-long' },
-      { position: 0.7, color: [0.8, 0.2, 150], blend: 'oklch-short' },
-      { position: 1, color: [0.88, 0.14, 80], blend: 'oklab' },
+      { position: 0, color: [0.25, 0.12, 265] },
+      { position: 0.3, color: [0.68, 0.33, 350] },
+      { position: 0.7, color: [0.8, 0.2, 150] },
+      { position: 1, color: [0.88, 0.14, 80] },
     ],
   },
 };
@@ -46,8 +51,13 @@ const testDesign: Design = {
 const meshDesign: Design = {
   engineVersion: 1,
   warp: { shape: 'domain', amount: 0.5, size: 0.35, seed: 0x9e3779b9 },
-  grain: { amount: 0.35, size: 0.2 },
-  finish: { ...noFinish, vignette: 0.6, bands: 0.4, bandEdge: 0.3, print: 0.5 },
+  finish: {
+    ...noFinish,
+    vignette: 0.6,
+    bands: 0.4,
+    bandEdge: 0.3,
+    noise: { type: 'lithograph' as const, amount: 0.7 },
+  },
   base: {
     kind: 'mesh',
     sharpness: 0.6,
