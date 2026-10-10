@@ -57,6 +57,21 @@ test('arrowing through the list previews each context; Escape goes back', async 
   await expect(context).toHaveAttribute('data-value', 'off');
 });
 
+test('macOS and Windows draw folder and app-icon stand-ins, the phones keep plain boxes', async ({ page }) => {
+  await openApp(page);
+  const overlay = page.getByTestId('context-overlay');
+  await choose(page.getByLabel('OS context'), 'macos');
+  await expect(overlay.locator('[data-zone="desktop icons"] [data-icon="folder"]')).toHaveCount(4);
+  await expect(overlay.locator('[data-zone="desktop icons"]')).toContainText('lorem');
+  await expect(overlay.locator('[data-zone="dock"] [data-icon="app"]')).toHaveCount(15);
+  await choose(page.getByLabel('OS context'), 'windows');
+  await expect(overlay.locator('[data-zone="desktop icons"] [data-icon="folder"]')).toHaveCount(4);
+  await expect(overlay.locator('[data-zone="desktop icons"]')).toContainText('ipsum dolor');
+  await expect(overlay.locator('[data-zone="taskbar apps"] [data-icon="app"]')).toHaveCount(7);
+  await choose(page.getByLabel('OS context'), 'ios-home');
+  await expect(overlay.locator('[data-icon]')).toHaveCount(0);
+});
+
 test('the macOS menu text follows the menu bar: dark on a light wallpaper, white on a dark one', async ({ page }) => {
   await openApp(page);
   await choose(page.getByLabel('OS context'), 'macos');

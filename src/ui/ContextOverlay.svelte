@@ -1,8 +1,10 @@
 <script lang="ts">
+  import { iconFor, labelFor } from '../context/icons';
   import { assessZone, luminanceMap, type Legibility } from '../context/legibility';
   import { placeZone, type ContextScreen } from '../context/zones';
   import { noFinish, noGrain, type Design } from '../design/design';
   import { thumbnails } from '../preview/thumbnails';
+  import ContextIcon from './ContextIcon.svelte';
 
   interface Props {
     design: Design;
@@ -82,7 +84,15 @@
           style:grid-template-rows="repeat({g.rows}, 1fr)"
         >
           {#each { length: g.cols * g.rows } as _, k (k)}
-            <span class="icon" style:height="{(100 * g.icon) / zone.h}cqh"></span>
+            {@const label = g.set ? labelFor(g.set, k) : null}
+            <span class="cell">
+              <span class="icon" class:plain={!g.set} style:height="{(100 * g.icon) / zone.h}cqh">
+                {#if g.set}<ContextIcon spec={iconFor(g.set, k)} />{/if}
+              </span>
+              {#if label}
+                <span class="label" style:font-size="{1200 / zone.h}cqh">{label}</span>
+              {/if}
+            </span>
           {/each}
         </div>
       {:else if zone.text}
@@ -169,8 +179,28 @@
     height: 100%;
     place-items: center;
   }
+  .cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15em;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .label {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.2;
+    color: #fff;
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.6);
+  }
   .icon {
     aspect-ratio: 1;
+  }
+  .icon.plain {
     border-radius: 22%;
     background: rgb(255 255 255 / 0.4);
   }
