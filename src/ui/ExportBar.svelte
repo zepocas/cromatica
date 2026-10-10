@@ -77,14 +77,6 @@
         disabled={!editor.reel.canForward}
         onclick={() => editor.stepReel(1)}>→</button
       >
-      <span class="spacer"></span>
-      <button
-        class="icon"
-        aria-label="More like this"
-        aria-pressed={exploring}
-        title="More like this: variations of this design (M)"
-        onclick={() => (exploring = !exploring)}>⊞</button
-      >
     </div>
   {/if}
   <div class="row actions">
@@ -95,11 +87,21 @@
       title={editor.canShuffle ? 'Shuffle (Space)' : 'Unlock colors, pattern or adjust to shuffle'}
       onclick={() => editor.shuffle()}>[ shuffle<kbd> ␣</kbd> ]</button
     >
+    {#if !compact}
+      <button
+        aria-label="More like this"
+        aria-pressed={exploring}
+        title="More like this: variations of this design (M)"
+        onclick={() => (exploring = !exploring)}>[ more like this<kbd> M</kbd> ]</button
+      >
+    {/if}
+  </div>
+  <div class="row actions">
     {#if exporting}
       <progress max="100" value={percent} aria-label="Export progress"></progress>
       <button onclick={oncancel}>[ cancel ]</button>
     {:else}
-      <button class="strong" aria-label="Download" onclick={onexport}>[ download ]</button>
+      <button class="strong" aria-label="Download" title="Download (⌘S)" onclick={onexport}>[ download ]</button>
       {#if !compact}
         <span class="spacer"></span>
         <Dropdown

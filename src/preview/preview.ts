@@ -28,18 +28,36 @@ export interface PreviewController {
 }
 
 const IDLE_MS = 150;
-const INTERACTIVE_SCALE = 0.5;
+const MIN_SCALE = 0.5;
+/** Resolution steps while editing, in eighths, so the drawing buffer is not resized on every wobble in the timing. */
+const SCALE_STEPS = 8;
 const MAX_DPR = 2;
 /**
  * Full-resolution frames cheaper than this stay at full resolution while
  * editing. Dropping resolution changes how noise looks (it is per output
  * pixel), so it is only worth it on GPUs that can't keep up.
  */
-const FRAME_BUDGET_MS = 12;
+const FRAME_BUDGET_MS = 20;
+/** The frame time the reduced resolution aims for; cost grows with the pixel count, so scale = sqrt(target / cost). */
+const TARGET_FRAME_MS = 16;
+/** Weight of the newest timing in the running estimate of a full-resolution frame. */
+const COST_SMOOTHING = 0.5;
 
 /** The design without the fine texture (noise), to tell texture-only edits apart. */
 function withoutTextures(d: Design): string {
   return JSON.stringify({ ...d, finish: d.finish && { ...d.finish, noise: noFinish.noise } });
+}
+
+/** A noise is on: its texture is per output pixel, so it must be drawn at full resolution to look the same as at rest. */
+function hasTexture(d: Design): boolean {
+  return (d.finish?.noise.amount ?? 0) > 0;
+}
+
+/** The resolution to edit at when a full-resolution frame costs `cost` ms: 1 when cheap enough, else down to MIN_SCALE. */
+export function editingScale(cost: number): number {
+  if (!(cost > FRAME_BUDGET_MS)) return 1;
+  const ideal = Math.sqrt(TARGET_FRAME_MS / cost);
+  return Math.min(1, Math.max(MIN_SCALE, Math.floor(ideal * SCALE_STEPS) / SCALE_STEPS));
 }
 
 export function createPreview(
@@ -95,11 +113,15 @@ export function createPreview(
     applyLayout();
     const output = { width: canvas.width, height: canvas.height };
     const t0 = performance.now();
+    const compiledBefore = renderer.compiled;
     renderer.render(design, output, { x: 0, y: 0, ...output }, { dither: true });
-    if (scale === 1) {
-      // A 1-pixel read waits for the GPU, so the time covers the whole frame.
-      gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, syncPixel);
-      fullFrameMs = performance.now() - t0;
+    // A 1-pixel read waits for the GPU, so the time covers the whole frame. Cost follows the pixel
+    // count, so a reduced frame still says what a full one would cost.
+    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, syncPixel);
+    // A frame that compiled a shader says nothing about the cost of drawing.
+    if (renderer.compiled === compiledBefore) {
+      const full = (performance.now() - t0) / (scale * scale);
+      fullFrameMs = Number.isFinite(fullFrameMs) ? fullFrameMs + COST_SMOOTHING * (full - fullFrameMs) : full;
     }
     dirty = false;
     setSettled(scale === 1 && !sharpenPending);
@@ -123,12 +145,18 @@ export function createPreview(
     });
   }
 
-  // On slow GPUs, drop to low resolution while changes keep arriving; sharpen once idle.
-  // Edits to the noise stay at full resolution: those textures are a few
-  // pixels fine, so a half-resolution frame would show a different texture, then snap.
-  function interact(textureOnly: boolean): void {
-    if (!opts.fixedSize && !textureOnly && fullFrameMs > FRAME_BUDGET_MS) {
-      scale = INTERACTIVE_SCALE;
+  // On slow GPUs, drop the resolution (down to half, as far as the frame cost calls for) while changes
+  // keep arriving; sharpen once idle. A noise on, or an edit to it, stays at full resolution: those
+  // textures are a few pixels fine, so a reduced frame would show a different texture, then snap.
+  function interact(keepFull: boolean): void {
+    const reduced = opts.fixedSize || keepFull ? 1 : editingScale(fullFrameMs);
+    if (keepFull && scale < 1) {
+      // A frame is already waiting at the reduced resolution: draw it sharp instead.
+      clearTimeout(idleTimer);
+      sharpenPending = false;
+      scale = 1;
+    } else if (reduced < 1) {
+      scale = reduced;
       clearTimeout(idleTimer);
       sharpenPending = true;
       idleTimer = setTimeout(() => {
@@ -159,9 +187,10 @@ export function createPreview(
   return {
     setDesign(next) {
       if (next === design) return;
-      const textureOnly = withoutTextures(next) === withoutTextures(design);
+      // Edits to the noise, and any edit while a noise is on, stay at full resolution.
+      const keepFull = withoutTextures(next) === withoutTextures(design) || hasTexture(next);
       design = next;
-      interact(textureOnly);
+      interact(keepFull);
     },
     setAspect(next) {
       if (next === aspect || !(next > 0)) return;

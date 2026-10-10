@@ -220,6 +220,7 @@ function createTexture(gl: WebGL2RenderingContext, filter: GLenum, wrap: GLenum)
 export function createRenderer(gl: WebGL2RenderingContext): Renderer {
   // Program variants keyed by their #define set (base pattern × warp shape).
   const programs = new Map<string, twgl.ProgramInfo>();
+  let compiled = 0;
   const vao = gl.createVertexArray();
 
   // WebGL2 only guarantees MAX_TEXTURE_SIZE >= 2048; shrink the ramp if needed.
@@ -262,11 +263,15 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
       if (!created) throw new Error(`Shader compile failed (${key || 'default'}):\n${error}`);
       info = created;
       programs.set(key, info);
+      compiled++;
     }
     return info;
   }
 
   return {
+    get compiled() {
+      return compiled;
+    },
     render(design: Design, output: OutputSize, tile: Tile, opts: RenderOptions = {}) {
       const base = design.base;
       const warp = prepareWarp(design.warp);

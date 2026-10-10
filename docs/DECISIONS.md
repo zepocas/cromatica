@@ -482,3 +482,33 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Status bar:** the user wants to try moving global and view settings into a bottom status bar (M14). Not built yet.
 - **Per-color settings:** still undecided whether the single-color hue, lightness and intensity controls stay (M14).
 - **Shuffle tuning:** the user wants a way to make shuffle avoid things they don't like. Parked as M16; the smallest option (exclusion toggles) is the suggested start.
+
+## D67. Full-screen preview is the browser's full screen
+
+- **Decision (2026-10-10):** `F` or the ⛶ button in the panel header (it stays when the panel is collapsed) calls the Fullscreen API on the page. The panel, the handles and the tips are hidden, zoom and pan are off, and the canvas fills the screen at its real pixel density. A × in the top-right corner appears on pointer movement and fades after 2 s. Esc (the browser's own) and `F` leave. The app state only follows `fullscreenchange`, so it can't disagree with the browser.
+- **No in-window variant:** collapsing the panel already gives a full-width preview, so a second mode that only hides the panel adds nothing. Where the API is missing (iPhone Safari) the button is not shown.
+- **OS context stays:** the chosen OS mockup (D48) is drawn in full screen too, since judging the wallpaper under the real dock, menu bar and clock is much of the point.
+- **Later (M14):** if the status bar happens, the full-screen button moves there.
+
+## D68. Keyboard shortcuts, a shortcut card, and a labeled more-like-this button
+
+- **Decision (2026-10-10):** new keys, all ignored in text fields like the existing ones: `K` keeps or releases the current design in favourites (the ♡), `1` `2` `3` toggle keep colors, pattern and adjust, `P` folds or unfolds the panel, `?` opens the shortcut card, and ⌘S or Ctrl+S downloads (even from a text field, since the browser's save-page dialog is no use here).
+- **Shortcut card:** a ⌨ button in the panel header (and `?`) opens a card listing every shortcut in three groups (explore, keep, view); Esc or "close" closes it. The ? tips button keeps the short first-visit tips, which now list more like this second and point to `?`. The two cards never show together.
+- **More like this:** the small ⊞ icon on the "recent" row became a labeled `[ more like this M ]` button beside shuffle; download and the format list moved to a row below. The collapsed bar stays shuffle and download.
+- **Not bound:** export format and size presets (rarely changed mid-flow), and extra arrow-key actions (the panel's controls own them).
+
+## D69. Preview resolution while editing; PNG deflate and shader warm-up dropped
+
+- **Decision (2026-10-10):** the preview no longer pops when a noise is on. Noise is per output pixel, so at half resolution it is twice as coarse and snaps back on sharpening. Before, only edits to the noise itself kept full resolution; dragging the lighting amount with a noise on dropped to half. Now any edit while a noise is on stays at full resolution (e2e: 932 px → 466 px before, 932 px after).
+- **Gradual drop:** the editing resolution follows the measured cost instead of a fixed half: `scale = sqrt(16 ms / cost)`, in eighths, between 1/2 and 1, and only above a 20 ms full-frame budget (was 12 ms, then always 1/2). The cost estimate is kept up to date from every frame (divided by the pixel count, smoothed), not only from settled full-resolution ones, and frames that compiled a shader are left out: a compile on the first frame of a new variant used to read as an expensive pattern and drop the next edits to half resolution.
+- **Measured on a real GPU** (Apple M4, system Chrome with Metal, headless, driven by Playwright; the bundled test Chromium is SwiftShader and says nothing about GPUs): 60 shuffled designs at 1100×620 take a median 2.1 ms (p90 6, max 9); at 2200×1240 (retina fit) 3.4 ms (p90 20, max 34); at 3840×2160 9.4 ms (p90 58, max 101). Grids and aurora with lighting on are the dear ones. So the 20 ms budget keeps almost everything at full resolution.
+- **Dropped:** a faster PNG deflate. A 5K image takes about 1.3 s to compress with the native default level and 0.4 s at level 1 (17% bigger file), and the export feels fine; it would also add a dependency.
+- **Shader compiles, measured on the same GPU:** a frame that compiles a new program variant takes a median 158 ms (p90 200, max 291) against 1.6 ms on a known one, and 75 of 80 shuffles needed a new variant (the earlier "3–10 ms" came from SwiftShader). Warm-up was still skipped, by the user's call: the hitch is small, and compiling in the background (`KHR_parallel_shader_compile`) would only stop the freeze, not the ~160 ms wait for the new look. Fewer variants (warp, relief and halftone as runtime branches) would remove most compiles but is an engine refactor; revisit if it starts to bother.
+
+## D70. Zoom stays a CSS stretch until it can be true to the export
+
+- **Decision (2026-10-10):** a zoom that draws the visible part at native screen resolution was built and tried, then dropped before merging. Noise (grain, lithograph, xerox) is per output pixel (D4), and zoomed the preview's output grid changes with every zoom step, so the grain re-rolled and moved. It was also not the grain of the chosen output size: a zoomed preview must look like the export, not like a different resolution.
+- **What the user wants:** zoomed in must be true to the chosen output resolution (or to screen resolution), never an invented one. So the zoom stays the CSS stretch (stable, soft) until it can be done that way.
+- **What a true zoom needs:** noise looked up on the export's pixel grid (export size / preview size mapped per pixel, so it does not change with zoom, pan, density or the adaptive drop, and the export stays bit-identical); 100% meaning export pixels, so that view shows the real grain; dither left on the screen grid. The grain at fit view would change a little (it would depend on the export size). Not built.
+- **What is fake and what is not:** only the pixel-sized finishes (grain, lithograph, xerox, dither) exist at the export's pixel size and nothing finer; the pattern itself (gradients, mesh, bands, cells, halftone dots) is resolution-independent, so showing it sharper is true. A true zoom is native up to one export pixel per screen pixel, then enlarged export pixels beyond that, as when zooming into the file.
+- **Kept:** a patch of the abandoned attempt (canvas outside the zoomed frame, tile rendering of the visible part, 304 lines) is outside the repo at `~/code/zoom-native-res.patch`. Measured with it: the visible part matched the fitted image within about 1 level of 255, and a frame cost about one screen of pixels at any zoom.

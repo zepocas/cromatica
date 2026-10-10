@@ -7,8 +7,9 @@
 
   const TIPS: [key: string, text: string][] = [
     ['space', 'start with shuffles; ♡ keeps the ones you like'],
-    ['← →', 'step back through recent shuffles'],
     ['m', 'more like this: variations of the current design'],
+    ['← →', 'step back through recent shuffles'],
+    ['?', 'every keyboard shortcut'],
     ['↑↓ hover', "preview a list's options on the canvas, click to choose"],
     ['+ more', 'plenty of advanced settings in each section'],
     ['png', 'exports keep the design: drop one back here to keep editing (any other image gives its colors)'],
