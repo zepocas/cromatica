@@ -243,7 +243,7 @@ Each milestone uses the same structure:
   - Aurora ribbons.
   - A **grid Bézier mesh** style (photogradient's core style; revisits D11).
   - **Planes** (collage, after synthetic cubism and the King Krule sleeve art): N seeded, rotated polygons or Voronoi-style cells, each a flat palette color, with noise-roughened edges (torn paper), overlap order for the layered look and a subtle paper grain. Evaluated per pixel with no state, so it stays tile-independent. Controls: plane count and edge roughness. Pairs with the print texture finish from M4.5 and the muted and earthy moods.
-- **Done when:** each pattern has golden-image tests (CPU-reference and tile checks in the browser suite). The reference designs moved to M12's showcase examples (decided 2026-10-05).
+- **Done when:** each pattern has golden-image tests (CPU-reference and tile checks in the browser suite). The reference designs moved to M12's showcase examples (decided 2026-10-05) (D65).
 - **Progress:**
   - Planes built (D37): count, torn and a new-layout button. It uses the ramp's colors, works with warps and finishes, and has contact sheets in `sheets.spec.ts`. Still to do: tune by eye, and possibly Voronoi-style cells as a second planes layout.
   - fBm noise fields and Worley cells built as the `noise` and `cells` gradient types (D41).
@@ -351,8 +351,8 @@ Each milestone uses the same structure:
   - ~~**Relief controls and shuffle weight**~~ Done (D63): relief 0.1–0.5, halftone 0.1–0.35, chances unchanged.
   - ~~**Noise, print and halftone sliders**~~ Done (D63, D53): one "noise" group with a type (lithograph, xerox, halftone, grain) and an amount; old saves migrate. Arrow-key previews now cover every list that can show one.
   - ~~**Keep row split into colors, pattern, adjust**~~ Done (D64): the footer's keep row is `keep [ ] colors [ ] pattern [ ] adjust`. Pattern holds the kind, layout, warp shape and its variation (the old "layout" lock); adjust holds the warp amount and size and the finishes (bands, noise, vignette, lighting); the transform is never shuffled. The finishes get the same roll whether or not the pattern is locked, "more like this" is unaffected (it already keeps palette, kind, finishes and transform), and the locks are not saved with the design (D44).
-  - **Showcase examples / reference designs** (moved from M5; last, after the finish cleanup above, 2026-10-08): for each pattern, render candidates from shuffles and contact sheets, let the user pick about 3 by eye, and save them as fixed design files. They serve as showcase examples and as test fixtures.
-- **Done when:** each decision is recorded in DECISIONS, and each pattern has about 3 saved reference designs used as showcase and golden-image fixtures. The showcase examples come last because merging or renaming the finishes would change the designs.
+  - ~~**Showcase examples / reference designs**~~ Done (D65): nine images picked by the user, shown in the README grid (`docs/examples/`). No golden-image fixtures.
+- **Done when:** each decision is recorded in DECISIONS, and the README shows the showcase images.
 
 ### M13 — Performance and UX
 

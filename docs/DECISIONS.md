@@ -464,3 +464,8 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Shuffle button** is disabled only when all three are locked. The locks are not saved with the design (D44), as before.
 - **"More like this"** is not affected: it already keeps the palette, kind, finishes and transform and only nudges the layout and warp.
 - **Fit:** the row takes the label column down to 4ch and the gap to 2 px to fit the 273 px panel; the fallback would be shorter words (`color`, `shape`, `finish`).
+
+## D65. Showcase images, no golden-image fixtures
+
+- **Decision (2026-10-10):** the README shows nine images the user generated and picked in the app (a 3×3 grid, `docs/examples/`, 1200×675 JPEGs cropped from the 4K PNG exports), replacing the old four. Each pattern does not get three reference designs, and there are no golden-image fixtures: pixel-comparison tests would break on every deliberate change to a finish, and the unit and e2e tests already cover behaviour.
+- **Originals:** the 4K PNG exports (5–17 MB each, each carrying its design) are not committed.
