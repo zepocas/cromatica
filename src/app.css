@@ -1,5 +1,6 @@
 :root {
   --sidebar: 300px;
+  --statusbar: 28px;
   color-scheme: dark;
   font-family:
     system-ui,
@@ -97,14 +98,31 @@ body,
   color: var(--ink);
   background: var(--rule);
 }
+.panel button.btn {
+  padding: 1px 8px;
+  border: 1px solid var(--dim);
+  text-align: center;
+}
+.panel button.btn:hover:not(:disabled) {
+  border-color: var(--ink);
+}
 .panel button.primary {
-  padding: 1px 6px;
+  border-color: var(--ink);
   background: var(--ink);
   color: #111;
 }
 .panel button.primary:hover:not(:disabled) {
   color: #000;
   background: #fff;
+}
+.panel button.secondary {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+.panel button.secondary:hover:not(:disabled),
+.panel button.secondary[aria-pressed='true'] {
+  background: var(--ink);
+  color: #111;
 }
 .panel button:disabled,
 .panel select:disabled,

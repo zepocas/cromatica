@@ -62,7 +62,7 @@
       {/each}
     </dl>
   {/each}
-  <button class="strong" onclick={onclose}>[ close ]</button>
+  <button class="btn strong" onclick={onclose}>close</button>
 </aside>
 
 <style>

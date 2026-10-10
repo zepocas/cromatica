@@ -4,8 +4,8 @@
   import type { ExportFormat, ExportProgress } from './export/types';
   import { readAutosave, writeAutosave } from './ui/autosave';
   import ControlPanel from './ui/ControlPanel.svelte';
-  import { EditorState } from './ui/editor.svelte';
-  import { Favourites } from './ui/favourites.svelte';
+  import { EditorState, type EditorSnapshot } from './ui/editor.svelte';
+  import { Favourites, type Favourite } from './ui/favourites.svelte';
   import { History } from './ui/history.svelte';
   import { isTypingTarget } from './ui/keys';
   import MeshOverlay from './ui/MeshOverlay.svelte';
@@ -14,8 +14,9 @@
   import ContextOverlay from './ui/ContextOverlay.svelte';
   import { CONTEXT_SCREENS } from './context/screens';
   import Preview from './ui/Preview.svelte';
-  import { dismissTips, tipsDismissed } from './ui/tips';
+  import { dismissTips, markShuffleTried, shuffleTried, tipsDismissed } from './ui/tips';
   import Shortcuts from './ui/Shortcuts.svelte';
+  import StatusBar from './ui/StatusBar.svelte';
   import Tips from './ui/Tips.svelte';
   import { CanvasView } from './ui/view.svelte';
   import { CUSTOM_PRESET_ID, DEFAULT_PRESET_ID, SIZE_PRESETS } from './ui/presets';
@@ -26,8 +27,14 @@
   const saved = builtIn ? null : readAutosave();
   const initial = new EditorState({ shuffle: !builtIn && !saved });
   if (saved) initial.setDesign(saved);
-  const history = new History(initial.snapshot());
   const favourites = new Favourites();
+  /** One undo step covers the design and the favourites list, so a removed favourite comes back. */
+  interface Step {
+    editor: EditorSnapshot;
+    favourites: Favourite[];
+  }
+  const step = (): Step => ({ editor: editor.snapshot(), favourites: favourites.items });
+  const history = new History<Step>({ editor: initial.snapshot(), favourites: favourites.items });
   // Class instance (not proxied); $state only so it can be bound down the panel tree.
   let editor = $state(initial);
   let presetId = $state(DEFAULT_PRESET_ID);
@@ -43,6 +50,15 @@
   // First visit only; `?default` (tests) never shows them.
   let tips = $state(!builtIn && !tipsDismissed());
   let shortcuts = $state(false);
+  // A first-time visitor is nudged toward shuffle until it has been used once (`?default` never nudges).
+  let nudgeShuffle = $state(!builtIn && !shuffleTried());
+  const reelAtStart = initial.reel.length;
+  $effect(() => {
+    if (nudgeShuffle && editor.reel.length !== reelAtStart) {
+      nudgeShuffle = false;
+      markShuffleTried();
+    }
+  });
   /** The "more like this" grid covers the preview. */
   let exploring = $state(false);
   /** The preview alone, in the browser's full screen; the panel, handles and overlays are hidden. */
@@ -53,6 +69,7 @@
   let error = $state('');
   let abort: AbortController | null = null;
   const view = new CanvasView();
+  let preview: Preview;
 
   const output = $derived.by(() => {
     const preset = SIZE_PRESETS.find((p) => p.id === presetId);
@@ -69,7 +86,7 @@
     editor.aspect = aspect;
   });
 
-  $effect(() => history.record(editor.snapshot()));
+  $effect(() => history.record(step()));
 
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
   $effect(() => {
@@ -79,13 +96,17 @@
   });
 
   function undo() {
-    const s = history.undo();
-    if (s) editor.restore(s);
+    apply(history.undo());
   }
 
   function redo() {
-    const s = history.redo();
-    if (s) editor.restore(s);
+    apply(history.redo());
+  }
+
+  function apply(s: Step | null) {
+    if (!s) return;
+    editor.restore(s.editor);
+    if (s.favourites !== favourites.items) favourites.restore(s.favourites);
   }
 
   function enterFullscreen() {
@@ -208,10 +229,12 @@
 />
 
 <Preview
+  bind:this={preview}
   design={editor.preview ?? renderDesign}
   aspect={previewAspect}
   paused={exporting}
   docked={!collapsed && !fullscreen}
+  barred={!fullscreen}
   {view}
   zoomable={!exploring && !fullscreen}
   {fullscreen}
@@ -251,9 +274,6 @@
     bind:customWidth
     bind:customHeight
     {output}
-    bind:format
-    bind:contextId
-    bind:contextPreview
     bind:collapsed
     bind:exploring
     bind:tips
@@ -262,11 +282,24 @@
     canRedo={history.canRedo}
     onundo={undo}
     onredo={redo}
+    {nudgeShuffle}
     {exporting}
     {progress}
     {error}
     onexport={startExport}
     oncancel={cancelExport}
+  />
+{/if}
+{#if !fullscreen}
+  <StatusBar
+    {editor}
+    docked={!collapsed}
+    bind:format
+    bind:contextId
+    bind:contextPreview
+    portrait={output.height > output.width}
+    {view}
+    onzoom={(f) => preview.zoomBy(f)}
     onfullscreen={canFullscreen ? enterFullscreen : undefined}
   />
 {/if}

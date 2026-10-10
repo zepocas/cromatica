@@ -35,6 +35,7 @@ test('shuffle: button, Space, color and pattern locks', async ({ page }) => {
 
   // ...but not while typing into a field.
   const hexes = await readHexes(page);
+  await choose(page.getByLabel('Size preset'), 'custom');
   await page.getByLabel('Width').focus();
   await page.keyboard.press('Space');
   expect(await readHexes(page)).toEqual(hexes);

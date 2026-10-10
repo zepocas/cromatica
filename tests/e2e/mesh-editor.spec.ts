@@ -93,8 +93,8 @@ test('mesh editor: drag, add, delete, switch pattern and hide handles', async ({
   await page.keyboard.press('h');
   await expect(points).toHaveCount(5);
   // The bottom bar toggle, without opening "+ more".
-  await page.getByRole('button', { name: 'Hide points' }).click();
+  await choose(page.getByLabel('Mesh points'), 'off');
   await expect(points).toHaveCount(0);
-  await page.getByRole('button', { name: 'Show points' }).click();
+  await choose(page.getByLabel('Mesh points'), 'on');
   await expect(points).toHaveCount(5);
 });

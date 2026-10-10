@@ -13,6 +13,8 @@
     overlay?: Snippet;
     /** Leave room for the docked sidebar (--sidebar) on the left. */
     docked?: boolean;
+    /** Leave room for the status bar (--statusbar) at the bottom. */
+    barred?: boolean;
     /** Pinch/zoom and pan of the frame. Screen only: never reaches the design or the export. */
     view: CanvasView;
     /** False while something else (the "more like this" grid) covers the frame; it shows fitted. */
@@ -28,6 +30,7 @@
     paused = false,
     overlay,
     docked = false,
+    barred = false,
     view,
     zoomable = true,
     fullscreen = false,
@@ -71,6 +74,11 @@
     void aspect;
     view.reset();
   });
+
+  /** Zoom about the centre, for the status bar's buttons. */
+  export function zoomBy(factor: number) {
+    view.zoomAt(factor, 0, 0, frame.offsetWidth, frame.offsetHeight);
+  }
 
   /** A pointer position from the frame's centre, which is the viewport's centre. */
   function fromCentre(e: { clientX: number; clientY: number }): [number, number] {
@@ -179,6 +187,7 @@
 <div
   class="viewport"
   class:docked
+  class:barred
   class:zoomed={shown}
   class:panning
   bind:this={container}
@@ -201,11 +210,6 @@
     <canvas bind:this={canvas} data-testid="preview-canvas"></canvas>
     {@render overlay?.()}
   </div>
-  {#if shown}
-    <button class="fit" title="Fit to window (0)" onclick={() => view.reset()}>
-      [ {Math.round(view.zoom * 100)}% · fit ]
-    </button>
-  {/if}
   {#if fullscreen}
     <button
       class="exit"
@@ -232,29 +236,18 @@
   .viewport.docked {
     inset: 24px 24px 24px calc(var(--sidebar) + 24px);
   }
+  .viewport.barred {
+    bottom: var(--statusbar);
+  }
+  .viewport.barred.docked {
+    bottom: calc(24px + var(--statusbar));
+  }
   .viewport.zoomed {
     cursor: grab;
     touch-action: none;
   }
   .viewport.panning {
     cursor: grabbing;
-  }
-  .fit {
-    position: absolute;
-    right: 12px;
-    bottom: 12px;
-    padding: 2px 6px;
-    font:
-      12px ui-monospace,
-      'SF Mono',
-      'JetBrains Mono',
-      Menlo,
-      Consolas,
-      monospace;
-    color: #dcd9d2;
-    background: rgba(21, 21, 20, 0.88);
-    border: 0;
-    cursor: pointer;
   }
   .exit {
     position: absolute;
