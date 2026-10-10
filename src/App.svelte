@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { readPngDesign, type ExportedDesign } from './export/design-png';
+  import { readExportedDesign, type ExportedDesign } from './export/design-image';
   import { exportImage } from './export/exporter';
   import type { ExportFormat, ExportProgress } from './export/types';
   import { readAutosave, writeAutosave } from './ui/autosave';
@@ -180,7 +180,7 @@
     view.reset();
   }
 
-  /** A PNG exported from here reopens its design; any other image dropped on the window becomes the palette. */
+  /** A PNG or JPEG exported from here reopens its design; any other image dropped on the window becomes the palette. */
   async function onDrop(e: DragEvent) {
     if (!hasFiles(e)) return;
     e.preventDefault();
@@ -188,7 +188,7 @@
     if (!file) return;
     // A drop comes without a press, so close the step before it by hand.
     history.commit();
-    const exported = await readPngDesign(file).catch((err: unknown) => {
+    const exported = await readExportedDesign(file).catch((err: unknown) => {
       console.warn('drop: ignoring the embedded design', err);
       return null;
     });

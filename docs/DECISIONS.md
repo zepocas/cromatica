@@ -518,3 +518,12 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Decision (2026-10-10):** the macOS and Windows context previews draw folders and generic app icons (M17) instead of neutral boxes. Shapes and glyphs are generic, never real app icons or logos. They are overlays only (D48).
 - **Folder names:** lowercase lorem ipsum, always white with a shadow. Both OSes draw desktop labels white whatever the wallpaper (from memory, not checked against a source), so the labels are not part of the legibility check.
 - **Menu bar text color:** macOS picks it from the wallpaper under the bar, and Apple does not document how. The preview reuses M9's rule (the worst 10% of pixels against black or white text), and the menu text and clock follow the bar's verdict. It can disagree with a real Mac on a bar that is dark at one end and light at the other. Measuring where a real Mac flips (flat grays and splits) would fix it; the user judged the current guess good enough.
+
+## D72. The design travels in exported JPEGs too, as XMP
+
+- **Decision (2026-10-10):** a JPEG export carries the same save envelope as the PNG (D45), and dropping it reopens the design at its exported size. Built as the experiment D59 asked for; whether it survives sharing is still to be judged.
+- **Format:** an XMP packet in an APP1 segment, with the envelope in a `cromatica:design` property (XML-escaped) under the namespace `https://github.com/zepocas/cromatica/ns/1.0/`. XMP rather than a COM comment because it is the metadata block editors and viewers are most likely to keep.
+- **Size:** measured over 3000 shuffled designs, the envelope is 0.6 to 2 KB (median 0.7 KB), about 30 times under one segment's 64 KB. A design that would not fit is exported without it, like a design that fails validation in the PNG.
+- **Splice:** the worker adds the segment after `canvas.convertToBlob`, right after the JFIF header, with `Blob.slice`, so the encoded file is never copied into memory. The reader walks the segment headers up to the image data (`src/export/jpeg.ts`); `readExportedDesign` sniffs PNG, then JPEG.
+- **Checked:** Chrome's encoder output reopens through a drop (e2e), and macOS `sips` still decodes it.
+- **Not checked:** which services and editors keep the segment. Anything that re-encodes strips it, as D45 expected.
