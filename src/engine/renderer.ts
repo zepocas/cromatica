@@ -204,7 +204,7 @@ function warpUniforms(w: PreparedWarp) {
 
 /** Cheap structural key of the stops; the ramp is re-baked only when it changes. */
 function stopsKey(stops: readonly ColorStop[]): string {
-  return stops.map((s) => `${s.position},${s.color[0]},${s.color[1]},${s.color[2]},${s.blend}`).join('|');
+  return stops.map((s) => `${s.position},${s.color[0]},${s.color[1]},${s.color[2]}`).join('|');
 }
 
 function createTexture(gl: WebGL2RenderingContext, filter: GLenum, wrap: GLenum): WebGLTexture {

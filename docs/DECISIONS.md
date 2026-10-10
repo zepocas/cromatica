@@ -469,3 +469,10 @@ Decisions made during the architecture review. Reopen one only if new informatio
 
 - **Decision (2026-10-10):** the README shows nine images the user generated and picked in the app (a 3×3 grid, `docs/examples/`, 1200×675 JPEGs cropped from the 4K PNG exports), replacing the old four. Each pattern does not get three reference designs, and there are no golden-image fixtures: pixel-comparison tests would break on every deliberate change to a finish, and the unit and e2e tests already cover behaviour.
 - **Originals:** the 4K PNG exports (5–17 MB each, each carrying its design) are not committed.
+
+## D66. Blend modes removed from the code; status bar, per-color settings and shuffle tuning parked
+
+- **Decision (2026-10-10):** the unreachable per-stop blend modes (`oklab-chroma`, `oklch-short`, `oklch-long`) and the stop's `blend` field are gone from the code (D63 had only removed the choice from the UI). Ramps blend in Oklab, as before, so no design changes. Saves still load: the stop schema ignores an old `blend` key and the save version stays 6.
+- **Status bar:** the user wants to try moving global and view settings into a bottom status bar (M14). Not built yet.
+- **Per-color settings:** still undecided whether the single-color hue, lightness and intensity controls stay (M14).
+- **Shuffle tuning:** the user wants a way to make shuffle avoid things they don't like. Parked as M16; the smallest option (exclusion toggles) is the suggested start.

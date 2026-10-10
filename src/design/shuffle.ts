@@ -365,7 +365,7 @@ function withKind(base: BasePattern, kind: BasePattern['kind']): BasePattern {
     return { ...base, kind };
   }
   const ramp = n === 1 ? [colors[0], colors[0]] : colors.slice(0, n);
-  const stops = ramp.map((color, i) => ({ position: i / (ramp.length - 1), color, blend: 'oklab' as const }));
+  const stops = ramp.map((color, i) => ({ position: i / (ramp.length - 1), color }));
   return { kind, angle: 0, stops };
 }
 
@@ -544,7 +544,7 @@ function shuffleRamp(base: RampGradient, ctx: ShuffleContext): { pattern: RampGr
     colors = stops.map((s) => copyColor(s.color));
   }
 
-  const out: ColorStop[] = stops.map((s, i) => ({ position: positions[i], color: colors[i], blend: s.blend }));
+  const out: ColorStop[] = stops.map((_, i) => ({ position: positions[i], color: colors[i] }));
   const pattern: RampGradient = { ...base, angle, stops: out };
   if (opts.layout && (base.kind === 'noise' || base.kind === 'cells')) {
     pattern.scale = round4(layoutRng.range(...RAMP_SHUFFLE.scale));

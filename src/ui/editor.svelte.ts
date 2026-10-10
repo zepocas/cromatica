@@ -294,9 +294,8 @@ export class EditorState {
       byPosition.forEach((stop, k) => (stops[stop].color = colors[k]));
       return;
     }
-    const blend = stops[0]?.blend ?? 'oklab';
     const ramp = colors.length === 1 ? [colors[0], colors[0]] : colors;
-    this.ramp.stops = ramp.map((color, i) => ({ position: i / (ramp.length - 1), color, blend }));
+    this.ramp.stops = ramp.map((color, i) => ({ position: i / (ramp.length - 1), color }));
     this.selectedStop = 0;
   }
 
@@ -459,8 +458,7 @@ export class EditorState {
       const along = geo.map((g) => rampT(shape, ...this.toPattern(g.x, g.y)));
       const order = colors.map((_, i) => i).sort((i, j) => along[i] - along[j]);
       if (order.length === 1) order.push(order[0]);
-      const blend = this.ramp.stops[0]?.blend ?? 'oklab';
-      this.ramp.stops = order.map((i, k) => ({ position: k / (order.length - 1), color: [...colors[i]], blend }));
+      this.ramp.stops = order.map((i, k) => ({ position: k / (order.length - 1), color: [...colors[i]] }));
       this.selectedStop = 0;
     }
     this.palette.adopt(null);
@@ -468,13 +466,12 @@ export class EditorState {
 
   // ---- Linear stops ---------------------------------------------------------
 
-  /** A stop at position t, colored like the ramp there, with the blend of the segment it splits. */
+  /** A stop at position t, colored like the ramp there. */
   addStop(t: number): number | null {
     const stops = this.ramp.stops;
     if (stops.length >= MAX_STOPS) return null;
     const sorted = ($state.snapshot(stops) as ColorStop[]).sort((a, b) => a.position - b.position);
-    const left = sorted.findLast((s) => s.position <= t) ?? sorted[0];
-    stops.push({ position: t, color: oklabToOklch(evaluateRamp(sorted, t)), blend: left.blend });
+    stops.push({ position: t, color: oklabToOklch(evaluateRamp(sorted, t)) });
     this.selectedStop = stops.length - 1;
     return this.selectedStop;
   }

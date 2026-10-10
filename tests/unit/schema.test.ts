@@ -52,15 +52,18 @@ describe('design schema', () => {
     expect(d.finish.bandStyle).toBe('weights');
   });
 
-  it('turns every stop of a version 5 ramp into a perceptual blend, and leaves other patterns alone (D63)', () => {
+  it('loads version 5 and 6 ramps whose stops carry a blend, which is dropped, and leaves other patterns alone (D63, D66)', () => {
     const saved = saveDesign(defaultDesign).design;
     const ramp = saved.base as RampGradient;
     const stops = ramp.stops.map((s, i) => ({
       ...s,
-      blend: (['oklch-long', 'oklab-chroma', 'oklch-short'] as const)[i % 3],
+      blend: (['oklch-long', 'oklab-chroma', 'oklab'] as const)[i % 3],
     }));
+    for (const version of [5, 6]) {
+      const d = loadDesign({ version, design: { ...saved, base: { ...ramp, stops } } });
+      expect((d.base as typeof ramp).stops.every((s) => !('blend' in s))).toBe(true);
+    }
     const d = loadDesign({ version: 5, design: { ...saved, base: { ...ramp, stops } } });
-    expect((d.base as typeof ramp).stops.map((s) => s.blend)).toEqual(ramp.stops.map(() => 'oklab'));
     expect((d.base as typeof ramp).stops.map((s) => s.color)).toEqual(ramp.stops.map((s) => s.color));
     const mesh = saveDesign({ ...defaultDesign, base: defaultMesh }).design;
     expect(loadDesign({ version: 5, design: mesh }).base).toEqual(mesh.base);

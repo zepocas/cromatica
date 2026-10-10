@@ -4,22 +4,10 @@
 // saved-design schema comes with M6.
 import type { Oklch } from '../color/types';
 
-/**
- * How the segment from a stop to the NEXT stop is interpolated (D5).
- * - 'oklab': straight line in Oklab (default).
- * - 'oklab-chroma': chroma-preserving Oklab — lerp L and C, rotate hue along
- *   the shorter arc, with hue progress weighted by chroma so it equals plain
- *   'oklab' when an end is gray and stays continuous as chroma approaches 0.
- * - 'oklch-short' / 'oklch-long': hue path around the shorter / longer arc.
- */
-export type BlendMode = 'oklab' | 'oklab-chroma' | 'oklch-short' | 'oklch-long';
-
 export interface ColorStop {
   /** Position along the gradient, in [0, 1]. */
   position: number;
   color: Oklch;
-  /** Blend mode of the segment to the next stop. Ignored on the last stop. */
-  blend: BlendMode;
 }
 
 /** Noise looks: topographic stripes along the noise's height lines, or ridged veins. */
@@ -297,9 +285,9 @@ export const defaultDesign: Design = {
     kind: 'linear',
     angle: 30,
     stops: [
-      { position: 0, color: [0.2264, 0.1093, 280.42], blend: 'oklab' },
-      { position: 0.5, color: [0.6031, 0.2141, 352.9], blend: 'oklab' },
-      { position: 1, color: [0.8452, 0.1383, 76.58], blend: 'oklab' },
+      { position: 0, color: [0.2264, 0.1093, 280.42] },
+      { position: 0.5, color: [0.6031, 0.2141, 352.9] },
+      { position: 1, color: [0.8452, 0.1383, 76.58] },
     ],
   },
 };

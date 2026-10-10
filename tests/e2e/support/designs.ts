@@ -1,7 +1,6 @@
 // Designs shared by the engine tests.
 import type { Oklch } from '../../../src/color/types';
 import {
-  type BlendMode,
   defaultMesh,
   type Design,
   noFinish,
@@ -13,7 +12,7 @@ import {
   type WarpShape,
 } from '../../../src/design/design';
 
-export type StopSpec = [position: number, color: Oklch, blend?: BlendMode];
+export type StopSpec = [position: number, color: Oklch];
 
 export function linear(angle: number, stops: StopSpec[]): Design {
   return {
@@ -22,22 +21,22 @@ export function linear(angle: number, stops: StopSpec[]): Design {
     base: {
       kind: 'linear',
       angle,
-      stops: stops.map(([position, color, blend = 'oklab']) => ({ position, color, blend })),
+      stops: stops.map(([position, color]) => ({ position, color })),
     },
   };
 }
 
 export const threeStops = (angle: number) =>
   linear(angle, [
-    [0, [0.3, 0.12, 280], 'oklab'],
-    [0.4, [0.62, 0.2, 350], 'oklch-short'],
+    [0, [0.3, 0.12, 280]],
+    [0.4, [0.62, 0.2, 350]],
     [1, [0.86, 0.13, 77]],
   ]);
 
 // Mid-tone gradient whose channels stay away from 0 and 255, so the dither is never clipped.
 export const midTones = linear(20, [
   [0, [0.5, 0.08, 250]],
-  [0.5, [0.62, 0.09, 150], 'oklab-chroma'],
+  [0.5, [0.62, 0.09, 150]],
   [1, [0.72, 0.08, 40]],
 ]);
 

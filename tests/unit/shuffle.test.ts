@@ -86,7 +86,7 @@ describe('shuffleDesign', () => {
       const m = mesh(shuffled(meshDesign, { colors: false, layout: true, seed: s }));
       expect(m.points.map((p) => p.color)).toEqual(defaultMesh.points.map((p) => p.color));
       const l = linear(shuffled(linearDesign, { colors: false, layout: true, seed: s }));
-      expect(l.stops.map((p) => [p.color, p.blend])).toEqual(linear(linearDesign).stops.map((p) => [p.color, p.blend]));
+      expect(l.stops.map((p) => p.color)).toEqual(linear(linearDesign).stops.map((p) => p.color));
     }
   });
 
@@ -176,7 +176,7 @@ describe('shuffleDesign', () => {
       base: {
         kind: 'linear',
         angle: 0,
-        stops: [0, 0.25, 0.5, 0.75, 1].map((position) => ({ position, color: [0.5, 0.1, 30], blend: 'oklab' })),
+        stops: [0, 0.25, 0.5, 0.75, 1].map((position) => ({ position, color: [0.5, 0.1, 30] })),
       },
     };
     for (let s = 0; s < 50; s++) {

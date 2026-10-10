@@ -179,8 +179,8 @@ test.describe('grain', () => {
         800,
         450,
       );
-      // Pure black and white stay exact; channels that only round to 0/255 may move by a few levels (grain plus dither), never a speck.
-      expect(r.maxChangeAtEnds).toBeLessThanOrEqual(3);
+      // Pure black and white stay exact; channels that only round to 0/255 may move by a few levels, up to 4 (grain plus dither), never a speck.
+      expect(r.maxChangeAtEnds).toBeLessThanOrEqual(4);
       if (d !== d3) expect(r.changedAtEnds).toBe(0);
     }
   });

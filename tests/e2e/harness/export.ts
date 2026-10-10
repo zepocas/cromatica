@@ -38,10 +38,10 @@ const testDesign: Design = {
     kind: 'linear',
     angle: 37,
     stops: [
-      { position: 0, color: [0.25, 0.12, 265], blend: 'oklab-chroma' },
-      { position: 0.3, color: [0.68, 0.33, 350], blend: 'oklch-long' },
-      { position: 0.7, color: [0.8, 0.2, 150], blend: 'oklch-short' },
-      { position: 1, color: [0.88, 0.14, 80], blend: 'oklab' },
+      { position: 0, color: [0.25, 0.12, 265] },
+      { position: 0.3, color: [0.68, 0.33, 350] },
+      { position: 0.7, color: [0.8, 0.2, 150] },
+      { position: 1, color: [0.88, 0.14, 80] },
     ],
   },
 };

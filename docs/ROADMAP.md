@@ -377,6 +377,8 @@ Each milestone uses the same structure:
 - **Goal:** try to make the left panel leaner. Added 2026-10-08. A trial-and-error session that can run in parallel with almost any other milestone.
 - **Scope:**
   - **Status bar under the preview** (only if it earns its place, 2026-10-08): IDE-style, for global and view settings. Not needed on its own; worth building only if settings move into it from the left panel to declutter it (show points, preview zoom, output size, autosave state and others to be picked).
+  - **Status bar trial wanted** (user, 2026-10-10): the user wants to try moving settings into a bottom status bar to relieve the left panel. Start with a throwaway version to see how it feels, and move only global and view settings (points/nodes toggle, preview zoom, output size, autosave state); design settings stay in the panel.
+  - **Per-color settings** (open, 2026-10-10): whether the single-color hue, lightness and intensity controls stay, given the color picker. The base-hue control, which keeps color relationships, is not in question. Undecided; settle it in this milestone, since it is the same question as slimming the panel.
 - **Done when:** the user either keeps a leaner panel with a bottom status bar or drops the idea. It is worth building only if settings move into the bar.
 - **Open questions:**
   - Which settings move (show points, preview zoom, output size, autosave state, others).
@@ -394,6 +396,19 @@ Each milestone uses the same structure:
 - **Open questions:**
   - Whether the panel becomes a sheet or a separate screen.
   - Whether a smaller set of controls makes sense on mobile, or the same ones in a different frame.
+
+### M16 — Shuffle tuning
+
+- **Goal:** let the user steer shuffle away from results they don't like. Added 2026-10-10; no design yet, and independent of the other milestones.
+- **Options to pick from:**
+  1. **Exclusion toggles:** switches such as "no brushed warp", "no halftone", "no neon" that zero a weight in the shuffle tables (smallest, and the tables are already weight-based). Start here.
+  2. **Per-option odds sliders:** expose the weights themselves (kind, warp shape, finish chances, palette moods).
+  3. **Learning from dislikes:** a thumbs-down that nudges the weights (most work, least predictable).
+- **Open questions:**
+  - Where the controls live (a panel section, a dialog, or the M14 status bar).
+  - Saved per browser, not with the design.
+  - Whether it changes the shuffle's draw order, which would change existing shuffles for a seed (D64 kept the order stable).
+- **Done when:** the user can exclude at least the options they dislike, and a shuffle never produces them.
 
 ---
 
