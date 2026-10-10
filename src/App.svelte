@@ -43,6 +43,9 @@
   let tips = $state(!builtIn && !tipsDismissed());
   /** The "more like this" grid covers the preview. */
   let exploring = $state(false);
+  /** The preview alone, in the browser's full screen; the panel, handles and overlays are hidden. */
+  let fullscreen = $state(false);
+  const canFullscreen = typeof document !== 'undefined' && document.fullscreenEnabled;
   let exporting = $state(false);
   let progress = $state<ExportProgress | null>(null);
   let error = $state('');
@@ -83,8 +86,23 @@
     if (s) editor.restore(s);
   }
 
+  function enterFullscreen() {
+    if (!canFullscreen || fullscreen) return;
+    // Refused without a user gesture, and in some embeds; the state only follows the browser's event.
+    document.documentElement.requestFullscreen().catch((err: unknown) => console.warn('fullscreen:', err));
+  }
+
+  function exitFullscreen() {
+    if (document.fullscreenElement) void document.exitFullscreen();
+  }
+
   /** ⌘Z undoes and ⇧⌘Z or Ctrl+Y redoes, except in text fields, which keep their own undo. */
   function onKeyDown(e: KeyboardEvent) {
+    if (e.key.toLowerCase() === 'f' && !e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target)) {
+      if (fullscreen) exitFullscreen();
+      else enterFullscreen();
+      return;
+    }
     if (!(e.metaKey || e.ctrlKey) || e.altKey || isTypingTarget(e.target)) return;
     const key = e.key.toLowerCase();
     if (key === 'z' || key === 'y') {
@@ -172,6 +190,7 @@
 </script>
 
 <svelte:window
+  onfullscreenchange={() => (fullscreen = !!document.fullscreenElement)}
   ondragover={(e) => hasFiles(e) && e.preventDefault()}
   ondrop={onDrop}
   onpointerdowncapture={onPress}
@@ -184,15 +203,19 @@
   design={editor.preview ?? renderDesign}
   aspect={previewAspect}
   paused={exporting}
-  docked={!collapsed}
+  docked={!collapsed && !fullscreen}
   {view}
-  zoomable={!exploring}
+  zoomable={!exploring && !fullscreen}
+  {fullscreen}
+  onexitfullscreen={exitFullscreen}
 >
   {#snippet overlay()}
     {#if !exploring && contextScreen && !previewPreset}
       <ContextOverlay design={renderDesign} {aspect} screen={contextScreen} />
     {/if}
-    {#if exploring}
+    {#if fullscreen}
+      <!-- The image and the OS context only: no handles. -->
+    {:else if exploring}
       <MoreLikeThis
         design={renderDesign}
         {aspect}
@@ -211,31 +234,34 @@
     {/if}
   {/snippet}
 </Preview>
-<ControlPanel
-  bind:editor
-  {favourites}
-  bind:presetId
-  bind:presetPreview
-  bind:customWidth
-  bind:customHeight
-  {output}
-  bind:format
-  bind:contextId
-  bind:contextPreview
-  bind:collapsed
-  bind:exploring
-  bind:tips
-  canUndo={history.canUndo}
-  canRedo={history.canRedo}
-  onundo={undo}
-  onredo={redo}
-  {exporting}
-  {progress}
-  {error}
-  onexport={startExport}
-  oncancel={cancelExport}
-/>
-{#if tips}
+{#if !fullscreen}
+  <ControlPanel
+    bind:editor
+    {favourites}
+    bind:presetId
+    bind:presetPreview
+    bind:customWidth
+    bind:customHeight
+    {output}
+    bind:format
+    bind:contextId
+    bind:contextPreview
+    bind:collapsed
+    bind:exploring
+    bind:tips
+    canUndo={history.canUndo}
+    canRedo={history.canRedo}
+    onundo={undo}
+    onredo={redo}
+    {exporting}
+    {progress}
+    {error}
+    onexport={startExport}
+    oncancel={cancelExport}
+    onfullscreen={canFullscreen ? enterFullscreen : undefined}
+  />
+{/if}
+{#if tips && !fullscreen}
   <Tips
     onclose={() => {
       tips = false;

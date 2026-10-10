@@ -36,6 +36,8 @@
     error: string;
     onexport: () => void;
     oncancel: () => void;
+    /** Show the preview alone, filling the screen. Absent where the browser can't. */
+    onfullscreen?: () => void;
   }
 
   let {
@@ -61,6 +63,7 @@
     error,
     onexport,
     oncancel,
+    onfullscreen,
   }: Props = $props();
 
   /** App shortcuts: Space shuffles, ← and → step through recent shuffles, [ and ] through warp shapes, M opens more like this. */
@@ -90,6 +93,9 @@
     <h1>cromatica</h1>
     <span class="spacer"></span>
     <button class="icon" aria-label="Tips" aria-pressed={tips} title="Tips" onclick={() => (tips = !tips)}>?</button>
+    {#if onfullscreen}
+      <button class="icon" aria-label="Full screen" title="Full screen (F)" onclick={onfullscreen}>⛶</button>
+    {/if}
     <button class="icon" aria-label="Undo" title="Undo (⌘Z)" disabled={!canUndo} onclick={onundo}>↶</button>
     <button class="icon" aria-label="Redo" title="Redo (⇧⌘Z)" disabled={!canRedo} onclick={onredo}>↷</button>
     <button

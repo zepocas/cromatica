@@ -17,9 +17,22 @@
     view: CanvasView;
     /** False while something else (the "more like this" grid) covers the frame; it shows fitted. */
     zoomable?: boolean;
+    /** Alone on the screen: the × shows on pointer movement and calls onexitfullscreen. */
+    fullscreen?: boolean;
+    onexitfullscreen?: () => void;
   }
 
-  let { design, aspect, paused = false, overlay, docked = false, view, zoomable = true }: Props = $props();
+  let {
+    design,
+    aspect,
+    paused = false,
+    overlay,
+    docked = false,
+    view,
+    zoomable = true,
+    fullscreen = false,
+    onexitfullscreen,
+  }: Props = $props();
 
   /** Wheel pixels per e-fold of zoom; a trackpad pinch arrives as ctrl + wheel. */
   const PINCH_SENSITIVITY = 100;
@@ -137,6 +150,27 @@
     view.reset();
   }
 
+  /** The × fades out after the pointer rests, so it never sits on the wallpaper. */
+  const EXIT_IDLE_MS = 2000;
+  let exitVisible = $state(false);
+  let exitTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function wakeExit() {
+    if (!fullscreen) return;
+    exitVisible = true;
+    clearTimeout(exitTimer);
+    exitTimer = setTimeout(() => (exitVisible = false), EXIT_IDLE_MS);
+  }
+
+  $effect(() => {
+    if (fullscreen) wakeExit();
+    else {
+      clearTimeout(exitTimer);
+      exitVisible = false;
+    }
+    return () => clearTimeout(exitTimer);
+  });
+
   const shown = $derived(zoomable && view.zoomed);
 </script>
 
@@ -150,7 +184,10 @@
   bind:this={container}
   role="presentation"
   onpointerdown={onPointerDown}
-  onpointermove={onPointerMove}
+  onpointermove={(e) => {
+    onPointerMove(e);
+    wakeExit();
+  }}
   onpointerup={endPan}
   onpointercancel={endPan}
 >
@@ -168,6 +205,15 @@
     <button class="fit" title="Fit to window (0)" onclick={() => view.reset()}>
       [ {Math.round(view.zoom * 100)}% · fit ]
     </button>
+  {/if}
+  {#if fullscreen}
+    <button
+      class="exit"
+      class:visible={exitVisible}
+      aria-label="Exit full screen"
+      title="Exit full screen (Esc)"
+      onclick={onexitfullscreen}>×</button
+    >
   {/if}
   {#if error}
     <p class="error">Preview unavailable: {error}</p>
@@ -209,6 +255,33 @@
     background: rgba(21, 21, 20, 0.88);
     border: 0;
     cursor: pointer;
+  }
+  .exit {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    font-size: 18px;
+    line-height: 1;
+    color: #dcd9d2;
+    background: rgba(21, 21, 20, 0.88);
+    border: 0;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .exit.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .viewport:has(.exit) {
+    cursor: none;
+  }
+  .viewport:has(.exit.visible) {
+    cursor: default;
   }
   .frame {
     position: relative;
