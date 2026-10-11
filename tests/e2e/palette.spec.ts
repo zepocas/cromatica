@@ -1,5 +1,5 @@
 // Palette steering and edits: harmony rule, keep, value key, linked, remix, order.
-import { hexToOklch } from '../../src/color/hex';
+import { hexToOklch, oklchToHex } from '../../src/color/hex';
 import { KEY_BANDS } from '../../src/color/harmony';
 import { shortestTurn } from '../../src/math';
 import { choose, expect, openApp, openMore, readHexes, readLightness, test, valueOf } from './support/app';
@@ -82,7 +82,15 @@ test('linked editing moves the whole palette; free edits one color; remix shifts
   await openApp(page);
   const read = () => readHexes(page);
   await openMore(page, 'colors');
-  const hue = page.getByLabel('Hue', { exact: true });
+  // Edit color 1 through its hex field, keeping lightness and chroma and turning the hue.
+  const hue = {
+    fill: async (deg: string) => {
+      const [l, c] = hexToOklch((await read())[0]);
+      const field = page.getByLabel('Hex of color 1');
+      await field.fill(oklchToHex([l, c, Number(deg)]));
+      await field.press('Enter');
+    },
+  };
 
   // Free (default): only the selected color changes.
   let before = await read();
@@ -165,4 +173,17 @@ test('every mood can be picked and regenerates the palette in it', async ({ page
     await expect(mood).toHaveAttribute('data-value', m);
     await expect.poll(() => readHexes(page)).not.toEqual(before);
   }
+});
+
+test('brightness and contrast grade the whole palette; reset brings the originals back', async ({ page }) => {
+  await openApp(page);
+  await openMore(page, 'colors');
+  const before = await readLightness(page);
+  await page.getByLabel('Brightness', { exact: true }).fill('0.6');
+  await expect.poll(() => readLightness(page)).not.toEqual(before);
+  (await readLightness(page)).forEach((l, i) => expect(l).toBeGreaterThan(before[i]));
+  await expect(page.getByRole('status', { name: '' }).filter({ hasText: 'brightness +60' })).toBeVisible();
+  await page.getByLabel('Contrast', { exact: true }).fill('0.5');
+  await page.getByRole('button', { name: 'Reset adjustments' }).click();
+  await expect.poll(() => readLightness(page)).toEqual(before);
 });

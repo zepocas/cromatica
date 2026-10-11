@@ -1,5 +1,6 @@
 <script lang="ts">
   import { PALETTE_MOODS, type ValueKey } from '../color/harmony';
+  import SliderRow from './controls/SliderRow.svelte';
   import Dropdown from './controls/Dropdown.svelte';
   import Toggle from './controls/Toggle.svelte';
   import type { EditorState } from './editor.svelte';
@@ -13,6 +14,7 @@
   let { editor, selectedHue }: Props = $props();
 
   const palette = $derived(editor.palette);
+  const signed = (v: number) => (Math.round(v) > 0 ? '+' : '') + Math.round(v);
 
   const KEY_OPTIONS: { value: ValueKey; label: string }[] = [
     { value: 'high', label: 'high (light)' },
@@ -70,3 +72,23 @@
     onclick={() => palette.setBaseHueEnabled(true, selectedHue)}>⌖</button
   >
 </div>
+<SliderRow
+  label="brightness"
+  title="Lighten or darken the whole palette"
+  min={-1}
+  max={1}
+  step={0.01}
+  value={palette.grade.brightness}
+  display={(v) => signed(v * 100)}
+  oninput={(v) => palette.setBrightness(v)}
+/>
+<SliderRow
+  label="contrast"
+  title="Spread the colors' lightness apart, or squeeze it together"
+  min={-1}
+  max={1}
+  step={0.01}
+  value={palette.grade.contrast}
+  display={(v) => signed(v * 100)}
+  oninput={(v) => palette.setContrast(v)}
+/>

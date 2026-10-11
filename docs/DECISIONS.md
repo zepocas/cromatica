@@ -518,3 +518,10 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Decision (2026-10-10):** the macOS and Windows context previews draw folders and generic app icons (M17) instead of neutral boxes. Shapes and glyphs are generic, never real app icons or logos. They are overlays only (D48).
 - **Folder names:** lowercase lorem ipsum, always white with a shadow. Both OSes draw desktop labels white whatever the wallpaper (from memory, not checked against a source), so the labels are not part of the legibility check.
 - **Menu bar text color:** macOS picks it from the wallpaper under the bar, and Apple does not document how. The preview reuses M9's rule (the worst 10% of pixels against black or white text), and the menu text and clock follow the bar's verdict. It can disagree with a real Mac on a bar that is dark at one end and light at the other. Measuring where a real Mac flips (flat grays and splits) would fix it; the user judged the current guess good enough.
+
+## D74. Global brightness and contrast replace the per-color sliders
+
+- **Decision (2026-10-11):** the selected color's lightness, intensity and hue sliders are gone. The picker and hex field edit a single color; the whole palette is graded by **brightness** and **contrast** sliders next to base hue, behind the colors' "+ more". Saturation was left out on purpose.
+- **Model:** they join base hue as adjustments over the original colors (D27): `grade(original)` with a hue turn, brightness and contrast, one reset, a "~ hue … · brightness … · contrast …" status, and a hand edit bakes it in. Not saved in the design or share links, like base hue.
+- **Math (`gradePalette`, `src/color/linked.ts`):** contrast scales logit(L) around the palette's mean by 3^contrast (±1 gives a third to triple), so the lightness order never changes; brightness shifts logit(L) by up to ±1.5; chroma is kept and capped to the gamut.
+- **Hue:** base hue already turns the palette, so no separate hue slider.
