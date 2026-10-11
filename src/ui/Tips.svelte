@@ -24,7 +24,7 @@
       <dd>{text}</dd>
     {/each}
   </dl>
-  <button class="strong" onclick={onclose}>[ got it ]</button>
+  <button class="btn strong" onclick={onclose}>got it</button>
 </aside>
 
 <style>

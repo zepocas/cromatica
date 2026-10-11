@@ -59,8 +59,8 @@
     {/each}
   </div>
   <div class="bar">
-    <button aria-label="More variations" onclick={() => (seed = randomSeed())}>[ again ]</button>
-    <button aria-label="Close" onclick={onclose}>[ close <kbd>esc</kbd> ]</button>
+    <button class="btn" aria-label="More variations" onclick={() => (seed = randomSeed())}>again</button>
+    <button class="btn" aria-label="Close" onclick={onclose}>close <kbd>esc</kbd></button>
   </div>
 </div>
 

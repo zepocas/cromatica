@@ -61,6 +61,18 @@ test('favourites: ♡ keeps the design, a click reopens it, and it survives a re
   await expect(page.getByRole('button', { name: 'Add to favourites' })).toBeVisible();
 });
 
+test('removing a favourite is an undo step, and redo removes it again', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'Add to favourites' }).click();
+  await page.getByRole('button', { name: 'Remove from favourites' }).first().click();
+  await expect(page.getByRole('button', { name: 'Add to favourites' })).toBeVisible();
+
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(page.getByRole('button', { name: 'Remove from favourites' }).first()).toBeVisible();
+  await page.keyboard.press('ControlOrMeta+Shift+z');
+  await expect(page.getByRole('button', { name: 'Add to favourites' })).toBeVisible();
+});
+
 test('favourites section: folded while empty, opens when one is added, and stays open on removal', async ({ page }) => {
   await openApp(page);
   await expect(page.getByRole('button', { name: 'Expand favourites' })).toBeVisible();
@@ -157,7 +169,7 @@ test('tips: shown on a first visit, gone for good once dismissed, back from the 
   const tips = page.getByRole('complementary', { name: 'Tips' });
   await expect(tips).toBeVisible();
   await expect(tips).toContainText('exports keep the design');
-  await tips.getByRole('button', { name: '[ got it ]' }).click();
+  await tips.getByRole('button', { name: 'got it' }).click();
   await expect(tips).toBeHidden();
 
   await page.reload();
@@ -165,4 +177,19 @@ test('tips: shown on a first visit, gone for good once dismissed, back from the 
   await expect(tips).toBeHidden();
   await page.getByRole('button', { name: 'Tips' }).click();
   await expect(tips).toBeVisible();
+});
+
+test('shuffle pulses for a first-time visitor until it has been used once', async ({ page }) => {
+  const shuffle = page.getByRole('button', { name: 'Shuffle', exact: true });
+  await openApp(page);
+  await expect(shuffle).not.toHaveClass(/nudge/);
+
+  await openApp(page, { shuffled: true });
+  await expect(shuffle).toHaveClass(/nudge/);
+  await shuffle.click();
+  await expect(shuffle).not.toHaveClass(/nudge/);
+
+  await page.reload();
+  await expect(page.getByTestId('preview-canvas')).toBeVisible();
+  await expect(shuffle).not.toHaveClass(/nudge/);
 });

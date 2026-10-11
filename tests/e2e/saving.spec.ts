@@ -1,6 +1,6 @@
 // Saving: autosave and restore on reload, and undo / redo.
 import type { Page } from '@playwright/test';
-import { expect, openApp, previewProbe, readHexes, readWarp, test } from './support/app';
+import { choose, expect, openApp, previewProbe, readHexes, readWarp, test } from './support/app';
 
 const AUTOSAVE_KEY = 'cromatica.design';
 const readSave = (page: Page) => page.evaluate((key) => localStorage.getItem(key), AUTOSAVE_KEY);
@@ -82,6 +82,7 @@ test('undo leaves text fields their own undo', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: /^Shuffle( Space)?$/ }).click();
   const hexes = await readHexes(page);
+  await choose(page.getByLabel('Size preset'), 'custom');
   await page.getByLabel('Width').focus();
   await page.keyboard.press('ControlOrMeta+z');
   expect(await readHexes(page)).toEqual(hexes);

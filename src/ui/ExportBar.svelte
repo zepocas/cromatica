@@ -1,15 +1,13 @@
 <script lang="ts">
-  import type { ExportFormat, ExportProgress } from '../export/types';
-  import Dropdown from './controls/Dropdown.svelte';
-  import Toggle from './controls/Toggle.svelte';
+  import type { ExportProgress } from '../export/types';
   import type { EditorState } from './editor.svelte';
 
   interface Props {
     editor: EditorState;
     exploring: boolean;
-    format: ExportFormat;
     /** Collapsed panel: only shuffle and download. */
     compact: boolean;
+    nudgeShuffle: boolean;
     exporting: boolean;
     progress: ExportProgress | null;
     error: string;
@@ -20,8 +18,8 @@
   let {
     editor,
     exploring = $bindable(),
-    format = $bindable(),
     compact,
+    nudgeShuffle,
     exporting,
     progress,
     error,
@@ -33,84 +31,31 @@
 </script>
 
 <footer class:compact>
-  {#if !compact}
-    <div class="row keep">
-      <span>keep</span>
-      <Toggle
-        checked={editor.colorsLocked}
-        label="colors"
-        ariaLabel="Lock colors"
-        title="Keep the colors when shuffling"
-        onchange={(on) => (editor.colorsLocked = on)}
-      />
-      <Toggle
-        checked={editor.patternLocked}
-        label="pattern"
-        ariaLabel="Lock pattern"
-        title="Keep the pattern kind, layout, warp shape and variation when shuffling"
-        onchange={(on) => (editor.patternLocked = on)}
-      />
-      <Toggle
-        checked={editor.adjustLocked}
-        label="adjust"
-        ariaLabel="Lock adjust"
-        title="Keep the warp amount and size, bands, noise, vignette and lighting when shuffling"
-        onchange={(on) => (editor.adjustLocked = on)}
-      />
-    </div>
-    <div class="row">
-      <span>recent</span>
-      <button
-        class="icon"
-        aria-label="Previous shuffle"
-        title="Previous shuffle (←)"
-        disabled={!editor.reel.canBack}
-        onclick={() => editor.stepReel(-1)}>←</button
-      >
-      <span class="count" aria-label="Shuffle {editor.reel.position + 1} of {editor.reel.length}"
-        >{editor.reel.length ? `${editor.reel.position + 1}/${editor.reel.length}` : '–'}</span
-      >
-      <button
-        class="icon"
-        aria-label="Next shuffle"
-        title="Next shuffle (→)"
-        disabled={!editor.reel.canForward}
-        onclick={() => editor.stepReel(1)}>→</button
-      >
-    </div>
-  {/if}
   <div class="row actions">
     <button
-      class="primary"
+      class="primary box"
+      class:nudge={nudgeShuffle && !compact}
       aria-label="Shuffle"
       disabled={!editor.canShuffle}
       title={editor.canShuffle ? 'Shuffle (Space)' : 'Unlock colors, pattern or adjust to shuffle'}
-      onclick={() => editor.shuffle()}>[ shuffle<kbd> ␣</kbd> ]</button
+      onclick={() => editor.shuffle()}>shuffle</button
     >
     {#if !compact}
       <button
+        class="secondary box"
         aria-label="More like this"
         aria-pressed={exploring}
         title="More like this: variations of this design (M)"
-        onclick={() => (exploring = !exploring)}>[ more like this<kbd> M</kbd> ]</button
+        onclick={() => (exploring = !exploring)}>more like this</button
       >
     {/if}
   </div>
   <div class="row actions">
     {#if exporting}
       <progress max="100" value={percent} aria-label="Export progress"></progress>
-      <button onclick={oncancel}>[ cancel ]</button>
+      <button class="box" onclick={oncancel}>cancel</button>
     {:else}
-      <button class="strong" aria-label="Download" title="Download (⌘S)" onclick={onexport}>[ download ]</button>
-      {#if !compact}
-        <span class="spacer"></span>
-        <Dropdown
-          ariaLabel="Format"
-          value={format}
-          options={[{ value: 'png' }, { value: 'jpeg' }]}
-          onchange={(f) => (format = f)}
-        />
-      {/if}
+      <button class="strong box" aria-label="Download" title="Download (⌘S)" onclick={onexport}>download</button>
     {/if}
   </div>
   {#if error}
@@ -119,13 +64,15 @@
 </footer>
 
 <style>
-  /* Three toggles share the row with their label: trim the label column and the gaps to fit the panel. */
-  footer .row.keep {
-    gap: 2px;
+  /* The fill drains out of shuffle and back, until it has been tried once. A color change, not movement, so it stays with reduced motion on. */
+  .nudge {
+    animation: nudge 1.6s ease-out infinite;
   }
-
-  footer .row.keep > span:first-child {
-    width: 4ch;
+  @keyframes nudge {
+    50% {
+      background: transparent;
+      color: var(--ink);
+    }
   }
 
   /* Pinned to the bottom; the sections scroll above it on short screens. */
@@ -148,21 +95,15 @@
     border: none;
     background: none;
   }
-  .compact kbd {
-    display: none;
-  }
-  kbd {
-    font: inherit;
-    opacity: 0.6;
-  }
-  .count {
-    color: var(--dim);
-    font-variant-numeric: tabular-nums;
-  }
-  .spacer {
+  /* Bordered buttons of one height share the width of the row, so every edge lines up. */
+  .box {
     flex: 1;
+    min-width: 0;
+    padding: 3px 8px;
+    border: 1px solid var(--dim);
+    text-align: center;
   }
-  .row.actions :global(.dropdown) {
+  footer.compact .box {
     flex: none;
   }
   .strong {

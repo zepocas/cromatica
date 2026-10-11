@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ExportFormat, ExportProgress } from '../export/types';
+  import type { ExportProgress } from '../export/types';
   import AdjustSection from './AdjustSection.svelte';
   import ColorsSection from './ColorsSection.svelte';
   import type { EditorState } from './editor.svelte';
@@ -8,7 +8,6 @@
   import FavouritesSection from './FavouritesSection.svelte';
   import { isFormControl, isHandle, isTypingTarget } from './keys';
   import PatternSection from './PatternSection.svelte';
-  import ViewSection from './ViewSection.svelte';
 
   interface Props {
     editor: EditorState;
@@ -19,9 +18,6 @@
     customHeight: number;
     /** Export size in pixels (from the preset or the custom size). */
     output: { width: number; height: number };
-    format: ExportFormat;
-    contextId: string;
-    contextPreview: string | null;
     /** Collapsed to a one-line bar floating over a full-width preview. */
     collapsed: boolean;
     exploring: boolean;
@@ -33,13 +29,13 @@
     canRedo: boolean;
     onundo: () => void;
     onredo: () => void;
+    /** Pulse the shuffle button: the visitor hasn't used it yet. */
+    nudgeShuffle: boolean;
     exporting: boolean;
     progress: ExportProgress | null;
     error: string;
     onexport: () => void;
     oncancel: () => void;
-    /** Show the preview alone, filling the screen. Absent where the browser can't. */
-    onfullscreen?: () => void;
   }
 
   let {
@@ -50,9 +46,6 @@
     customWidth = $bindable(),
     customHeight = $bindable(),
     output,
-    format = $bindable(),
-    contextId = $bindable(),
-    contextPreview = $bindable(),
     collapsed = $bindable(),
     exploring = $bindable(),
     tips = $bindable(),
@@ -61,12 +54,12 @@
     canRedo,
     onundo,
     onredo,
+    nudgeShuffle,
     exporting,
     progress,
     error,
     onexport,
     oncancel,
-    onfullscreen,
   }: Props = $props();
 
   /** App shortcuts: Space shuffles, ← and → step through recent shuffles, [ and ] through warp shapes, M opens more like this, K keeps a favourite, 1 2 3 lock, P folds the panel, ? lists them all. */
@@ -129,9 +122,6 @@
         if (shortcuts) tips = false;
       }}>⌨</button
     >
-    {#if onfullscreen}
-      <button class="icon" aria-label="Full screen" title="Full screen (F)" onclick={onfullscreen}>⛶</button>
-    {/if}
     <button class="icon" aria-label="Undo" title="Undo (⌘Z)" disabled={!canUndo} onclick={onundo}>↶</button>
     <button class="icon" aria-label="Redo" title="Redo (⇧⌘Z)" disabled={!canRedo} onclick={onredo}>↷</button>
     <button
@@ -149,7 +139,6 @@
     <!-- With spare height these sit at the bottom, above the footer; a full panel scrolls as before. -->
     <div class="bottom">
       <ColorsSection bind:editor />
-      <ViewSection bind:editor bind:contextId bind:contextPreview portrait={output.height > output.width} />
       <FavouritesSection {favourites} design={editor.design} onopen={(d) => editor.setDesign(d)} />
     </div>
   {/if}
@@ -157,8 +146,8 @@
   <ExportBar
     {editor}
     bind:exploring
-    bind:format
     compact={collapsed}
+    {nudgeShuffle}
     {exporting}
     {progress}
     {error}

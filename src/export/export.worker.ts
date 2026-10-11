@@ -1,7 +1,8 @@
 import { createRenderer } from '../engine/renderer';
 import { CONTEXT_ATTRIBUTES, type OutputSize, type Renderer, type Tile } from '../engine/types';
 import type { StartMessage, WorkerMessage } from './exporter';
-import { designText } from './design-png';
+import { designText, DESIGN_KEYWORD } from './design-png';
+import { embedJpegDesign } from './jpeg';
 import { createPngEncoder } from './png';
 import { assertOutputSize, planTiles } from './tiles';
 import { DEFAULT_TILE_SIZE, type ExportRequest } from './types';
@@ -35,7 +36,7 @@ function pngSink(output: OutputSize, text: Record<string, string>): BandSink {
   };
 }
 
-function jpegSink(output: OutputSize, quality: number): BandSink {
+function jpegSink(output: OutputSize, quality: number, text: Record<string, string>): BandSink {
   const canvas = new OffscreenCanvas(output.width, output.height);
   const ctx = canvas.getContext('2d', { alpha: false });
   if (!ctx) throw new Error('Could not create a 2D OffscreenCanvas for JPEG encoding');
@@ -44,7 +45,11 @@ function jpegSink(output: OutputSize, quality: number): BandSink {
       const pixels = new Uint8ClampedArray(rgba.buffer, rgba.byteOffset, output.width * rows * 4);
       ctx.putImageData(new ImageData(pixels, output.width, rows), 0, y);
     },
-    finish: () => canvas.convertToBlob({ type: 'image/jpeg', quality }),
+    finish: async () => {
+      const jpeg = await canvas.convertToBlob({ type: 'image/jpeg', quality });
+      const design = text[DESIGN_KEYWORD];
+      return design === undefined ? jpeg : embedJpegDesign(jpeg, design);
+    },
     abort: () => {},
   };
 }
@@ -94,10 +99,8 @@ async function runExport(req: ExportRequest): Promise<Blob> {
   let sink: BandSink | undefined;
   try {
     renderer = createRenderer(gl);
-    sink =
-      req.format === 'png'
-        ? pngSink(output, embeddedDesign(req.design))
-        : jpegSink(output, req.quality ?? DEFAULT_JPEG_QUALITY);
+    const text = embeddedDesign(req.design);
+    sink = req.format === 'png' ? pngSink(output, text) : jpegSink(output, req.quality ?? DEFAULT_JPEG_QUALITY, text);
     let tilesDone = 0;
     for (const band of bands) {
       for (const tile of band) {
