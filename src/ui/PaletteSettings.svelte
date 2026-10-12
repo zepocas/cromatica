@@ -92,3 +92,13 @@
   display={(v) => signed(v * 100)}
   oninput={(v) => palette.setContrast(v)}
 />
+<SliderRow
+  label="saturation"
+  title="Mute the colors toward gray, or make them more intense"
+  min={-1}
+  max={1}
+  step={0.01}
+  value={palette.grade.saturation}
+  display={(v) => signed(v * 100)}
+  oninput={(v) => palette.setSaturation(v)}
+/>

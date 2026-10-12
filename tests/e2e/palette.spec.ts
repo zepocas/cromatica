@@ -182,7 +182,7 @@ test('brightness and contrast grade the whole palette; reset brings the original
   await page.getByLabel('Brightness', { exact: true }).fill('0.6');
   await expect.poll(() => readLightness(page)).not.toEqual(before);
   (await readLightness(page)).forEach((l, i) => expect(l).toBeGreaterThan(before[i]));
-  await expect(page.getByRole('status', { name: '' }).filter({ hasText: 'brightness +60' })).toBeVisible();
+  await expect(page.getByRole('status', { name: '' }).filter({ hasText: 'bri +60' })).toBeVisible();
   await page.getByLabel('Contrast', { exact: true }).fill('0.5');
   await page.getByRole('button', { name: 'Reset adjustments' }).click();
   await expect.poll(() => readLightness(page)).toEqual(before);

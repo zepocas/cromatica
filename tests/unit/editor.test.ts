@@ -72,6 +72,21 @@ describe('palette adjustments', () => {
     expect(e.palette.originalColors).toBeNull();
   });
 
+  it('saturation scales chroma, gray at -1, and undoes exactly', () => {
+    const e = fresh();
+    const original = colorsOf(e);
+    const total = (cs: Oklch[]) => cs.reduce((sum, c) => sum + c[1], 0);
+    e.palette.setSaturation(0.5);
+    expect(total(colorsOf(e))).toBeGreaterThan(total(original));
+    e.palette.setSaturation(-0.5);
+    expect(total(colorsOf(e))).toBeLessThan(total(original));
+    e.palette.setSaturation(-1);
+    expect(Math.max(...colorsOf(e).map((c) => c[1]))).toBeLessThan(0.05);
+    e.palette.setSaturation(0);
+    expect(colorsOf(e)).toEqual(original);
+    expect(e.palette.originalColors).toBeNull();
+  });
+
   it('brightness keeps the base hue turn, and contrast keeps the lightness order', () => {
     const e = fresh();
     const original = colorsOf(e);

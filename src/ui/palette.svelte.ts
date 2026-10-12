@@ -27,7 +27,7 @@ export interface PaletteHost {
 
 /**
  * Non-destructive adjustment (D27): the colors on screen are `from` graded
- * by `grade` (hue turn, brightness, contrast). `out` is what was last
+ * by `grade` (hue turn, brightness, contrast, saturation). `out` is what was last
  * rendered; once the colors differ from it (a direct edit), the adjustment no
  * longer applies and the edited colors are the new originals.
  */
@@ -55,7 +55,7 @@ export interface PaletteSnapshot {
 /**
  * The palette side of the editor: how new palettes are steered (rule, mood,
  * key, base hue), how existing colors are edited (linked, remix, order), and
- * the adjustments (base hue, brightness, contrast). State is kept per pattern kind.
+ * the adjustments (base hue, brightness, contrast, saturation). State is kept per pattern kind.
  */
 export class PaletteEditor {
   /** Keep the current palette's rule, mood and key for ⟳ and shuffle; off = all random. */
@@ -237,6 +237,11 @@ export class PaletteEditor {
   /** Spread the palette's lightness apart (or squeeze it together), -1..1. */
   setContrast(v: number): void {
     this.adjust({ contrast: v });
+  }
+
+  /** Mute (toward gray) or intensify the whole palette, -1..1. */
+  setSaturation(v: number): void {
+    this.adjust({ saturation: v });
   }
 
   /** Back to the original colors; the base hue goes back with them. */

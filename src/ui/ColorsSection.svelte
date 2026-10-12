@@ -73,11 +73,12 @@
     const parts: string[] = [];
     const turn = Math.round(shortestTurn(0, palette.hueOffset));
     if (turn !== 0) parts.push(`hue ${turn > 0 ? '+' : ''}${turn}°`);
-    const { brightness, contrast } = palette.grade;
+    const { brightness, contrast, saturation } = palette.grade;
     const pct = (v: number) => `${v > 0 ? '+' : ''}${Math.round(v * 100)}`;
-    if (brightness !== 0) parts.push(`brightness ${pct(brightness)}`);
-    if (contrast !== 0) parts.push(`contrast ${pct(contrast)}`);
-    return parts.join(' · ');
+    if (brightness !== 0) parts.push(`bri ${pct(brightness)}`);
+    if (contrast !== 0) parts.push(`con ${pct(contrast)}`);
+    if (saturation !== 0) parts.push(`sat ${pct(saturation)}`);
+    return parts.join(' ');
   });
 
   let fileInput: HTMLInputElement;
@@ -198,7 +199,11 @@
   </ul>
 
   {#if original}
-    <div class="row" role="status" title="Adjusted from the original colors">
+    <div
+      class="row summary"
+      role="status"
+      title="Adjusted from the original colors (hue, brightness, contrast, saturation)"
+    >
       <em class="adjusted">~ {adjustedSummary}</em>
       <button
         class="btn"
@@ -240,9 +245,15 @@
   }
   .adjusted {
     flex: 1;
+    min-width: 0;
     font-style: normal;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     color: var(--ink);
+  }
+  .summary button {
+    flex: none;
   }
   hr {
     width: 100%;
