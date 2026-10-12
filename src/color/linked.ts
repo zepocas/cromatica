@@ -50,6 +50,40 @@ export function shiftPalette(colors: readonly Oklch[], shift: PaletteShift): Okl
   return colors.map((c) => applyShift(c, shift, 0));
 }
 
+/** Global grade: a hue turn, brightness, contrast and saturation (D74). */
+export interface Grade {
+  /** Hue rotation, degrees. */
+  hue: number;
+  /** Brightness, -1..1; shifts logit(L) by up to ±BRIGHTNESS_LOGIT. */
+  brightness: number;
+  /** Contrast, -1..1; scales logit(L) around the palette's mean by 3^contrast. */
+  contrast: number;
+  /** Saturation, -1..1; scales chroma: -1 is gray, 0 unchanged, 1 triples it (capped to the gamut). */
+  saturation: number;
+}
+
+export const BRIGHTNESS_LOGIT = 1.5;
+const CONTRAST_BASE = 3;
+
+export const NO_GRADE: Grade = { hue: 0, brightness: 0, contrast: 0, saturation: 0 };
+export const isNoGrade = (g: Grade) => g.hue === 0 && g.brightness === 0 && g.contrast === 0 && g.saturation === 0;
+
+/**
+ * Grade the palette: contrast stretches each color's logit(L) around the
+ * palette's mean (the order never changes), brightness then shifts all of
+ * them, saturation scales chroma (capped to the gamut), the hue turns.
+ */
+export function gradePalette(colors: readonly Oklch[], g: Grade): Oklch[] {
+  if (colors.length === 0) return [];
+  const pivot = colors.reduce((sum, c) => sum + logit(c[0]), 0) / colors.length;
+  const k = CONTRAST_BASE ** g.contrast;
+  const chroma = g.saturation < 0 ? 1 + g.saturation : 1 + 2 * g.saturation;
+  return colors.map((c) => {
+    const lightness = (k - 1) * (logit(c[0]) - pivot) + g.brightness * BRIGHTNESS_LOGIT;
+    return applyShift(c, { hue: g.hue, lightness, chroma }, 0);
+  });
+}
+
 /**
  * Color `index` is being changed to `next`: return the whole palette moved by
  * the same shift. `next` itself is kept exactly as given. With `oneHue`

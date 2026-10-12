@@ -537,3 +537,10 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Panel:** the custom width and height boxes show only when the size is "custom" (choosing it starts from the size shown). Adding or removing a favourite is an undo step: one history covers the design and the favourites list.
 - **Shuffle nudge:** until a first visitor has shuffled once, the shuffle button's fill pulses (a color change, so it stays with reduced motion on). The flag is stored in the browser; `?default` and the collapsed panel never pulse.
 - **Open:** the bar is about 1200px wide and does not wrap, so narrow windows overflow (deferred, to be settled with M15); the per-color hue, lightness and intensity controls (M14); whether the first-time experience needs an easy mode.
+
+## D74. Global brightness, contrast and saturation replace the per-color sliders
+
+- **Decision (2026-10-11):** the selected color's lightness, intensity and hue sliders are gone. The picker and hex field edit a single color; the whole palette is graded by **brightness**, **contrast** and **saturation** sliders next to base hue, behind the colors' "+ more" (saturation was added a little later the same day).
+- **Model:** they join base hue as adjustments over the original colors (D27): `grade(original)` with a hue turn, brightness and contrast, one reset, a "~ hue … · brightness … · contrast …" status, and a hand edit bakes it in. Not saved in the design or share links, like base hue.
+- **Math (`gradePalette`, `src/color/linked.ts`):** contrast scales logit(L) around the palette's mean by 3^contrast (±1 gives a third to triple), so the lightness order never changes; brightness shifts logit(L) by up to ±1.5; saturation scales chroma (-1 gray, +1 triples), capped to the gamut, near-neutral anchors untouched.
+- **Hue:** base hue already turns the palette, so no separate hue slider.
