@@ -436,6 +436,8 @@ export class EditorState {
     this.imageStatus = 'reading image…';
     try {
       this.applyImagePalette(await paletteFromImage(file));
+      // The pins window opens with the import, so the picked colors can be adjusted right away.
+      this.pinning = this.canPin;
       this.imageStatus = '';
     } catch {
       this.imageStatus = "can't read that image";
@@ -461,7 +463,6 @@ export class EditorState {
       });
       this.selectedPoint = 0;
     } else if (this.kind === 'grid') {
-      const nodeSpots: ImageSpot[] = [];
       // Each node takes the image color that sits nearest to it on screen.
       for (const node of this.grid.nodes) {
         const [x, y] = this.toScreen(node.x, node.y);
@@ -470,9 +471,9 @@ export class EditorState {
           if (Math.hypot(g.x - x, g.y - y) < Math.hypot(geo[best].x - x, geo[best].y - y)) best = i;
         });
         node.color = [...colors[best]];
-        nodeSpots.push({ u: palette[best].x, v: palette[best].y });
       }
-      this.spots = { ...this.spots, nodes: nodeSpots };
+      // Nodes share the picked colors, so their pins are spread by color match instead of stacked on one peak.
+      this.spots = { ...this.spots, nodes: [] };
     } else {
       const shape = prepareRampShape(
         {
@@ -598,9 +599,20 @@ export class EditorState {
     this.palette.adopt(null);
   }
 
-  /** A new color at image position (u, v), as in the colors list; its index, or null when full, a grid, or with no image. */
+  /**
+   * A click on the bare image at (u, v): a new color there, as in the colors
+   * list, or when the pattern can't grow (a net, or a pattern at its limit) the
+   * selected color replaced by the one found there. The index of the pin that
+   * took it, or null with no image.
+   */
   addPin(u: number, v: number): number | null {
-    if (!this.source || !this.canAddColor) return null;
+    if (!this.source) return null;
+    if (!this.canAddColor) {
+      const i = this.selectedIndex;
+      if (i < 0) return null;
+      this.movePin(i, u, v);
+      return i;
+    }
     this.addColor();
     // The new point or stop is the last one, and addColor selected it.
     const i = this.colorItems.length - 1;

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { oklchToHex } from '../color/hex';
+  import { MAX_GRID, MIN_GRID } from '../design/design';
   import type { EditorState } from './editor.svelte';
   import { isFormControl } from './keys';
 
@@ -46,11 +47,19 @@
 
   /** On a pin: pick it up. On the bare image: put a new pin there and carry on dragging it. */
   function onPicturePointerDown(e: PointerEvent) {
-    if (e.button !== 0) return;
+    // Ctrl+click is a right-click on a Mac: it removes, it must not also add.
+    if (e.button !== 0 || e.ctrlKey) return;
     const hit = (e.target as HTMLElement).closest<HTMLElement>('[data-pin]');
     if (hit) return startDrag(e, Number(hit.dataset.pin));
     const i = editor.addPin(...imageAt(e));
     if (i !== null) startDrag(e, i);
+  }
+
+  /** Right-click on a pin removes it. The browser's own menu has nothing to offer over the picture. */
+  function onPictureContextMenu(e: MouseEvent) {
+    e.preventDefault();
+    const hit = (e.target as HTMLElement).closest<HTMLElement>('[data-pin]');
+    if (hit) editor.removePin(Number(hit.dataset.pin));
   }
 
   function onPicturePointerMove(e: PointerEvent) {
@@ -81,15 +90,8 @@
   }
 
   function onWindowKeyDown(e: KeyboardEvent) {
-    if (e.metaKey || e.ctrlKey || e.altKey || isFormControl(e.target)) return;
-    if (e.key === 'Escape') {
-      editor.pinning = false;
-    } else if ((e.key === 'Delete' || e.key === 'Backspace') && (editor.kind !== 'mesh' || !editor.showHandles)) {
-      // With the handles showing, the mesh overlay deletes the selected point.
-      editor.removePin(editor.selectedIndex);
-    } else {
-      return;
-    }
+    if (e.key !== 'Escape' || e.metaKey || e.ctrlKey || e.altKey || isFormControl(e.target)) return;
+    editor.pinning = false;
     e.preventDefault();
   }
 </script>
@@ -114,6 +116,21 @@
     <span>pins</span>
     <button aria-label="Done picking" title="Close (Esc)" onclick={() => (editor.pinning = false)}>×</button>
   </div>
+  {#if editor.kind === 'grid'}
+    <!-- A net has a fixed grid of nodes, so colors are added by growing it. -->
+    <div class="net" role="group" aria-label="Net size">
+      {#each [['rows', editor.grid.rows], ['columns', editor.grid.cols]] as const as [name, count] (name)}
+        {@const setSize = (n: number) =>
+          name === 'rows' ? editor.setGridSize(n, editor.grid.cols) : editor.setGridSize(editor.grid.rows, n)}
+        <span class="stepper">
+          {name}
+          <button aria-label="Fewer {name}" disabled={count <= MIN_GRID} onclick={() => setSize(count - 1)}>−</button>
+          <b>{count}</b>
+          <button aria-label="More {name}" disabled={count >= MAX_GRID} onclick={() => setSize(count + 1)}>+</button>
+        </span>
+      {/each}
+    </div>
+  {/if}
   {#if source}
     <div
       class="picture"
@@ -124,6 +141,7 @@
       style:aspect-ratio={source.aspect}
       style:--max-width="min(360px, calc(50vh * {source.aspect}))"
       onpointerdown={onPicturePointerDown}
+      oncontextmenu={onPictureContextMenu}
       onpointermove={onPicturePointerMove}
       onpointerup={endDrag}
       onpointercancel={endDrag}
@@ -149,7 +167,7 @@
           tabindex="-1"
           aria-label="Pin {i + 1}"
           aria-pressed={i === editor.selectedIndex}
-          title="Drag to pick another color"
+          title="Drag to pick another color · right-click to remove"
           style:left={pct(pin.u)}
           style:top={pct(pin.v)}
           style:--color={oklchToHex(pin.color)}
@@ -158,9 +176,13 @@
     </div>
   {/if}
   <p class="hint">
-    drag a pin to pick a color{editor.canAddColor ? ' · click the image to add one' : ''}{editor.canRemoveColor
-      ? ' · Delete removes'
-      : ''}{editor.kind === 'mesh' ? '' : ' · where a pin sits changes nothing in the pattern'}
+    drag a pin to pick a color{editor.canAddColor
+      ? ' · click the image to add one'
+      : ' · click the image to replace the selected color'}{editor.canRemoveColor
+      ? ' · right-click a pin to remove it'
+      : ''}{editor.kind === 'grid' ? ' · add colors with more rows or columns' : ''}{editor.kind === 'mesh'
+      ? ''
+      : ' · where a pin sits changes nothing in the pattern'}
   </p>
 </div>
 
@@ -206,6 +228,35 @@
     border: 0;
     padding: 0 2px;
     cursor: pointer;
+  }
+  .net {
+    display: flex;
+    gap: 14px;
+    padding: 0 2px;
+  }
+  .stepper {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .stepper b {
+    min-width: 1ch;
+    text-align: center;
+    font-weight: normal;
+    color: #e6e3dc;
+  }
+  .stepper button {
+    font: inherit;
+    line-height: 1;
+    color: #e6e3dc;
+    background: none;
+    border: 1px solid #494842;
+    padding: 0 5px;
+    cursor: pointer;
+  }
+  .stepper button:disabled {
+    color: #6b6963;
+    cursor: default;
   }
   .picture {
     position: relative;
