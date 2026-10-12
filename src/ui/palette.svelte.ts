@@ -1,5 +1,13 @@
 import type { HarmonyRule, PaletteInfo, PaletteMood, PaletteOptions, ValueKey } from '../color/harmony';
-import { relinkPalette, remixShift, shiftPalette } from '../color/linked';
+import {
+  gradePalette,
+  isNoGrade,
+  NO_GRADE,
+  relinkPalette,
+  remixShift,
+  shiftPalette,
+  type Grade,
+} from '../color/linked';
 import type { Oklch } from '../color/types';
 import { createRng, randomSeed } from '../design/random';
 import { normalizeDegrees } from '../math';
@@ -18,14 +26,14 @@ export interface PaletteHost {
 }
 
 /**
- * Non-destructive adjustment (D27): the colors on screen are `from` turned
- * by `hue` degrees. `out` is what was last
+ * Non-destructive adjustment (D27): the colors on screen are `from` graded
+ * by `grade` (hue turn, brightness, contrast, saturation). `out` is what was last
  * rendered; once the colors differ from it (a direct edit), the adjustment no
  * longer applies and the edited colors are the new originals.
  */
 interface Adjustment {
   from: Oklch[];
-  hue: number;
+  grade: Grade;
   out: Oklch[];
 }
 
@@ -47,7 +55,7 @@ export interface PaletteSnapshot {
 /**
  * The palette side of the editor: how new palettes are steered (rule, mood,
  * key, base hue), how existing colors are edited (linked, remix, order), and
- * the base hue adjustment. State is kept per pattern kind.
+ * the adjustments (base hue, brightness, contrast, saturation). State is kept per pattern kind.
  */
 export class PaletteEditor {
   /** Keep the current palette's rule, mood and key for ⟳ and shuffle; off = all random. */
@@ -182,7 +190,7 @@ export class PaletteEditor {
     this.host.colorItems().forEach((x, k) => (x.color = colors[k]));
   }
 
-  // ---- Adjustment: base hue ---------------------------------------------------
+  // ---- Adjustment: base hue, brightness, contrast ---------------------------
 
   /** The active pattern's adjustment, if its colors are still what it rendered. */
   private get liveAdjustment(): Adjustment | null {
@@ -190,14 +198,19 @@ export class PaletteEditor {
     return a && samePalette(a.out, this.colors) ? a : null;
   }
 
-  /** Colors before the base hue turn; null when nothing is adjusted. */
+  /** Colors before the adjustments; null when nothing is adjusted. */
   get originalColors(): Oklch[] | null {
     return this.liveAdjustment?.from ?? null;
   }
 
+  /** The current adjustments. */
+  get grade(): Grade {
+    return this.liveAdjustment?.grade ?? NO_GRADE;
+  }
+
   /** Degrees the palette is turned by base hue moves. */
   get hueOffset(): number {
-    return this.liveAdjustment?.hue ?? 0;
+    return this.grade.hue;
   }
 
   /** Base hue on (at the given hue; nothing turns) or off (the turn is undone). */
@@ -216,19 +229,35 @@ export class PaletteEditor {
     this.baseHue = h;
   }
 
+  /** Brighten or darken the whole palette, -1..1. */
+  setBrightness(v: number): void {
+    this.adjust({ brightness: v });
+  }
+
+  /** Spread the palette's lightness apart (or squeeze it together), -1..1. */
+  setContrast(v: number): void {
+    this.adjust({ contrast: v });
+  }
+
+  /** Mute (toward gray) or intensify the whole palette, -1..1. */
+  setSaturation(v: number): void {
+    this.adjust({ saturation: v });
+  }
+
   /** Back to the original colors; the base hue goes back with them. */
   resetAdjustments(): void {
     if (this.baseHue !== null) this.baseHue = normalizeDegrees(this.baseHue - this.hueOffset);
-    this.adjust({ hue: 0 });
+    this.adjust(NO_GRADE);
   }
 
-  /** Change the turn and render it over the original colors. */
-  private adjust({ hue }: { hue: number }): void {
-    const base = this.liveAdjustment ?? { from: this.colors, hue: 0 };
-    this.setAll(hue === 0 ? base.from : shiftPalette(base.from, { hue, lightness: 0, chroma: 1 }));
+  /** Change part of the grade and render it over the original colors. */
+  private adjust(change: Partial<Grade>): void {
+    const base = this.liveAdjustment ?? { from: this.colors, grade: NO_GRADE };
+    const grade = { ...base.grade, ...change };
+    this.setAll(isNoGrade(grade) ? base.from : gradePalette(base.from, grade));
     this.adjustments = {
       ...this.adjustments,
-      [this.host.kind()]: hue === 0 ? null : { from: base.from, hue, out: this.colors },
+      [this.host.kind()]: isNoGrade(grade) ? null : { from: base.from, grade, out: this.colors },
     };
   }
 }

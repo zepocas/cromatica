@@ -67,13 +67,18 @@
     if (isPlanes) return `color ${order.indexOf(i) + 1}`;
     return `${Math.round(editor.ramp.stops[i].position * 100)}%`;
   }
-  /** Colors before the base hue turn; null when nothing is adjusted. */
+  /** Colors before the adjustments; null when nothing is adjusted. */
   const original = $derived(palette.originalColors);
   const adjustedSummary = $derived.by(() => {
     const parts: string[] = [];
     const turn = Math.round(shortestTurn(0, palette.hueOffset));
     if (turn !== 0) parts.push(`hue ${turn > 0 ? '+' : ''}${turn}°`);
-    return parts.join(' · ');
+    const { brightness, contrast, saturation } = palette.grade;
+    const pct = (v: number) => `${v > 0 ? '+' : ''}${Math.round(v * 100)}`;
+    if (brightness !== 0) parts.push(`bri ${pct(brightness)}`);
+    if (contrast !== 0) parts.push(`con ${pct(contrast)}`);
+    if (saturation !== 0) parts.push(`sat ${pct(saturation)}`);
+    return parts.join(' ');
   });
 
   let fileInput: HTMLInputElement;
@@ -157,9 +162,10 @@
     />
     <span class="spacer"></span>
     <button
+      class="btn"
       aria-label="Remix colors"
       title="Shift the whole palette at random, keeping how the colors relate"
-      onclick={() => palette.remix()}>[ remix ]</button
+      onclick={() => palette.remix()}>remix</button
     >
   </div>
 
@@ -203,20 +209,27 @@
   </ul>
 
   {#if original}
-    <div class="row" role="status" title="Adjusted from the original colors">
+    <div
+      class="row summary"
+      role="status"
+      title="Adjusted from the original colors (hue, brightness, contrast, saturation)"
+    >
       <em class="adjusted">~ {adjustedSummary}</em>
       <button
+        class="btn"
         aria-label="Reset adjustments"
         title="Back to the original colors"
-        onclick={() => palette.resetAdjustments()}>[ reset ]</button
+        onclick={() => palette.resetAdjustments()}>reset</button
       >
     </div>
   {/if}
 
   {#snippet more()}
     <PaletteSettings {editor} selectedHue={colors[selected][2]} />
-    <hr />
-    <SelectedColorSettings bind:editor {selected} />
+    {#if isMesh}
+      <hr />
+      <SelectedColorSettings bind:editor {selected} />
+    {/if}
   {/snippet}
 </Section>
 
@@ -242,9 +255,15 @@
   }
   .adjusted {
     flex: 1;
+    min-width: 0;
     font-style: normal;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     color: var(--ink);
+  }
+  .summary button {
+    flex: none;
   }
   hr {
     width: 100%;

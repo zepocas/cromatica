@@ -397,10 +397,11 @@
       >
       <span class="spacer"></span>
       <button
+        class="btn"
         aria-label="Reset"
         title="Undo rotate, zoom and flips"
         disabled={!editor.isTransformed}
-        onclick={() => editor.resetTransform()}>[ reset ]</button
+        onclick={() => editor.resetTransform()}>reset</button
       >
     </div>
   {/snippet}

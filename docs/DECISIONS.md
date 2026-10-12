@@ -528,7 +528,24 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Checked:** Chrome's encoder output reopens through a drop (e2e), and macOS `sips` still decodes it.
 - **Not checked:** which services and editors keep the segment. Anything that re-encodes strips it, as D45 expected.
 
-## D73. Pins on the image adjust the picked colors
+## D73. A bottom status bar for global and view settings; shuffle lock; bordered buttons
+
+- **Decision (2026-10-11):** the M14 trial is kept. A status bar sits under the preview, next to the docked panel (full width when the panel is collapsed) and hidden in full screen. It holds the settings that are about the whole app or the view, not the design: file format, the shuffle lock, recent shuffles, os context, the mesh points / grid nodes toggle, zoom and full screen. Design settings stay in the panel. Groups are divided by full-height rules, not characters.
+- **Tried and dropped:** the output size (it is in the panel already) and an autosave readout ("saving… / saved"): it flickered on every edit and the user read it as images being saved.
+- **Shuffle lock:** the keep checkboxes are padlocks (shut: shuffling leaves that part alone) under the label "shuffle lock". Locked parts are not dimmed, because they can still be edited by hand. A padlock on each section header is a possible next step.
+- **Buttons:** one bordered style for actions (shuffle filled, more like this outlined, download, reset, remix, got it, close, again); brackets stay only on the toggles and choosers, which show state. Key hints are in the tooltips, not on the labels (reverses the labeled keys of D68). The format list is a dropdown in the bar, not a button.
+- **Panel:** the custom width and height boxes show only when the size is "custom" (choosing it starts from the size shown). Adding or removing a favourite is an undo step: one history covers the design and the favourites list.
+- **Shuffle nudge:** until a first visitor has shuffled once, the shuffle button's fill pulses (a color change, so it stays with reduced motion on). The flag is stored in the browser; `?default` and the collapsed panel never pulse.
+- **Open:** the bar is about 1200px wide and does not wrap, so narrow windows overflow (deferred, to be settled with M15); the per-color hue, lightness and intensity controls (M14); whether the first-time experience needs an easy mode.
+
+## D74. Global brightness, contrast and saturation replace the per-color sliders
+
+- **Decision (2026-10-11):** the selected color's lightness, intensity and hue sliders are gone. The picker and hex field edit a single color; the whole palette is graded by **brightness**, **contrast** and **saturation** sliders next to base hue, behind the colors' "+ more" (saturation was added a little later the same day).
+- **Model:** they join base hue as adjustments over the original colors (D27): `grade(original)` with a hue turn, brightness and contrast, one reset, a "~ hue … · brightness … · contrast …" status, and a hand edit bakes it in. Not saved in the design or share links, like base hue.
+- **Math (`gradePalette`, `src/color/linked.ts`):** contrast scales logit(L) around the palette's mean by 3^contrast (±1 gives a third to triple), so the lightness order never changes; brightness shifts logit(L) by up to ±1.5; saturation scales chroma (-1 gray, +1 triples), capped to the gamut, near-neutral anchors untouched.
+- **Hue:** base hue already turns the palette, so no separate hue slider.
+
+## D75. Pins on the image adjust the picked colors
 
 - **Decision (2026-10-11):** after a palette from image (D25), a ◉ button in the colors header opens a small window with the whole image and one pin per color of the active pattern. Dragging a pin gives its color the color found there; pressing on the bare image adds a color and carries on dragging it; Delete removes the selected one; × or Esc closes. The user asked for this to be closer to photogradient, with pins rather than sliders, in a window of its own rather than over the canvas, and on every pattern, not only the mesh.
 - **A window, not the canvas:** a first version covered the canvas with the image. The user wanted a pop-up instead, so the design stays visible and changes as pins move, and the canvas keeps its own handles. The window floats top right, can be dragged by its title, and is at most 360 px wide and half the viewport high.

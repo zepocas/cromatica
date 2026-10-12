@@ -53,6 +53,52 @@ describe('palette adjustments', () => {
     expect(e.palette.hueOffset).toBe(0);
   });
 
+  it('brightness and contrast grade the palette and undo exactly', () => {
+    const e = fresh();
+    const original = colorsOf(e);
+    const spread = (cs: Oklch[]) => Math.max(...cs.map((c) => c[0])) - Math.min(...cs.map((c) => c[0]));
+    e.palette.setContrast(0.6);
+    expect(spread(colorsOf(e))).toBeGreaterThan(spread(original));
+    e.palette.setContrast(-0.6);
+    expect(spread(colorsOf(e))).toBeLessThan(spread(original));
+    e.palette.setContrast(0);
+    e.palette.setBrightness(0.5);
+    const bright = colorsOf(e);
+    bright.forEach((c, i) => expect(c[0]).toBeGreaterThan(original[i][0]));
+    e.palette.setBrightness(-0.5);
+    colorsOf(e).forEach((c, i) => expect(c[0]).toBeLessThan(original[i][0]));
+    e.palette.resetAdjustments();
+    expect(colorsOf(e)).toEqual(original);
+    expect(e.palette.originalColors).toBeNull();
+  });
+
+  it('saturation scales chroma, gray at -1, and undoes exactly', () => {
+    const e = fresh();
+    const original = colorsOf(e);
+    const total = (cs: Oklch[]) => cs.reduce((sum, c) => sum + c[1], 0);
+    e.palette.setSaturation(0.5);
+    expect(total(colorsOf(e))).toBeGreaterThan(total(original));
+    e.palette.setSaturation(-0.5);
+    expect(total(colorsOf(e))).toBeLessThan(total(original));
+    e.palette.setSaturation(-1);
+    expect(Math.max(...colorsOf(e).map((c) => c[1]))).toBeLessThan(0.05);
+    e.palette.setSaturation(0);
+    expect(colorsOf(e)).toEqual(original);
+    expect(e.palette.originalColors).toBeNull();
+  });
+
+  it('brightness keeps the base hue turn, and contrast keeps the lightness order', () => {
+    const e = fresh();
+    const original = colorsOf(e);
+    e.palette.setBaseHueEnabled(true, 100);
+    e.palette.setBaseHue(160);
+    e.palette.setContrast(0.8);
+    expect(e.palette.hueOffset).toBe(60);
+    const order = (cs: Oklch[]) => cs.map((_, i) => i).sort((a, b) => cs[a][0] - cs[b][0]);
+    expect(order(colorsOf(e))).toEqual(order(original));
+    expect(e.palette.originalColors).toEqual(original);
+  });
+
   it('a direct edit bakes the adjustment in', () => {
     const e = fresh();
     e.palette.setBaseHueEnabled(true, 100);

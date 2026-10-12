@@ -79,7 +79,9 @@ test('a custom size letterboxes the preview and names the download', async ({ pa
   await openApp(page);
   const canvas = page.getByTestId('preview-canvas');
 
-  // Typing a size switches the preset to custom.
+  // The size boxes appear with the custom preset.
+  await expect(page.getByLabel('Width')).toHaveCount(0);
+  await choose(page.getByLabel('Size preset'), 'custom');
   await page.getByLabel('Width').fill('320');
   await page.getByLabel('Width').press('Tab');
   await page.getByLabel('Height').fill('200');
@@ -104,6 +106,7 @@ for (const format of ['png', 'jpeg'] as const) {
   test(`an exported ${format.toUpperCase()} dropped back reopens its design at its size`, async ({ page }) => {
     await openApp(page, { shuffled: true });
     await choose(page.getByLabel('Format'), format);
+    await choose(page.getByLabel('Size preset'), 'custom');
     await page.getByLabel('Width').fill('320');
     await page.getByLabel('Width').press('Tab');
     await page.getByLabel('Height').fill('200');
