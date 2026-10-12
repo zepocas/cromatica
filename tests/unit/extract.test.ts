@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { clusterImage, imageLayout, pickPalette, type ColorCluster } from '../../src/color/extract';
+import {
+  clusterImage,
+  frameToImage,
+  imageLayout,
+  imageToFrame,
+  nearestSample,
+  pickPalette,
+  sampleColor,
+  sampleGrid,
+  type ColorCluster,
+} from '../../src/color/extract';
+import { oklabDistance } from '../../src/color/gamut';
 import { hexToOklch } from '../../src/color/hex';
-import { oklchToOklab } from '../../src/color/oklab';
+import { oklabToOklch, oklchToOklab } from '../../src/color/oklab';
 import type { Oklab } from '../../src/color/types';
 import { createRng } from '../../src/design/random';
 
@@ -138,4 +149,99 @@ describe('imageLayout', () => {
   function mid(): Oklab {
     return [0.5, 0, 0];
   }
+});
+
+describe('image positions', () => {
+  const fit = (imageAspect: number, frameAspect: number) => ({ imageAspect, frameAspect });
+
+  it('maps the image onto the frame the way imageLayout lays it out, and back', () => {
+    for (const [imageAspect, frameAspect] of [
+      [2, 16 / 9],
+      [0.5, 16 / 9],
+      [16 / 9, 16 / 9],
+      [1, 9 / 16],
+    ]) {
+      for (const [u, v] of [
+        [0.5, 0.5],
+        [0.2, 0.8],
+        [1, 0],
+      ]) {
+        const [x, y] = imageToFrame(u, v, fit(imageAspect, frameAspect));
+        const [u2, v2] = frameToImage(x, y, fit(imageAspect, frameAspect));
+        expect(u2).toBeCloseTo(u, 9);
+        expect(v2).toBeCloseTo(v, 9);
+      }
+    }
+    const [peak] = imageLayout([{ color: [0.5, 0, 0], weight: 1, x: 0.25, y: 0.75 }], fit(2, 16 / 9));
+    const [x, y] = imageToFrame(0.25, 0.75, fit(2, 16 / 9));
+    expect([peak.x, peak.y]).toEqual([x, y]);
+  });
+
+  it('crops the long side: a wide image spans more than the frame, a tall one less', () => {
+    expect(imageToFrame(1, 0.5, fit(3, 16 / 9))[0]).toBeGreaterThan(16 / 9 / 2);
+    expect(imageToFrame(0.5, 0, fit(0.5, 16 / 9))[1]).toBeGreaterThan(0.5);
+  });
+
+  it('clamps a frame position outside the image to its edge', () => {
+    expect(frameToImage(10, -10, fit(2, 16 / 9))).toEqual([1, 1]);
+  });
+});
+
+describe('sampleColor', () => {
+  const split = (x: number): Px => (x < 20 ? [220, 40, 40] : [30, 60, 200]);
+
+  it('reads the color at a position, not the image average', () => {
+    const rgba = image(40, 20, (x) => split(x));
+    const left = sampleColor(rgba, 40, 20, 0.2, 0.5)!;
+    const right = sampleColor(rgba, 40, 20, 0.8, 0.5)!;
+    expect(oklabDistance(left, oklchToOklab(hexToOklch('#DC2828')))).toBeLessThan(0.01);
+    expect(oklabDistance(right, oklchToOklab(hexToOklch('#1E3CC8')))).toBeLessThan(0.01);
+  });
+
+  it('averages a small square, so a single odd pixel does not decide', () => {
+    const rgba = image(100, 100, (x, y) => (x === 50 && y === 50 ? [255, 255, 255] : [20, 20, 20]));
+    const dark = oklabToOklch(sampleColor(rgba, 100, 100, 0.5, 0.5)!);
+    expect(dark[0]).toBeLessThan(0.4);
+  });
+
+  it('is null over transparent pixels and clamps to the edges', () => {
+    const rgba = image(10, 10, () => [200, 100, 50, 0]);
+    expect(sampleColor(rgba, 10, 10, 0.5, 0.5)).toBeNull();
+    const solid = image(10, 10, () => [200, 100, 50]);
+    expect(sampleColor(solid, 10, 10, 1.5, -2)).not.toBeNull();
+  });
+});
+
+describe('finding a color in the image', () => {
+  const rgba = image(40, 20, (x) => (x < 20 ? [220, 40, 40] : [30, 60, 200]));
+  const red = oklchToOklab(hexToOklch('#DC2828'));
+  const blue = oklchToOklab(hexToOklch('#1E3CC8'));
+
+  it('samples a grid across the image and drops transparent spots', () => {
+    const grid = sampleGrid(rgba, 40, 20, 10);
+    expect(grid).toHaveLength(100);
+    expect(grid[0]).toMatchObject({ u: 0.05, v: 0.05 });
+    const holes = image(10, 10, (x) => (x < 5 ? [200, 100, 50, 0] : [200, 100, 50]));
+    // Spots well inside the transparent half are gone; one beside the edge still reads the opaque side.
+    const kept = sampleGrid(holes, 10, 10, 10);
+    expect(kept.every((p) => p.u > 0.35)).toBe(true);
+    expect(kept.some((p) => p.u > 0.9)).toBe(true);
+  });
+
+  it('finds where each color sits', () => {
+    const grid = sampleGrid(rgba, 40, 20, 10);
+    expect(nearestSample(grid, red)!.u).toBeLessThan(0.5);
+    expect(nearestSample(grid, blue)!.u).toBeGreaterThan(0.5);
+    expect(nearestSample([], red)).toBeNull();
+  });
+
+  it('keeps colors that match alike apart, and gives up the gap rather than a match', () => {
+    const grid = sampleGrid(rgba, 40, 20, 10);
+    const first = nearestSample(grid, red)!;
+    const second = nearestSample(grid, red, [first])!;
+    expect(Math.hypot(second.u - first.u, second.v - first.v)).toBeGreaterThanOrEqual(0.08);
+    expect(oklabDistance(second.color, red)).toBeLessThan(0.01);
+    const lone = [{ u: 0.5, v: 0.5, color: red }];
+    expect(nearestSample(lone, red, [{ u: 0.5, v: 0.5 }])).toBe(lone[0]);
+  });
 });

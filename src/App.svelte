@@ -8,6 +8,7 @@
   import { Favourites, type Favourite } from './ui/favourites.svelte';
   import { History } from './ui/history.svelte';
   import { isTypingTarget } from './ui/keys';
+  import ImagePins from './ui/ImagePins.svelte';
   import MeshOverlay from './ui/MeshOverlay.svelte';
   import MoreLikeThis from './ui/MoreLikeThis.svelte';
   import GridOverlay from './ui/GridOverlay.svelte';
@@ -61,6 +62,8 @@
   });
   /** The "more like this" grid covers the preview. */
   let exploring = $state(false);
+  /** Picking colors in the image window, beside the live design. */
+  const pinning = $derived(editor.pinning && editor.canPin && !exploring);
   /** The preview alone, in the browser's full screen; the panel, handles and overlays are hidden. */
   let fullscreen = $state(false);
   const canFullscreen = typeof document !== 'undefined' && document.fullscreenEnabled;
@@ -302,6 +305,9 @@
     onzoom={(f) => preview.zoomBy(f)}
     onfullscreen={canFullscreen ? enterFullscreen : undefined}
   />
+{/if}
+{#if pinning && !fullscreen}
+  <ImagePins {editor} />
 {/if}
 {#if shortcuts && !fullscreen}
   <Shortcuts onclose={() => (shortcuts = false)} />

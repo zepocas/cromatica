@@ -254,6 +254,130 @@ export interface ImageLayoutOptions {
   areaPower?: number;
 }
 
+/** How an image sits in the frame: covering it, centered (image and frame aspects as width / height). */
+function coverScale(imageAspect: number, frameAspect: number): number {
+  return Math.max(1, frameAspect / imageAspect);
+}
+
+/** An image position (x, y in [0, 1], y down) → the frame's composition units (height 1, origin at the center, +y up). */
+export function imageToFrame(
+  u: number,
+  v: number,
+  { imageAspect, frameAspect }: { imageAspect: number; frameAspect: number },
+): [number, number] {
+  const scale = coverScale(imageAspect, frameAspect);
+  return [(u - 0.5) * imageAspect * scale, (0.5 - v) * scale];
+}
+
+/** The inverse of imageToFrame, clamped to the image. */
+export function frameToImage(
+  x: number,
+  y: number,
+  { imageAspect, frameAspect }: { imageAspect: number; frameAspect: number },
+): [number, number] {
+  const scale = coverScale(imageAspect, frameAspect);
+  const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
+  return [clamp01(x / (imageAspect * scale) + 0.5), clamp01(0.5 - y / scale)];
+}
+
+/** The part of the image that lands in the frame (the rest is cropped), as fractions of the image. */
+export function visibleImage(fit: { imageAspect: number; frameAspect: number }): {
+  u0: number;
+  v0: number;
+  u1: number;
+  v1: number;
+} {
+  const [u0, v0] = frameToImage(-fit.frameAspect / 2, 0.5, fit);
+  const [u1, v1] = frameToImage(fit.frameAspect / 2, -0.5, fit);
+  return { u0, v0, u1, v1 };
+}
+
+/** Half-width of the sampled square, as a share of the image's long side. */
+const SAMPLE_RADIUS = 0.012;
+
+/**
+ * The color around an image position (x, y in [0, 1], y down): the mean of a
+ * small square in Oklab, so one noisy pixel doesn't decide a pin's color.
+ * RGBA8, sRGB-encoded, as clusterImage takes it. Null where the area is transparent.
+ */
+export function sampleColor(
+  rgba: ArrayLike<number>,
+  width: number,
+  height: number,
+  u: number,
+  v: number,
+): Oklab | null {
+  const r = Math.max(1, Math.round(SAMPLE_RADIUS * Math.max(width, height)));
+  const cx = Math.min(width - 1, Math.max(0, Math.floor(u * width)));
+  const cy = Math.min(height - 1, Math.max(0, Math.floor(v * height)));
+  let l = 0;
+  let a = 0;
+  let b = 0;
+  let n = 0;
+  for (let y = Math.max(0, cy - r); y <= Math.min(height - 1, cy + r); y++) {
+    for (let x = Math.max(0, cx - r); x <= Math.min(width - 1, cx + r); x++) {
+      const i = (y * width + x) * 4;
+      if (rgba[i + 3] < 128) continue;
+      const c = linearSrgbToOklab([SRGB_TO_LINEAR[rgba[i]], SRGB_TO_LINEAR[rgba[i + 1]], SRGB_TO_LINEAR[rgba[i + 2]]]);
+      l += c[0];
+      a += c[1];
+      b += c[2];
+      n++;
+    }
+  }
+  return n === 0 ? null : [l / n, a / n, b / n];
+}
+
+export interface SamplePoint {
+  /** Image position, x and y in [0, 1], y down. */
+  u: number;
+  v: number;
+  color: Oklab;
+}
+
+/** A coarse grid of colors across the image (`n` × `n`, transparent spots left out), to look up where a color is found. */
+export function sampleGrid(rgba: ArrayLike<number>, width: number, height: number, n = 40): SamplePoint[] {
+  const points: SamplePoint[] = [];
+  for (let gy = 0; gy < n; gy++) {
+    for (let gx = 0; gx < n; gx++) {
+      const u = (gx + 0.5) / n;
+      const v = (gy + 0.5) / n;
+      const color = sampleColor(rgba, width, height, u, v);
+      if (color) points.push({ u, v, color });
+    }
+  }
+  return points;
+}
+
+/**
+ * The sample whose color is closest to `color`, skipping those within `gap` of
+ * a spot in `avoid` (image fractions), so colors that match alike don't pile
+ * up. Null when `points` is empty.
+ */
+export function nearestSample(
+  points: readonly SamplePoint[],
+  color: Oklab,
+  avoid: readonly { u: number; v: number }[] = [],
+  gap = 0.08,
+): SamplePoint | null {
+  let best: SamplePoint | null = null;
+  let bestDist = Infinity;
+  let bestFree: SamplePoint | null = null;
+  let bestFreeDist = Infinity;
+  for (const p of points) {
+    const d = oklabDistance(p.color, color);
+    if (d < bestDist) {
+      bestDist = d;
+      best = p;
+    }
+    if (d < bestFreeDist && avoid.every((a) => Math.hypot(a.u - p.u, a.v - p.v) >= gap)) {
+      bestFreeDist = d;
+      bestFree = p;
+    }
+  }
+  return bestFree ?? best;
+}
+
 /**
  * Mesh geometry that puts each color at its peak in the image. The image
  * covers the frame (cropped, centered), in composition units: frame height 1,
@@ -265,11 +389,9 @@ export function imageLayout(
   { imageAspect, frameAspect, areaPower = 0.5 }: ImageLayoutOptions,
 ): { x: number; y: number; radius: number }[] {
   const n = palette.length;
-  const scale = Math.max(1, frameAspect / imageAspect);
   const base = RADIUS_PER_SPACING * Math.sqrt(frameAspect / n);
-  return palette.map((c) => ({
-    x: (c.x - 0.5) * imageAspect * scale,
-    y: (0.5 - c.y) * scale,
-    radius: base * Math.min(3, Math.max(0.5, Math.pow(c.weight * n, areaPower))),
-  }));
+  return palette.map((c) => {
+    const [x, y] = imageToFrame(c.x, c.y, { imageAspect, frameAspect });
+    return { x, y, radius: base * Math.min(3, Math.max(0.5, Math.pow(c.weight * n, areaPower))) };
+  });
 }
