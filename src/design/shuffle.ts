@@ -84,7 +84,7 @@ export const WARP_SHUFFLE_TABLE: Record<WarpShape, { weight: number; amount: Ran
   voronoi: { weight: 0.8, amount: [0.08, 0.85], size: [0, 0.4] },
   curl: { weight: 1.2, amount: [0.08, 0.85], size: [0, 0.4] },
   ridged: { weight: 0.7, amount: [0.08, 0.8], size: [0, 0.4] },
-  marble: { weight: 0.6, amount: [0.18, 0.9], size: [0, 0.4] },
+  marble: { weight: 0.6, amount: [0.18, 0.9], size: [0, 0.2] },
   bristle: { weight: 0.4, amount: [0.18, 0.9], size: [0, 0.4] },
 };
 
@@ -130,7 +130,7 @@ export const RAMP_SHUFFLE = {
   first: [0, 0.12] as Range,
   last: [0.88, 1] as Range,
   /** Noise and cells: feature size range. */
-  scale: [0.18, 0.75] as Range,
+  scale: [0.28, 0.85] as Range,
   /** The range before the tuning, for the surprise slot (D76). */
   scaleFlat: [0.1, 0.6] as Range,
 };
@@ -140,7 +140,7 @@ export const PLANES_SHUFFLE = {
   count: [0.12, 0.5] as Range,
   /** Zoom-in for planes: how often a shuffle draws one, and how far (fewer, larger planes). */
   zoomChance: 0.85,
-  zoom: [1.5, 2.4] as Range,
+  zoom: [1.7, 2.6] as Range,
   /** The range before the tuning, for the surprise slot (D76). */
   countFlat: [0.15, 0.65] as Range,
 };
@@ -216,6 +216,11 @@ const SURPRISE_STREAM = 0x165667b1;
 /** How many shuffles ignore the tuned tables and draw from the old, even ones (D76). */
 export const SURPRISE_CHANCE = 1 / 6;
 
+/** Whether a seed lands in the surprise slot. */
+export function isSurpriseSeed(seed: number): boolean {
+  return createRng(((seed >>> 0) ^ SURPRISE_STREAM) >>> 0).next() < SURPRISE_CHANCE;
+}
+
 /** Shuffled mesh radii stay in this range (composition units). */
 const RADIUS_LIMITS: Range = [0.05, 2];
 
@@ -225,7 +230,7 @@ const WARP_WEIGHTS = Object.fromEntries(WARP_SHAPES.map((k) => [k, WARP_SHUFFLE_
 >;
 
 /**
- * Per-kind profiles (D76): how a kind changes what shuffle draws. For now only planes, which look worse with hard
+ * Per-kind profiles (D76, D77): how a kind changes what shuffle draws. Planes look worse with hard
  * cuts and corners: `warp` scales shapes' weights and `finish` the finishes' chances (missing = 1). The surprise slot
  * skips profiles.
  */
@@ -235,6 +240,16 @@ export const KIND_PROFILE: Partial<
     { warp: Partial<Record<WarpShape, number>>; finish?: Partial<Record<FinishChance, number>> }
   >
 > = {
+  // 60 stratified mesh tiles (D77): grain and vignette +0.74 each, adding up (neither 2.73, both 4.20); voronoi 2.43.
+  mesh: { finish: { print: 2, vignette: 1.45 }, warp: { voronoi: 0.5 } },
+  // Grain helped everywhere but aurora lighting, vignette and (grid) the vignette hurt; hard-cut shapes read busy.
+  grid: { finish: { print: 1.5, vignette: 0.4 }, warp: { ridged: 0.6, marble: 0.6 } },
+  linear: { finish: { print: 2, bands: 1.5, relief: 0.7 }, warp: {} },
+  radial: { finish: { print: 2, relief: 0.5 }, warp: { ridged: 0.5, marble: 0.5, voronoi: 0.7 } },
+  aurora: {
+    finish: { print: 1.5, relief: 0.4, vignette: 0.6 },
+    warp: { marble: 0.5, ridged: 0.6, voronoi: 0.5, worley: 0.7 },
+  },
   planes: {
     // Pooled over 127 planes tiles: grain 3.5 with vs 2.57 without, lighting 2.35 vs 2.98, vignette 3.0 vs 2.72.
     finish: { print: 2, relief: 0.4, vignette: 1.25 },
@@ -254,7 +269,7 @@ export const KIND_PROFILE: Partial<
 };
 
 /** Finishes whose chance a kind profile can scale. */
-type FinishChance = 'print' | 'relief' | 'vignette';
+type FinishChance = 'print' | 'relief' | 'vignette' | 'bands';
 
 function kindWarpWeights(kind: BasePattern['kind']): Record<WarpShape, number> {
   const scale = KIND_PROFILE[kind]?.warp;
@@ -277,7 +292,7 @@ const copyColor = (c: Oklch): Oklch => [c[0], c[1], c[2]];
 export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 / 9): ShuffleResult {
   const seed = opts.seed >>> 0;
   const colorRng = createRng((seed ^ COLOR_STREAM) >>> 0);
-  const surprise = createRng((seed ^ SURPRISE_STREAM) >>> 0).next() < SURPRISE_CHANCE;
+  const surprise = isSurpriseSeed(seed);
   const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 16 / 9;
   const pickKind = opts.layout && opts.style;
   const pickFinish = opts.finish ?? pickKind;
@@ -604,7 +619,7 @@ function shuffleFinish(rng: Rng, flat: boolean, surprise: boolean, kind?: BasePa
     rng.next() < Math.min(0.9, f.chance * mult) ? round4(rng.range(...f.range)) : 0;
   const vignette = maybe(surprise ? s.vignetteFlat : s.vignette, scale.vignette);
   const print = maybe(surprise ? s.printFlat : s.print, scale.print);
-  const bands = maybe(surprise ? s.bandsFlat : s.bands);
+  const bands = maybe(surprise ? s.bandsFlat : s.bands, scale.bands);
   const bandEdge = round4(rng.next());
   // Drawn after the others, so shuffles from before relief and halftone existed come out the same.
   const relief = maybe(surprise ? { ...s.relief, ...s.reliefFlat } : s.relief, scale.relief);
