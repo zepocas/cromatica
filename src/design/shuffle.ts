@@ -60,6 +60,8 @@ interface ShuffleContext {
   layoutRng: Rng;
   /** A palette for n colors, from the color stream and the palette options. */
   makePalette: (n: number) => GeneratedPalette;
+  /** The surprise slot (D76): this shuffle draws from the pre-tuning tables. */
+  surprise: boolean;
 }
 
 type Range = [min: number, max: number];
@@ -71,37 +73,54 @@ type Range = [min: number, max: number];
 export const WARP_SHUFFLE_TABLE: Record<WarpShape, { weight: number; amount: Range; size: Range }> = {
   none: { weight: 0.65, amount: [0, 0], size: [0.5, 0.5] },
   domain: { weight: 1.2, amount: [0.08, 0.85], size: [0, 0.4] },
-  fbm: { weight: 1, amount: [0.08, 0.8], size: [0, 0.4] },
+  fbm: { weight: 0.8, amount: [0.08, 0.8], size: [0, 0.4] },
   simplex: { weight: 1, amount: [0.08, 0.85], size: [0, 0.4] },
-  waves: { weight: 1, amount: [0.08, 0.85], size: [0, 0.4] },
+  waves: { weight: 1.2, amount: [0.08, 0.85], size: [0, 0.4] },
   rows: { weight: 0.8, amount: [0.13, 0.9], size: [0, 0.4] },
   columns: { weight: 0.8, amount: [0.13, 0.9], size: [0, 0.4] },
   circular: { weight: 0.8, amount: [0.08, 0.75], size: [0, 0.4] },
   oval: { weight: 0.8, amount: [0.08, 0.85], size: [0, 0.4] },
   worley: { weight: 0.8, amount: [0.08, 0.75], size: [0, 0.4] },
   voronoi: { weight: 0.8, amount: [0.08, 0.85], size: [0, 0.4] },
-  curl: { weight: 1, amount: [0.08, 0.85], size: [0, 0.4] },
-  ridged: { weight: 1, amount: [0.08, 0.8], size: [0, 0.4] },
-  marble: { weight: 0.8, amount: [0.18, 0.9], size: [0, 0.4] },
+  curl: { weight: 1.2, amount: [0.08, 0.85], size: [0, 0.4] },
+  ridged: { weight: 0.7, amount: [0.08, 0.8], size: [0, 0.4] },
+  marble: { weight: 0.6, amount: [0.18, 0.9], size: [0, 0.4] },
   bristle: { weight: 0.4, amount: [0.18, 0.9], size: [0, 0.4] },
 };
 
+export type MeshComposition = 'scatter' | 'clusters' | 'line' | 'arc' | 'side';
+
 export const MESH_SHUFFLE = {
-  /** Sharpness range (0 = haze, 1 = blobby). */
-  sharpness: [0.1, 0.8] as Range,
-  /** Radius as a fraction of the mean point spacing sqrt(frameArea / n). */
-  radius: [0.4, 1.05] as Range,
-  /** Probability that one point is made dominant, and its radius factor. */
-  dominant: 0.4,
-  dominantScale: 1.6,
-  /** Points are sampled in the frame scaled by this factor, so a few sit just outside. */
-  overscan: 1.15,
+  /** Sharpness range (0 = haze, 1 = blobby); haze is rare (D76). */
+  sharpness: [0.45, 0.9] as Range,
+  /** The range before the tuning, for the surprise slot. */
+  sharpnessFlat: [0.1, 0.8] as Range,
+  /** Radius as a fraction of the mean point spacing sqrt(frameArea / n): tighter blobs read less soft (D76). */
+  radius: [0.3, 0.85] as Range,
+  radiusFlat: [0.4, 1.05] as Range,
+  /** Probability that one point is made dominant, and its radius factor: a big field with accents, not even blobs (D76). */
+  dominant: 0.5,
+  dominantScale: 1.7,
+  dominantFlat: 0.4,
+  dominantScaleFlat: 1.6,
+  /** Points are sampled in the frame scaled by this factor, so a few sit just outside (more so with the tuning, D76). */
+  overscan: 1.3,
+  overscanFlat: 1.15,
   /** Probability of changing the point count by ±1 (only when colors are shuffled too). */
   countChange: 0.35,
-  /** Best-candidate samples per point (Mitchell), drawn per shuffle: fewer = looser, less even layouts. */
-  candidates: [3, 10] as Range,
+  /** Best-candidate samples per point (Mitchell), drawn per shuffle: fewer = looser, less even layouts (D76: looser). */
+  candidates: [3, 6] as Range,
+  candidatesFlat: [3, 10] as Range,
   /** How close to (or past) the frame edge a point may sit before it is penalised, in spacings. */
   edgeSlack: 0.55,
+  /** No two points closer than this many spacings, even in a loose layout. */
+  minGap: 0.3,
+  /**
+   * Compositions a layout shuffle draws from (D76): even best-candidate scatter was the only one, so every mesh was
+   * the same evenly sprinkled field. The rest gather points into clusters, along a line or arc, or into one side.
+   */
+  compositionsFlat: { scatter: 1, clusters: 0, line: 0, arc: 0, side: 0 } as Record<MeshComposition, number>,
+  compositions: { scatter: 0.2, clusters: 0.25, line: 0.15, arc: 0.15, side: 0.25 } as Record<MeshComposition, number>,
 };
 
 export const RAMP_SHUFFLE = {
@@ -111,12 +130,19 @@ export const RAMP_SHUFFLE = {
   first: [0, 0.12] as Range,
   last: [0.88, 1] as Range,
   /** Noise and cells: feature size range. */
-  scale: [0.1, 0.6] as Range,
+  scale: [0.18, 0.75] as Range,
+  /** The range before the tuning, for the surprise slot (D76). */
+  scaleFlat: [0.1, 0.6] as Range,
 };
 
 export const PLANES_SHUFFLE = {
   /** Count range of a shuffled layout. Roughness and blend are kept: they are deliberate choices. */
-  count: [0.15, 0.65] as Range,
+  count: [0.12, 0.5] as Range,
+  /** Zoom-in for planes: how often a shuffle draws one, and how far (fewer, larger planes). */
+  zoomChance: 0.85,
+  zoom: [1.5, 2.4] as Range,
+  /** The range before the tuning, for the surprise slot (D76). */
+  countFlat: [0.15, 0.65] as Range,
 };
 
 export const GRID_SHUFFLE = {
@@ -139,6 +165,18 @@ export const AURORA_SHUFFLE = {
 /** Style shuffle: how often each pattern kind comes up, and the finishes' odds and ranges. */
 export const STYLE_SHUFFLE = {
   kinds: {
+    mesh: 0.12,
+    grid: 0.14,
+    linear: 0.05,
+    radial: 0.03,
+    conic: 0.08,
+    noise: 0.06,
+    cells: 0.22,
+    planes: 0.22,
+    aurora: 0.08,
+  } as Record<BasePattern['kind'], number>,
+  /** The odds before the tuning, for the surprise slot (D76). */
+  kindsFlat: {
     mesh: 0.22,
     grid: 0.14,
     linear: 0.09,
@@ -149,15 +187,23 @@ export const STYLE_SHUFFLE = {
     planes: 0.22,
     aurora: 0.09,
   } as Record<BasePattern['kind'], number>,
-  vignette: { chance: 0.3, range: [0.2, 0.6] as Range },
-  print: { chance: 0.25, range: [0.15, 0.4] as Range },
+  vignette: { chance: 0.55, range: [0.2, 0.6] as Range },
+  vignetteFlat: { chance: 0.3, range: [0.2, 0.6] as Range },
+  print: { chance: 0.3, range: [0.1, 0.28] as Range },
+  printFlat: { chance: 0.25, range: [0.15, 0.4] as Range },
   /** Not for planes, which are flat already. */
-  bands: { chance: 0.15, range: [0.2, 0.7] as Range },
+  bands: { chance: 0.4, range: [0.2, 0.7] as Range },
+  bandsFlat: { chance: 0.15, range: [0.2, 0.7] as Range },
   /** Subtle (2026-10-07; ranges set in M12, D63). Light from the upper left. */
-  relief: { chance: 0.3, range: [0.1, 0.5] as Range, light: [100, 170] as Range },
+  relief: { chance: 0.25, range: [0.1, 0.5] as Range, light: [100, 170] as Range },
+  reliefFlat: { chance: 0.3, range: [0.1, 0.5] as Range },
   halftone: { chance: 0.12, range: [0.1, 0.35] as Range },
-  planesRoughness: { clean: 0.25, range: [0.3, 1] as Range },
-  planesBlend: { chance: 0.3, range: [0.2, 0.8] as Range },
+  /** Torn edges with the paper rim hurt more than they help: rare and faint (D76). */
+  planesRoughness: { clean: 0.85, range: [0.1, 0.35] as Range },
+  planesRoughnessFlat: { clean: 0.25, range: [0.3, 1] as Range },
+  /** A little edge softness on most planes: crisp planes read hard (D76). */
+  planesBlend: { chance: 0.6, range: [0.1, 0.4] as Range },
+  planesBlendFlat: { chance: 0.3, range: [0.2, 0.8] as Range },
 };
 
 // Independent streams, so locking one aspect doesn't change what the other produces for the same seed.
@@ -165,6 +211,10 @@ const COLOR_STREAM = 0x9e3779b9;
 const LAYOUT_STREAM = 0x85ebca6b;
 const STYLE_STREAM = 0xc2b2ae35;
 const ROTATE_STREAM = 0x27d4eb2f;
+const SURPRISE_STREAM = 0x165667b1;
+
+/** How many shuffles ignore the tuned tables and draw from the old, even ones (D76). */
+export const SURPRISE_CHANCE = 1 / 6;
 
 /** Shuffled mesh radii stay in this range (composition units). */
 const RADIUS_LIMITS: Range = [0.05, 2];
@@ -173,6 +223,47 @@ const WARP_WEIGHTS = Object.fromEntries(WARP_SHAPES.map((k) => [k, WARP_SHUFFLE_
   WarpShape,
   number
 >;
+
+/**
+ * Per-kind profiles (D76): how a kind changes what shuffle draws. For now only planes, which look worse with hard
+ * cuts and corners: `warp` scales shapes' weights and `finish` the finishes' chances (missing = 1). The surprise slot
+ * skips profiles.
+ */
+export const KIND_PROFILE: Partial<
+  Record<
+    BasePattern['kind'],
+    { warp: Partial<Record<WarpShape, number>>; finish?: Partial<Record<FinishChance, number>> }
+  >
+> = {
+  planes: {
+    // Pooled over 127 planes tiles: grain 3.5 with vs 2.57 without, lighting 2.35 vs 2.98, vignette 3.0 vs 2.72.
+    finish: { print: 2, relief: 0.4, vignette: 1.25 },
+    warp: {
+      rows: 0.4,
+      columns: 0.4,
+      voronoi: 0.4,
+      worley: 0.4,
+      ridged: 0.5,
+      curl: 1.5,
+      waves: 1.5,
+      circular: 1.5,
+      oval: 1.5,
+      marble: 1.5,
+    },
+  },
+};
+
+/** Finishes whose chance a kind profile can scale. */
+type FinishChance = 'print' | 'relief' | 'vignette';
+
+function kindWarpWeights(kind: BasePattern['kind']): Record<WarpShape, number> {
+  const scale = KIND_PROFILE[kind]?.warp;
+  if (!scale) return WARP_WEIGHTS;
+  return Object.fromEntries(WARP_SHAPES.map((k) => [k, WARP_WEIGHTS[k] * (scale[k] ?? 1)])) as Record<
+    WarpShape,
+    number
+  >;
+}
 
 const round4 = (x: number) => Math.round(x * 1e4) / 1e4;
 const copyColor = (c: Oklch): Oklch => [c[0], c[1], c[2]];
@@ -186,11 +277,24 @@ const copyColor = (c: Oklch): Oklch => [c[0], c[1], c[2]];
 export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 / 9): ShuffleResult {
   const seed = opts.seed >>> 0;
   const colorRng = createRng((seed ^ COLOR_STREAM) >>> 0);
+  const surprise = createRng((seed ^ SURPRISE_STREAM) >>> 0).next() < SURPRISE_CHANCE;
   const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 16 / 9;
+  const pickKind = opts.layout && opts.style;
+  const pickFinish = opts.finish ?? pickKind;
+  const styleRng = createRng((seed ^ STYLE_STREAM) >>> 0);
+  // The kind is drawn even when the pattern is kept, so the finishes come out the same whether or not it is locked (D64).
+  const kind =
+    pickKind || pickFinish ? pickWeighted(styleRng, surprise ? STYLE_SHUFFLE.kindsFlat : STYLE_SHUFFLE.kinds) : null;
   let transform = design.transform;
-  if (opts.layout && opts.style) {
-    const rotate = createRng((seed ^ ROTATE_STREAM) >>> 0).int(360);
-    transform = { ...(transform ?? identityTransform), rotate };
+  if (pickKind) {
+    const rotRng = createRng((seed ^ ROTATE_STREAM) >>> 0);
+    const rotate = rotRng.int(360);
+    // Planes read busy at zoom 1, so most planes shuffles zoom in (D76); other kinds keep the zoom, except a leftover from planes.
+    const zoomRoll = rotRng.next() < PLANES_SHUFFLE.zoomChance;
+    const zoomIn = round4(rotRng.range(...PLANES_SHUFFLE.zoom));
+    const current = transform?.zoom ?? 1;
+    const zoom = kind === 'planes' ? (zoomRoll && !surprise ? zoomIn : 1) : design.base.kind === 'planes' ? 1 : current;
+    transform = { ...(transform ?? identityTransform), rotate, zoom };
   }
   const ctx: ShuffleContext = {
     opts,
@@ -198,23 +302,25 @@ export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 
     extent: frameExtent(safeAspect, transform),
     colorRng,
     layoutRng: createRng((seed ^ LAYOUT_STREAM) >>> 0),
-    makePalette: (n) => generatePalette(colorRng, n, opts.palette),
+    makePalette: (n) => generatePalette(colorRng, n, { ...opts.palette, flat: surprise }),
+    surprise,
   };
   let b = design.base;
   let finish = design.finish;
-  const pickKind = opts.layout && opts.style;
-  const pickFinish = opts.finish ?? pickKind;
-  if (pickKind || pickFinish) {
-    const styleRng = createRng((seed ^ STYLE_STREAM) >>> 0);
-    // The kind and the planes style are drawn even when the pattern is kept, so the finishes come out
-    // the same whether or not the pattern is locked (D64).
-    const kind = pickWeighted(styleRng, STYLE_SHUFFLE.kinds);
-    const planesStyle = kind === 'planes' ? shufflePlanesStyle(styleRng) : null;
+  if (kind) {
+    // The planes style is drawn even when the pattern is kept (D64).
+    const planesStyle = kind === 'planes' ? shufflePlanesStyle(styleRng, surprise) : null;
     if (pickKind) {
       b = withKind(b, kind);
       if (b.kind === 'planes' && planesStyle) b = { ...b, ...planesStyle };
     }
-    if (pickFinish) finish = shuffleFinish(styleRng, b.kind === 'planes' || b.kind === 'aurora');
+    if (pickFinish)
+      finish = shuffleFinish(
+        styleRng,
+        b.kind === 'planes' || b.kind === 'aurora',
+        surprise,
+        surprise ? undefined : b.kind,
+      );
   }
   const shuffled =
     b.kind === 'mesh'
@@ -231,7 +337,7 @@ export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 
   const levels = opts.levels ?? opts.layout;
   const warp =
     opts.layout || levels
-      ? shuffleWarp(ctx.layoutRng, design.warp, { shape: opts.layout, levels })
+      ? shuffleWarp(ctx.layoutRng, design.warp, { shape: opts.layout, levels }, ctx.surprise ? undefined : base.kind)
       : { ...design.warp };
   const out: Design = { engineVersion: design.engineVersion, base, warp };
   if (transform) out.transform = { ...transform };
@@ -263,8 +369,13 @@ function paletteInfo({ rule, mood, key }: GeneratedPalette): PaletteInfo {
  * the adjust section's (kept unless `parts.levels`). Everything is drawn either way, so with both set the
  * result is the plain new warp, and a shuffle that keeps some parts rolls the rest from the same stream.
  */
-function shuffleWarp(rng: Rng, current: Warp, parts: { shape: boolean; levels: boolean }): Warp {
-  const drawnShape = pickWeighted(rng, WARP_WEIGHTS);
+function shuffleWarp(
+  rng: Rng,
+  current: Warp,
+  parts: { shape: boolean; levels: boolean },
+  kind?: BasePattern['kind'],
+): Warp {
+  const drawnShape = pickWeighted(rng, kind ? kindWarpWeights(kind) : WARP_WEIGHTS);
   const shape = parts.shape ? drawnShape : current.shape;
   const t = WARP_SHUFFLE_TABLE[shape];
   const amount = round4(rng.range(t.amount[0], t.amount[1]));
@@ -280,10 +391,79 @@ function shuffleWarp(rng: Rng, current: Warp, parts: { shape: boolean; levels: b
 }
 
 /** Best-candidate (Mitchell) sampling over the overscanned frame: even, not grid-like. */
-function layoutPoints(rng: Rng, n: number, aspect: number, candidates: number): [number, number][] {
+/** Points for the non-scatter compositions: clusters, a line, an arc, or a mass on one side (D76). */
+function composePoints(
+  rng: Rng,
+  n: number,
+  aspect: number,
+  composition: Exclude<MeshComposition, 'scatter'>,
+  overscan: number,
+): [number, number][] {
   const fw = aspect / 2;
-  const hw = fw * MESH_SHUFFLE.overscan;
-  const hh = 0.5 * MESH_SHUFFLE.overscan;
+  const hw = fw * overscan;
+  const hh = 0.5 * overscan;
+  const spacing = Math.sqrt(aspect / n);
+  const pts: [number, number][] = [];
+  const bell = () => rng.range(-1, 1) + rng.range(-1, 1);
+  const inBox = (x: number, y: number): [number, number] => [clamp(x, -hw, hw), clamp(y, -hh, hh)];
+  // A free spot: retry a few times so two points never stack.
+  const place = (make: () => [number, number]) => {
+    let c = make();
+    for (
+      let k = 0;
+      k < 24 && pts.some((p) => Math.hypot(c[0] - p[0], c[1] - p[1]) < MESH_SHUFFLE.minGap * spacing);
+      k++
+    )
+      c = make();
+    pts.push(c);
+  };
+  if (composition === 'clusters') {
+    const k = 2 + rng.int(2);
+    const centres: [number, number][] = Array.from({ length: k }, () => [
+      rng.range(-0.8, 0.8) * fw,
+      rng.range(-0.7, 0.7) * 0.5,
+    ]);
+    const spread = spacing * rng.range(0.5, 0.9);
+    for (let i = 0; i < n; i++) {
+      const [cx, cy] = centres[i % k];
+      place(() => inBox(cx + bell() * spread, cy + bell() * spread * 0.8));
+    }
+  } else if (composition === 'side') {
+    // A mass hugging one side or corner, one point left out in the open field.
+    const ang = rng.range(0, 2 * Math.PI);
+    const cx = Math.cos(ang) * fw * 0.75;
+    const cy = Math.sin(ang) * 0.5 * 0.75;
+    const spread = spacing * rng.range(0.6, 1);
+    for (let i = 0; i < n; i++) {
+      if (i === n - 1 && n > 3) place(() => inBox(-cx * rng.range(0.5, 1.1), -cy * rng.range(0.5, 1.1)));
+      else place(() => inBox(cx + bell() * spread, cy + bell() * spread * 0.8));
+    }
+  } else {
+    // A line, or an arc (the same line bent), running across the frame at a random angle.
+    const ang = rng.range(0, Math.PI);
+    const [dx, dy] = [Math.cos(ang), Math.sin(ang)];
+    const half = Math.min(fw / Math.max(Math.abs(dx), 1e-3), 0.5 / Math.max(Math.abs(dy), 1e-3)) * 0.95;
+    const centre: [number, number] = [rng.range(-0.25, 0.25) * fw, rng.range(-0.25, 0.25) * 0.5];
+    const bend = composition === 'arc' ? rng.range(0.25, 0.6) * (rng.next() < 0.5 ? -1 : 1) : 0;
+    const jitter = spacing * rng.range(0.15, 0.4);
+    for (let i = 0; i < n; i++) {
+      const t = n === 1 ? 0 : (i / (n - 1)) * 2 - 1 + rng.range(-0.5, 0.5) / n;
+      const off = bend * half * t * t - bend * half * 0.35;
+      place(() =>
+        inBox(
+          centre[0] + dx * half * t - dy * off + bell() * jitter,
+          centre[1] + dy * half * t + dx * off + bell() * jitter,
+        ),
+      );
+    }
+  }
+  return pts;
+}
+
+function layoutPoints(rng: Rng, n: number, aspect: number, candidates: number, overscan: number): [number, number][] {
+  const fw = aspect / 2;
+  const hw = fw * overscan;
+  const hh = 0.5 * overscan;
   const spacing = Math.sqrt(aspect / n);
   const pts: [number, number][] = [];
   for (let i = 0; i < n; i++) {
@@ -296,7 +476,10 @@ function layoutPoints(rng: Rng, n: number, aspect: number, candidates: number): 
       for (const p of pts) d = Math.min(d, Math.hypot(c[0] - p[0], c[1] - p[1]));
       // Plain best-candidate piles points onto the border; treat the frame edge as a soft neighbour.
       const edge = Math.min(fw - Math.abs(c[0]), 0.5 - Math.abs(c[1]));
+      // Looser layouts (fewer candidates) still never stack two points: a candidate that close loses to any other.
+      const tooClose = d < MESH_SHUFFLE.minGap * spacing;
       d = Math.min(d, MESH_SHUFFLE.edgeSlack * spacing + 2 * edge);
+      if (tooClose) d -= 10;
       if (d > bestD) {
         best = c;
         bestD = d;
@@ -342,15 +525,24 @@ function shuffleMesh(base: PointMesh, ctx: ShuffleContext): { pattern: PointMesh
   let geo: { x: number; y: number; radius: number }[];
   let sharpness = base.sharpness;
   if (opts.layout) {
-    const [minK, maxK] = MESH_SHUFFLE.candidates;
+    const M = MESH_SHUFFLE;
+    const [minK, maxK] = ctx.surprise ? M.candidatesFlat : M.candidates;
     const candidates = minK + layoutRng.int(maxK - minK + 1);
-    const dominant = layoutRng.next() < MESH_SHUFFLE.dominant ? layoutRng.int(n) : -1;
-    geo = layoutPoints(layoutRng, n, aspect, candidates).map(([x, y], i) => {
-      const scale = i === dominant ? MESH_SHUFFLE.dominantScale : 1;
-      const radius = spacing * scale * layoutRng.range(...MESH_SHUFFLE.radius);
+    const dominant = layoutRng.next() < (ctx.surprise ? M.dominantFlat : M.dominant) ? layoutRng.int(n) : -1;
+    const domScale = ctx.surprise ? M.dominantScaleFlat : M.dominantScale;
+    const radiusRange = ctx.surprise ? M.radiusFlat : M.radius;
+    const composition = pickWeighted(layoutRng, ctx.surprise ? MESH_SHUFFLE.compositionsFlat : M.compositions);
+    const overscan = ctx.surprise ? M.overscanFlat : M.overscan;
+    const placed =
+      composition === 'scatter'
+        ? layoutPoints(layoutRng, n, aspect, candidates, overscan)
+        : composePoints(layoutRng, n, aspect, composition, overscan);
+    geo = placed.map(([x, y], i) => {
+      const scale = i === dominant ? domScale : 1;
+      const radius = spacing * scale * layoutRng.range(...radiusRange);
       return { x: round4(x), y: round4(y), radius: round4(clamp(radius, ...RADIUS_LIMITS)) };
     });
-    sharpness = round4(layoutRng.range(...MESH_SHUFFLE.sharpness));
+    sharpness = round4(layoutRng.range(...(ctx.surprise ? MESH_SHUFFLE.sharpnessFlat : MESH_SHUFFLE.sharpness)));
   } else {
     geo = base.points.map((p) => ({ x: p.x, y: p.y, radius: p.radius }));
   }
@@ -395,23 +587,27 @@ function withKind(base: BasePattern, kind: BasePattern['kind']): BasePattern {
   return { kind, angle: 0, stops };
 }
 
-function shufflePlanesStyle(rng: Rng): Pick<PlanesPattern, 'roughness' | 'blend'> {
-  const { planesRoughness: r, planesBlend: b } = STYLE_SHUFFLE;
+function shufflePlanesStyle(rng: Rng, surprise: boolean): Pick<PlanesPattern, 'roughness' | 'blend'> {
+  const { planesRoughness, planesRoughnessFlat, planesBlend, planesBlendFlat } = STYLE_SHUFFLE;
+  const b = surprise ? planesBlendFlat : planesBlend;
+  const r = surprise ? planesRoughnessFlat : planesRoughness;
   return {
     roughness: rng.next() < r.clean ? 0 : round4(rng.range(...r.range)),
     blend: rng.next() < b.chance ? round4(rng.range(...b.range)) : 0,
   };
 }
 
-function shuffleFinish(rng: Rng, flat: boolean): Finish {
+function shuffleFinish(rng: Rng, flat: boolean, surprise: boolean, kind?: BasePattern['kind']): Finish {
   const s = STYLE_SHUFFLE;
-  const maybe = (f: { chance: number; range: Range }) => (rng.next() < f.chance ? round4(rng.range(...f.range)) : 0);
-  const vignette = maybe(s.vignette);
-  const print = maybe(s.print);
-  const bands = maybe(s.bands);
+  const scale = (kind && KIND_PROFILE[kind]?.finish) || {};
+  const maybe = (f: { chance: number; range: Range }, mult = 1) =>
+    rng.next() < Math.min(0.9, f.chance * mult) ? round4(rng.range(...f.range)) : 0;
+  const vignette = maybe(surprise ? s.vignetteFlat : s.vignette, scale.vignette);
+  const print = maybe(surprise ? s.printFlat : s.print, scale.print);
+  const bands = maybe(surprise ? s.bandsFlat : s.bands);
   const bandEdge = round4(rng.next());
   // Drawn after the others, so shuffles from before relief and halftone existed come out the same.
-  const relief = maybe(s.relief);
+  const relief = maybe(surprise ? { ...s.relief, ...s.reliefFlat } : s.relief, scale.relief);
   const reliefStyle = rng.next() < 0.5 ? 'satin' : 'glass';
   const reliefLight = Math.round(rng.range(...s.relief.light));
   const halftone = maybe(s.halftone);
@@ -435,7 +631,9 @@ function shufflePlanes(
   ctx: ShuffleContext,
 ): { pattern: PlanesPattern; palette: PaletteInfo | null } {
   const { opts, layoutRng } = ctx;
-  const count = opts.layout ? round4(layoutRng.range(...PLANES_SHUFFLE.count)) : base.count;
+  const count = opts.layout
+    ? round4(layoutRng.range(...(ctx.surprise ? PLANES_SHUFFLE.countFlat : PLANES_SHUFFLE.count)))
+    : base.count;
   const seed = opts.layout ? layoutRng.uint32() : base.seed;
   const n = Math.min(base.colors.length, MAX_STOPS);
   const palette = opts.colors ? ctx.makePalette(n) : null;
@@ -579,7 +777,7 @@ function shuffleRamp(base: RampGradient, ctx: ShuffleContext): { pattern: RampGr
   const out: ColorStop[] = stops.map((_, i) => ({ position: positions[i], color: colors[i] }));
   const pattern: RampGradient = { ...base, angle, stops: out };
   if (opts.layout && (base.kind === 'noise' || base.kind === 'cells')) {
-    pattern.scale = round4(layoutRng.range(...RAMP_SHUFFLE.scale));
+    pattern.scale = round4(layoutRng.range(...(ctx.surprise ? RAMP_SHUFFLE.scaleFlat : RAMP_SHUFFLE.scale)));
     pattern.seed = layoutRng.uint32();
     if (base.kind === 'noise') pattern.noiseStyle = layoutRng.next() < 0.5 ? 'contour' : 'ridged';
   }
