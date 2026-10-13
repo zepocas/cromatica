@@ -19,7 +19,7 @@ import {
 import { mutateDesign } from '../../src/design/mutate';
 import { createRng } from '../../src/design/random';
 import { LEGACY_AURORA_BLEND } from '../../src/design/schema';
-import { shuffleDesign } from '../../src/design/shuffle';
+import { isSurpriseSeed, shuffleDesign, STYLE_SHUFFLE, WARP_SHUFFLE_TABLE } from '../../src/design/shuffle';
 import { previewProbe } from './support/app';
 import {
   defaultNoise,
@@ -45,6 +45,8 @@ const midTonesFive = linear(0, [
 import { engineHarness, openEngineHarness } from './support/harness';
 
 const DIR = process.env.SHEETS_DIR ?? '/tmp';
+// Tile width of the numbered shuffle sheets; the scorer slideshow wants them large.
+const cellW = Number(process.env.SHEET_CELL_W ?? 480);
 
 test.skip(!process.env.SHEETS, 'visual sheets: set SHEETS=1');
 
@@ -341,7 +343,118 @@ test('shuffle-sheets', async ({ page }) => {
       const n0 = sheet * perSheet + r * cols + 1;
       rows.push({ label: `#${n0}-${n0 + cols - 1}`, designs });
     }
-    const png = await engineHarness(page, 'contactSheet', rows, ['+0', '+1', '+2', '+3', '+4'], 480, 270);
+    const png = await engineHarness(
+      page,
+      'contactSheet',
+      rows,
+      ['+0', '+1', '+2', '+3', '+4'],
+      cellW,
+      Math.round((cellW * 9) / 16),
+    );
+    writeFileSync(join(DIR, `shuffle-sheet-${sheet + 1}.png`), Buffer.from(png, 'base64'));
+  }
+  writeFileSync(join(DIR, 'shuffle-sheet.json'), JSON.stringify(meta, null, 1));
+});
+
+// Stratified per-kind tuning: 60 shuffles of one kind (SHEET_KIND), where each warp family is shown equally often
+// and the finishes are switched on and off in balance, so every effect can be scored on its own. The sheets and
+// the JSON sidecar keep the names and layout of shuffle-sheets, so the same scorer reads them.
+const WARP_FAMILIES: Record<string, WarpShape[]> = {
+  smooth: ['domain', 'fbm', 'simplex', 'curl', 'waves'],
+  directional: ['rows', 'columns', 'circular', 'oval', 'bristle'],
+  cellular: ['worley', 'voronoi'],
+  'hard-cut': ['ridged', 'marble'],
+};
+test('kind-sheets', async ({ page }) => {
+  const kind = process.env.SHEET_KIND;
+  test.skip(!kind, 'kind-sheets: set SHEET_KIND (mesh, grid, linear, ...)');
+  await openEngineHarness(page);
+  const first = Number(process.env.SHUFFLE_SHEET_SEED ?? 2000);
+  const perSheet = 30;
+  const cols = 5;
+  const families = Object.keys(WARP_FAMILIES);
+  // Aurora is flat already: no bands, so three finishes (8 combinations) instead of four (16).
+  const finishes = ['grain', 'lighting', 'vignette', ...(kind === 'aurora' ? [] : ['bands'])] as const;
+  const combos = 1 << finishes.length;
+  // Per family, the combinations in a seeded order, each family leaving out another one when 15 don't divide into 16.
+  const orders = families.map((_, f) => {
+    const rng = createRng(first * 7 + f);
+    const order = Array.from({ length: combos }, (_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = rng.int(i + 1);
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    return order;
+  });
+  const meta: Record<string, unknown>[] = [];
+  const s = STYLE_SHUFFLE;
+  for (let sheet = 0; sheet < 2; sheet++) {
+    const rows = [];
+    for (let r = 0; r < perSheet / cols; r++) {
+      const designs: Design[] = [];
+      for (let c = 0; c < cols; c++) {
+        const n = sheet * perSheet + r * cols + c + 1;
+        const f = (n - 1) % families.length;
+        const k = Math.floor((n - 1) / families.length);
+        const family = families[f];
+        const shapes = WARP_FAMILIES[family];
+        const shape = shapes[k % shapes.length];
+        const combo = orders[f][k % combos];
+        const on = (name: (typeof finishes)[number]) => (combo & (1 << finishes.indexOf(name))) !== 0;
+        let seed = first + n;
+        const draw = (sd: number) =>
+          shuffleDesign(
+            withNoise(meshDefault, defaultNoise),
+            { colors: true, palette: { mood: 'any', key: 'any' }, layout: true, style: true, seed: sd },
+            16 / 9,
+          );
+        let drawn = draw(seed);
+        while (drawn.design.base.kind !== kind || isSurpriseSeed(seed)) drawn = draw((seed += 1000));
+        const rng = createRng(seed ^ 0x5bd1e995);
+        const t = WARP_SHUFFLE_TABLE[shape];
+        const amount = (rng.range(...t.amount) * 100) | 0;
+        const size = (rng.range(...t.size) * 100) | 0;
+        const value = (range: [number, number]) => Math.round(rng.range(...range) * 1e4) / 1e4;
+        const finish = {
+          ...noFinish,
+          vignette: on('vignette') ? value(s.vignette.range) : 0,
+          noise: { type: 'lithograph' as const, amount: on('grain') ? value(s.print.range) : 0 },
+          bands: finishes.includes('bands' as never) && on('bands' as never) ? value(s.bands.range) : 0,
+          relief: on('lighting') ? value(s.relief.range) : 0,
+          reliefStyle: rng.next() < 0.5 ? ('satin' as const) : ('glass' as const),
+          reliefLight: Math.round(rng.range(...s.relief.light)),
+        };
+        const design: Design = {
+          ...drawn.design,
+          warp: { shape, amount: amount / 100, size: size / 100, seed: rng.uint32() },
+          finish,
+        };
+        designs.push(design);
+        meta.push({
+          n,
+          seed,
+          kind,
+          family,
+          warp: shape,
+          palette: drawn.palette,
+          bands: finish.bands,
+          noise: finish.noise.type,
+          noiseAmount: finish.noise.amount,
+          relief: finish.relief,
+          vignette: finish.vignette,
+        });
+      }
+      const n0 = sheet * perSheet + r * cols + 1;
+      rows.push({ label: `#${n0}-${n0 + cols - 1}`, designs });
+    }
+    const png = await engineHarness(
+      page,
+      'contactSheet',
+      rows,
+      ['+0', '+1', '+2', '+3', '+4'],
+      cellW,
+      Math.round((cellW * 9) / 16),
+    );
     writeFileSync(join(DIR, `shuffle-sheet-${sheet + 1}.png`), Buffer.from(png, 'base64'));
   }
   writeFileSync(join(DIR, 'shuffle-sheet.json'), JSON.stringify(meta, null, 1));
