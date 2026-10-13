@@ -95,7 +95,7 @@ const KEY_WEIGHTS_FLAT: Record<ValueKey, number> = { high: 0.08, low: 0.15, full
 /** Lightness band of the high and low keys; full uses the mood's band. */
 export const KEY_BANDS: Record<Exclude<ValueKey, 'full'>, [number, number]> = {
   high: [0.7, 0.96],
-  low: [0.12, 0.55],
+  low: [0.17, 0.55],
 };
 
 /** Chroma ceiling in the high key: light colors near their cusp read as neon candy. */
@@ -103,6 +103,9 @@ const HIGH_KEY_MAX_CHROMA = 0.13;
 
 /** Minimum lightness span for non-monochrome palettes of 3+ colors; narrow bands need less (minLSpan). */
 export const MIN_L_SPAN = 0.22;
+
+/** Widest random lightness span of a non-monochrome palette: near-black beside light tones fights for the eye on a wallpaper (D78). */
+const MAX_L_SPAN = 0.5;
 
 interface MoodTuning {
   /** Chroma as a fraction of the max in-gamut chroma at (L, h). */
@@ -410,7 +413,7 @@ function planLightness(rng: Rng, count: number, mono: boolean, band: [number, nu
   if (count === 1) return [rng.range(band[0] + 0.1, band[1] - 0.1)];
   const width = band[1] - band[0];
   const minSpan = count === 2 ? 0.2 : MIN_L_SPAN + 0.05;
-  const span = Math.min(width, mono ? rng.range(0.45, 0.65) : rng.range(minSpan, Math.max(minSpan, 0.6)));
+  const span = Math.min(width, mono ? rng.range(0.45, 0.65) : rng.range(minSpan, Math.max(minSpan, MAX_L_SPAN)));
   const lo = band[0] + rng.next() * (width - span);
   const step = span / (count - 1);
   return Array.from({ length: count }, (_, i) => {
