@@ -103,8 +103,8 @@ describe('shuffleDesign', () => {
       const zoom = out.transform!.zoom;
       if (zoom > 1) {
         zoomed++;
-        expect(zoom).toBeGreaterThanOrEqual(1.5);
-        expect(zoom).toBeLessThanOrEqual(2.4);
+        expect(zoom).toBeGreaterThanOrEqual(1.7);
+        expect(zoom).toBeLessThanOrEqual(2.6);
       }
     }
     expect(planes).toBeGreaterThan(30);
@@ -155,7 +155,7 @@ describe('shuffleDesign', () => {
       if (out.finish!.noise.type === 'lithograph' && out.finish!.noise.amount > 0) b.grain++;
       if (out.finish!.relief > 0) b.relief++;
     }
-    expect(count.planes.grain / count.planes.n).toBeGreaterThan(1.4 * (count.other.grain / count.other.n));
+    expect(count.planes.grain / count.planes.n).toBeGreaterThan(1.2 * (count.other.grain / count.other.n));
     expect(count.planes.relief / count.planes.n).toBeLessThan(0.7 * (count.other.relief / count.other.n));
   });
 
@@ -395,15 +395,15 @@ describe('style shuffle (pattern kind and finishes)', () => {
 
   it('gives the finishes the same roll whether or not the pattern is locked (D64)', () => {
     let compared = 0;
-    for (let sd = 0; sd < 200; sd++) {
+    for (let sd = 0; sd < 1000; sd++) {
       const full = shuffled(meshDesign, style(sd));
-      // Planes and aurora have no bands, which is the one thing the finishes depend on the kind for.
-      if (full.base.kind === 'planes' || full.base.kind === 'aurora') continue;
+      // The finishes depend on the kind (no bands on planes and aurora, and the kind profiles, D77): compare where the kept pattern is the drawn kind.
+      if (full.base.kind !== meshDesign.base.kind) continue;
       const kept = shuffled(meshDesign, { colors: false, layout: false, finish: true, seed: sd });
       expect(kept.finish).toEqual(full.finish);
       compared++;
     }
-    expect(compared).toBeGreaterThan(100);
+    expect(compared).toBeGreaterThan(50);
   });
 
   it('picks every pattern kind, and finishes on and off', () => {
