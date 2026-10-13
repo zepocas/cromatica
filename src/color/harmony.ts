@@ -19,6 +19,8 @@ export interface PaletteOptions {
   baseHue?: number;
   /** Default 'full' (the whole lightness range); 'any' picks one, leaning full. */
   key?: ValueKey | 'any';
+  /** Draw 'any' choices from the even pre-tuning weights instead of the tuned ones (D76); shuffle's surprise slot. */
+  flat?: boolean;
 }
 
 /** What a palette was built with, after 'any' and omitted options are resolved. */
@@ -41,8 +43,18 @@ export const HARMONY_RULES: readonly HarmonyRule[] = [
   'tetradic',
 ];
 
-/** How an omitted rule resolves. */
+/** How an omitted rule resolves: close hues first (D76). */
 const RULE_WEIGHTS: Record<HarmonyRule, number> = {
+  monochrome: 0.1,
+  analogous: 0.45,
+  complementary: 0.14,
+  'split-complementary': 0.12,
+  triadic: 0.1,
+  tetradic: 0.09,
+};
+
+/** The even weights from before the tuning (D76). */
+const RULE_WEIGHTS_FLAT: Record<HarmonyRule, number> = {
   monochrome: 0.1,
   analogous: 0.3,
   complementary: 0.18,
@@ -54,10 +66,19 @@ const RULE_WEIGHTS: Record<HarmonyRule, number> = {
 export const PALETTE_MOODS: readonly PaletteMood[] = ['natural', 'vivid', 'muted', 'earthy', 'pastel', 'neon'];
 
 /**
- * How mood 'any' resolves (sums to 1): mostly natural, the photogradient-like look.
- * Pastel comes up now and then, neon rarely: it is loud (user, 2026-10-08, D64).
+ * How mood 'any' resolves (sums to 1): natural, muted and earthy lead; vivid, pastel and neon are
+ * the exceptions (user, 2026-10-12, D76; before: natural 38, vivid 17, muted 16, earthy 12, pastel 15, neon 2).
  */
 const MOOD_WEIGHTS: Record<PaletteMood, number> = {
+  natural: 0.38,
+  vivid: 0.1,
+  muted: 0.28,
+  earthy: 0.18,
+  pastel: 0.03,
+  neon: 0.03,
+};
+
+const MOOD_WEIGHTS_FLAT: Record<PaletteMood, number> = {
   natural: 0.38,
   vivid: 0.17,
   muted: 0.16,
@@ -66,8 +87,10 @@ const MOOD_WEIGHTS: Record<PaletteMood, number> = {
   neon: 0.02,
 };
 
-/** How key 'any' resolves: mostly full, so shuffles keep their range. */
-const KEY_WEIGHTS: Record<ValueKey, number> = { high: 0.08, low: 0.15, full: 0.77 };
+/** How key 'any' resolves: mostly low (dark), with a little full range and light (D76). */
+const KEY_WEIGHTS: Record<ValueKey, number> = { high: 0.03, low: 0.87, full: 0.1 };
+
+const KEY_WEIGHTS_FLAT: Record<ValueKey, number> = { high: 0.08, low: 0.15, full: 0.77 };
 
 /** Lightness band of the high and low keys; full uses the mood's band. */
 export const KEY_BANDS: Record<Exclude<ValueKey, 'full'>, [number, number]> = {
@@ -79,7 +102,7 @@ export const KEY_BANDS: Record<Exclude<ValueKey, 'full'>, [number, number]> = {
 const HIGH_KEY_MAX_CHROMA = 0.13;
 
 /** Minimum lightness span for non-monochrome palettes of 3+ colors; narrow bands need less (minLSpan). */
-export const MIN_L_SPAN = 0.25;
+export const MIN_L_SPAN = 0.22;
 
 interface MoodTuning {
   /** Chroma as a fraction of the max in-gamut chroma at (L, h). */
@@ -259,9 +282,9 @@ function resolveSpec(rng: Rng, count: number, opts: PaletteOptions): PaletteSpec
   // Drawn either way, so fixing an option doesn't shift the rest of the
   // sequence: the same seed with only the mood changed gives the same
   // palette in the new mood, and changing it back gives the original.
-  const randomRule = pickWeighted(rng, RULE_WEIGHTS);
-  const randomMood = pickWeighted(rng, MOOD_WEIGHTS);
-  const randomKey = pickWeighted(rng, KEY_WEIGHTS);
+  const randomRule = pickWeighted(rng, opts.flat ? RULE_WEIGHTS_FLAT : RULE_WEIGHTS);
+  const randomMood = pickWeighted(rng, opts.flat ? MOOD_WEIGHTS_FLAT : MOOD_WEIGHTS);
+  const randomKey = pickWeighted(rng, opts.flat ? KEY_WEIGHTS_FLAT : KEY_WEIGHTS);
   const rule = opts.rule ?? randomRule;
   const mood = !opts.mood || opts.mood === 'any' ? randomMood : opts.mood;
   const key = opts.key === 'any' ? randomKey : (opts.key ?? 'full');

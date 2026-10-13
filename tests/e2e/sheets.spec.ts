@@ -298,6 +298,55 @@ test('variations.png', async ({ page }) => {
   writeFileSync(join(DIR, 'variations.png'), Buffer.from(png, 'base64'));
 });
 
+// Shuffle tuning (M16, D76): numbered sheets of real shuffles from the app's own tables, plus a JSON sidecar
+// with what each one drew, to score by eye and count. SHUFFLE_SHEET_SEED shifts the seeds between rounds.
+test('shuffle-sheets', async ({ page }) => {
+  await openEngineHarness(page);
+  const first = Number(process.env.SHUFFLE_SHEET_SEED ?? 1000);
+  const perSheet = 30;
+  const cols = 5;
+  const meta: Record<string, unknown>[] = [];
+  const kindOnly = process.env.SHUFFLE_SHEET_KIND;
+  const shuffleOne = (seed: number) =>
+    shuffleDesign(
+      withNoise(meshDefault, defaultNoise),
+      { colors: true, palette: { mood: 'any', key: 'any' }, layout: true, style: true, seed },
+      16 / 9,
+    );
+  for (let sheet = 0; sheet < 2; sheet++) {
+    const rows = [];
+    for (let r = 0; r < perSheet / cols; r++) {
+      const designs: Design[] = [];
+      for (let c = 0; c < cols; c++) {
+        const n = sheet * perSheet + r * cols + c + 1;
+        // SHUFFLE_SHEET_KIND=planes (or mesh, ...) shows only shuffles that drew that kind, to judge one kind on its own.
+        let seed = first + n;
+        let drawn = shuffleOne(seed);
+        while (kindOnly && drawn.design.base.kind !== kindOnly) drawn = shuffleOne((seed += 1000));
+        const { design, palette } = drawn;
+        designs.push(design);
+        meta.push({
+          n,
+          seed,
+          kind: design.base.kind,
+          warp: design.warp.shape,
+          palette,
+          bands: design.finish?.bands ?? 0,
+          noise: design.finish?.noise.type,
+          noiseAmount: design.finish?.noise.amount ?? 0,
+          relief: design.finish?.relief ?? 0,
+          vignette: design.finish?.vignette ?? 0,
+        });
+      }
+      const n0 = sheet * perSheet + r * cols + 1;
+      rows.push({ label: `#${n0}-${n0 + cols - 1}`, designs });
+    }
+    const png = await engineHarness(page, 'contactSheet', rows, ['+0', '+1', '+2', '+3', '+4'], 480, 270);
+    writeFileSync(join(DIR, `shuffle-sheet-${sheet + 1}.png`), Buffer.from(png, 'base64'));
+  }
+  writeFileSync(join(DIR, 'shuffle-sheet.json'), JSON.stringify(meta, null, 1));
+});
+
 test('relief.png', async ({ page }) => {
   await openEngineHarness(page);
   const looks: [string, Design][] = [

@@ -360,13 +360,13 @@ Each milestone uses the same structure:
 - **Goal:** ready for real use. Independent of how designs look, so it can overlap with M12.
 - **Scope:**
   - ✅ Adaptive preview resolution (D69): no more noise popping while editing with a noise on, a gradual drop instead of a fixed half, and a cost estimate that ignores shader compiles. Thresholds still to be tuned on a real GPU.
-  - **Sharp preview when zoomed in** (user, 2026-10-08): the preview zooms by scaling a canvas drawn for the fitted view, so fine textures such as grain go soft. Redraw at the zoomed scale (only the visible part), within the frame budget.
+  - ~~**Sharp preview when zoomed in**~~ Dropped with the true zoom (user, 2026-10-12) (2026-10-08): the preview zooms by scaling a canvas drawn for the fitted view, so fine textures such as grain go soft. Redraw at the zoomed scale (only the visible part), within the frame budget.
   - ✅ **Full-screen preview** (D67): `F` or a ⛶ button in the panel header; the browser's full screen, no in-window variant, OS context kept. The button should move to the status bar if M14's trial goes ahead. Shows the wallpaper edge to edge with no panel, to make up for the smaller preview next to the docked sidebar. Esc or a small × in a corner exits. Use the Fullscreen API where available; the render stays at screen resolution so the grain reads true. Handles stay hidden.
   - ✅ Context-loss recovery: the preview already dropped its renderer on `webglcontextlost` and rebuilt it on `webglcontextrestored`; now covered by an e2e test (lose, edit while lost, restore, redraw).
   - Shader compile warm-up: skipped (user, 2026-10-10, D69). On a real GPU (M4) a new program variant costs a median 158 ms to compile and nearly every shuffle needs one; a background compile would only stop the freeze, not the wait. Revisit with fewer variants (warp, relief and halftone as runtime branches) if it bothers.
   - ✅ Keyboard shortcuts (D68): K keeps a favourite, 1 2 3 toggle the keep locks, P folds the panel, ? opens a shortcut card (⌨ in the header), ⌘S downloads; more like this is a labeled button beside shuffle.
   - ~~A faster deflate for 5K PNG export~~: dropped (D69); the export feels fine.
-  - **Sharp, true zoom** (open, D70): the zoomed preview is the fitted canvas stretched by CSS, so it and its grain are soft. A native-resolution zoom was tried and dropped: its grain re-rolled with every zoom step and was not the export's grain. A true version needs the noise on the export's pixel grid and 100% = export pixels; see D70.
+  - ~~**Sharp, true zoom**~~ Dropped (user, 2026-10-12; D70): the zoomed preview is the fitted canvas stretched by CSS, so it and its grain are soft. A native-resolution zoom was tried and dropped: its grain re-rolled with every zoom step and was not the export's grain. A true version needs the noise on the export's pixel grid and 100% = export pixels; see D70.
 - **Done when:**
   - Tested on Chrome, Safari and Firefox on macOS, and Chrome on Windows
   - Exports at every preset resolution succeed
@@ -406,18 +406,14 @@ Each milestone uses the same structure:
   - Whether the panel becomes a sheet or a separate screen.
   - Whether a smaller set of controls makes sense on mobile, or the same ones in a different frame.
 
-### M16 — Shuffle tuning
+### M16 — Shuffle tuning ✅
 
-- **Goal:** let the user steer shuffle away from results they don't like. Added 2026-10-10; no design yet, and independent of the other milestones.
-- **Options to pick from:**
-  1. **Exclusion toggles:** switches such as "no brushed warp", "no halftone", "no neon" that zero a weight in the shuffle tables (smallest, and the tables are already weight-based). Start here.
-  2. **Per-option odds sliders:** expose the weights themselves (kind, warp shape, finish chances, palette moods).
-  3. **Learning from dislikes:** a thumbs-down that nudges the weights (most work, least predictable).
-- **Open questions:**
-  - Where the controls live (a panel section, a dialog, or the M14 status bar).
-  - Saved per browser, not with the design.
-  - Whether it changes the shuffle's draw order, which would change existing shuffles for a seed (D64 kept the order stable).
-- **Done when:** the user can exclude at least the options they dislike, and a shuffle never produces them.
+- **Goal:** tune the shuffle towards the user's taste while keeping the range of the app visible. Added 2026-10-10.
+- **Settled (2026-10-12, D76):** no new settings and no exclusion toggles. The shuffle's own weights and ranges are retuned: darker palettes with close hues, calmer and more defined shapes, nothing light or "happy". About one shuffle in six (the surprise slot) still draws from the old even tables. Planes got a profile of their own (zoom-in, rare faint torn edges, smooth warps, more grain), and mesh layouts draw one of five compositions instead of an even scatter. Done by contact sheets scored by the user (1-5 with reason tags) over six rounds.
+- **Open from this work:**
+  - **Stratified per-kind tuning:** each kind on its own sheet, with every warp shape (grouped into families) and the finishes switched on and off in balance, so each kind gets its own warp and finish multipliers in `KIND_PROFILE`. Mesh, grid, linear, radial and aurora first (the weakest); cells already scores best.
+  - **Planes contrast:** planes read "too contrasty" in the last planes-only sheet; likely a narrower lightness span for planes palettes.
+  - **Odds sliders and learning from dislikes** (the other M16 options): not planned.
 
 ### M17 — Realistic context icons ✅
 
@@ -440,15 +436,15 @@ Each milestone uses the same structure:
 
 ---
 
-## Phase 2 — Multi-monitor (sketch)
+## Phase 2 — Multi-monitor preview (sketch)
 
-- A canvas for arranging displays. Each display is modelled as aspect ratio + physical size (from its diagonal) + position.
-- A single composition spans the whole arrangement. Optional bezel-gap compensation.
-- The export produces one aligned wallpaper per display, each at its native resolution.
+- **Scope (user, 2026-10-12):** a preview of a window and monitor layout, so a wallpaper can be judged spanned across several displays for immersion. It is not an export: no per-monitor images and no ZIP.
+- A canvas for arranging displays. Each display is modelled as aspect ratio + physical size (from its diagonal) + position. Optional bezel-gap compensation.
+- A single composition spans the whole arrangement; the output size is the arrangement's total (for two 4K screens side by side, 7680x2160, which the custom size already allows up to 16384 px per side).
 - **Open questions:**
   - Presets for common setups
   - How to handle rotated (portrait) monitors
-  - Download as a ZIP?
+  - Whether a preset size for a spanned setup is wanted, and whether huge exports hold up on low-memory machines (D4 tiling, untested)
 
 ## Later — Backlog (unordered)
 
@@ -469,3 +465,6 @@ Each milestone uses the same structure:
 - ~~Favourites, advanced~~ Dropped (2026-10-08, D59): the favourites list from M7 is enough. A JSON file export and import stays under share links.
 - **Design in the JPEG** ✅ (2026-10-10, D72, follows D45): built as the try D59 wanted. Exports carry the envelope in an XMP APP1 segment and a dropped JPEG reopens the design. Still to judge: what survives sharing, alongside share links.
 - **Comment density:** go through the code and cut comments that restate the code or narrate history; keep the ones that explain why (conventions, math, invariants). The user finds the current amount excessive (2026-10-04).
+- **Pattern previews in the select box** (reconsider, try later, user 2026-10-12): small previews of each pattern in the kind select, to see if it makes the app friendlier. It was discarded earlier; worth a quick experiment.
+- **Simplified vs in-depth UI** (user, 2026-10-12): keep polishing the panel and settings so it is less cluttered, with a simple intuitive version and a way to reach the in-depth options. Related to the "easy mode" idea of the first-time experience (M14 open questions). Needs a design discussion before any build.
+- **Mobile layout (M15)** stays last in priority, and the M13 browser and resolution checks stay a pre-release pass (user, 2026-10-12).

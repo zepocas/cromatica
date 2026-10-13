@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { inSrgbGamut } from '../../src/color/gamut';
+import type { Oklch } from '../../src/color/types';
 import {
   defaultDesign,
   defaultMesh,
@@ -73,13 +74,15 @@ describe('shuffleDesign', () => {
     }
   });
 
-  it('turns the image (whatever the pattern) on a style shuffle, keeping zoom and flips, and lays mesh points out in view', () => {
+  it('turns the image (whatever the pattern) on a style shuffle, keeping flips and, off planes, the zoom, and lays mesh points out in view', () => {
     const transform = { rotate: 0, zoom: 2, flipX: true, flipY: false };
     const styled = (s: number) => ({ ...all(s), style: true });
     const turned = new Set<number>();
     for (let s = 0; s < 40; s++) {
       const out = shuffled({ ...meshDesign, transform }, styled(s), 16 / 9);
-      expect(out.transform).toMatchObject({ zoom: 2, flipX: true, flipY: false });
+      expect(out.transform).toMatchObject({ flipX: true, flipY: false });
+      // Planes zoom in on their own (D76); everything else keeps the zoom.
+      if (out.base.kind !== 'planes') expect(out.transform!.zoom).toBe(2);
       turned.add(out.transform!.rotate);
       expect(out.transform!.rotate).toBeGreaterThanOrEqual(0);
       expect(out.transform!.rotate).toBeLessThan(360);
@@ -88,6 +91,84 @@ describe('shuffleDesign', () => {
     // Same seed, same turn; and plain layout shuffles leave the rotation alone.
     expect(shuffled(meshDesign, styled(7))).toEqual(shuffled(meshDesign, styled(7)));
     expect(shuffled({ ...meshDesign, transform }, all(3)).transform).toEqual(transform);
+  });
+
+  it('zooms most planes shuffles in (fewer, larger planes) and clears the zoom when leaving planes (D76)', () => {
+    let planes = 0;
+    let zoomed = 0;
+    for (let s = 0; s < 300; s++) {
+      const out = shuffled(meshDesign, { ...all(s), style: true }, 16 / 9);
+      if (out.base.kind !== 'planes') continue;
+      planes++;
+      const zoom = out.transform!.zoom;
+      if (zoom > 1) {
+        zoomed++;
+        expect(zoom).toBeGreaterThanOrEqual(1.5);
+        expect(zoom).toBeLessThanOrEqual(2.4);
+      }
+    }
+    expect(planes).toBeGreaterThan(30);
+    expect(zoomed / planes).toBeGreaterThan(0.55);
+    expect(zoomed / planes).toBeLessThan(0.95);
+    // Coming from a zoomed planes design, another kind goes back to 1.
+    const zoomedPlanes = {
+      ...meshDesign,
+      base: {
+        kind: 'planes' as const,
+        colors: [
+          [0.3, 0.05, 250],
+          [0.5, 0.08, 40],
+          [0.7, 0.06, 120],
+        ] as Oklch[],
+        count: 0.4,
+        roughness: 0.5,
+        blend: 0,
+        seed: 1,
+      },
+      transform: { rotate: 0, zoom: 1.8, flipX: false, flipY: false },
+    };
+    for (let s = 0; s < 60; s++) {
+      const out = shuffled(zoomedPlanes, { ...all(s), style: true }, 16 / 9);
+      if (out.base.kind !== 'planes') expect(out.transform!.zoom).toBe(1);
+    }
+  });
+
+  it('planes favour smooth warps and avoid hard cuts, other kinds do not (D76)', () => {
+    const hard = new Set(['rows', 'columns', 'voronoi', 'worley', 'ridged']);
+    const share = { planes: [0, 0], other: [0, 0] };
+    for (let s = 0; s < 1200; s++) {
+      const out = shuffled(meshDesign, { ...all(s), style: true }, 16 / 9);
+      const bucket = out.base.kind === 'planes' ? share.planes : share.other;
+      bucket[1]++;
+      if (hard.has(out.warp.shape)) bucket[0]++;
+    }
+    expect(share.planes[1]).toBeGreaterThan(100);
+    expect(share.planes[0] / share.planes[1]).toBeLessThan(0.7 * (share.other[0] / share.other[1]));
+  });
+
+  it('planes get more grain and less lighting than other kinds (D76)', () => {
+    const count = { planes: { n: 0, grain: 0, relief: 0 }, other: { n: 0, grain: 0, relief: 0 } };
+    for (let s = 0; s < 1500; s++) {
+      const out = shuffled(meshDesign, { ...all(s), style: true }, 16 / 9);
+      const b = out.base.kind === 'planes' ? count.planes : count.other;
+      b.n++;
+      if (out.finish!.noise.type === 'lithograph' && out.finish!.noise.amount > 0) b.grain++;
+      if (out.finish!.relief > 0) b.relief++;
+    }
+    expect(count.planes.grain / count.planes.n).toBeGreaterThan(1.4 * (count.other.grain / count.other.n));
+    expect(count.planes.relief / count.planes.n).toBeLessThan(0.7 * (count.other.relief / count.other.n));
+  });
+
+  it('planes torn edges are rare and faint (D76)', () => {
+    let planes = 0;
+    let torn = 0;
+    for (let s = 0; s < 1200; s++) {
+      const out = shuffled(meshDesign, { ...all(s), style: true }, 16 / 9);
+      if (out.base.kind !== 'planes') continue;
+      planes++;
+      if (out.base.roughness > 0) torn++;
+    }
+    expect(torn / planes).toBeLessThan(0.3);
   });
 
   it('lays a grid out over the turned frame, so every screen corner falls inside it', () => {
@@ -363,8 +444,8 @@ describe('style shuffle (pattern kind and finishes)', () => {
         expect(f.noise.amount).toBeLessThanOrEqual(0.35);
       }
     }
-    expect(relief).toBeGreaterThan(80);
-    expect(relief).toBeLessThan(170);
+    expect(relief).toBeGreaterThan(35);
+    expect(relief).toBeLessThan(100);
     expect(surfaces).toEqual(new Set(['satin', 'glass']));
     expect(halftone).toBeGreaterThan(20);
     expect(halftone).toBeLessThan(80);
