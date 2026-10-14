@@ -609,4 +609,3 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Cells finishes (stratified sheet, 60 tiles, mean 4.13, the best kind):** grain on 4.30 against 3.97 off, lighting 3.97 on against 4.31, vignette 4.03 against 4.23, bands 4.03 against 4.24. Profile: grain x1.5, lighting x0.6, vignette x0.8, bands x0.7 (mild; the differences are about 1.5 standard errors each, in the same direction as the other kinds). Marble on cells 3.60 (9 of 15 "features too small", at any size up to 0.1, against 2 of 12 on other kinds), so marble x0.4 on cells. Worley (4.07) and the smooth warps (4.6) are fine.
 - **Marble:** `size` 0 is already the largest marble; making it less busy needs the engine's density (`density: 2` in `warp.ts`), an engine setting, left for later.
 - **Sidecars:** the sheet JSON now has `warpAmount`, `warpSize`, `scale` and `surprise` per tile.
-
