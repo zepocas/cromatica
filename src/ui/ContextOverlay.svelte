@@ -1,6 +1,6 @@
 <script lang="ts">
   import { iconFor, labelFor } from '../context/icons';
-  import { assessZone, luminanceMap, type Legibility } from '../context/legibility';
+  import { assessZone, luminanceMap, type Legibility, type ZoneRect } from '../context/legibility';
   import { placeZone, type ContextScreen } from '../context/zones';
   import { noFinish, type Design } from '../design/design';
   import { thumbnails } from '../preview/thumbnails';
@@ -8,11 +8,16 @@
 
   interface Props {
     design: Design;
+    /** Width / height of the box the zones are placed in. */
     aspect: number;
     screen: ContextScreen;
+    /** The part of the wallpaper under the box, as fractions of it; all of it when absent (one screen). */
+    region?: ZoneRect;
+    /** Width / height of the wallpaper, when the box is only a part of it. */
+    wallpaperAspect?: number;
   }
 
-  let { design, aspect, screen }: Props = $props();
+  let { design, aspect, screen, region = { x: 0, y: 0, w: 1, h: 1 }, wallpaperAspect }: Props = $props();
 
   /** Tall enough for clock-sized detail, small enough to redo on every edit. */
   const ANALYSIS_HEIGHT = 256;
@@ -23,18 +28,26 @@
   let legibility = $state<{ screen: string; verdicts: (Legibility | null)[] } | null>(null);
 
   const placed = $derived(screen.zones.map((z) => ({ zone: z, rect: placeZone(screen, z, aspect) })));
+  /** Where a zone's rect falls on the wallpaper, which is what the legibility check reads. */
+  const onWallpaper = (r: ZoneRect): ZoneRect => ({
+    x: region.x + r.x * region.w,
+    y: region.y + r.y * region.h,
+    w: r.w * region.w,
+    h: r.h * region.h,
+  });
   const verdicts = $derived(legibility?.screen === screen.id ? legibility.verdicts : []);
 
   $effect(() => {
     const id = screen.id;
-    const zones = placed;
+    const wallpaperRatio = wallpaperAspect ?? aspect;
+    const zones = placed.map(({ zone, rect }) => ({ zone, rect: onWallpaper(rect) }));
     // Pixel-sized textures don't matter at text size, and their dots would count as the worst pixels.
     const calm: Design = {
       ...design,
       finish: { ...noFinish, ...design.finish, noise: noFinish.noise },
     };
     const timer = setTimeout(() => {
-      analysis.width = Math.max(2, Math.round(ANALYSIS_HEIGHT * aspect));
+      analysis.width = Math.max(2, Math.round(ANALYSIS_HEIGHT * wallpaperRatio));
       analysis.height = ANALYSIS_HEIGHT;
       const ctx = analysis.getContext('2d', { willReadFrequently: true });
       thumbnails().draw(analysis, calm, () => {

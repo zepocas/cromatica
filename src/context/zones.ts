@@ -38,6 +38,8 @@ export interface ContextScreen {
   width: number;
   height: number;
   zones: Zone[];
+  /** Labels of the zones a secondary monitor shows (the primary shows all); none when absent. */
+  secondary?: string[];
 }
 
 /**
