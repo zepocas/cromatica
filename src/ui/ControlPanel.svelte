@@ -34,6 +34,9 @@
     exporting: boolean;
     progress: ExportProgress | null;
     error: string;
+    /** A status line that isn't an error ("link copied"). */
+    notice: string;
+    onshare: () => void;
     onexport: () => void;
     oncancel: () => void;
   }
@@ -58,6 +61,8 @@
     exporting,
     progress,
     error,
+    notice,
+    onshare,
     onexport,
     oncancel,
   }: Props = $props();
@@ -151,6 +156,8 @@
     {exporting}
     {progress}
     {error}
+    {notice}
+    {onshare}
     {onexport}
     {oncancel}
   />
@@ -180,11 +187,23 @@
   .bottom {
     margin-top: auto;
   }
+  /* Stays put while the sections scroll under it. */
   header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
     display: flex;
     align-items: center;
     gap: 4px;
+    margin: 0 calc(-1 * var(--pad));
+    padding: 6px var(--pad);
+    background: var(--panel);
+  }
+  .panel.collapsed header {
+    position: static;
+    margin: 0;
     padding: 6px 0;
+    background: none;
   }
   .spacer {
     flex: 1;

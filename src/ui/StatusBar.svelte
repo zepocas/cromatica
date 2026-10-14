@@ -34,6 +34,8 @@
     docked,
     format = $bindable(),
     contextId = $bindable(),
+    // Write-only bindable: assigning it is how the value reaches the parent.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     contextPreview = $bindable(),
     monitors,
     portrait,
