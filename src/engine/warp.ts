@@ -108,7 +108,7 @@ const TUNING: Record<Exclude<WarpShape, 'none'>, ShapeTuning> = {
   voronoi: { gain: 0.25, density: 2, coupling: 0.5 },
   curl: { gain: 0.6, density: 1, coupling: 0.5 },
   ridged: { gain: 0.6, density: 0.6, coupling: 0.5 },
-  marble: { gain: 0.8, density: 2, coupling: 1 }, // displacement ∝ band spacing
+  marble: { gain: 0.8, density: 1, coupling: 1 }, // displacement ∝ band spacing; was density 2 (D81)
   bristle: { gain: 0.7, density: 1, coupling: 0.5, span: 0.5 }, // stays broad at small sizes
 };
 

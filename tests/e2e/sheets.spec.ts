@@ -485,6 +485,10 @@ test('forced-warp-sheets', async ({ page }) => {
   const first = Number(process.env.SHUFFLE_SHEET_SEED ?? 3000);
   const kinds = Object.keys(STYLE_SHUFFLE.kinds) as Design['base']['kind'][];
   const amounts = [0.2, 0.5, 0.85];
+  // SHEETS_SIZE_RANGE=0,0.3 draws the warp size from that range instead of the shuffle's own.
+  const override = process.env.SHEETS_SIZE_RANGE?.split(',').map(Number);
+  const sizeRange = (shape: WarpShape): [number, number] =>
+    override?.length === 2 ? [override[0], override[1]] : WARP_SHUFFLE_TABLE[shape].size;
   const perSheet = 30;
   const cols = 5;
   const meta: Record<string, unknown>[] = [];
@@ -510,7 +514,7 @@ test('forced-warp-sheets', async ({ page }) => {
         let drawn = draw(seed);
         while (drawn.design.base.kind !== kind || isSurpriseSeed(seed)) drawn = draw((seed += 1000));
         const rng = createRng(seed ^ 0x5bd1e995);
-        const size = Math.round(rng.range(...WARP_SHUFFLE_TABLE[shape].size) * 100) / 100;
+        const size = Math.round(rng.range(...sizeRange(shape)) * 100) / 100;
         designs.push({ ...drawn.design, warp: { shape, amount, size, seed: rng.uint32() }, finish: noFinish });
         meta.push({ n, seed, kind, family: 'forced', warp: shape, amount, size, palette: drawn.palette });
       }
