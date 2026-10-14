@@ -81,10 +81,10 @@ export const WARP_SHUFFLE_TABLE: Record<WarpShape, { weight: number; amount: Ran
   circular: { weight: 0.8, amount: [0.08, 0.75], size: [0, 0.4] },
   oval: { weight: 0.8, amount: [0.08, 0.85], size: [0, 0.4] },
   worley: { weight: 0.8, amount: [0.08, 0.75], size: [0, 0.4] },
-  voronoi: { weight: 0.8, amount: [0.08, 0.85], size: [0, 0.4] },
+  voronoi: { weight: 0.8, amount: [0.35, 0.85], size: [0, 0.4] },
   curl: { weight: 1.2, amount: [0.08, 0.85], size: [0, 0.4] },
   ridged: { weight: 0.7, amount: [0.08, 0.8], size: [0, 0.4] },
-  marble: { weight: 0.6, amount: [0.18, 0.9], size: [0, 0.2] },
+  marble: { weight: 0.6, amount: [0.18, 0.9], size: [0, 0.1] },
   bristle: { weight: 0.4, amount: [0.18, 0.9], size: [0, 0.4] },
 };
 
@@ -129,8 +129,11 @@ export const RAMP_SHUFFLE = {
   /** Ranges of the first and last stop positions. */
   first: [0, 0.12] as Range,
   last: [0.88, 1] as Range,
-  /** Noise and cells: feature size range. */
-  scale: [0.28, 0.85] as Range,
+  /**
+   * Noise and cells: scale range. A higher scale is MORE and smaller features (0.6 * 10^scale per image height), so
+   * the larger-features tuning of D76 and D78 went the wrong way; fixed in D80, per kind.
+   */
+  scale: { cells: [0.12, 0.42] as Range, noise: [0.05, 0.32] as Range },
   /** The range before the tuning, for the surprise slot (D76). */
   scaleFlat: [0.1, 0.6] as Range,
 };
@@ -245,18 +248,21 @@ export const KIND_PROFILE: Partial<
   // Grain helped everywhere but aurora lighting, vignette and (grid) the vignette hurt; hard-cut shapes read busy.
   grid: { finish: { print: 1.5, vignette: 0.4 }, warp: { ridged: 0.6, marble: 0.6 } },
   linear: { finish: { print: 2, bands: 1.5, relief: 0.7 }, warp: {} },
-  radial: { finish: { print: 2, relief: 0.5 }, warp: { ridged: 0.5, marble: 0.5, voronoi: 0.7 } },
+  radial: {
+    finish: { print: 2, relief: 0.5 },
+    warp: { ridged: 0.5, marble: 0.5, voronoi: 0.7, rows: 1.5, columns: 1.5 },
+  },
   aurora: {
     finish: { print: 1.5, relief: 0.4, vignette: 0.6 },
-    warp: { marble: 0.5, ridged: 0.6, voronoi: 0.5, worley: 0.7 },
+    warp: { marble: 0.5, ridged: 0.6, voronoi: 0, worley: 0.7, rows: 0, columns: 0 },
   },
   planes: {
     // Pooled over 127 planes tiles: grain 3.5 with vs 2.57 without, lighting 2.35 vs 2.98, vignette 3.0 vs 2.72.
     finish: { print: 2, relief: 0.4, vignette: 1.25 },
     warp: {
-      rows: 0.4,
-      columns: 0.4,
-      voronoi: 0.4,
+      rows: 0,
+      columns: 0,
+      voronoi: 0,
       worley: 0.4,
       ridged: 0.5,
       curl: 1.5,
@@ -266,6 +272,15 @@ export const KIND_PROFILE: Partial<
       marble: 1.5,
     },
   },
+  // Rows and columns forced on every kind (60 tiles, D79): they break the shape of aurora, planes, cells and noise
+  // (23 of 26 tiles awkward, even at amount 0.2) and suit conic, radial and linear (0 of 21, mean 4.5).
+  // Stratified cells sheet (D80, mean 4.13): grain +0.33 on, lighting -0.34, vignette -0.2, bands -0.21; marble 3.60.
+  cells: {
+    finish: { print: 1.5, relief: 0.6, vignette: 0.8, bands: 0.7 },
+    warp: { rows: 0, columns: 0, voronoi: 0, ridged: 0, worley: 0.5, marble: 0.4 },
+  },
+  noise: { warp: { rows: 0, columns: 0, ridged: 0, worley: 0.5 } },
+  conic: { warp: { rows: 1.5, columns: 1.5 } },
 };
 
 /** Finishes whose chance a kind profile can scale. */
@@ -792,7 +807,7 @@ function shuffleRamp(base: RampGradient, ctx: ShuffleContext): { pattern: RampGr
   const out: ColorStop[] = stops.map((_, i) => ({ position: positions[i], color: colors[i] }));
   const pattern: RampGradient = { ...base, angle, stops: out };
   if (opts.layout && (base.kind === 'noise' || base.kind === 'cells')) {
-    pattern.scale = round4(layoutRng.range(...(ctx.surprise ? RAMP_SHUFFLE.scaleFlat : RAMP_SHUFFLE.scale)));
+    pattern.scale = round4(layoutRng.range(...(ctx.surprise ? RAMP_SHUFFLE.scaleFlat : RAMP_SHUFFLE.scale[base.kind])));
     pattern.seed = layoutRng.uint32();
     if (base.kind === 'noise') pattern.noiseStyle = layoutRng.next() < 0.5 ? 'contour' : 'ridged';
   }
