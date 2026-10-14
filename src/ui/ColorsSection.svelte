@@ -238,9 +238,13 @@
     margin: 0;
     padding: 0;
   }
+  /* Under the hex values, with room above it. */
+  li.add {
+    margin-top: 3px;
+  }
   li.add button {
     color: var(--dim);
-    padding-left: 26px;
+    padding-left: 40px;
   }
   li.add button:hover:not(:disabled) {
     color: var(--ink);

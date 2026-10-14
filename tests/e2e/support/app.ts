@@ -54,9 +54,9 @@ export async function valueOf(dropdown: Locator): Promise<string> {
   return (await dropdown.getAttribute('data-value')) ?? '';
 }
 
-/** Open a section's "+ more" controls. */
+/** Open a section's "+ advanced" controls. */
 export async function openMore(page: Page, section: 'adjust' | 'colors'): Promise<void> {
-  await page.getByRole('button', { name: `More ${section} settings` }).click();
+  await page.getByRole('button', { name: `Advanced ${section} settings` }).click();
 }
 
 /** Hex values in the colors list, in list order. */
@@ -115,7 +115,8 @@ export function previewProbe(page: Page) {
   const settled = async () => {
     await expect(canvas).toHaveAttribute('data-settled', 'true');
     return canvas.screenshot({
-      style: 'aside, [data-testid="mesh-overlay"], [data-testid="context-overlay"] { visibility: hidden; }',
+      style:
+        'aside, [data-testid="mesh-overlay"], [data-testid="context-overlay"], [data-testid="favourites-tray"] { visibility: hidden; }',
     });
   };
   /** Poll until the settled preview differs from `before`. */

@@ -131,13 +131,16 @@ test('shuffle color order keeps the colors and swaps where they go', async ({ pa
   }
 });
 
-test('"+ add" sits after the last color and adds one', async ({ page }) => {
+test('"+ add" sits after the last color, under the hex values, and adds one', async ({ page }) => {
   await openApp(page);
   const rows = page.locator('li input.hex');
   const add = page.getByRole('button', { name: 'Add color' });
   const count = await rows.count();
   const last = (await rows.last().boundingBox())!;
-  expect((await add.boundingBox())!.y).toBeGreaterThan(last.y);
+  const box = (await add.boundingBox())!;
+  expect(box.y).toBeGreaterThan(last.y);
+  // Its text starts under the hex value, not under the swatch.
+  expect(box.x + box.width / 2).toBeGreaterThan(last.x - 20);
   await add.click();
   await expect(rows).toHaveCount(count + 1);
 });

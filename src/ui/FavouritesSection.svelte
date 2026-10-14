@@ -14,61 +14,106 @@
   let { favourites, design, onopen }: Props = $props();
 
   const current = $derived(favourites.find(design));
-  // Folded while there is nothing in it; adding a favourite opens it, removing never closes it.
+  // Folded to start with: the list opens over the preview, so it is only there when asked for.
   let collapsed = $state(true);
-  let seen: number | undefined;
+
+  // The tray comes out of the panel at the title line, so it follows it (the panel scrolls when it is full).
+  let anchor: HTMLDivElement;
+  let anchorY = $state(0);
+  let trayHeight = $state(0);
+  let viewHeight = $state(0);
+  /** The status bar's height, which the tray keeps clear of. */
+  const BAR = 28;
+  const MARGIN = 8;
+  /** Centred on the title line, so the arrow points at the middle of it, as far as the window allows. */
+  const trayTop = $derived(
+    Math.max(MARGIN, Math.min(anchorY - trayHeight / 2, viewHeight - BAR - MARGIN - trayHeight)),
+  );
+
+  function place() {
+    const r = anchor.getBoundingClientRect();
+    anchorY = r.top + r.height / 2;
+    viewHeight = window.innerHeight;
+  }
+
   $effect(() => {
-    const count = favourites.items.length;
-    if (seen === undefined) collapsed = count === 0;
-    else if (count > seen) collapsed = false;
-    seen = count;
+    if (collapsed) return;
+    place();
+    const panel = anchor.closest('aside');
+    const observer = new ResizeObserver(place);
+    if (panel) observer.observe(panel);
+    panel?.addEventListener('scroll', place, { passive: true });
+    window.addEventListener('resize', place);
+    return () => {
+      observer.disconnect();
+      panel?.removeEventListener('scroll', place);
+      window.removeEventListener('resize', place);
+    };
   });
+
+  function onKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Escape' && !collapsed && !e.defaultPrevented) collapsed = true;
+  }
 </script>
 
-<Section title="favourites" bind:collapsed>
-  {#snippet tools()}
-    <span class="count" title="{favourites.items.length} favourites">{favourites.items.length}</span>
-    <button
-      class="heart"
-      aria-label={current ? 'Remove from favourites' : 'Add to favourites'}
-      aria-pressed={!!current}
-      title={current ? 'Remove from favourites' : 'Keep in favourites'}
-      onclick={() => favourites.toggle(design)}>{current ? '♥' : '♡'}</button
-    >
-  {/snippet}
+<svelte:window onkeydown={onKeyDown} />
 
-  {#if favourites.items.length === 0}
-    <p class="hint">♡ keeps the current design here (up to {FAVOURITES_LIMIT})</p>
-  {:else}
-    <!-- Each palette is a column, first color on top; the columns share the width. -->
-    <ul>
-      {#each favourites.items as fav, i (fav.id)}
-        <li class:current={fav === current}>
-          <button
-            class="pick"
-            aria-label="Open favourite {i + 1}"
-            aria-current={fav === current}
-            title="Open this {fav.design.base.kind} design"
-            onclick={() => onopen(fav.design)}
-          >
-            {#each swatchesOf(fav.design) as color, j (j)}
-              <span style:background={oklchToHex(color)}></span>
-            {/each}
-          </button>
-          <button
-            class="remove"
-            aria-label="Remove favourite {i + 1}"
-            title="Remove from favourites"
-            onclick={() => favourites.remove(fav.id)}>×</button
-          >
-        </li>
-      {/each}
-    </ul>
-  {/if}
-  {#if favourites.notice}
-    <p class="hint" role="status">{favourites.notice}</p>
-  {/if}
-</Section>
+<div bind:this={anchor}>
+  <Section title="favourites" detached bind:collapsed>
+    {#snippet tools()}
+      <button
+        class="heart"
+        aria-label={current ? 'Remove from favourites' : 'Add to favourites'}
+        aria-pressed={!!current}
+        title={current ? 'Remove from favourites' : 'Keep in favourites'}
+        onclick={() => favourites.toggle(design)}>{current ? '♥' : '♡'}</button
+      >
+      <span class="count" title="{favourites.items.length} favourites">{favourites.items.length}</span>
+    {/snippet}
+  </Section>
+</div>
+{#if !collapsed}
+  <div
+    class="tray panel"
+    style:top="{trayTop}px"
+    bind:clientHeight={trayHeight}
+    role="region"
+    aria-label="Favourites"
+    data-testid="favourites-tray"
+  >
+    {#if favourites.items.length === 0}
+      <p class="hint">♡ keeps the current design here (up to {FAVOURITES_LIMIT})</p>
+    {:else}
+      <!-- Each palette is a column, first color on top; the columns share the width. -->
+      <ul>
+        {#each favourites.items as fav, i (fav.id)}
+          <li class:current={fav === current}>
+            <button
+              class="pick"
+              aria-label="Open favourite {i + 1}"
+              aria-current={fav === current}
+              title="Open this {fav.design.base.kind} design"
+              onclick={() => onopen(fav.design)}
+            >
+              {#each swatchesOf(fav.design) as color, j (j)}
+                <span style:background={oklchToHex(color)}></span>
+              {/each}
+            </button>
+            <button
+              class="remove"
+              aria-label="Remove favourite {i + 1}"
+              title="Remove from favourites"
+              onclick={() => favourites.remove(fav.id)}>×</button
+            >
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </div>
+{/if}
+{#if favourites.notice}
+  <p class="hint" role="status">{favourites.notice}</p>
+{/if}
 
 <style>
   .count {
@@ -95,14 +140,30 @@
     border-color: oklch(0.68 0.2 22);
     color: oklch(0.68 0.2 22);
   }
+  /* Over the preview, so it never takes panel height. */
+  .tray {
+    position: fixed;
+    /* Flush with the panel, centred on the title line: it reads as the line pulled out. */
+    left: var(--sidebar);
+    z-index: 4;
+    box-sizing: border-box;
+    max-width: min(640px, calc(100vw - var(--sidebar) - 24px));
+    max-height: 50vh;
+    overflow-y: auto;
+    padding: 10px;
+    background: var(--panel-float);
+    border: 1px solid var(--ink);
+    border-left: 0;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
   ul {
     margin: 0;
     padding: 2px;
     list-style: none;
-    display: grid;
-    /* As many columns as fit, sharing the width, so the right edge adapts. */
-    grid-template-columns: repeat(auto-fill, minmax(16px, 1fr));
-    gap: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
   }
   li {
     position: relative;
@@ -110,8 +171,8 @@
   .pick {
     display: flex;
     flex-direction: column;
-    width: 100%;
-    height: 56px;
+    width: 26px;
+    height: 64px;
     padding: 0;
     outline: 1px solid var(--rule);
   }
