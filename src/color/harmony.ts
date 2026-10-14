@@ -87,8 +87,8 @@ const MOOD_WEIGHTS_FLAT: Record<PaletteMood, number> = {
   neon: 0.02,
 };
 
-/** How key 'any' resolves: mostly low (dark), with a little full range and light (D76). */
-const KEY_WEIGHTS: Record<ValueKey, number> = { high: 0.03, low: 0.87, full: 0.1 };
+/** How key 'any' resolves: mostly low (dark), with a little full range and light (D76, D82). */
+const KEY_WEIGHTS: Record<ValueKey, number> = { high: 0.015, low: 0.935, full: 0.05 };
 
 const KEY_WEIGHTS_FLAT: Record<ValueKey, number> = { high: 0.08, low: 0.15, full: 0.77 };
 

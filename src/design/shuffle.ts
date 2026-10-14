@@ -279,7 +279,11 @@ export const KIND_PROFILE: Partial<
     finish: { print: 1.5, relief: 0.6, vignette: 0.8, bands: 0.7 },
     warp: { rows: 0, columns: 0, voronoi: 0, ridged: 0, worley: 0.5, marble: 0.4, bristle: 0.7 },
   },
-  noise: { warp: { rows: 0, columns: 0, ridged: 0, worley: 0.5 } },
+  // Stratified noise sheet (D80, 60 tiles, mean 4.10): grain +0.35 on, bands -0.32, lighting +0.13, vignette flat (D82).
+  noise: {
+    finish: { print: 1.5, bands: 0.7 },
+    warp: { rows: 0, columns: 0, ridged: 0, worley: 0.5 },
+  },
   conic: { warp: { rows: 1.5, columns: 1.5 } },
 };
 
