@@ -5,6 +5,8 @@
   import LockToggle from './controls/LockToggle.svelte';
   import type { EditorState } from './editor.svelte';
   import type { CanvasView } from './view.svelte';
+  import MonitorsPanel from './MonitorsPanel.svelte';
+  import type { MonitorsState } from './monitors.svelte';
 
   interface Props {
     editor: EditorState;
@@ -17,6 +19,8 @@
     portrait: boolean;
     /** Beside the docked panel; otherwise the full width. */
     docked: boolean;
+    /** The multi-monitor preview over the image. */
+    monitors: MonitorsState;
     /** The file type of the download. */
     format: ExportFormat;
     onzoom: (factor: number) => void;
@@ -33,6 +37,7 @@
     // Write-only bindable: assigning it is how the value reaches the parent.
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     contextPreview = $bindable(),
+    monitors,
     portrait,
     onzoom,
     onfullscreen,
@@ -44,9 +49,24 @@
     const screens = [...CONTEXT_SCREENS].sort((a, b) => Number(a.group !== first) - Number(b.group !== first));
     return [
       { value: OFF, label: 'off' },
-      ...screens.map((s) => ({ value: s.id, label: s.label, group: s.group, title: `${s.device}, ${s.os}` })),
+      ...screens.map((s) => {
+        // Phones have no second screen to lay beside: off limits while the monitors are on.
+        const phone = monitors.on && s.group === 'mobile';
+        return {
+          value: s.id,
+          label: s.label,
+          group: s.group,
+          title: phone ? 'Not available with monitors on' : `${s.device}, ${s.os}`,
+          disabled: phone,
+        };
+      }),
     ];
   });
+
+  function toggleMonitors() {
+    monitors.on = !monitors.on;
+    if (monitors.on && CONTEXT_SCREENS.find((s) => s.id === contextId)?.group === 'mobile') contextId = '';
+  }
 
   const handles = $derived(
     editor.kind === 'mesh'
@@ -125,6 +145,18 @@
       onactive={(id) => (contextPreview = id === null ? null : id === OFF ? '' : id)}
       title="Show the OS on top of the image, and warn where its text would be hard to read"
     />
+    <span class="monitors">
+      <button
+        class="tool"
+        aria-label="Monitors"
+        aria-pressed={monitors.on}
+        title="Lay monitors over the image to see what each would show"
+        onclick={toggleMonitors}>▭▭<span class="name">monitors</span></button
+      >
+      {#if monitors.on}
+        <MonitorsPanel {monitors} />
+      {/if}
+    </span>
   </span>
   {#if handles}
     <span class="sep" role="separator" aria-orientation="vertical"></span>
@@ -161,6 +193,7 @@
 
 <style>
   .statusbar {
+    container: statusbar / inline-size;
     position: fixed;
     left: 0;
     right: 0;
@@ -178,6 +211,32 @@
   .statusbar.docked {
     left: var(--sidebar);
     border-left: 1px solid var(--rule);
+  }
+  .monitors {
+    position: relative;
+  }
+  /* A bordered button, so it reads as something to press; the name shows where the bar has the room. */
+  .tool {
+    padding: 0 3px;
+    color: var(--ink);
+    border: 1px solid var(--dim);
+  }
+  .tool:hover,
+  .tool[aria-pressed='true'] {
+    border-color: var(--ink);
+    background: var(--rule);
+  }
+  .tool .name {
+    display: none;
+  }
+  @container statusbar (min-width: 1130px) {
+    .tool {
+      padding: 1px 8px;
+    }
+    .tool .name {
+      display: inline;
+      margin-left: 0.7ch;
+    }
   }
   .group {
     display: flex;

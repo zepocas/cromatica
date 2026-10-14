@@ -209,6 +209,10 @@ body,
 .dropdown-list li.active {
   background: #2f2f2d;
 }
+.dropdown-list li.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
 .dropdown-list li.group {
   padding-top: 4px;
   cursor: default;

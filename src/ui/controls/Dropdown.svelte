@@ -6,6 +6,8 @@
     /** Options with the same group sit under one heading. */
     group?: string;
     title?: string;
+    /** Shown greyed out: it can't be picked or stepped onto. */
+    disabled?: boolean;
   }
 
   /** Renders the list at the end of <body>, so the panel's scroll and backdrop don't clip or offset it. */
@@ -77,12 +79,16 @@
     };
   }
 
+  /** The nearest option that can be picked from `from` in `dir` (including `from`); `from` when there is none. */
+  function enabledFrom(from: number, dir: 1 | -1): number {
+    for (let i = from; i >= 0 && i < options.length; i += dir) if (!options[i].disabled) return i;
+    return from;
+  }
+
   function show() {
     placeList();
-    active = Math.max(
-      0,
-      options.findIndex((o) => o.value === value),
-    );
+    const at = options.findIndex((o) => o.value === value);
+    active = enabledFrom(Math.max(0, at), 1);
     open = true;
   }
 
@@ -92,6 +98,7 @@
 
   function pick(i: number) {
     const o = options[i];
+    if (o?.disabled) return;
     hide();
     if (o && o.value !== value) onchange(o.value);
   }
@@ -101,7 +108,7 @@
     const n = options.length;
     for (let k = 1; k <= n; k++) {
       const i = (active + k) % n;
-      if (labelOf(options[i]).toLowerCase().startsWith(ch)) {
+      if (!options[i].disabled && labelOf(options[i]).toLowerCase().startsWith(ch)) {
         active = i;
         return;
       }
@@ -113,10 +120,10 @@
     if (!open) {
       if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) show();
       else return;
-    } else if (e.key === 'ArrowDown') active = Math.min(active + 1, last);
-    else if (e.key === 'ArrowUp') active = Math.max(active - 1, 0);
-    else if (e.key === 'Home') active = 0;
-    else if (e.key === 'End') active = last;
+    } else if (e.key === 'ArrowDown') active = enabledFrom(Math.min(active + 1, last), 1);
+    else if (e.key === 'ArrowUp') active = enabledFrom(Math.max(active - 1, 0), -1);
+    else if (e.key === 'Home') active = enabledFrom(0, 1);
+    else if (e.key === 'End') active = enabledFrom(last, -1);
     else if (e.key === 'Enter' || e.key === ' ') pick(active);
     else if (e.key === 'Escape') hide();
     else if (e.key === 'Tab') return hide();
@@ -197,11 +204,13 @@
         id={`${uid}-${i}`}
         role="option"
         aria-selected={o.value === value}
+        aria-disabled={o.disabled || undefined}
         data-value={o.value}
         class:active={i === active}
+        class:disabled={o.disabled}
         title={o.title}
         onpointerdown={(e) => e.preventDefault()}
-        onpointermove={() => (active = i)}
+        onpointermove={() => !o.disabled && (active = i)}
         onclick={() => pick(i)}
       >
         <span class="label">{o.value === value ? '› ' : '  '}{labelOf(o)}</span>{#if icon}{@render icon(o.value)}{/if}

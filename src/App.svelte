@@ -14,6 +14,8 @@
   import MoreLikeThis from './ui/MoreLikeThis.svelte';
   import GridOverlay from './ui/GridOverlay.svelte';
   import ContextOverlay from './ui/ContextOverlay.svelte';
+  import MonitorsOverlay from './ui/MonitorsOverlay.svelte';
+  import { MonitorsState } from './ui/monitors.svelte';
   import { CONTEXT_SCREENS } from './context/screens';
   import Preview from './ui/Preview.svelte';
   import { dismissTips, markShuffleTried, shuffleTried, tipsDismissed } from './ui/tips';
@@ -67,6 +69,7 @@
   let contextId = $state('');
   let contextPreview = $state<string | null>(null);
   const contextScreen = $derived(CONTEXT_SCREENS.find((s) => s.id === (contextPreview ?? contextId)) ?? null);
+  const monitors = new MonitorsState();
   // First visit only; `?default` (tests) never shows them.
   let tips = $state(!builtIn && !tipsDismissed());
   let shortcuts = $state(false);
@@ -103,10 +106,19 @@
       : { width: preset.width, height: preset.height };
   });
 
+  const wallpaper = $derived({ w: output.width, h: output.height });
   const renderDesign = $derived(editor.design);
   const aspect = $derived(output.width / output.height);
   const previewPreset = $derived(presetPreview ? SIZE_PRESETS.find((p) => p.id === presetPreview) : undefined);
   const previewAspect = $derived(previewPreset ? previewPreset.width / previewPreset.height : aspect);
+
+  const showMonitors = $derived(monitors.on && !fullscreen && !exploring && !previewPreset);
+  /** In the stretch fit the wallpaper is drawn bent to the block, whose shape the monitors keep. */
+  const stretchedTo = $derived.by(() => {
+    if (!showMonitors || monitors.fit !== 'stretch') return null;
+    const r = monitors.rect(wallpaper);
+    return r.w / r.h;
+  });
   $effect(() => {
     editor.aspect = aspect;
   });
@@ -293,6 +305,7 @@
   bind:this={preview}
   design={editor.preview ?? renderDesign}
   aspect={previewAspect}
+  stretchTo={stretchedTo}
   paused={exporting}
   docked={!collapsed && !fullscreen}
   barred={!fullscreen}
@@ -302,11 +315,13 @@
   onexitfullscreen={exitFullscreen}
 >
   {#snippet overlay()}
-    {#if !exploring && contextScreen && !previewPreset}
+    {#if !exploring && contextScreen && !previewPreset && !showMonitors}
       <ContextOverlay design={renderDesign} {aspect} screen={contextScreen} />
     {/if}
     {#if fullscreen}
       <!-- The image and the OS context only: no handles. -->
+    {:else if showMonitors}
+      <MonitorsOverlay {monitors} {wallpaper} design={renderDesign} context={contextScreen} />
     {:else if exploring}
       <MoreLikeThis
         design={renderDesign}
@@ -360,6 +375,7 @@
     bind:format
     bind:contextId
     bind:contextPreview
+    {monitors}
     portrait={output.height > output.width}
     {view}
     onzoom={(f) => preview.zoomBy(f)}

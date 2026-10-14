@@ -8,6 +8,8 @@
   interface Props {
     design: Design;
     aspect: number;
+    /** Show the frame at this shape, stretching the picture to it (the monitors' stretch fit); null = as drawn. */
+    stretchTo?: number | null;
     paused?: boolean;
     /** Rendered over the canvas, in a box that matches its displayed rect exactly. */
     overlay?: Snippet;
@@ -27,6 +29,7 @@
   let {
     design,
     aspect,
+    stretchTo = null,
     paused = false,
     overlay,
     docked = false,
@@ -67,6 +70,7 @@
 
   $effect(() => controller?.setDesign(design));
   $effect(() => controller?.setAspect(aspect));
+  $effect(() => controller?.setDisplayAspect(stretchTo));
   $effect(() => controller?.setPaused(paused));
 
   // A new shape is a new composition: start fitted.

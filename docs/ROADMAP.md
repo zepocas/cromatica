@@ -436,8 +436,9 @@ Each milestone uses the same structure:
 
 ---
 
-## Phase 2 — Multi-monitor preview (sketch)
+## Phase 2 — Multi-monitor preview (first version built, D84)
 
+- **Built (2026-10-14, D84):** a status bar button with joined, draggable monitor rectangles (aspect ratio and diagonal) over the wallpaper, span or stretch (the picture is drawn bent in stretch), Shift-drag to slide the wallpaper in span, and the OS context drawn inside each monitor (full on the primary, a secondary screen's share on the rest). The sketch below is the earlier idea; bezel gaps and a wallpaper-size-to-layout action were left out.
 - **Scope (user, 2026-10-12):** a preview of a window and monitor layout, so a wallpaper can be judged spanned across several displays for immersion. It is not an export: no per-monitor images and no ZIP.
 - A canvas for arranging displays. Each display is modelled as aspect ratio + physical size (from its diagonal) + position. Optional bezel-gap compensation.
 - A single composition spans the whole arrangement; the output size is the arrangement's total (for two 4K screens side by side, 7680x2160, which the custom size already allows up to 16384 px per side).
