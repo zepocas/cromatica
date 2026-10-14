@@ -610,3 +610,10 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Marble:** `size` 0 is already the largest marble; making it less busy needs the engine's density (`density: 2` in `warp.ts`), an engine setting, left for later.
 - **Sidecars:** the sheet JSON now has `warpAmount`, `warpSize`, `scale` and `surprise` per tile.
 
+## D81. D80 scale fix confirmed; marble density halved; bristle x0.7 on mesh, grid and cells
+
+- **Decision (2026-10-14):** the marble warp's `density` in `warp.ts` is 1 (was 2), so its bands are twice as wide at every size. Bristle weight x0.7 on mesh, grid and cells. The noise and cells scale ranges of D80 stay.
+- **Evidence (three designed sheets at the D80 code, 60 tiles each, form only):** cells mean 4.68 and noise 4.10. "Features too small" was on 13 of 60 cells tiles (9 marble) and 27 of 60 noise tiles (14 of the 15 marble tiles, marble mean 3.27); the other warps on cells averaged 4.3 to 5.0, and on noise "too small" showed no pattern by scale. So the scale direction is right and the rest is marble. Oval, bristle and circular forced on all nine kinds: oval 4.21, circular 3.89 ("too blurry" on 4 tiles), bristle 3.83 with "awkward composition" on 3 of 18 tiles (mesh, grid, cells; 2 tiles each, thin evidence, hence a mild x0.7).
+- **Engine change:** marble renders differently for saved designs (wider bands, displacement still proportional to band spacing). No `engineVersion` bump or migration, since backwards compatibility is not a concern in development.
+- **Marble check (forced on all nine kinds, 60 tiles, size 0-0.3, density 1):** mean 4.28 (was 3.28 at density 2), "features too small" on 8 of 60 (was 7 of 18). By size the means are flat (4.3, 4.3, 4.4, 3.9, 4.4 per 0.06 step); tags: none at 0.12-0.18, 4 of 11 at 0.18-0.24. Shuffle marble size range is now 0-0.15 (was 0-0.1). Weakest kinds noise 3.71 and planes 3.83 (6-7 tiles each, "too small" 3 and 2); conic 5.00, radial 4.86. Not acted on.
+- **Not checked:** noise and mesh/aurora with oval and bristle (6 to 7 tiles per kind).

@@ -84,7 +84,7 @@ export const WARP_SHUFFLE_TABLE: Record<WarpShape, { weight: number; amount: Ran
   voronoi: { weight: 0.8, amount: [0.35, 0.85], size: [0, 0.4] },
   curl: { weight: 1.2, amount: [0.08, 0.85], size: [0, 0.4] },
   ridged: { weight: 0.7, amount: [0.08, 0.8], size: [0, 0.4] },
-  marble: { weight: 0.6, amount: [0.18, 0.9], size: [0, 0.1] },
+  marble: { weight: 0.6, amount: [0.18, 0.9], size: [0, 0.15] },
   bristle: { weight: 0.4, amount: [0.18, 0.9], size: [0, 0.4] },
 };
 
@@ -244,9 +244,9 @@ export const KIND_PROFILE: Partial<
   >
 > = {
   // 60 stratified mesh tiles (D77): grain and vignette +0.74 each, adding up (neither 2.73, both 4.20); voronoi 2.43.
-  mesh: { finish: { print: 2, vignette: 1.45 }, warp: { voronoi: 0.5 } },
+  mesh: { finish: { print: 2, vignette: 1.45 }, warp: { voronoi: 0.5, bristle: 0.7 } },
   // Grain helped everywhere but aurora lighting, vignette and (grid) the vignette hurt; hard-cut shapes read busy.
-  grid: { finish: { print: 1.5, vignette: 0.4 }, warp: { ridged: 0.6, marble: 0.6 } },
+  grid: { finish: { print: 1.5, vignette: 0.4 }, warp: { ridged: 0.6, marble: 0.6, bristle: 0.7 } },
   linear: { finish: { print: 2, bands: 1.5, relief: 0.7 }, warp: {} },
   radial: {
     finish: { print: 2, relief: 0.5 },
@@ -277,7 +277,7 @@ export const KIND_PROFILE: Partial<
   // Stratified cells sheet (D80, mean 4.13): grain +0.33 on, lighting -0.34, vignette -0.2, bands -0.21; marble 3.60.
   cells: {
     finish: { print: 1.5, relief: 0.6, vignette: 0.8, bands: 0.7 },
-    warp: { rows: 0, columns: 0, voronoi: 0, ridged: 0, worley: 0.5, marble: 0.4 },
+    warp: { rows: 0, columns: 0, voronoi: 0, ridged: 0, worley: 0.5, marble: 0.4, bristle: 0.7 },
   },
   noise: { warp: { rows: 0, columns: 0, ridged: 0, worley: 0.5 } },
   conic: { warp: { rows: 1.5, columns: 1.5 } },
