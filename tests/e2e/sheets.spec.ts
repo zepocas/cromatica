@@ -534,6 +534,76 @@ test('forced-warp-sheets', async ({ page }) => {
   writeFileSync(join(DIR, 'shuffle-sheet.json'), JSON.stringify(meta, null, 1));
 });
 
+// Base noise on its own (D83): the noise kind with no warp and no finishes, the two styles crossed with six scale
+// bins, five tiles per cell in a seeded order. Scored on form: is the base noise too small, and where?
+test('noise-base-sheets', async ({ page }) => {
+  await openEngineHarness(page);
+  const first = Number(process.env.SHUFFLE_SHEET_SEED ?? 4000);
+  const styles = ['contour', 'ridged'] as const;
+  const centers = [0.02, 0.1, 0.18, 0.26, 0.34, 0.45];
+  const cells = styles.flatMap((style) =>
+    centers.flatMap((center) => Array.from({ length: 5 }, () => ({ style, center }))),
+  );
+  const order = createRng(first * 3 + 1);
+  for (let i = cells.length - 1; i > 0; i--) {
+    const j = order.int(i + 1);
+    [cells[i], cells[j]] = [cells[j], cells[i]];
+  }
+  const perSheet = 30;
+  const cols = 5;
+  const meta: Record<string, unknown>[] = [];
+  for (let sheet = 0; sheet < 2; sheet++) {
+    const rows = [];
+    for (let r = 0; r < perSheet / cols; r++) {
+      const designs: Design[] = [];
+      for (let c = 0; c < cols; c++) {
+        const n = sheet * perSheet + r * cols + c + 1;
+        const { style, center } = cells[n - 1];
+        let seed = first + n;
+        const draw = (sd: number) =>
+          shuffleDesign(
+            withNoise(meshDefault, defaultNoise),
+            { colors: true, palette: { mood: 'any', key: 'any' }, layout: true, style: true, seed: sd },
+            16 / 9,
+          );
+        let drawn = draw(seed);
+        while (drawn.design.base.kind !== 'noise' || isSurpriseSeed(seed)) drawn = draw((seed += 1000));
+        const rng = createRng(seed ^ 0x5bd1e995);
+        const scale = Math.round(Math.max(0, center + rng.range(-0.04, 0.04)) * 1e4) / 1e4;
+        designs.push({
+          ...drawn.design,
+          base: { ...(drawn.design.base as RampGradient), scale, noiseStyle: style },
+          warp: { shape: 'none', amount: 0, size: 0.5, seed: rng.uint32() },
+          finish: noFinish,
+        });
+        meta.push({
+          n,
+          seed,
+          kind: 'noise',
+          family: 'base',
+          warp: 'none',
+          style,
+          scale,
+          bin: center,
+          palette: drawn.palette,
+        });
+      }
+      const n0 = sheet * perSheet + r * cols + 1;
+      rows.push({ label: `#${n0}-${n0 + cols - 1}`, designs });
+    }
+    const png = await engineHarness(
+      page,
+      'contactSheet',
+      rows,
+      ['+0', '+1', '+2', '+3', '+4'],
+      cellW,
+      Math.round((cellW * 9) / 16),
+    );
+    writeFileSync(join(DIR, `shuffle-sheet-${sheet + 1}.png`), Buffer.from(png, 'base64'));
+  }
+  writeFileSync(join(DIR, 'shuffle-sheet.json'), JSON.stringify(meta, null, 1));
+});
+
 test('relief.png', async ({ page }) => {
   await openEngineHarness(page);
   const looks: [string, Design][] = [

@@ -133,9 +133,11 @@ export const RAMP_SHUFFLE = {
    * Noise and cells: scale range. A higher scale is MORE and smaller features (0.6 * 10^scale per image height), so
    * the larger-features tuning of D76 and D78 went the wrong way; fixed in D80, per kind.
    */
-  scale: { cells: [0.12, 0.42] as Range, noise: [0.05, 0.32] as Range },
+  scale: { cells: [0.12, 0.42] as Range, noise: [0.05, 0.28] as Range },
   /** The range before the tuning, for the surprise slot (D76). */
   scaleFlat: [0.1, 0.6] as Range,
+  /** Noise: share of contour against ridged (D83); the surprise slot keeps an even split. */
+  contourShare: 0.65,
 };
 
 export const PLANES_SHUFFLE = {
@@ -282,7 +284,7 @@ export const KIND_PROFILE: Partial<
   // Stratified noise sheet (D80, 60 tiles, mean 4.10): grain +0.35 on, bands -0.32, lighting +0.13, vignette flat (D82).
   noise: {
     finish: { print: 1.5, bands: 0.7 },
-    warp: { rows: 0, columns: 0, ridged: 0, worley: 0.5 },
+    warp: { rows: 0, columns: 0, ridged: 0, worley: 0.5, marble: 0.6 },
   },
   conic: { warp: { rows: 1.5, columns: 1.5 } },
 };
@@ -813,7 +815,8 @@ function shuffleRamp(base: RampGradient, ctx: ShuffleContext): { pattern: RampGr
   if (opts.layout && (base.kind === 'noise' || base.kind === 'cells')) {
     pattern.scale = round4(layoutRng.range(...(ctx.surprise ? RAMP_SHUFFLE.scaleFlat : RAMP_SHUFFLE.scale[base.kind])));
     pattern.seed = layoutRng.uint32();
-    if (base.kind === 'noise') pattern.noiseStyle = layoutRng.next() < 0.5 ? 'contour' : 'ridged';
+    if (base.kind === 'noise')
+      pattern.noiseStyle = layoutRng.next() < (ctx.surprise ? 0.5 : RAMP_SHUFFLE.contourShare) ? 'contour' : 'ridged';
   }
   return { pattern, palette: palette && paletteInfo(palette) };
 }
