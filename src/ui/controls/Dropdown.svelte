@@ -16,7 +16,7 @@
 </script>
 
 <script lang="ts" generics="T extends string">
-  import { untrack } from 'svelte';
+  import { untrack, type Snippet } from 'svelte';
 
   // An in-page replacement for <select>: native popups can't be sized, and
   // Firefox-based browsers scroll lists that would fit.
@@ -33,6 +33,8 @@
     id?: string;
     /** The option under the pointer or the arrow keys while open; null once closed. */
     onactive?: (value: T | null) => void;
+    /** A small picture drawn after each label, in the list and on the button. */
+    icon?: Snippet<[T]>;
   }
 
   let {
@@ -45,6 +47,7 @@
     title,
     id,
     onactive,
+    icon,
   }: Props = $props();
 
   const uid = $props.id();
@@ -166,7 +169,10 @@
   {disabled}
   onclick={() => (open ? hide() : show())}
   onkeydown={onKeyDown}
-  onkeyup={(e) => e.key === ' ' && e.preventDefault()}>{current ? labelOf(current) : placeholder}</button
+  onkeyup={(e) => e.key === ' ' && e.preventDefault()}
+  ><span class="label">{current ? labelOf(current) : placeholder}</span>{#if icon && current}{@render icon(
+      current.value,
+    )}{/if}</button
 >
 
 {#if open}
@@ -198,7 +204,7 @@
         onpointermove={() => (active = i)}
         onclick={() => pick(i)}
       >
-        {o.value === value ? '› ' : '  '}{labelOf(o)}
+        <span class="label">{o.value === value ? '› ' : '  '}{labelOf(o)}</span>{#if icon}{@render icon(o.value)}{/if}
       </li>
     {/each}
   </ul>

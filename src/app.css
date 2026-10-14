@@ -157,6 +157,31 @@ body,
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Label first, then the picture of the option pushed to the far end. */
+.panel button.dropdown:has(.shape-icon) {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dropdown .label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dropdown .shape-icon,
+.dropdown-list .shape-icon {
+  flex: none;
+  opacity: 0.8;
+}
+.dropdown-list li:has(.shape-icon) {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.dropdown-list li .label {
+  flex: 1;
+}
 /* The open list of a Dropdown, rendered at the end of <body>. */
 .dropdown-list {
   position: fixed;

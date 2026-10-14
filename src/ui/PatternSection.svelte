@@ -5,6 +5,8 @@
   import type { EditorState } from './editor.svelte';
   import { CUSTOM_PRESET_ID, PRESET_GROUPS, presetLabel, SIZE_PRESETS } from './presets';
   import Section from './Section.svelte';
+  import ShapeIcon from './ShapeIcon.svelte';
+  import { PATTERN_ICONS, WARP_ICONS } from './shapeIcons';
 
   interface Props {
     editor: EditorState;
@@ -17,12 +19,16 @@
     output: { width: number; height: number };
   }
 
+  // The three below are write-only bindables: assigning them is how the value reaches the parent.
   // Bindable so child bindings into the editor's state pass Svelte's ownership checks.
   let {
     editor = $bindable(),
     presetId = $bindable(),
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     presetPreview = $bindable(),
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     customWidth = $bindable(),
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     customHeight = $bindable(),
     output,
   }: Props = $props();
@@ -84,6 +90,9 @@
   }
 </script>
 
+{#snippet patternIcon(kind: string)}<ShapeIcon body={PATTERN_ICONS[kind] ?? ''} />{/snippet}
+{#snippet warpIcon(shape: WarpShape)}<ShapeIcon body={WARP_ICONS[shape]} />{/snippet}
+
 <Section title="pattern">
   <div class="row">
     <span>gradient</span>
@@ -92,6 +101,7 @@
       value={editor.kind}
       options={PATTERNS.map((p) => ({ value: p.kind, label: p.label }))}
       onchange={(k) => (editor.kind = k)}
+      icon={patternIcon}
       onactive={(k) => editor.previewChange(k && k !== editor.kind ? (t) => (t.kind = k) : null)}
     />
   </div>
@@ -104,6 +114,7 @@
       value={editor.warp.shape}
       options={WARP_SHAPES.map((s) => ({ value: s, label: WARP_LABELS[s] }))}
       onchange={(s) => (editor.warp.shape = s)}
+      icon={warpIcon}
       onactive={(s) => editor.previewChange(s && s !== editor.warp.shape ? (t) => (t.warp.shape = s) : null)}
     />
     <button
