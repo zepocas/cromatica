@@ -2,6 +2,7 @@
   import { readExportedDesign, type ExportedDesign } from './export/design-image';
   import { exportImage } from './export/exporter';
   import type { ExportFormat, ExportProgress } from './export/types';
+  import { saveDesign, type SavedDesign } from './design/schema';
   import { readAutosave, writeAutosave } from './ui/autosave';
   import ControlPanel from './ui/ControlPanel.svelte';
   import { EditorState, type EditorSnapshot } from './ui/editor.svelte';
@@ -20,12 +21,30 @@
   import StatusBar from './ui/StatusBar.svelte';
   import Tips from './ui/Tips.svelte';
   import { CanvasView } from './ui/view.svelte';
+  import { clearShareHash, LONG_LINK, readShareHash, shareUrl } from './ui/share-link';
   import { CUSTOM_PRESET_ID, DEFAULT_PRESET_ID, SIZE_PRESETS } from './ui/presets';
 
-  // Opens on the autosaved design, or a shuffle on a first visit; `?default`
-  // starts from the built-in one and leaves the save alone (tests).
+  import { untrack } from 'svelte';
+  import type { Design } from './design/design';
+
+  interface Props {
+    /** The design in the page's share link, already decoded (main.ts). */
+    shared?: SavedDesign | null;
+    /** There was a share link but it couldn't be read. */
+    shareFailed?: boolean;
+  }
+  let { shared = null, shareFailed = false }: Props = $props();
+  // Read once: a link only matters at startup (later ones arrive as hashchange).
+  const startShared = untrack(() => shared);
+  const startShareFailed = untrack(() => shareFailed);
+  function designKey(design: Design): string {
+    return JSON.stringify(saveDesign(design).design);
+  }
+
+  // Opens on a shared link's design, else the autosaved one, or a shuffle on a first visit;
+  // `?default` starts from the built-in one and leaves the save alone (tests).
   const builtIn = new URLSearchParams(location.search).has('default');
-  const saved = builtIn ? null : readAutosave();
+  const saved = startShared ?? (builtIn ? null : readAutosave());
   const initial = new EditorState({ shuffle: !builtIn && !saved });
   if (saved) initial.setDesign(saved);
   const favourites = new Favourites();
@@ -69,7 +88,10 @@
   const canFullscreen = typeof document !== 'undefined' && document.fullscreenEnabled;
   let exporting = $state(false);
   let progress = $state<ExportProgress | null>(null);
-  let error = $state('');
+  let error = $state(startShareFailed ? "That link couldn't be opened." : '');
+  let notice = $state('');
+  /** The design a share link opened, until the first edit: the address bar and the autosave both leave it alone meanwhile. */
+  let linked = startShared ? designKey(startShared) : null;
   let abort: AbortController | null = null;
   const view = new CanvasView();
   let preview: Preview;
@@ -95,8 +117,43 @@
   $effect(() => {
     const design = renderDesign;
     clearTimeout(saveTimer);
-    if (!builtIn) saveTimer = setTimeout(() => writeAutosave(design), 300);
+    // The first edit after opening a link ends its hold: the link would describe the old design from here on.
+    if (linked !== null && designKey(design) !== linked) {
+      linked = null;
+      clearShareHash();
+    }
+    if (!builtIn && linked === null) saveTimer = setTimeout(() => writeAutosave(design), 300);
   });
+
+  /** Copy a link to the current design. */
+  async function share() {
+    error = '';
+    notice = '';
+    try {
+      const url = await shareUrl(renderDesign);
+      await navigator.clipboard.writeText(url);
+      notice =
+        url.length > LONG_LINK
+          ? 'link copied; long, so chat apps may cut it (download keeps the design)'
+          : 'link copied';
+    } catch (err) {
+      error = err instanceof Error ? err.message : String(err);
+    }
+  }
+
+  /** A link pasted into this tab only changes the fragment, so the page isn't reloaded: open it here. */
+  async function onHashChange() {
+    const { design, failed } = await readShareHash(location.hash);
+    if (failed) {
+      error = "That link couldn't be opened.";
+    } else if (design) {
+      error = '';
+      history.commit();
+      linked = designKey(design);
+      editor.setDesign(design);
+      view.reset();
+    }
+  }
 
   function undo() {
     apply(history.undo());
@@ -228,7 +285,8 @@
   onpointerdowncapture={onPress}
   onkeydowncapture={onPress}
   onkeydown={onKeyDown}
-  onpagehide={() => !builtIn && writeAutosave(renderDesign)}
+  onhashchange={onHashChange}
+  onpagehide={() => !builtIn && linked === null && writeAutosave(renderDesign)}
 />
 
 <Preview
@@ -289,6 +347,8 @@
     {exporting}
     {progress}
     {error}
+    {notice}
+    onshare={share}
     onexport={startExport}
     oncancel={cancelExport}
   />
