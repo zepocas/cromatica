@@ -17,6 +17,8 @@ export interface PreviewOptions {
 export interface PreviewController {
   setDesign(design: Design): void;
   setAspect(aspect: number): void;
+  /** Show the frame at this shape instead, stretching the picture to it; null shows it as drawn. Screen only. */
+  setDisplayAspect(aspect: number | null): void;
   /** Stop drawing while paused (e.g. during an export); resumes with one redraw. */
   setPaused(paused: boolean): void;
   /** Draw synchronously now at the current drawing-buffer size. */
@@ -74,6 +76,7 @@ export function createPreview(
   const container = opts.container ?? canvas.parentElement;
   let design = initialDesign;
   let aspect = opts.aspect ?? 16 / 9;
+  let displayAspect: number | null = null;
   let renderer: Renderer | null = createRenderer(gl);
   let scale = 1;
   /** Cost of the last full-resolution frame, GPU included; Infinity until measured. */
@@ -96,14 +99,16 @@ export function createPreview(
     const cw = container.clientWidth;
     const ch = container.clientHeight;
     if (cw === 0 || ch === 0) return;
-    // Letterbox: fit the export aspect inside the container.
-    const cssW = cw / ch > aspect ? ch * aspect : cw;
-    const cssH = cssW / aspect;
+    // Letterbox: fit the export aspect (or the shape it is stretched to) inside the container.
+    const shown = displayAspect ?? aspect;
+    const cssW = cw / ch > shown ? ch * shown : cw;
+    const cssH = cssW / shown;
     canvas.style.width = `${cssW}px`;
     canvas.style.height = `${cssH}px`;
     const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR) * scale;
     const w = Math.max(1, Math.round(cssW * dpr));
-    const h = Math.max(1, Math.round(cssH * dpr));
+    // Stretched, the picture keeps its own shape in the buffer and the browser bends it.
+    const h = Math.max(1, Math.round((displayAspect ? cssW / aspect : cssH) * dpr));
     if (canvas.width !== w) canvas.width = w;
     if (canvas.height !== h) canvas.height = h;
   }
@@ -195,6 +200,12 @@ export function createPreview(
     setAspect(next) {
       if (next === aspect || !(next > 0)) return;
       aspect = next;
+      schedule();
+    },
+    setDisplayAspect(next) {
+      const shown = next && next > 0 ? next : null;
+      if (shown === displayAspect) return;
+      displayAspect = shown;
       schedule();
     },
     setPaused(next) {
