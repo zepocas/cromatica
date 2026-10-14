@@ -11,7 +11,7 @@
     ['← →', 'step back through recent shuffles'],
     ['?', 'every keyboard shortcut'],
     ['↑↓ hover', "preview a list's options on the canvas, click to choose"],
-    ['+ more', 'plenty of advanced settings in each section'],
+    ['+ advanced', 'plenty more settings at the end of each section'],
     ['png', 'exports keep the design: drop one back here to keep editing (any other image gives its colors)'],
   ];
 </script>
