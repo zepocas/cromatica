@@ -11,6 +11,8 @@
     exporting: boolean;
     progress: ExportProgress | null;
     error: string;
+    notice: string;
+    onshare: () => void;
     onexport: () => void;
     oncancel: () => void;
   }
@@ -23,6 +25,8 @@
     exporting,
     progress,
     error,
+    notice,
+    onshare,
     onexport,
     oncancel,
   }: Props = $props();
@@ -55,11 +59,16 @@
       <progress max="100" value={percent} aria-label="Export progress"></progress>
       <button class="box" onclick={oncancel}>cancel</button>
     {:else}
+      <button class="box" aria-label="Copy share link" title="Copy a link to this design" onclick={onshare}
+        >share link</button
+      >
       <button class="strong box" aria-label="Download" title="Download (⌘S)" onclick={onexport}>download</button>
     {/if}
   </div>
   {#if error}
     <p class="error" role="alert">{error}</p>
+  {:else if notice}
+    <p class="notice" role="status">{notice}</p>
   {/if}
 </footer>
 
@@ -117,5 +126,9 @@
   .error {
     margin: 0;
     color: var(--warn);
+  }
+  .notice {
+    margin: 0;
+    color: var(--dim);
   }
 </style>

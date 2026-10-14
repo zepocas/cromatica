@@ -34,6 +34,9 @@
     exporting: boolean;
     progress: ExportProgress | null;
     error: string;
+    /** A status line that isn't an error ("link copied"). */
+    notice: string;
+    onshare: () => void;
     onexport: () => void;
     oncancel: () => void;
   }
@@ -58,6 +61,8 @@
     exporting,
     progress,
     error,
+    notice,
+    onshare,
     onexport,
     oncancel,
   }: Props = $props();
@@ -151,6 +156,8 @@
     {exporting}
     {progress}
     {error}
+    {notice}
+    {onshare}
     {onexport}
     {oncancel}
   />
