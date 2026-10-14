@@ -188,6 +188,20 @@ describe('shuffleDesign', () => {
     }
   });
 
+  it('noise is mostly contour, with ridged about a third of the time (D83)', () => {
+    const noise = { ...defaultDesign, base: { ...(defaultDesign.base as RampGradient), kind: 'noise' as const } };
+    let n = 0;
+    let contour = 0;
+    for (let s = 0; s < 1500; s++) {
+      if (isSurpriseSeed(s)) continue;
+      const base = shuffled(noise, { colors: false, layout: true, seed: s }, 16 / 9).base as RampGradient;
+      n++;
+      if (base.noiseStyle === 'contour') contour++;
+    }
+    expect(contour / n).toBeGreaterThan(0.6);
+    expect(contour / n).toBeLessThan(0.7);
+  });
+
   it('planes get more grain and less lighting than other kinds (D76)', () => {
     const count = { planes: { n: 0, grain: 0, relief: 0 }, other: { n: 0, grain: 0, relief: 0 } };
     for (let s = 0; s < 1500; s++) {
