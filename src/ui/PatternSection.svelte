@@ -19,12 +19,16 @@
     output: { width: number; height: number };
   }
 
+  // The three below are write-only bindables: assigning them is how the value reaches the parent.
   // Bindable so child bindings into the editor's state pass Svelte's ownership checks.
   let {
     editor = $bindable(),
     presetId = $bindable(),
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     presetPreview = $bindable(),
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     customWidth = $bindable(),
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     customHeight = $bindable(),
     output,
   }: Props = $props();
