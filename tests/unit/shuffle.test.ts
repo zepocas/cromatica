@@ -12,7 +12,13 @@ import {
   type PointMesh,
   WARP_SHAPES,
 } from '../../src/design/design';
-import { RAMP_SHUFFLE, MESH_SHUFFLE, shuffleDesign, WARP_SHUFFLE_TABLE } from '../../src/design/shuffle';
+import {
+  isSurpriseSeed,
+  RAMP_SHUFFLE,
+  MESH_SHUFFLE,
+  shuffleDesign,
+  WARP_SHUFFLE_TABLE,
+} from '../../src/design/shuffle';
 import { applyMat2, inverseTransformMatrix, transformMatrix } from '../../src/engine/transform';
 
 /** Just the design of a shuffle. */
@@ -144,6 +150,42 @@ describe('shuffleDesign', () => {
     }
     expect(share.planes[1]).toBeGreaterThan(100);
     expect(share.planes[0] / share.planes[1]).toBeLessThan(0.7 * (share.other[0] / share.other[1]));
+  });
+
+  it('rows and columns skip aurora, planes, cells and noise, voronoi skips aurora, planes and cells, and voronoi is never faint (D79)', () => {
+    const seen = new Map<string, { n: number; rowsCols: number; voronoi: number }>();
+    for (let s = 0; s < 3000; s++) {
+      if (isSurpriseSeed(s)) continue;
+      const out = shuffled(meshDesign, { ...all(s), style: true }, 16 / 9);
+      const e = seen.get(out.base.kind) ?? { n: 0, rowsCols: 0, voronoi: 0 };
+      e.n++;
+      if (out.warp.shape === 'rows' || out.warp.shape === 'columns') e.rowsCols++;
+      if (out.warp.shape === 'voronoi') {
+        e.voronoi++;
+        expect(out.warp.amount).toBeGreaterThanOrEqual(0.35);
+      }
+      seen.set(out.base.kind, e);
+    }
+    for (const kind of ['aurora', 'planes', 'cells', 'noise']) {
+      expect(seen.get(kind)!.n).toBeGreaterThan(50);
+      expect(seen.get(kind)!.rowsCols).toBe(0);
+    }
+    for (const kind of ['aurora', 'planes', 'cells']) expect(seen.get(kind)!.voronoi).toBe(0);
+    expect(seen.get('conic')!.rowsCols).toBeGreaterThan(0);
+  });
+
+  it('cells and noise draw their scale from per-kind ranges, low being large features (D80)', () => {
+    const cells = { ...defaultDesign, base: { ...(defaultDesign.base as RampGradient), kind: 'cells' as const } };
+    const noise = { ...defaultDesign, base: { ...(defaultDesign.base as RampGradient), kind: 'noise' as const } };
+    for (let s = 0; s < 200; s++) {
+      if (isSurpriseSeed(s)) continue;
+      const c = shuffled(cells, { colors: false, layout: true, seed: s }, 16 / 9).base as RampGradient;
+      const n = shuffled(noise, { colors: false, layout: true, seed: s }, 16 / 9).base as RampGradient;
+      expect(c.scale).toBeGreaterThanOrEqual(RAMP_SHUFFLE.scale.cells[0]);
+      expect(c.scale).toBeLessThanOrEqual(RAMP_SHUFFLE.scale.cells[1]);
+      expect(n.scale).toBeGreaterThanOrEqual(RAMP_SHUFFLE.scale.noise[0]);
+      expect(n.scale).toBeLessThanOrEqual(RAMP_SHUFFLE.scale.noise[1]);
+    }
   });
 
   it('planes get more grain and less lighting than other kinds (D76)', () => {

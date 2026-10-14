@@ -19,7 +19,13 @@ import {
 import { mutateDesign } from '../../src/design/mutate';
 import { createRng } from '../../src/design/random';
 import { LEGACY_AURORA_BLEND } from '../../src/design/schema';
-import { isSurpriseSeed, shuffleDesign, STYLE_SHUFFLE, WARP_SHUFFLE_TABLE } from '../../src/design/shuffle';
+import {
+  isSurpriseSeed,
+  KIND_PROFILE,
+  shuffleDesign,
+  STYLE_SHUFFLE,
+  WARP_SHUFFLE_TABLE,
+} from '../../src/design/shuffle';
 import { previewProbe } from './support/app';
 import {
   defaultNoise,
@@ -333,6 +339,10 @@ test('shuffle-sheets', async ({ page }) => {
           kind: design.base.kind,
           warp: design.warp.shape,
           palette,
+          warpAmount: design.warp.amount,
+          warpSize: design.warp.size,
+          scale: (design.base as { scale?: number }).scale ?? null,
+          surprise: isSurpriseSeed(seed),
           bands: design.finish?.bands ?? 0,
           noise: design.finish?.noise.type,
           noiseAmount: design.finish?.noise.amount ?? 0,
@@ -397,7 +407,8 @@ test('kind-sheets', async ({ page }) => {
         const f = (n - 1) % families.length;
         const k = Math.floor((n - 1) / families.length);
         const family = families[f];
-        const shapes = WARP_FAMILIES[family];
+        // Shapes the kind's profile has dropped (weight 0) are not shown, so no tile is spent on a warp it never draws.
+        const shapes = WARP_FAMILIES[family].filter((w) => KIND_PROFILE[kind as Design['base']['kind']]?.warp[w] !== 0);
         const shape = shapes[k % shapes.length];
         const combo = orders[f][k % combos];
         const on = (name: (typeof finishes)[number]) => (combo & (1 << finishes.indexOf(name))) !== 0;
@@ -437,12 +448,71 @@ test('kind-sheets', async ({ page }) => {
           family,
           warp: shape,
           palette: drawn.palette,
+          warpAmount: design.warp.amount,
+          warpSize: design.warp.size,
+          scale: (design.base as { scale?: number }).scale ?? null,
+          surprise: isSurpriseSeed(seed),
           bands: finish.bands,
           noise: finish.noise.type,
           noiseAmount: finish.noise.amount,
           relief: finish.relief,
           vignette: finish.vignette,
         });
+      }
+      const n0 = sheet * perSheet + r * cols + 1;
+      rows.push({ label: `#${n0}-${n0 + cols - 1}`, designs });
+    }
+    const png = await engineHarness(
+      page,
+      'contactSheet',
+      rows,
+      ['+0', '+1', '+2', '+3', '+4'],
+      cellW,
+      Math.round((cellW * 9) / 16),
+    );
+    writeFileSync(join(DIR, `shuffle-sheet-${sheet + 1}.png`), Buffer.from(png, 'base64'));
+  }
+  writeFileSync(join(DIR, 'shuffle-sheet.json'), JSON.stringify(meta, null, 1));
+});
+
+// Chosen warps (SHEETS_FORCE_WARP, e.g. rows,columns or circular,voronoi,none) forced on every kind (60 tiles, kinds
+// interleaved), at the same three amounts and with no finishes, to find which kinds they are not compatible with.
+// Same sheet and sidecar names as kind-sheets.
+test('forced-warp-sheets', async ({ page }) => {
+  const shapes = (process.env.SHEETS_FORCE_WARP ?? '').split(',').filter(Boolean) as WarpShape[];
+  test.skip(!shapes.length, 'forced-warp-sheets: set SHEETS_FORCE_WARP (rows,columns or circular,voronoi,none)');
+  await openEngineHarness(page);
+  const first = Number(process.env.SHUFFLE_SHEET_SEED ?? 3000);
+  const kinds = Object.keys(STYLE_SHUFFLE.kinds) as Design['base']['kind'][];
+  const amounts = [0.2, 0.5, 0.85];
+  const perSheet = 30;
+  const cols = 5;
+  const meta: Record<string, unknown>[] = [];
+  for (let sheet = 0; sheet < 2; sheet++) {
+    const rows = [];
+    for (let r = 0; r < perSheet / cols; r++) {
+      const designs: Design[] = [];
+      for (let c = 0; c < cols; c++) {
+        const n = sheet * perSheet + r * cols + c + 1;
+        const kind = kinds[(n - 1) % kinds.length];
+        const k = Math.floor((n - 1) / kinds.length);
+        const shape = shapes[k % shapes.length];
+        // With as many shapes as amounts, a shape would always land on the same amount; SHEETS_ROTATE_AMOUNTS shifts it.
+        const turn = process.env.SHEETS_ROTATE_AMOUNTS ? k % shapes.length : 0;
+        const amount = shape === 'none' ? 0 : amounts[(Math.floor(k / shapes.length) + turn) % amounts.length];
+        let seed = first + n;
+        const draw = (sd: number) =>
+          shuffleDesign(
+            withNoise(meshDefault, defaultNoise),
+            { colors: true, palette: { mood: 'any', key: 'any' }, layout: true, style: true, seed: sd },
+            16 / 9,
+          );
+        let drawn = draw(seed);
+        while (drawn.design.base.kind !== kind || isSurpriseSeed(seed)) drawn = draw((seed += 1000));
+        const rng = createRng(seed ^ 0x5bd1e995);
+        const size = Math.round(rng.range(...WARP_SHUFFLE_TABLE[shape].size) * 100) / 100;
+        designs.push({ ...drawn.design, warp: { shape, amount, size, seed: rng.uint32() }, finish: noFinish });
+        meta.push({ n, seed, kind, family: 'forced', warp: shape, amount, size, palette: drawn.palette });
       }
       const n0 = sheet * perSheet + r * cols + 1;
       rows.push({ label: `#${n0}-${n0 + cols - 1}`, designs });
