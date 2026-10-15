@@ -81,7 +81,7 @@
 <style>
   .popover {
     position: absolute;
-    right: 0;
+    right: 12px;
     bottom: calc(100% + 6px);
     z-index: var(--z-popover);
     box-sizing: border-box;

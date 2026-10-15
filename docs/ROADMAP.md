@@ -389,7 +389,7 @@ Each milestone uses the same structure:
 - **Open questions:**
   - Which settings move (show points, preview zoom, output size, autosave state, others).
   - What it means for the mobile panel (M15).
-  - **Narrow windows:** the bar is about 1200px wide and does not wrap or collapse, so it overflows below that (deferred, user, 2026-10-11). Likely answers: fold groups into a menu or wrap to two lines; settle it with M15.
+  - **Narrow windows:** the bar is about 1200px wide, so below that it scrolls sideways (D85, #61, 2026-10-15). Folding groups into a menu or wrapping is still open for M15.
   - Locks on the section headers (a padlock on pattern, adjust and colors) instead of or besides the bar.
   - A first-time "easy mode" (the collapsed panel, with the device's resolution preselected): not decided; the shuffle nudge is the cheap first step.
 

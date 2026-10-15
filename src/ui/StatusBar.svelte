@@ -51,6 +51,13 @@
     if (monitors.on && CONTEXT_SCREENS.find((s) => s.id === ui.contextId)?.group === 'mobile') ui.contextId = '';
   }
 
+  /** A mouse wheel only turns vertically; let it scroll the bar when the bar overflows. */
+  function wheelSideways(e: WheelEvent) {
+    const el = e.currentTarget as HTMLElement;
+    if (e.deltaX || el.scrollWidth <= el.clientWidth) return;
+    el.scrollLeft += e.deltaY;
+  }
+
   const handles = $derived(
     editor.kind === 'mesh'
       ? { label: 'mesh points', aria: 'Mesh points' }
@@ -61,116 +68,122 @@
 </script>
 
 <footer class="panel statusbar" class:docked aria-label="Status bar">
-  <span class="group">
-    <span>format</span>
-    <Dropdown
-      ariaLabel="Format"
-      title="File type of the download"
-      value={exportSettings.format}
-      options={[{ value: 'png' }, { value: 'jpeg' }]}
-      onchange={(f) => (exportSettings.format = f)}
-    />
-  </span>
-  <span class="sep" role="separator" aria-orientation="vertical"></span>
-  <span class="group locks">
-    <span title="Parts that shuffling leaves alone; you can still edit them by hand">shuffle lock</span>
-    <LockToggle
-      locked={editor.colorsLocked}
-      label="colors"
-      ariaLabel="Lock colors"
-      title="Keep the colors when shuffling (1)"
-      onchange={(on) => (editor.colorsLocked = on)}
-    />
-    <LockToggle
-      locked={editor.patternLocked}
-      label="pattern"
-      ariaLabel="Lock pattern"
-      title="Keep the pattern kind, layout, warp shape and variation when shuffling (2)"
-      onchange={(on) => (editor.patternLocked = on)}
-    />
-    <LockToggle
-      locked={editor.adjustLocked}
-      label="adjust"
-      ariaLabel="Lock adjust"
-      title="Keep the warp amount and size, bands, noise, vignette and lighting when shuffling (3)"
-      onchange={(on) => (editor.adjustLocked = on)}
-    />
-  </span>
-  <span class="sep" role="separator" aria-orientation="vertical"></span>
-  <span class="group">
-    <span>recent</span>
-    <button
-      class="icon"
-      aria-label="Previous shuffle"
-      title="Previous shuffle (←)"
-      disabled={!editor.reel.canBack}
-      onclick={() => editor.stepReel(-1)}>←</button
-    >
-    <span class="count" aria-label="Shuffle {editor.reel.position + 1} of {editor.reel.length}"
-      >{editor.reel.length ? `${editor.reel.position + 1}/${editor.reel.length}` : '–'}</span
-    >
-    <button
-      class="icon"
-      aria-label="Next shuffle"
-      title="Next shuffle (→)"
-      disabled={!editor.reel.canForward}
-      onclick={() => editor.stepReel(1)}>→</button
-    >
-  </span>
-  <span class="sep" role="separator" aria-orientation="vertical"></span>
-  <span class="group">
-    <span>os context</span>
-    <Dropdown
-      ariaLabel="OS context"
-      value={ui.contextId || OFF}
-      {options}
-      onchange={(id) => (ui.contextId = id === OFF ? '' : id)}
-      onactive={(id) => (ui.contextPreview = id === null ? null : id === OFF ? '' : id)}
-      title="Show the OS on top of the image, and warn where its text would be hard to read"
-    />
-    <span class="monitors">
-      <button
-        class="tool"
-        aria-label="Monitors"
-        aria-pressed={monitors.on}
-        title="Lay monitors over the image to see what each would show"
-        onclick={toggleMonitors}>▭▭<span class="name">monitors</span></button
-      >
-      {#if monitors.on}
-        <MonitorsPanel {monitors} />
-      {/if}
-    </span>
-  </span>
-  {#if handles}
-    <span class="sep" role="separator" aria-orientation="vertical"></span>
+  <div class="scroll" onwheel={wheelSideways}>
     <span class="group">
-      <span>{handles.label}</span>
+      <span>format</span>
       <Dropdown
-        ariaLabel={handles.aria}
-        value={editor.showHandles ? 'on' : 'off'}
-        options={[{ value: 'on' }, { value: 'off' }]}
-        onchange={(v) => (editor.showHandles = v === 'on')}
-        title={`Show or hide the ${handles.label} on the image (H)`}
+        ariaLabel="Format"
+        title="File type of the download"
+        value={exportSettings.format}
+        options={[{ value: 'png' }, { value: 'jpeg' }]}
+        onchange={(f) => (exportSettings.format = f)}
       />
     </span>
-  {/if}
-  <span class="spacer"></span>
-  <span class="zoom">
-    <button class="icon" aria-label="Zoom out" title="Zoom out" disabled={!view.zoomed} onclick={() => onzoom(1 / 1.5)}
-      >−</button
-    >
-    <button
-      class="fit"
-      aria-label="Fit to window"
-      title="Fit to window (0)"
-      disabled={!view.zoomed}
-      onclick={() => view.reset()}>{Math.round(view.zoom * 100)}%</button
-    >
-    <button class="icon" aria-label="Zoom in" title="Zoom in" onclick={() => onzoom(1.5)}>+</button>
-  </span>
-  {#if onfullscreen}
     <span class="sep" role="separator" aria-orientation="vertical"></span>
-    <button class="icon" aria-label="Full screen" title="Full screen (F)" onclick={onfullscreen}>⛶</button>
+    <span class="group locks">
+      <span title="Parts that shuffling leaves alone; you can still edit them by hand">shuffle lock</span>
+      <LockToggle
+        locked={editor.colorsLocked}
+        label="colors"
+        ariaLabel="Lock colors"
+        title="Keep the colors when shuffling (1)"
+        onchange={(on) => (editor.colorsLocked = on)}
+      />
+      <LockToggle
+        locked={editor.patternLocked}
+        label="pattern"
+        ariaLabel="Lock pattern"
+        title="Keep the pattern kind, layout, warp shape and variation when shuffling (2)"
+        onchange={(on) => (editor.patternLocked = on)}
+      />
+      <LockToggle
+        locked={editor.adjustLocked}
+        label="adjust"
+        ariaLabel="Lock adjust"
+        title="Keep the warp amount and size, bands, noise, vignette and lighting when shuffling (3)"
+        onchange={(on) => (editor.adjustLocked = on)}
+      />
+    </span>
+    <span class="sep" role="separator" aria-orientation="vertical"></span>
+    <span class="group">
+      <span>recent</span>
+      <button
+        class="icon"
+        aria-label="Previous shuffle"
+        title="Previous shuffle (←)"
+        disabled={!editor.reel.canBack}
+        onclick={() => editor.stepReel(-1)}>←</button
+      >
+      <span class="count" aria-label="Shuffle {editor.reel.position + 1} of {editor.reel.length}"
+        >{editor.reel.length ? `${editor.reel.position + 1}/${editor.reel.length}` : '–'}</span
+      >
+      <button
+        class="icon"
+        aria-label="Next shuffle"
+        title="Next shuffle (→)"
+        disabled={!editor.reel.canForward}
+        onclick={() => editor.stepReel(1)}>→</button
+      >
+    </span>
+    <span class="sep" role="separator" aria-orientation="vertical"></span>
+    <span class="group">
+      <span>os context</span>
+      <Dropdown
+        ariaLabel="OS context"
+        value={ui.contextId || OFF}
+        {options}
+        onchange={(id) => (ui.contextId = id === OFF ? '' : id)}
+        onactive={(id) => (ui.contextPreview = id === null ? null : id === OFF ? '' : id)}
+        title="Show the OS on top of the image, and warn where its text would be hard to read"
+      />
+      <span class="monitors">
+        <button
+          class="tool"
+          aria-label="Monitors"
+          aria-pressed={monitors.on}
+          title="Lay monitors over the image to see what each would show"
+          onclick={toggleMonitors}>▭▭<span class="name">monitors</span></button
+        >
+      </span>
+    </span>
+    {#if handles}
+      <span class="sep" role="separator" aria-orientation="vertical"></span>
+      <span class="group">
+        <span>{handles.label}</span>
+        <Dropdown
+          ariaLabel={handles.aria}
+          value={editor.showHandles ? 'on' : 'off'}
+          options={[{ value: 'on' }, { value: 'off' }]}
+          onchange={(v) => (editor.showHandles = v === 'on')}
+          title={`Show or hide the ${handles.label} on the image (H)`}
+        />
+      </span>
+    {/if}
+    <span class="spacer"></span>
+    <span class="zoom">
+      <button
+        class="icon"
+        aria-label="Zoom out"
+        title="Zoom out"
+        disabled={!view.zoomed}
+        onclick={() => onzoom(1 / 1.5)}>−</button
+      >
+      <button
+        class="fit"
+        aria-label="Fit to window"
+        title="Fit to window (0)"
+        disabled={!view.zoomed}
+        onclick={() => view.reset()}>{Math.round(view.zoom * 100)}%</button
+      >
+      <button class="icon" aria-label="Zoom in" title="Zoom in" onclick={() => onzoom(1.5)}>+</button>
+    </span>
+    {#if onfullscreen}
+      <span class="sep" role="separator" aria-orientation="vertical"></span>
+      <button class="icon" aria-label="Full screen" title="Full screen (F)" onclick={onfullscreen}>⛶</button>
+    {/if}
+  </div>
+  {#if monitors.on}
+    <MonitorsPanel {monitors} />
   {/if}
 </footer>
 
@@ -183,11 +196,6 @@
     bottom: 0;
     height: var(--statusbar);
     box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    white-space: nowrap;
-    padding: 0 12px;
     background: var(--panel);
     border-top: 1px solid var(--rule);
   }
@@ -195,8 +203,18 @@
     left: var(--sidebar);
     border-left: 1px solid var(--rule);
   }
-  .monitors {
-    position: relative;
+  /* Scrolls sideways when the groups don't fit; the frame stays put so the monitors popover isn't clipped. */
+  .scroll {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 0 12px;
+    white-space: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
   }
   /* A bordered button, so it reads as something to press; the name shows where the bar has the room. */
   .tool {
@@ -240,7 +258,7 @@
     width: auto;
     min-width: 0;
   }
-  .statusbar > * {
+  .scroll > * {
     flex-shrink: 0;
   }
   .sep {
