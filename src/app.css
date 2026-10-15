@@ -311,6 +311,25 @@ body,
   margin-top: -3px;
 }
 
+/* A fingertip needs a bigger target than a cursor; the thumb centres itself on the track (WebKit by the margin). */
+@media (pointer: coarse) {
+  .panel input[type='range'] {
+    height: 22px;
+  }
+  .panel input[type='range']::-webkit-slider-thumb {
+    width: 16px;
+    height: 16px;
+    margin-top: -8px;
+  }
+  .panel input[type='range']::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+  }
+  .panel input[type='range'].hue::-webkit-slider-thumb {
+    margin-top: -6.5px;
+  }
+}
+
 .panel :focus-visible {
   outline: 1px dashed var(--ink);
   outline-offset: 2px;
