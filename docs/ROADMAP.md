@@ -117,7 +117,7 @@ Each milestone uses the same structure:
   - Space shuffles everywhere except text, number and color inputs, selects and editable content.
 - **Still open:**
   - Vivid palettes with 5–6 colors can look garish (tune in M4).
-  - Grain in the preview differs from the export at DPR below 1 (the 1:1 loupe was dropped from M11, 2026-10-08).
+  - Grain in the preview is approximate: it matches the export only at 1:1, and softens below DPR 1. Won't fix without the true zoom (D70).
   - `warpPoint` ignores aspect (seeded centers sit in a 16:9 box).
 
 ### M3.5 — UI refinement (photogradient-style panel) and transforms ✅
