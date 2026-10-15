@@ -18,19 +18,8 @@
     oncancel: () => void;
   }
 
-  let {
-    editor,
-    ui,
-    compact,
-    nudgeShuffle,
-    exporting,
-    progress,
-    error,
-    notice,
-    onshare,
-    onexport,
-    oncancel,
-  }: Props = $props();
+  let { editor, ui, compact, nudgeShuffle, exporting, progress, error, notice, onshare, onexport, oncancel }: Props =
+    $props();
 
   const percent = $derived(progress && progress.tilesTotal > 0 ? (progress.tilesDone / progress.tilesTotal) * 100 : 0);
 </script>

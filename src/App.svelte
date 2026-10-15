@@ -64,13 +64,13 @@
   const ui = new PanelUi({ tips: !builtIn && !tipsDismissed() });
   const contextScreen = $derived(CONTEXT_SCREENS.find((s) => s.id === (ui.contextPreview ?? ui.contextId)) ?? null);
   const monitors = new MonitorsState();
-  let nudgeShuffle = $state(!builtIn && !shuffleTried());
+  // A first-time visitor is nudged toward shuffle until it has been used once (`?default` never nudges).
+  const nudgeOnLoad = !builtIn && !shuffleTried();
   const reelAtStart = initial.reel.length;
+  const shuffled = $derived(editor.reel.length !== reelAtStart);
+  const nudgeShuffle = $derived(nudgeOnLoad && !shuffled);
   $effect(() => {
-    if (nudgeShuffle && editor.reel.length !== reelAtStart) {
-      nudgeShuffle = false;
-      markShuffleTried();
-    }
+    if (nudgeOnLoad && shuffled) markShuffleTried();
   });
   const pinning = $derived(editor.pins.pinning && editor.pins.canPin && !ui.exploring);
   /** The preview alone, in the browser's full screen; the panel, handles and overlays are hidden. */
@@ -101,6 +101,7 @@
     const r = monitors.rect(wallpaper);
     return r.w / r.h;
   });
+  // The editor clamps handle drags to the frame, so it needs the output's aspect.
   $effect(() => {
     editor.aspect = aspect;
   });

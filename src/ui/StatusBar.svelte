@@ -24,17 +24,7 @@
     onfullscreen?: () => void;
   }
 
-  let {
-    editor,
-    view,
-    docked,
-    exportSettings,
-    ui,
-    monitors,
-    portrait,
-    onzoom,
-    onfullscreen,
-  }: Props = $props();
+  let { editor, view, docked, exportSettings, ui, monitors, portrait, onzoom, onfullscreen }: Props = $props();
 
   const OFF = 'off';
   const options = $derived.by(() => {

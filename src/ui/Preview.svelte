@@ -73,7 +73,7 @@
 
   // A new shape is a new composition: start fitted.
   $effect(() => {
-    void aspect;
+    void aspect; // read only so the effect re-runs when the shape changes
     view.reset();
   });
 

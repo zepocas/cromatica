@@ -31,9 +31,7 @@
   display={degrees}
 >
   {#snippet trailing()}
-    <button class="icon" aria-label="Rotate left" title="Rotate 90° left" onclick={() => editor.rotateBy(90)}
-      >↺</button
-    >
+    <button class="icon" aria-label="Rotate left" title="Rotate 90° left" onclick={() => editor.rotateBy(90)}>↺</button>
     <button class="icon" aria-label="Rotate right" title="Rotate 90° right" onclick={() => editor.rotateBy(-90)}
       >↻</button
     >

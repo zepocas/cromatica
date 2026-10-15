@@ -21,13 +21,13 @@ App.svelte                      owns the state and wires everything together
 
 ## Folders in `src/ui/`
 
-| Folder       | What goes there                                                                              |
-| ------------ | -------------------------------------------------------------------------------------------- |
-| `sections/`  | Blocks of the left panel, and the pieces inside them (a color row, the stop strip).           |
-| `overlays/`  | Things drawn over the preview image: point and node handles, image pins, OS and monitor mockups, the "more like this" grid. |
-| `state/`     | Data and logic, no markup: `editor.svelte.ts` is the design being edited; the rest are undo, favourites, autosave, share links and helpers. |
-| `controls/`  | Small reusable parts: `SliderRow`, `Choice`, `Dropdown`, `Toggle`, `LockToggle`, `Section`, `Group`, `ShapeIcon`. |
-| (top level)  | The app shell: `ControlPanel`, `Preview`, `StatusBar`, `ExportBar`, `Shortcuts`, `Tips`.      |
+| Folder      | What goes there                                                                                                                             |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sections/` | Blocks of the left panel, and the pieces inside them (a color row, the stop strip).                                                         |
+| `overlays/` | Things drawn over the preview image: point and node handles, image pins, OS and monitor mockups, the "more like this" grid.                 |
+| `state/`    | Data and logic, no markup: `editor.svelte.ts` is the design being edited; the rest are undo, favourites, autosave, share links and helpers. |
+| `controls/` | Small reusable parts: `SliderRow`, `Choice`, `Dropdown`, `Toggle`, `LockToggle`, `Section`, `Group`, `ShapeIcon`.                           |
+| (top level) | The app shell: `ControlPanel`, `Preview`, `StatusBar`, `ExportBar`, `Shortcuts`, `Tips`.                                                    |
 
 ## Styles
 
@@ -53,33 +53,33 @@ App.svelte                      owns the state and wires everything together
 
 ## Where do I change...
 
-| I want to change...                            | Look in                                                                    |
-| ---------------------------------------------- | -------------------------------------------------------------------------- |
-| a slider's label, range or readout              | the section file that shows it (search for its label), e.g. `AdjustSection` |
-| what a slider does to the image                 | its field in `state/editor.svelte.ts`, then `src/design/design.ts` and the shader in `src/engine/` |
-| a slider's look                                 | `src/app.css` (sliders) and `controls/SliderRow.svelte`                    |
-| a color row, hex field or picker                | `sections/ColorRow.svelte`                                                 |
-| shuffle, harmony, mood, key                     | `state/palette.svelte.ts`, `src/design/shuffle.ts`, `src/color/`           |
-| the drag handles on the image                   | `overlays/MeshOverlay`, `GridOverlay`, `ImagePins`                         |
-| the bottom bar                                  | `StatusBar.svelte`                                                         |
-| the OS mockups and legibility check             | `overlays/ContextOverlay`, `src/context/`                                  |
-| keyboard shortcuts                              | `App.svelte` (`onKeyDown`: undo, full screen, save) and `ControlPanel.svelte` (`onWindowKeyDown`: the rest), listed in `Shortcuts.svelte` |
-| export size presets                             | `state/presets.ts`                                                         |
+| I want to change...                 | Look in                                                                                                                                   |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| a slider's label, range or readout  | the section file that shows it (search for its label), e.g. `AdjustSection`                                                               |
+| what a slider does to the image     | its field in `state/editor.svelte.ts`, then `src/design/design.ts` and the shader in `src/engine/`                                        |
+| a slider's look                     | `src/app.css` (sliders) and `controls/SliderRow.svelte`                                                                                   |
+| a color row, hex field or picker    | `sections/ColorRow.svelte`                                                                                                                |
+| shuffle, harmony, mood, key         | `state/palette.svelte.ts`, `src/design/shuffle.ts`, `src/color/`                                                                          |
+| the drag handles on the image       | `overlays/MeshOverlay`, `GridOverlay`, `ImagePins`                                                                                        |
+| the bottom bar                      | `StatusBar.svelte`                                                                                                                        |
+| the OS mockups and legibility check | `overlays/ContextOverlay`, `src/context/`                                                                                                 |
+| keyboard shortcuts                  | `App.svelte` (`onKeyDown`: undo, full screen, save) and `ControlPanel.svelte` (`onWindowKeyDown`: the rest), listed in `Shortcuts.svelte` |
+| export size presets                 | `state/presets.ts`                                                                                                                        |
 
 ## State classes
 
-| Class             | File                          | Holds                                                         |
-| ----------------- | ----------------------------- | ------------------------------------------------------------- |
-| `EditorState`     | `state/editor.svelte.ts`      | the design, selection, locks, pins; `snapshot` and `restore` for undo |
-| `PaletteEditor`   | `state/palette.svelte.ts`     | harmony, mood, key, base hue, linked edits, grade sliders      |
-| `PinsEditor`      | `state/pins.svelte.ts`        | picking colors on the imported image (`editor.pins`); session only |
-| `History`         | `state/history.svelte.ts`     | undo and redo steps                                           |
-| `Reel`            | `state/reel.svelte.ts`        | the last shuffles, stepped with the arrow keys                |
-| `Favourites`      | `state/favourites.svelte.ts`  | saved designs in localStorage                                 |
-| `CanvasView`      | `state/view.svelte.ts`        | preview zoom and pan                                          |
-| `MonitorsState`   | `state/monitors.svelte.ts`    | the multi-monitor preview layout                              |
-| `ExportSettings`  | `state/export-settings.svelte.ts` | output size (preset or custom) and file format          |
-| `PanelUi`         | `state/panel-ui.svelte.ts`   | what is open or folded: panel, more like this, tips, shortcuts, OS context |
+| Class            | File                              | Holds                                                                      |
+| ---------------- | --------------------------------- | -------------------------------------------------------------------------- |
+| `EditorState`    | `state/editor.svelte.ts`          | the design, selection, locks, pins; `snapshot` and `restore` for undo      |
+| `PaletteEditor`  | `state/palette.svelte.ts`         | harmony, mood, key, base hue, linked edits, grade sliders                  |
+| `PinsEditor`     | `state/pins.svelte.ts`            | picking colors on the imported image (`editor.pins`); session only         |
+| `History`        | `state/history.svelte.ts`         | undo and redo steps                                                        |
+| `Reel`           | `state/reel.svelte.ts`            | the last shuffles, stepped with the arrow keys                             |
+| `Favourites`     | `state/favourites.svelte.ts`      | saved designs in localStorage                                              |
+| `CanvasView`     | `state/view.svelte.ts`            | preview zoom and pan                                                       |
+| `MonitorsState`  | `state/monitors.svelte.ts`        | the multi-monitor preview layout                                           |
+| `ExportSettings` | `state/export-settings.svelte.ts` | output size (preset or custom) and file format                             |
+| `PanelUi`        | `state/panel-ui.svelte.ts`        | what is open or folded: panel, more like this, tips, shortcuts, OS context |
 
 ## Adding a control
 

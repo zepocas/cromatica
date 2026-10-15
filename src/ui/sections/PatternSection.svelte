@@ -52,7 +52,6 @@
     marble: 'marble',
     bristle: 'brushed',
   };
-
 </script>
 
 {#snippet patternIcon(kind: string)}<ShapeIcon body={PATTERN_ICONS[kind] ?? ''} />{/snippet}
