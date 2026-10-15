@@ -77,6 +77,8 @@ App.svelte                      owns the state and wires everything together
 | `Favourites`      | `state/favourites.svelte.ts`  | saved designs in localStorage                                 |
 | `CanvasView`      | `state/view.svelte.ts`        | preview zoom and pan                                          |
 | `MonitorsState`   | `state/monitors.svelte.ts`    | the multi-monitor preview layout                              |
+| `ExportSettings`  | `state/export-settings.svelte.ts` | output size (preset or custom) and file format          |
+| `PanelUi`         | `state/panel-ui.svelte.ts`   | what is open or folded: panel, more like this, tips, shortcuts, OS context |
 
 ## Adding a control
 

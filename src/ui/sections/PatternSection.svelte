@@ -1,8 +1,8 @@
 <script lang="ts">
   import { WARP_SHAPES, type WarpShape } from '../../design/design';
-  import { clamp } from '../../math';
   import Dropdown from '../controls/Dropdown.svelte';
   import type { EditorState } from '../state/editor.svelte';
+  import { MAX_SIZE, type ExportSettings } from '../state/export-settings.svelte';
   import { CUSTOM_PRESET_ID, PRESET_GROUPS, presetLabel, SIZE_PRESETS } from '../state/presets';
   import Section from '../controls/Section.svelte';
   import ShapeIcon from '../controls/ShapeIcon.svelte';
@@ -10,29 +10,11 @@
 
   interface Props {
     editor: EditorState;
-    presetId: string;
-    /** The size preset under the arrow keys or pointer while the list is open; null otherwise. */
-    presetPreview: string | null;
-    customWidth: number;
-    customHeight: number;
-    output: { width: number; height: number };
+    exportSettings: ExportSettings;
   }
 
-  // The three below are write-only bindables: assigning them is how the value reaches the parent.
   // Bindable so child bindings into the editor's state pass Svelte's ownership checks.
-  let {
-    editor = $bindable(),
-    presetId = $bindable(),
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    presetPreview = $bindable(),
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    customWidth = $bindable(),
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    customHeight = $bindable(),
-    output,
-  }: Props = $props();
-
-  const MAX_SIZE = 16384;
+  let { editor = $bindable(), exportSettings }: Props = $props();
 
   const SIZE_OPTIONS = [
     ...PRESET_GROUPS.flatMap((group) =>
@@ -71,21 +53,6 @@
     bristle: 'brushed',
   };
 
-  /** Picking "custom" starts from the size shown, not from the last custom one. */
-  function chooseSize(id: string) {
-    if (id === CUSTOM_PRESET_ID && presetId !== CUSTOM_PRESET_ID) {
-      customWidth = output.width;
-      customHeight = output.height;
-    }
-    presetId = id;
-  }
-
-  function setSize(axis: 'width' | 'height', v: number) {
-    const size = clamp(Math.round(Number.isFinite(v) ? v : 1), 1, MAX_SIZE);
-    customWidth = axis === 'width' ? size : output.width;
-    customHeight = axis === 'height' ? size : output.height;
-    presetId = CUSTOM_PRESET_ID;
-  }
 </script>
 
 {#snippet patternIcon(kind: string)}<ShapeIcon body={PATTERN_ICONS[kind] ?? ''} />{/snippet}
@@ -128,13 +95,13 @@
     <span>size</span>
     <Dropdown
       ariaLabel="Size preset"
-      value={presetId}
+      value={exportSettings.presetId}
       options={SIZE_OPTIONS}
-      onchange={chooseSize}
-      onactive={(id) => (presetPreview = id)}
+      onchange={(id) => exportSettings.choosePreset(id)}
+      onactive={(id) => (exportSettings.presetPreview = id)}
     />
   </div>
-  {#if presetId === CUSTOM_PRESET_ID}
+  {#if exportSettings.presetId === CUSTOM_PRESET_ID}
     <div class="row">
       <span></span>
       <input
@@ -142,8 +109,8 @@
         min="1"
         max={MAX_SIZE}
         aria-label="Width"
-        value={output.width}
-        onchange={(e) => setSize('width', e.currentTarget.valueAsNumber)}
+        value={exportSettings.size.width}
+        onchange={(e) => exportSettings.setCustom('width', e.currentTarget.valueAsNumber)}
       />
       <span class="dim">×</span>
       <input
@@ -151,8 +118,8 @@
         min="1"
         max={MAX_SIZE}
         aria-label="Height"
-        value={output.height}
-        onchange={(e) => setSize('height', e.currentTarget.valueAsNumber)}
+        value={exportSettings.size.height}
+        onchange={(e) => exportSettings.setCustom('height', e.currentTarget.valueAsNumber)}
       />
     </div>
   {/if}

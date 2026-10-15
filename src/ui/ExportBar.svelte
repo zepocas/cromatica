@@ -1,10 +1,11 @@
 <script lang="ts">
   import type { ExportProgress } from '../export/types';
   import type { EditorState } from './state/editor.svelte';
+  import type { PanelUi } from './state/panel-ui.svelte';
 
   interface Props {
     editor: EditorState;
-    exploring: boolean;
+    ui: PanelUi;
     /** Collapsed panel: only shuffle and download. */
     compact: boolean;
     nudgeShuffle: boolean;
@@ -19,7 +20,7 @@
 
   let {
     editor,
-    exploring = $bindable(),
+    ui,
     compact,
     nudgeShuffle,
     exporting,
@@ -48,9 +49,9 @@
       <button
         class="secondary box"
         aria-label="More like this"
-        aria-pressed={exploring}
+        aria-pressed={ui.exploring}
         title="More like this: variations of this design (M)"
-        onclick={() => (exploring = !exploring)}>more like this</button
+        onclick={() => (ui.exploring = !ui.exploring)}>more like this</button
       >
     {/if}
   </div>

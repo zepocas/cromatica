@@ -1,9 +1,10 @@
 <script lang="ts">
-  import type { ExportFormat } from '../export/types';
   import { CONTEXT_SCREENS } from '../context/screens';
   import Dropdown from './controls/Dropdown.svelte';
   import LockToggle from './controls/LockToggle.svelte';
   import type { EditorState } from './state/editor.svelte';
+  import type { ExportSettings } from './state/export-settings.svelte';
+  import type { PanelUi } from './state/panel-ui.svelte';
   import type { CanvasView } from './state/view.svelte';
   import MonitorsPanel from './overlays/MonitorsPanel.svelte';
   import type { MonitorsState } from './state/monitors.svelte';
@@ -11,16 +12,13 @@
   interface Props {
     editor: EditorState;
     view: CanvasView;
-    /** The OS screen drawn over the preview; '' = none. */
-    contextId: string;
-    /** The screen highlighted in the open list, shown until it closes; null = none. */
-    contextPreview: string | null;
+    ui: PanelUi;
     /** Portrait outputs list the phone screens first. */
     portrait: boolean;
     /** Beside the docked panel; otherwise the full width. */
     docked: boolean;
     monitors: MonitorsState;
-    format: ExportFormat;
+    exportSettings: ExportSettings;
     onzoom: (factor: number) => void;
     /** Absent where the browser can't. */
     onfullscreen?: () => void;
@@ -30,11 +28,8 @@
     editor,
     view,
     docked,
-    format = $bindable(),
-    contextId = $bindable(),
-    // Write-only bindable: assigning it is how the value reaches the parent.
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    contextPreview = $bindable(),
+    exportSettings,
+    ui,
     monitors,
     portrait,
     onzoom,
@@ -63,7 +58,7 @@
 
   function toggleMonitors() {
     monitors.on = !monitors.on;
-    if (monitors.on && CONTEXT_SCREENS.find((s) => s.id === contextId)?.group === 'mobile') contextId = '';
+    if (monitors.on && CONTEXT_SCREENS.find((s) => s.id === ui.contextId)?.group === 'mobile') ui.contextId = '';
   }
 
   const handles = $derived(
@@ -81,9 +76,9 @@
     <Dropdown
       ariaLabel="Format"
       title="File type of the download"
-      value={format}
+      value={exportSettings.format}
       options={[{ value: 'png' }, { value: 'jpeg' }]}
-      onchange={(f) => (format = f)}
+      onchange={(f) => (exportSettings.format = f)}
     />
   </span>
   <span class="sep" role="separator" aria-orientation="vertical"></span>
@@ -137,10 +132,10 @@
     <span>os context</span>
     <Dropdown
       ariaLabel="OS context"
-      value={contextId || OFF}
+      value={ui.contextId || OFF}
       {options}
-      onchange={(id) => (contextId = id === OFF ? '' : id)}
-      onactive={(id) => (contextPreview = id === null ? null : id === OFF ? '' : id)}
+      onchange={(id) => (ui.contextId = id === OFF ? '' : id)}
+      onactive={(id) => (ui.contextPreview = id === null ? null : id === OFF ? '' : id)}
       title="Show the OS on top of the image, and warn where its text would be hard to read"
     />
     <span class="monitors">

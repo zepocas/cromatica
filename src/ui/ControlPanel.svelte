@@ -4,7 +4,9 @@
   import ColorsSection from './sections/ColorsSection.svelte';
   import type { EditorState } from './state/editor.svelte';
   import ExportBar from './ExportBar.svelte';
+  import type { ExportSettings } from './state/export-settings.svelte';
   import type { Favourites } from './state/favourites.svelte';
+  import type { PanelUi } from './state/panel-ui.svelte';
   import FavouritesSection from './sections/FavouritesSection.svelte';
   import { isFormControl, isHandle, isTypingTarget } from './state/keys';
   import PatternSection from './sections/PatternSection.svelte';
@@ -12,17 +14,8 @@
   interface Props {
     editor: EditorState;
     favourites: Favourites;
-    presetId: string;
-    presetPreview: string | null;
-    customWidth: number;
-    customHeight: number;
-    /** Export size in pixels (from the preset or the custom size). */
-    output: { width: number; height: number };
-    /** Collapsed to a one-line bar floating over a full-width preview. */
-    collapsed: boolean;
-    exploring: boolean;
-    tips: boolean;
-    shortcuts: boolean;
+    exportSettings: ExportSettings;
+    ui: PanelUi;
     canUndo: boolean;
     canRedo: boolean;
     onundo: () => void;
@@ -42,15 +35,8 @@
   let {
     editor = $bindable(),
     favourites,
-    presetId = $bindable(),
-    presetPreview = $bindable(),
-    customWidth = $bindable(),
-    customHeight = $bindable(),
-    output,
-    collapsed = $bindable(),
-    exploring = $bindable(),
-    tips = $bindable(),
-    shortcuts = $bindable(),
+    exportSettings,
+    ui,
     canUndo,
     canRedo,
     onundo,
@@ -77,7 +63,7 @@
       editor.stepReel(e.key === 'ArrowRight' ? 1 : -1);
     } else if (e.key === 'm' || e.key === 'M') {
       e.preventDefault();
-      exploring = !exploring;
+      ui.exploring = !ui.exploring;
     } else if (e.key === '[' || e.key === ']') {
       e.preventDefault();
       editor.cycleWarpShape(e.key === ']' ? 1 : -1);
@@ -86,7 +72,7 @@
       if (!e.repeat) favourites.toggle(editor.design);
     } else if (e.key === 'p' || e.key === 'P') {
       e.preventDefault();
-      collapsed = !collapsed;
+      ui.collapsed = !ui.collapsed;
     } else if (e.key === '1' || e.key === '2' || e.key === '3') {
       e.preventDefault();
       if (e.key === '1') editor.colorsLocked = !editor.colorsLocked;
@@ -94,50 +80,50 @@
       else editor.adjustLocked = !editor.adjustLocked;
     } else if (e.key === '?') {
       e.preventDefault();
-      shortcuts = !shortcuts;
+      ui.shortcuts = !ui.shortcuts;
     }
   }
 </script>
 
 <svelte:window onkeydown={onWindowKeyDown} />
 
-<aside class="panel" class:collapsed>
+<aside class="panel" class:collapsed={ui.collapsed}>
   <header>
     <h1>cromatica</h1>
     <span class="spacer"></span>
     <button
       class="icon"
       aria-label="Tips"
-      aria-pressed={tips}
+      aria-pressed={ui.tips}
       title="Tips"
       onclick={() => {
-        tips = !tips;
-        if (tips) shortcuts = false;
+        ui.tips = !ui.tips;
+        if (ui.tips) ui.shortcuts = false;
       }}>?</button
     >
     <button
       class="icon"
       aria-label="Shortcuts"
-      aria-pressed={shortcuts}
+      aria-pressed={ui.shortcuts}
       title="Keyboard shortcuts (?)"
       onclick={() => {
-        shortcuts = !shortcuts;
-        if (shortcuts) tips = false;
+        ui.shortcuts = !ui.shortcuts;
+        if (ui.shortcuts) ui.tips = false;
       }}>⌨</button
     >
     <button class="icon" aria-label="Undo" title="Undo (⌘Z)" disabled={!canUndo} onclick={onundo}>↶</button>
     <button class="icon" aria-label="Redo" title="Redo (⇧⌘Z)" disabled={!canRedo} onclick={onredo}>↷</button>
     <button
       class="icon"
-      aria-expanded={!collapsed}
-      aria-label={collapsed ? 'Expand panel' : 'Collapse panel'}
-      title={collapsed ? 'Expand panel' : 'Collapse panel'}
-      onclick={() => (collapsed = !collapsed)}>{collapsed ? '□' : '_'}</button
+      aria-expanded={!ui.collapsed}
+      aria-label={ui.collapsed ? 'Expand panel' : 'Collapse panel'}
+      title={ui.collapsed ? 'Expand panel' : 'Collapse panel'}
+      onclick={() => (ui.collapsed = !ui.collapsed)}>{ui.collapsed ? '□' : '_'}</button
     >
   </header>
 
-  {#if !collapsed}
-    <PatternSection bind:editor bind:presetId bind:presetPreview bind:customWidth bind:customHeight {output} />
+  {#if !ui.collapsed}
+    <PatternSection bind:editor {exportSettings} />
     <AdjustSection bind:editor />
     <!-- With spare height these sit at the bottom, above the footer; a full panel scrolls as before. -->
     <div class="bottom">
@@ -148,8 +134,8 @@
 
   <ExportBar
     {editor}
-    bind:exploring
-    compact={collapsed}
+    {ui}
+    compact={ui.collapsed}
     {nudgeShuffle}
     {exporting}
     {progress}
