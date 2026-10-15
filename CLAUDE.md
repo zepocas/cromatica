@@ -18,7 +18,7 @@ Several agents work in this repo at the same time. Read README.md (Development) 
 
 - Conventional Commits. All changes go through a PR; never push to `main`.
 - Comments explain why (conventions, math, invariants), not what the code does or how it got here. The owner finds the current amount excessive.
-- New panel controls follow the panel style in README.md (Development) and go behind "+ more" unless they are core.
+- New panel controls follow the panel style in README.md (Development) and go behind "advanced" unless they are core.
 
 ## One worktree per agent
 
