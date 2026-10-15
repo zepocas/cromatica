@@ -77,27 +77,25 @@
       bind:value={editor.planes.count}
       display={(v) => String(planeCount(v))}
     />
-    <div class="row">
-      <label for="planes-torn">torn</label>
-      <input
-        id="planes-torn"
-        type="range"
-        min="0"
-        max="1"
-        step="0.01"
-        aria-label="Torn"
-        title="Clean cut ↔ torn paper edges"
-        bind:value={editor.planes.roughness}
-      />
-      <button
-        class="icon"
-        aria-label="New layout"
-        title="New arrangement of the planes"
-        data-seed={editor.planes.seed}
-        onclick={() => editor.newPlanesLayout()}>⚄</button
-      >
-      <output>{fixed2(editor.planes.roughness)}</output>
-    </div>
+    <SliderRow
+      label="torn"
+      title="Clean cut ↔ torn paper edges"
+      min={0}
+      max={1}
+      step={0.01}
+      bind:value={editor.planes.roughness}
+      display={fixed2}
+    >
+      {#snippet trailing()}
+        <button
+          class="icon"
+          aria-label="New layout"
+          title="New arrangement of the planes"
+          data-seed={editor.planes.seed}
+          onclick={() => editor.newPlanesLayout()}>⚄</button
+        >
+      {/snippet}
+    </SliderRow>
     <SliderRow
       label="blend"
       title="Crisp ↔ slightly blurred edges"
@@ -146,27 +144,25 @@
       bind:value={editor.aurora.count}
       display={(v) => String(ribbonCount(v))}
     />
-    <div class="row">
-      <label for="aurora-glow">glow</label>
-      <input
-        id="aurora-glow"
-        type="range"
-        min="0"
-        max="1"
-        step="0.01"
-        aria-label="Glow"
-        title="Thin bright lines ↔ wide soft curtains"
-        bind:value={editor.aurora.glow}
-      />
-      <button
-        class="icon"
-        aria-label="New aurora layout"
-        title="New arrangement of the ribbons"
-        data-seed={editor.aurora.seed}
-        onclick={() => editor.newAuroraLayout()}>⚄</button
-      >
-      <output>{fixed2(editor.aurora.glow)}</output>
-    </div>
+    <SliderRow
+      label="glow"
+      title="Thin bright lines ↔ wide soft curtains"
+      min={0}
+      max={1}
+      step={0.01}
+      bind:value={editor.aurora.glow}
+      display={fixed2}
+    >
+      {#snippet trailing()}
+        <button
+          class="icon"
+          aria-label="New aurora layout"
+          title="New arrangement of the ribbons"
+          data-seed={editor.aurora.seed}
+          onclick={() => editor.newAuroraLayout()}>⚄</button
+        >
+      {/snippet}
+    </SliderRow>
     <SliderRow
       label="blend"
       title="Crisp edges and rays ↔ soft ones"
@@ -189,27 +185,26 @@
         onchange={(v) => (editor.ramp.noiseStyle = v)}
       />
     {/if}
-    <div class="row">
-      <label for="ramp-scale">scale</label>
-      <input
-        id="ramp-scale"
-        type="range"
-        min="0"
-        max="1"
-        step="0.01"
-        aria-label="Scale"
-        title="Large ↔ small features"
-        bind:value={editor.ramp.scale}
-      />
-      <button
-        class="icon"
-        aria-label="New pattern variation"
-        title="New arrangement of the {editor.kind}"
-        data-seed={editor.ramp.seed}
-        onclick={() => editor.newRampVariation()}>⚄</button
-      >
-      <output>{fixed2(editor.ramp.scale ?? 0.35)}</output>
-    </div>
+    <SliderRow
+      label="scale"
+      title="Large ↔ small features"
+      min={0}
+      max={1}
+      step={0.01}
+      value={editor.ramp.scale ?? 0.35}
+      oninput={(v) => (editor.ramp.scale = v)}
+      display={fixed2}
+    >
+      {#snippet trailing()}
+        <button
+          class="icon"
+          aria-label="New pattern variation"
+          title="New arrangement of the {editor.kind}"
+          data-seed={editor.ramp.seed}
+          onclick={() => editor.newRampVariation()}>⚄</button
+        >
+      {/snippet}
+    </SliderRow>
   {:else if editor.kind !== 'radial'}
     <SliderRow
       label="angle"
@@ -224,29 +219,27 @@
   {#if editor.kind !== 'planes' && editor.kind !== 'aurora' && editor.kind !== 'grid'}
     <!-- Ramps band their position, so the readout is the step count; on a mesh the steps mean something different per style, so it shows the amount. -->
     {#if editor.kind === 'mesh'}
-      <div class="row">
-        <label for="bands">bands</label>
-        <input
-          id="bands"
-          type="range"
-          min="0"
-          max="1"
-          step="0.01"
-          aria-label="Bands"
-          title="The image in flat steps, like a topographic map"
-          bind:value={editor.finish.bands}
-        />
-        <output>{editor.finish.bands === 0 ? 'off' : fixed2(editor.finish.bands)}</output>
-        <span class="seg" role="group" aria-label="Band style">
-          {#each BAND_STYLES as style, i (style)}
-            <button
-              aria-pressed={editor.finish.bandStyle === style}
-              title={BAND_TITLES[i]}
-              onclick={() => (editor.finish.bandStyle = style)}>{LETTERS[i]}</button
-            >
-          {/each}
-        </span>
-      </div>
+      <SliderRow
+        label="bands"
+        title="The image in flat steps, like a topographic map"
+        min={0}
+        max={1}
+        step={0.01}
+        bind:value={editor.finish.bands}
+        display={(v) => (v === 0 ? 'off' : fixed2(v))}
+      >
+        {#snippet after()}
+          <span class="seg" role="group" aria-label="Band style">
+            {#each BAND_STYLES as style, i (style)}
+              <button
+                aria-pressed={editor.finish.bandStyle === style}
+                title={BAND_TITLES[i]}
+                onclick={() => (editor.finish.bandStyle = style)}>{LETTERS[i]}</button
+              >
+            {/each}
+          </span>
+        {/snippet}
+      </SliderRow>
     {:else}
       <SliderRow
         label="bands"
@@ -344,26 +337,24 @@
       oninput={(v) => editor.setZoom(2 ** v)}
       display={() => `${editor.transform.zoom.toFixed(1)}×`}
     />
-    <div class="row">
-      <label for="rotate">rotate</label>
-      <input
-        id="rotate"
-        type="range"
-        min="0"
-        max="359"
-        step="1"
-        aria-label="Rotate"
-        value={editor.transform.rotate}
-        oninput={(e) => editor.setRotate(e.currentTarget.valueAsNumber)}
-      />
-      <button class="icon" aria-label="Rotate left" title="Rotate 90° left" onclick={() => editor.rotateBy(90)}
-        >↺</button
-      >
-      <button class="icon" aria-label="Rotate right" title="Rotate 90° right" onclick={() => editor.rotateBy(-90)}
-        >↻</button
-      >
-      <output>{degrees(editor.transform.rotate)}</output>
-    </div>
+    <SliderRow
+      label="rotate"
+      min={0}
+      max={359}
+      step={1}
+      value={editor.transform.rotate}
+      oninput={(v) => editor.setRotate(v)}
+      display={degrees}
+    >
+      {#snippet trailing()}
+        <button class="icon" aria-label="Rotate left" title="Rotate 90° left" onclick={() => editor.rotateBy(90)}
+          >↺</button
+        >
+        <button class="icon" aria-label="Rotate right" title="Rotate 90° right" onclick={() => editor.rotateBy(-90)}
+          >↻</button
+        >
+      {/snippet}
+    </SliderRow>
     <div class="row">
       <span>flip</span>
       <button class="icon" aria-label="Flip horizontally" title="Mirror left ↔ right" onclick={() => editor.flip('x')}
