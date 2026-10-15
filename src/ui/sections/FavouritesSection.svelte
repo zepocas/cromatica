@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { oklchToHex } from '../color/hex';
-  import type { Design } from '../design/design';
-  import { FAVOURITES_LIMIT, swatchesOf, type Favourites } from './favourites.svelte';
-  import Section from './Section.svelte';
+  import { oklchToHex } from '../../color/hex';
+  import type { Design } from '../../design/design';
+  import { FAVOURITES_LIMIT, swatchesOf, type Favourites } from '../state/favourites.svelte';
+  import Section from '../controls/Section.svelte';
 
   interface Props {
     favourites: Favourites;

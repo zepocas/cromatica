@@ -7,12 +7,12 @@ import {
   sampleGrid,
   visibleImage,
   type SamplePoint,
-} from '../color/extract';
-import { oklabDistance } from '../color/gamut';
-import { evaluateMesh } from '../color/mesh';
-import { oklabToOklch, oklchToOklab } from '../color/oklab';
-import { evaluateRamp } from '../color/ramp';
-import type { Oklab, Oklch } from '../color/types';
+} from '../../color/extract';
+import { oklabDistance } from '../../color/gamut';
+import { evaluateMesh } from '../../color/mesh';
+import { oklabToOklch, oklchToOklab } from '../../color/oklab';
+import { evaluateRamp } from '../../color/ramp';
+import type { Oklab, Oklch } from '../../color/types';
 import {
   AURORA_BLEND,
   MAX_RADIUS,
@@ -38,14 +38,14 @@ import {
   type PointMesh,
   type Transform,
   type Warp,
-} from '../design/design';
-import { randomSeed } from '../design/random';
-import { gridLayout, shuffleDesign } from '../design/shuffle';
-import { evaluateGrid, forwardMap, prepareGrid, restPoint } from '../engine/grid';
-import { prepareRampShape, rampT } from '../engine/ramp-shape';
-import { applyMat2, clampZoom, inverseTransformMatrix, transformMatrix } from '../engine/transform';
-import { warpPoint } from '../engine/warp';
-import { clamp, normalizeDegrees } from '../math';
+} from '../../design/design';
+import { randomSeed } from '../../design/random';
+import { gridLayout, shuffleDesign } from '../../design/shuffle';
+import { evaluateGrid, forwardMap, prepareGrid, restPoint } from '../../engine/grid';
+import { prepareRampShape, rampT } from '../../engine/ramp-shape';
+import { applyMat2, clampZoom, inverseTransformMatrix, transformMatrix } from '../../engine/transform';
+import { warpPoint } from '../../engine/warp';
+import { clamp, normalizeDegrees } from '../../math';
 import { paletteFromImage, type ImagePalette, type ImageSource } from './image-palette';
 import { PaletteEditor, type PaletteSnapshot } from './palette.svelte';
 import { emptiestSpot, median, widestGapCenter } from './placement';

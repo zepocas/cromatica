@@ -1,10 +1,10 @@
 <script lang="ts">
-  import type { ContextScreen } from '../context/zones';
-  import type { Design } from '../design/design';
+  import type { ContextScreen } from '../../context/zones';
+  import type { Design } from '../../design/design';
   import ContextOverlay from './ContextOverlay.svelte';
-  import { type Size } from './monitor-layout';
-  import { onWallpaper, slid, type WallpaperRect } from './monitor-view';
-  import type { MonitorsState, Screen } from './monitors.svelte';
+  import { type Size } from '../state/monitor-layout';
+  import { onWallpaper, slid, type WallpaperRect } from '../state/monitor-view';
+  import type { MonitorsState, Screen } from '../state/monitors.svelte';
 
   interface Props {
     monitors: MonitorsState;

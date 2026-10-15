@@ -1,13 +1,13 @@
 <script lang="ts">
   import type { ExportProgress } from '../export/types';
-  import AdjustSection from './AdjustSection.svelte';
-  import ColorsSection from './ColorsSection.svelte';
-  import type { EditorState } from './editor.svelte';
+  import AdjustSection from './sections/AdjustSection.svelte';
+  import ColorsSection from './sections/ColorsSection.svelte';
+  import type { EditorState } from './state/editor.svelte';
   import ExportBar from './ExportBar.svelte';
-  import type { Favourites } from './favourites.svelte';
-  import FavouritesSection from './FavouritesSection.svelte';
-  import { isFormControl, isHandle, isTypingTarget } from './keys';
-  import PatternSection from './PatternSection.svelte';
+  import type { Favourites } from './state/favourites.svelte';
+  import FavouritesSection from './sections/FavouritesSection.svelte';
+  import { isFormControl, isHandle, isTypingTarget } from './state/keys';
+  import PatternSection from './sections/PatternSection.svelte';
 
   interface Props {
     editor: EditorState;

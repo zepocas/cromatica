@@ -3,10 +3,10 @@
   import { CONTEXT_SCREENS } from '../context/screens';
   import Dropdown from './controls/Dropdown.svelte';
   import LockToggle from './controls/LockToggle.svelte';
-  import type { EditorState } from './editor.svelte';
-  import type { CanvasView } from './view.svelte';
-  import MonitorsPanel from './MonitorsPanel.svelte';
-  import type { MonitorsState } from './monitors.svelte';
+  import type { EditorState } from './state/editor.svelte';
+  import type { CanvasView } from './state/view.svelte';
+  import MonitorsPanel from './overlays/MonitorsPanel.svelte';
+  import type { MonitorsState } from './state/monitors.svelte';
 
   interface Props {
     editor: EditorState;

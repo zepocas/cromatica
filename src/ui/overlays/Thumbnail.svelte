@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { Design } from '../design/design';
-  import { thumbnails } from '../preview/thumbnails';
+  import type { Design } from '../../design/design';
+  import { thumbnails } from '../../preview/thumbnails';
 
   interface Props {
     design: Design;

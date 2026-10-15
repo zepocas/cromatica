@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { oklchToHex } from '../color/hex';
-  import type { EditorState } from './editor.svelte';
-  import { isFormControl, isHandle } from './keys';
+  import { oklchToHex } from '../../color/hex';
+  import type { EditorState } from '../state/editor.svelte';
+  import { isFormControl, isHandle } from '../state/keys';
 
   interface Props {
     editor: EditorState;

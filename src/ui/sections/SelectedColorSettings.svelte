@@ -1,6 +1,6 @@
 <script lang="ts">
-  import SliderRow from './controls/SliderRow.svelte';
-  import { MAX_RADIUS, MIN_RADIUS, type EditorState } from './editor.svelte';
+  import SliderRow from '../controls/SliderRow.svelte';
+  import { MAX_RADIUS, MIN_RADIUS, type EditorState } from '../state/editor.svelte';
 
   interface Props {
     editor: EditorState;

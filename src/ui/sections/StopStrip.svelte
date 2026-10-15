@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { oklchToHex } from '../color/hex';
-  import { srgbEncode } from '../color/oklab';
-  import { bakeRamp } from '../color/ramp';
-  import type { ColorStop } from '../design/design';
-  import { clamp01 } from '../math';
-  import type { EditorState } from './editor.svelte';
+  import { oklchToHex } from '../../color/hex';
+  import { srgbEncode } from '../../color/oklab';
+  import { bakeRamp } from '../../color/ramp';
+  import type { ColorStop } from '../../design/design';
+  import { clamp01 } from '../../math';
+  import type { EditorState } from '../state/editor.svelte';
 
   interface Props {
     editor: EditorState;

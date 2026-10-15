@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { ExportProgress } from '../export/types';
-  import type { EditorState } from './editor.svelte';
+  import type { EditorState } from './state/editor.svelte';
 
   interface Props {
     editor: EditorState;

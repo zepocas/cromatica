@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { oklchToHex } from '../color/hex';
-  import { MAX_GRID, MIN_GRID } from '../design/design';
-  import type { EditorState } from './editor.svelte';
-  import { isFormControl } from './keys';
+  import { oklchToHex } from '../../color/hex';
+  import { MAX_GRID, MIN_GRID } from '../../design/design';
+  import type { EditorState } from '../state/editor.svelte';
+  import { isFormControl } from '../state/keys';
 
   interface Props {
     editor: EditorState;

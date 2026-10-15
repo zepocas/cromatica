@@ -2,8 +2,8 @@
   import { untrack, type Snippet } from 'svelte';
   import type { Design } from '../design/design';
   import { createPreview, type PreviewController } from '../preview/preview';
-  import { isTypingTarget } from './keys';
-  import type { CanvasView } from './view.svelte';
+  import { isTypingTarget } from './state/keys';
+  import type { CanvasView } from './state/view.svelte';
 
   interface Props {
     design: Design;

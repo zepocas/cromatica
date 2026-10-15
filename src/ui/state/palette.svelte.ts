@@ -1,4 +1,4 @@
-import type { HarmonyRule, PaletteInfo, PaletteMood, PaletteOptions, ValueKey } from '../color/harmony';
+import type { HarmonyRule, PaletteInfo, PaletteMood, PaletteOptions, ValueKey } from '../../color/harmony';
 import {
   gradePalette,
   isNoGrade,
@@ -7,10 +7,10 @@ import {
   remixShift,
   shiftPalette,
   type Grade,
-} from '../color/linked';
-import type { Oklch } from '../color/types';
-import { createRng, randomSeed } from '../design/random';
-import { normalizeDegrees } from '../math';
+} from '../../color/linked';
+import type { Oklch } from '../../color/types';
+import { createRng, randomSeed } from '../../design/random';
+import { normalizeDegrees } from '../../math';
 
 /** Who owns a set of colors: the mesh's points, the grid's nodes, or the stops the ramp-colored patterns share. */
 export type PaletteOwner = 'mesh' | 'ramp' | 'grid';

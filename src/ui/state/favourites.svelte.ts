@@ -1,6 +1,6 @@
-import type { Oklch } from '../color/types';
-import type { Design } from '../design/design';
-import { loadDesign, saveDesign, type SavedDesign } from '../design/schema';
+import type { Oklch } from '../../color/types';
+import type { Design } from '../../design/design';
+import { loadDesign, saveDesign, type SavedDesign } from '../../design/schema';
 
 // Best-effort like the autosave (D13); each entry is a full save, so the
 // schema's migrations apply to favourites too (D45).

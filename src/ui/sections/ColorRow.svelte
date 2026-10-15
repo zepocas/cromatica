@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { inSrgbGamut } from '../color/gamut';
-  import { hexToOklch, oklchToHex } from '../color/hex';
-  import type { Oklch } from '../color/types';
+  import { inSrgbGamut } from '../../color/gamut';
+  import { hexToOklch, oklchToHex } from '../../color/hex';
+  import type { Oklch } from '../../color/types';
 
   interface Props {
     /** Index of the point or stop. */

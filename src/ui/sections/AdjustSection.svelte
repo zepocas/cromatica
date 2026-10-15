@@ -1,14 +1,14 @@
 <script lang="ts">
-  import { BAND_STYLES, MAX_GRID, MIN_GRID, noFinish, type NoiseType } from '../design/design';
-  import { prepareFinish } from '../engine/finish';
-  import { ribbonCount } from '../engine/aurora';
-  import { planeCount } from '../engine/planes';
-  import Choice from './controls/Choice.svelte';
-  import Dropdown, { type DropdownOption } from './controls/Dropdown.svelte';
-  import SliderRow from './controls/SliderRow.svelte';
-  import type { EditorState } from './editor.svelte';
-  import Group from './Group.svelte';
-  import Section from './Section.svelte';
+  import { BAND_STYLES, MAX_GRID, MIN_GRID, noFinish, type NoiseType } from '../../design/design';
+  import { prepareFinish } from '../../engine/finish';
+  import { ribbonCount } from '../../engine/aurora';
+  import { planeCount } from '../../engine/planes';
+  import Choice from '../controls/Choice.svelte';
+  import Dropdown, { type DropdownOption } from '../controls/Dropdown.svelte';
+  import SliderRow from '../controls/SliderRow.svelte';
+  import type { EditorState } from '../state/editor.svelte';
+  import Group from '../controls/Group.svelte';
+  import Section from '../controls/Section.svelte';
 
   interface Props {
     editor: EditorState;

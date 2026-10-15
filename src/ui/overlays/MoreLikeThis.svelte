@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { Design } from '../design/design';
-  import { mutateDesign } from '../design/mutate';
-  import { createRng, randomSeed } from '../design/random';
+  import type { Design } from '../../design/design';
+  import { mutateDesign } from '../../design/mutate';
+  import { createRng, randomSeed } from '../../design/random';
   import Thumbnail from './Thumbnail.svelte';
 
   interface Props {

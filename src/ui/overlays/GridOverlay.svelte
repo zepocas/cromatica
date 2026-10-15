@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { oklchToHex } from '../color/hex';
-  import type { GridMesh } from '../design/design';
-  import { forwardMap, prepareGrid, restPoint } from '../engine/grid';
-  import type { EditorState } from './editor.svelte';
-  import { isFormControl, isHandle } from './keys';
+  import { oklchToHex } from '../../color/hex';
+  import type { GridMesh } from '../../design/design';
+  import { forwardMap, prepareGrid, restPoint } from '../../engine/grid';
+  import type { EditorState } from '../state/editor.svelte';
+  import { isFormControl, isHandle } from '../state/keys';
 
   interface Props {
     editor: EditorState;

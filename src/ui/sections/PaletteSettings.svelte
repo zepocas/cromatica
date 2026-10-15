@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { PALETTE_MOODS, type ValueKey } from '../color/harmony';
-  import SliderRow from './controls/SliderRow.svelte';
-  import Dropdown from './controls/Dropdown.svelte';
-  import Toggle from './controls/Toggle.svelte';
-  import type { EditorState } from './editor.svelte';
+  import { PALETTE_MOODS, type ValueKey } from '../../color/harmony';
+  import SliderRow from '../controls/SliderRow.svelte';
+  import Dropdown from '../controls/Dropdown.svelte';
+  import Toggle from '../controls/Toggle.svelte';
+  import type { EditorState } from '../state/editor.svelte';
 
   interface Props {
     editor: EditorState;

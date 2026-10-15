@@ -3,8 +3,8 @@ import { hexToOklch, oklchToHex } from '../../src/color/hex';
 import type { Oklch } from '../../src/color/types';
 import { MAX_MESH_POINTS, MAX_STOPS } from '../../src/design/design';
 import { shortestTurn } from '../../src/math';
-import { EditorState } from '../../src/ui/editor.svelte';
-import { emptiestSpot, median, widestGapCenter } from '../../src/ui/placement';
+import { EditorState } from '../../src/ui/state/editor.svelte';
+import { emptiestSpot, median, widestGapCenter } from '../../src/ui/state/placement';
 
 /** An editor on the built-in design (no opening shuffle). */
 const fresh = () => new EditorState({ shuffle: false });

@@ -2,7 +2,7 @@
  * Inline SVG bodies for the gradient and warp-shape selects, drawn on a 24x14 grid in
  * `currentColor`, so they follow the panel's monochrome look. Static strings, safe for {@html}.
  */
-import type { WarpShape } from '../design/design';
+import type { WarpShape } from '../../design/design';
 
 export const ICON_WIDTH = 24;
 export const ICON_HEIGHT = 14;

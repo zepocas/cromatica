@@ -1,6 +1,6 @@
 <script lang="ts">
-  import Dropdown from './controls/Dropdown.svelte';
-  import { ASPECTS, MAX_DIAGONAL, MIN_DIAGONAL, type Aspect, type MonitorsState } from './monitors.svelte';
+  import Dropdown from '../controls/Dropdown.svelte';
+  import { ASPECTS, MAX_DIAGONAL, MIN_DIAGONAL, type Aspect, type MonitorsState } from '../state/monitors.svelte';
 
   interface Props {
     monitors: MonitorsState;

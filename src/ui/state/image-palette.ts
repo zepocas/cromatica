@@ -1,5 +1,5 @@
-import { clusterImage, pickPalette, type ColorCluster } from '../color/extract';
-import { createRng } from '../design/random';
+import { clusterImage, pickPalette, type ColorCluster } from '../../color/extract';
+import { createRng } from '../../design/random';
 
 /** Long side the image is reduced to before clustering: plenty for color, and k-means stays instant. */
 const SAMPLE_SIZE = 256;

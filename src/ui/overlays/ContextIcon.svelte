@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { IconSpec } from '../context/icons';
+  import type { IconSpec } from '../../context/icons';
 
   let { spec }: { spec: IconSpec } = $props();
 </script>

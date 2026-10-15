@@ -1,5 +1,5 @@
-import type { Design } from '../design/design';
-import { loadDesign, saveDesign, type SavedDesign } from '../design/schema';
+import type { Design } from '../../design/design';
+import { loadDesign, saveDesign, type SavedDesign } from '../../design/schema';
 
 // Best-effort (D13): a failed read or write only costs the saved copy.
 export const AUTOSAVE_KEY = 'cromatica.design';

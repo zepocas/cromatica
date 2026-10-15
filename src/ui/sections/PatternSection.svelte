@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { WARP_SHAPES, type WarpShape } from '../design/design';
-  import { clamp } from '../math';
-  import Dropdown from './controls/Dropdown.svelte';
-  import type { EditorState } from './editor.svelte';
-  import { CUSTOM_PRESET_ID, PRESET_GROUPS, presetLabel, SIZE_PRESETS } from './presets';
-  import Section from './Section.svelte';
-  import ShapeIcon from './ShapeIcon.svelte';
-  import { PATTERN_ICONS, WARP_ICONS } from './shapeIcons';
+  import { WARP_SHAPES, type WarpShape } from '../../design/design';
+  import { clamp } from '../../math';
+  import Dropdown from '../controls/Dropdown.svelte';
+  import type { EditorState } from '../state/editor.svelte';
+  import { CUSTOM_PRESET_ID, PRESET_GROUPS, presetLabel, SIZE_PRESETS } from '../state/presets';
+  import Section from '../controls/Section.svelte';
+  import ShapeIcon from '../controls/ShapeIcon.svelte';
+  import { PATTERN_ICONS, WARP_ICONS } from '../controls/shapeIcons';
 
   interface Props {
     editor: EditorState;

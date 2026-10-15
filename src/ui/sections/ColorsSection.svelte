@@ -1,13 +1,13 @@
 <script lang="ts">
-  import { HARMONY_RULES, type HarmonyRule } from '../color/harmony';
-  import type { Oklch } from '../color/types';
-  import { shortestTurn } from '../math';
+  import { HARMONY_RULES, type HarmonyRule } from '../../color/harmony';
+  import type { Oklch } from '../../color/types';
+  import { shortestTurn } from '../../math';
   import ColorRow from './ColorRow.svelte';
-  import Dropdown from './controls/Dropdown.svelte';
-  import Toggle from './controls/Toggle.svelte';
-  import type { EditorState } from './editor.svelte';
+  import Dropdown from '../controls/Dropdown.svelte';
+  import Toggle from '../controls/Toggle.svelte';
+  import type { EditorState } from '../state/editor.svelte';
   import PaletteSettings from './PaletteSettings.svelte';
-  import Section from './Section.svelte';
+  import Section from '../controls/Section.svelte';
   import SelectedColorSettings from './SelectedColorSettings.svelte';
   import StopStrip from './StopStrip.svelte';
 

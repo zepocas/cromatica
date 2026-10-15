@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { iconFor, labelFor } from '../context/icons';
-  import { assessZone, luminanceMap, type Legibility, type ZoneRect } from '../context/legibility';
-  import { placeZone, type ContextScreen } from '../context/zones';
-  import { noFinish, type Design } from '../design/design';
-  import { thumbnails } from '../preview/thumbnails';
+  import { iconFor, labelFor } from '../../context/icons';
+  import { assessZone, luminanceMap, type Legibility, type ZoneRect } from '../../context/legibility';
+  import { placeZone, type ContextScreen } from '../../context/zones';
+  import { noFinish, type Design } from '../../design/design';
+  import { thumbnails } from '../../preview/thumbnails';
   import ContextIcon from './ContextIcon.svelte';
 
   interface Props {

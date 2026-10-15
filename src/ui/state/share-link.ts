@@ -1,6 +1,6 @@
-import type { Design } from '../design/design';
-import { SHARE_PREFIX, decodeShare, encodeShare } from '../design/share';
-import type { SavedDesign } from '../design/schema';
+import type { Design } from '../../design/design';
+import { SHARE_PREFIX, decodeShare, encodeShare } from '../../design/share';
+import type { SavedDesign } from '../../design/schema';
 
 /** Past this many characters a link may be cut off by chat apps; the PNG carries the design instead. */
 export const LONG_LINK = 2000;
