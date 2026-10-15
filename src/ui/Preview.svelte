@@ -234,13 +234,13 @@
     overflow: hidden;
   }
   .viewport.docked {
-    inset: 24px 24px 24px calc(var(--sidebar) + 24px);
+    inset: var(--gap-page) var(--gap-page) var(--gap-page) calc(var(--sidebar) + var(--gap-page));
   }
   .viewport.barred {
     bottom: var(--statusbar);
   }
   .viewport.barred.docked {
-    bottom: calc(24px + var(--statusbar));
+    bottom: calc(var(--gap-page) + var(--statusbar));
   }
   .viewport.zoomed {
     cursor: grab;

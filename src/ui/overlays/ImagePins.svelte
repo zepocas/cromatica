@@ -188,7 +188,7 @@
     position: fixed;
     top: 16px;
     right: 16px;
-    z-index: 20;
+    z-index: var(--z-pins);
     display: flex;
     flex-direction: column;
     gap: 6px;

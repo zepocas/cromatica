@@ -83,7 +83,7 @@
     position: absolute;
     right: 0;
     bottom: calc(100% + 6px);
-    z-index: 5;
+    z-index: var(--z-popover);
     box-sizing: border-box;
     width: 340px;
     padding: 8px 10px;

@@ -138,9 +138,9 @@
   .tray {
     position: fixed;
     left: var(--sidebar);
-    z-index: 4;
+    z-index: var(--z-tray);
     box-sizing: border-box;
-    max-width: min(640px, calc(100vw - var(--sidebar) - 24px));
+    max-width: min(640px, calc(100vw - var(--sidebar) - var(--gap-page)));
     max-height: 50vh;
     overflow-y: auto;
     padding: 10px;

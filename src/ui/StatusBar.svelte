@@ -227,6 +227,7 @@
   .tool .name {
     display: none;
   }
+  /* The bar's width at which every tool label fits; measured by hand, so re-measure when adding or renaming items. */
   @container statusbar (min-width: 1130px) {
     .tool {
       padding: 1px 8px;

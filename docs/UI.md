@@ -28,6 +28,13 @@ App.svelte                      owns the state and wires everything together
 | `controls/`  | Small reusable parts: `SliderRow`, `Choice`, `Dropdown`, `Toggle`, `LockToggle`, `Section`, `Group`, `ShapeIcon`. |
 | (top level)  | The app shell: `ControlPanel`, `Preview`, `StatusBar`, `ExportBar`, `Shortcuts`, `Tips`.      |
 
+## Styles
+
+- `src/app.css` is global: the panel's look under `.panel` (sliders, buttons, dropdowns, inputs), plus the variables.
+- Each component's `<style>` block holds its own layout, scoped to it.
+- Variables: colors and the hue wheel under `.panel`; `--sidebar`, `--statusbar`, `--gap-page` and the `--z-*` layer order in `:root`. Change a value there, not in the component.
+- `.panel` is a theme scope: the sidebar, status bar, tips, shortcuts and an open dropdown list all carry it.
+
 ## What happens when a slider moves
 
 ```text
