@@ -72,6 +72,7 @@ App.svelte                      owns the state and wires everything together
 | ----------------- | ----------------------------- | ------------------------------------------------------------- |
 | `EditorState`     | `state/editor.svelte.ts`      | the design, selection, locks, pins; `snapshot` and `restore` for undo |
 | `PaletteEditor`   | `state/palette.svelte.ts`     | harmony, mood, key, base hue, linked edits, grade sliders      |
+| `PinsEditor`      | `state/pins.svelte.ts`        | picking colors on the imported image (`editor.pins`); session only |
 | `History`         | `state/history.svelte.ts`     | undo and redo steps                                           |
 | `Reel`            | `state/reel.svelte.ts`        | the last shuffles, stepped with the arrow keys                |
 | `Favourites`      | `state/favourites.svelte.ts`  | saved designs in localStorage                                 |

@@ -72,7 +72,7 @@
       markShuffleTried();
     }
   });
-  const pinning = $derived(editor.pinning && editor.canPin && !ui.exploring);
+  const pinning = $derived(editor.pins.pinning && editor.pins.canPin && !ui.exploring);
   /** The preview alone, in the browser's full screen; the panel, handles and overlays are hidden. */
   let fullscreen = $state(false);
   const canFullscreen = typeof document !== 'undefined' && document.fullscreenEnabled;

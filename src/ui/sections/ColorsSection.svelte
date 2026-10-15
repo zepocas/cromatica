@@ -115,13 +115,13 @@
       title="Take the colors from an image (or drop one on the window); it never leaves your browser"
       onclick={() => fileInput.click()}>◩</button
     >
-    {#if editor.canPin}
+    {#if editor.pins.canPin}
       <button
         class="icon"
         aria-label="Pick colors on the image"
         title="Drag pins over the image to choose each color"
-        aria-pressed={editor.pinning}
-        onclick={() => (editor.pinning = !editor.pinning)}>◉</button
+        aria-pressed={editor.pins.pinning}
+        onclick={() => (editor.pins.pinning = !editor.pins.pinning)}>◉</button
       >
     {/if}
     <input bind:this={fileInput} type="file" accept="image/*" hidden aria-label="Image file" onchange={onImagePicked} />

@@ -1,18 +1,8 @@
-import {
-  frameToImage,
-  imageLayout,
-  imageToFrame,
-  nearestSample,
-  sampleColor,
-  sampleGrid,
-  visibleImage,
-  type SamplePoint,
-} from '../../color/extract';
-import { oklabDistance } from '../../color/gamut';
+import { imageLayout } from '../../color/extract';
 import { evaluateMesh } from '../../color/mesh';
-import { oklabToOklch, oklchToOklab } from '../../color/oklab';
+import { oklabToOklch } from '../../color/oklab';
 import { evaluateRamp } from '../../color/ramp';
-import type { Oklab, Oklch } from '../../color/types';
+import type { Oklch } from '../../color/types';
 import {
   AURORA_BLEND,
   MAX_RADIUS,
@@ -46,19 +36,11 @@ import { prepareRampShape, rampT } from '../../engine/ramp-shape';
 import { applyMat2, clampZoom, inverseTransformMatrix, transformMatrix } from '../../engine/transform';
 import { warpPoint } from '../../engine/warp';
 import { clamp, normalizeDegrees } from '../../math';
-import { paletteFromImage, type ImagePalette, type ImageSource } from './image-palette';
+import { paletteFromImage, type ImagePalette } from './image-palette';
 import { PaletteEditor, type PaletteSnapshot } from './palette.svelte';
+import { PinsEditor } from './pins.svelte';
 import { emptiestSpot, median, widestGapCenter } from './placement';
 import { Reel } from './reel.svelte';
-
-/** A place on the image: x and y in [0, 1], y down. */
-interface ImageSpot {
-  u: number;
-  v: number;
-}
-
-/** How close (ΔE_OK) the image at a remembered pin spot must still be to its color to keep the spot. */
-const SPOT_MATCH = 0.08;
 
 export type PatternKind = BasePattern['kind'];
 export type PlanesLayout = Omit<PlanesPattern, 'kind' | 'colors'>;
@@ -99,8 +81,8 @@ const MIN_STOPS = 2;
  * goes through the transform (toScreen / toPattern, pointSize).
  *
  * Sections below, in order: fields, `design`, Shuffle, Warp, Transform, Colors
- * (mesh points or stops, whichever is active), Palette from image, Pins on the
- * image, Linear stops, Grid nodes, Mesh points. See docs/UI.md for the map.
+ * (mesh points or stops, whichever is active), Palette from image, Selection,
+ * Linear stops, Grid nodes, Mesh points. See docs/UI.md for the map.
  */
 export class EditorState {
   kind = $state<PatternKind>('mesh');
@@ -131,10 +113,6 @@ export class EditorState {
   showHandles = $state(true);
   /** Palette-from-image progress or failure, shown in the colors section; '' when idle. */
   imageStatus = $state('');
-  /** The last image the colors were taken from, for picking on it; session only, never saved or undone. */
-  source = $state.raw<(ImageSource & { aspect: number }) | null>(null);
-  /** Picking colors on the image instead of editing the design's handles. Only while `canPin`. */
-  pinning = $state(false);
   /** Frame aspect (width / height), for clamping drags to the frame. */
   aspect = $state(16 / 9);
   /** Shown on the main canvas instead of the design while a picker option is hovered; never saved or undone. */
@@ -147,6 +125,22 @@ export class EditorState {
   });
 
   readonly reel = new Reel<EditorSnapshot>();
+
+  /** Picking colors on the image the palette came from. */
+  readonly pins = new PinsEditor({
+    kind: () => this.kind,
+    aspect: () => this.aspect,
+    colorItems: () => this.colorItems,
+    meshPoints: () => this.mesh.points,
+    canAddColor: () => this.canAddColor,
+    canRemoveColor: () => this.canRemoveColor,
+    selectedIndex: () => this.selectedIndex,
+    toScreen: (x, y) => this.toScreen(x, y),
+    movePoint: (i, x, y) => this.movePoint(i, x, y),
+    addColor: () => this.addColor(),
+    removeColor: (i) => this.removeColor(i),
+    adoptCustomPalette: () => this.palette.adopt(null),
+  });
 
   constructor(opts: { shuffle?: boolean } = {}) {
     if (opts.shuffle ?? true) this.applyShuffle(true, true, false, undefined);
@@ -430,7 +424,7 @@ export class EditorState {
     try {
       this.applyImagePalette(await paletteFromImage(file));
       // The pins window opens with the import, so the picked colors can be adjusted right away.
-      this.pinning = this.canPin;
+      this.pins.pinning = this.pins.canPin;
       this.imageStatus = '';
     } catch {
       this.imageStatus = "can't read that image";
@@ -443,7 +437,7 @@ export class EditorState {
    */
   applyImagePalette({ palette, aspect: imageAspect, source }: ImagePalette): void {
     if (palette.length === 0) return;
-    if (source) this.source = { ...source, aspect: imageAspect };
+    if (source) this.pins.source = { ...source, aspect: imageAspect };
     const colors = palette.map((c) => oklabToOklch(c.color));
     const geo = imageLayout(palette, { imageAspect, frameAspect: this.aspect });
     if (this.kind === 'mesh') {
@@ -464,7 +458,7 @@ export class EditorState {
         node.color = [...colors[best]];
       }
       // Nodes share the picked colors, so their pins are spread by color match instead of stacked on one peak.
-      this.spots = { ...this.spots, nodes: [] };
+      this.pins.setSpots('nodes', []);
     } else {
       const shape = prepareRampShape(
         {
@@ -478,26 +472,18 @@ export class EditorState {
       const order = colors.map((_, i) => i).sort((i, j) => along[i] - along[j]);
       if (order.length === 1) order.push(order[0]);
       this.ramp.stops = order.map((i, k) => ({ position: k / (order.length - 1), color: [...colors[i]] }));
-      this.spots = { ...this.spots, stops: order.map((i) => ({ u: palette[i].x, v: palette[i].y })) };
+      this.pins.setSpots(
+        'stops',
+        order.map((i) => ({ u: palette[i].x, v: palette[i].y })),
+      );
       this.selectedStop = 0;
     }
     this.palette.adopt(null);
   }
 
-  // ---- Pins on the image ----------------------------------------------------
+  // ---- Selection ------------------------------------------------------------
 
-  get canPin(): boolean {
-    return this.source !== null;
-  }
-
-  /** Where the pin of item `i` of the stops or nodes sits, remembered while the color there still matches. */
-  private spots = $state.raw<{ stops: ImageSpot[]; nodes: ImageSpot[] }>({ stops: [], nodes: [] });
-  private samples = new WeakMap<object, SamplePoint[]>();
-
-  private get spotKey(): 'stops' | 'nodes' {
-    return this.kind === 'grid' ? 'nodes' : 'stops';
-  }
-
+  /** Index of the selected mesh point, grid node or stop, whichever is active. */
   get selectedIndex(): number {
     const i = this.kind === 'mesh' ? this.selectedPoint : this.kind === 'grid' ? this.selectedNode : this.selectedStop;
     return Math.min(i, this.colorItems.length - 1);
@@ -507,102 +493,6 @@ export class EditorState {
     if (this.kind === 'mesh') this.selectedPoint = i;
     else if (this.kind === 'grid') this.selectedNode = i;
     else this.selectedStop = i;
-  }
-
-  /** The part of the image pins may sit on: on the mesh what the frame shows (the rest is cropped), else all of it. */
-  get pinArea(): { u0: number; v0: number; u1: number; v1: number } {
-    const source = this.source;
-    if (!source || this.kind !== 'mesh') return { u0: 0, v0: 0, u1: 1, v1: 1 };
-    return visibleImage(this.imageFit(source));
-  }
-
-  /**
-   * One pin per color, as a position on the image. Stops and nodes have no place in the frame, so their pins
-   * are remembered where the color was picked and move to the best match once the image there stops matching.
-   */
-  get pins(): { u: number; v: number; color: Oklch }[] {
-    const source = this.source;
-    if (!source) return [];
-    if (this.kind === 'mesh') {
-      return this.mesh.points.map((p) => {
-        const [u, v] = frameToImage(...this.toScreen(p.x, p.y), this.imageFit(source));
-        return { u, v, color: p.color };
-      });
-    }
-    const remembered = this.spots[this.spotKey];
-    const placed: ImageSpot[] = [];
-    return this.colorItems.map((item, i) => {
-      const lab = oklchToOklab(item.color);
-      const spot = remembered[i];
-      const there = spot && sampleColor(source.data, source.width, source.height, spot.u, spot.v);
-      const found = there && oklabDistance(there, lab) < SPOT_MATCH ? spot : this.findSpot(source, lab, placed);
-      placed.push(found);
-      return { ...found, color: item.color };
-    });
-  }
-
-  private findSpot(source: ImageSource, color: Oklab, taken: ImageSpot[]): ImageSpot {
-    let grid = this.samples.get(source);
-    if (!grid) this.samples.set(source, (grid = sampleGrid(source.data, source.width, source.height)));
-    const best = nearestSample(grid, color, taken);
-    return best ? { u: best.u, v: best.v } : { u: 0.5, v: 0.5 };
-  }
-
-  private imageFit(source: { aspect: number }) {
-    return { imageAspect: source.aspect, frameAspect: this.aspect };
-  }
-
-  /** The image's color around (u, v), or null with no image or over a transparent area. */
-  private colorAt(u: number, v: number): Oklch | null {
-    const source = this.source;
-    const lab = source && sampleColor(source.data, source.width, source.height, u, v);
-    return lab ? oklabToOklch(lab) : null;
-  }
-
-  /** Remember where every pin of the stops or nodes sits now, with pin `i` moved to `spot` (or dropped when null). */
-  private rememberSpots(i: number, spot: ImageSpot | null): void {
-    const list: ImageSpot[] = this.pins.map(({ u, v }) => ({ u, v }));
-    if (spot) list[i] = spot;
-    else list.splice(i, 1);
-    this.spots = { ...this.spots, [this.spotKey]: list };
-  }
-
-  /** Give item `i` the color found at image position (u, v). On the mesh the point moves there too. */
-  movePin(i: number, u: number, v: number): void {
-    const source = this.source;
-    const item = this.colorItems[i];
-    if (!source || !item) return;
-    if (this.kind === 'mesh') {
-      this.movePoint(i, ...imageToFrame(u, v, this.imageFit(source)));
-    } else {
-      // Positions of the other pins as they are now, before this color changes.
-      this.rememberSpots(i, { u, v });
-    }
-    const color = this.colorAt(u, v);
-    if (color) item.color = color;
-    this.palette.adopt(null);
-  }
-
-  /** A click on the bare image at (u, v): adds a color there, or replaces the selected one when the pattern can't grow. Returns the pin index, or null with no image. */
-  addPin(u: number, v: number): number | null {
-    if (!this.source) return null;
-    if (!this.canAddColor) {
-      const i = this.selectedIndex;
-      if (i < 0) return null;
-      this.movePin(i, u, v);
-      return i;
-    }
-    this.addColor();
-    // The new point or stop is the last one, and addColor selected it.
-    const i = this.colorItems.length - 1;
-    this.movePin(i, u, v);
-    return i;
-  }
-
-  removePin(i: number): void {
-    if (!this.canRemoveColor || i < 0 || i >= this.colorItems.length) return;
-    if (this.kind !== 'mesh') this.rememberSpots(i, null);
-    this.removeColor(i);
   }
 
   // ---- Linear stops ---------------------------------------------------------

@@ -17,10 +17,10 @@
   let moved = $state({ x: 0, y: 0 });
   let move: { pointerId: number; x: number; y: number; x0: number; y0: number } | null = null;
 
-  const source = $derived(editor.source);
-  const pins = $derived(editor.pins);
+  const source = $derived(editor.pins.source);
+  const pins = $derived(editor.pins.items);
   /** On the mesh, the part of the image the frame shows (the rest is dimmed); pins stay inside it. */
-  const area = $derived(editor.pinArea);
+  const area = $derived(editor.pins.area);
   const cropped = $derived(editor.kind === 'mesh');
   const url = $derived(source ? URL.createObjectURL(source.file) : '');
   $effect(() => () => URL.revokeObjectURL(url));
@@ -49,18 +49,18 @@
     if (e.button !== 0 || e.ctrlKey) return;
     const hit = (e.target as HTMLElement).closest<HTMLElement>('[data-pin]');
     if (hit) return startDrag(e, Number(hit.dataset.pin));
-    const i = editor.addPin(...imageAt(e));
+    const i = editor.pins.add(...imageAt(e));
     if (i !== null) startDrag(e, i);
   }
 
   function onPictureContextMenu(e: MouseEvent) {
     e.preventDefault();
     const hit = (e.target as HTMLElement).closest<HTMLElement>('[data-pin]');
-    if (hit) editor.removePin(Number(hit.dataset.pin));
+    if (hit) editor.pins.remove(Number(hit.dataset.pin));
   }
 
   function onPicturePointerMove(e: PointerEvent) {
-    if (drag && e.pointerId === drag.pointerId) editor.movePin(drag.index, ...imageAt(e));
+    if (drag && e.pointerId === drag.pointerId) editor.pins.move(drag.index, ...imageAt(e));
   }
 
   function endDrag(e: PointerEvent) {
@@ -88,7 +88,7 @@
 
   function onWindowKeyDown(e: KeyboardEvent) {
     if (e.key !== 'Escape' || e.metaKey || e.ctrlKey || e.altKey || isFormControl(e.target)) return;
-    editor.pinning = false;
+    editor.pins.pinning = false;
     e.preventDefault();
   }
 </script>
@@ -111,7 +111,7 @@
     onpointercancel={onTitlePointerUp}
   >
     <span>pins</span>
-    <button aria-label="Done picking" title="Close (Esc)" onclick={() => (editor.pinning = false)}>×</button>
+    <button aria-label="Done picking" title="Close (Esc)" onclick={() => (editor.pins.pinning = false)}>×</button>
   </div>
   {#if editor.kind === 'grid'}
     <!-- A net has a fixed grid of nodes, so colors are added by growing it. -->
