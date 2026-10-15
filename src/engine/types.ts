@@ -28,20 +28,17 @@ export interface Tile {
  */
 export interface RenderOptions {
   /**
-   * Blue-noise TPDF dither (±1 LSB, D7) before 8-bit quantization. Always on
-   * for users; tests turn it off to compare against exact references.
-   * Default true. Dither is indexed by OUTPUT pixel, so it is tile-independent.
+   * Blue-noise TPDF dither (±1 LSB, D7) before 8-bit quantization; tests turn it off to compare
+   * against exact references. Default true. Indexed by OUTPUT pixel, so it is tile-independent.
    */
   dither?: boolean;
 }
 
 export interface Renderer {
   /**
-   * Draw `tile` of an image of size `output` into the default framebuffer of
-   * the renderer's context. The caller must have sized the drawing buffer to
-   * exactly tile.width × tile.height. The renderer sets viewport itself.
-   * GL state must not be changed between render() and readPixels().
-   * The baked ramp texture is cached and only re-baked when the stops change.
+   * Draw `tile` of an image of size `output` into the default framebuffer. The caller must have
+   * sized the drawing buffer to exactly tile.width × tile.height. GL state must not be changed
+   * between render() and readPixels().
    */
   render(design: Design, output: OutputSize, tile: Tile, opts?: RenderOptions): void;
   /**

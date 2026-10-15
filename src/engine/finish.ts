@@ -1,5 +1,4 @@
-// Finishing effects (D33): vignette and bands. The shader (shaders/color/
-// finish.glsl) reads the same prepared values as uniforms.
+// The shader (shaders/color/finish.glsl) reads the same prepared values as uniforms.
 import type { MeshBanding } from '../color/mesh';
 import { BAND_STYLES, type Finish } from '../design/design';
 import { clamp01 } from '../math';
@@ -12,7 +11,7 @@ export const VIGNETTE_INNER = 0.35;
 /** Print texture: tooth modulation of the ink at print 1, and the screen's tones per channel. */
 const PRINT_INK = 0.35;
 const PRINT_LEVELS = 3;
-/** Lithograph's top end on the print scale: just where the old slider started to blend the xerox screen in. */
+/** Lithograph's top end on the print scale. */
 const LITHO_MAX = 0.7;
 /** Print amount over which the effect fades in, so the slider starts gently. */
 const PRINT_FADE_IN = 0.25;
@@ -84,12 +83,7 @@ export function vignetteFactor(f: PreparedFinish, u: number, v: number): number 
   return 1 - f.vignette * smoothstep(VIGNETTE_INNER, 1, Math.hypot(u, v) * f.vignetteScale);
 }
 
-/**
- * x in [0, 1] in flat steps: n levels from 0 to 1, each rising smoothly into
- * the next over the last `bandEdge` of its width (0 = a hard edge). 0 and 1
- * stay exact. Ramps band their position t; meshes each point's weight
- * relative to the strongest (src/color/mesh.ts).
- */
+/** x in [0, 1] in n flat steps, each rising into the next over the last `bandEdge` of its width; 0 and 1 stay exact. */
 export function bandLevel(f: PreparedFinish, x: number): number {
   const n = f.bandSteps;
   if (n < 2) return x;
@@ -99,7 +93,6 @@ export function bandLevel(f: PreparedFinish, x: number): number {
   return Math.min(1, (k + rise) / (n - 1));
 }
 
-/** How the CPU mesh reference bands, from the prepared finish. */
 export function meshBanding(f: PreparedFinish): MeshBanding {
   return {
     style: BAND_STYLES[f.bandStyle],

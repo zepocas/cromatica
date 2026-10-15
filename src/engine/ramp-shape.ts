@@ -1,6 +1,5 @@
 // Where a ramp gradient puts each point of the frame on its ramp: t in [0, 1].
-// The shader (shaders/gradient/ramp-shape.glsl) reads the same prepared
-// values as uniforms, so CPU references and the GPU agree.
+// The shader (shaders/gradient/ramp-shape.glsl) reads the same prepared values as uniforms.
 import type { RampGradient, RampShape, Transform } from '../design/design';
 import { clamp01 } from '../math';
 import { clampCoord, fbm, hash1, hashKey, ridged } from './noise';
@@ -8,11 +7,7 @@ import type { OutputSize } from './types';
 import { applyMat2, orientationMatrix, transpose } from './transform';
 import { feature, voronoiCells } from './warp';
 
-/**
- * Conic: within this radius of the center (composition units) t eases toward
- * the middle of the ramp. Every color meets at the center, so without it a
- * warp shreds that point into a pinched knot.
- */
+/** Conic: within this radius of the center (composition units) t eases toward the middle of the ramp, so a warp can't shred the point where every color meets. */
 export const CONIC_CORE = 0.15;
 
 /** Contour noise: fBm octaves, frequency factor, and how many times the ramp repeats over the noise's range. */
@@ -51,10 +46,9 @@ export interface PreparedRampShape {
 const noiseFrequency = (scale: number) => 0.6 * Math.pow(10, clamp01(Number.isFinite(scale) ? scale : 0.35));
 
 /**
- * Linear spans the frame along its direction, whatever the rotation and flips
- * (zoom is left out, so it still magnifies). Radial reaches t = 1 at the frame
- * corners. Conic runs t = (1 − cos θ) / 2 with θ the angle from the start
- * direction: 0 there, 1 opposite, and smooth all the way round, with no seam.
+ * Linear spans the frame along its direction, whatever the rotation and flips (zoom is left out,
+ * so it still magnifies). Radial reaches t = 1 at the frame corners. Conic runs
+ * t = (1 − cos θ) / 2 with θ the angle from the start direction, so it has no seam.
  */
 export function prepareRampShape(
   g: RampGradient,
@@ -84,20 +78,17 @@ export function prepareRampShape(
       ridged: g.kind === 'noise' && g.noiseStyle === 'ridged',
     };
   }
-  // The frame is aspect × 1, rotated and flipped by the transform's orientation
-  // O: its extent along d is |e.x|·aspect + |e.y| with e = Oᵀd.
+  // The frame is aspect × 1 under the transform's orientation O: its extent along d is |e.x|·aspect + |e.y|, e = Oᵀd.
   const [ex, ey] = applyMat2(transpose(orientationMatrix(transform)), dx, dy);
   const extent = Math.abs(ex) * aspect + Math.abs(ey);
   return { ...none, shape: 'linear', axis: [dx / extent, dy / extent] };
 }
 
-/** Smoothstep from 0 at x = 0 to 1 at x = 1. */
 function smoothstep(x: number): number {
   const t = Math.min(1, Math.max(0, x));
   return t * t * (3 - 2 * t);
 }
 
-/** Ramp position of pattern-space point (x, y). */
 export function rampT(r: PreparedRampShape, x: number, y: number): number {
   switch (r.shape) {
     case 'radial':
@@ -125,11 +116,7 @@ export function rampT(r: PreparedRampShape, x: number, y: number): number {
   }
 }
 
-/**
- * Worley cells: each cell takes a hashed spot on the ramp, shaded by the
- * distance to its feature point. Across a border the two cells meet at their
- * mean over the antialiasing width, so the edge is crisp but not jagged.
- */
+/** Worley cells; across a border the two cells blend to their mean over the antialiasing width. */
 function cellsT(r: PreparedRampShape, x: number, y: number): number {
   const sx = clampCoord(x * r.freq);
   const sy = clampCoord(y * r.freq);

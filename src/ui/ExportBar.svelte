@@ -1,10 +1,11 @@
 <script lang="ts">
   import type { ExportProgress } from '../export/types';
-  import type { EditorState } from './editor.svelte';
+  import type { EditorState } from './state/editor.svelte';
+  import type { PanelUi } from './state/panel-ui.svelte';
 
   interface Props {
     editor: EditorState;
-    exploring: boolean;
+    ui: PanelUi;
     /** Collapsed panel: only shuffle and download. */
     compact: boolean;
     nudgeShuffle: boolean;
@@ -17,19 +18,8 @@
     oncancel: () => void;
   }
 
-  let {
-    editor,
-    exploring = $bindable(),
-    compact,
-    nudgeShuffle,
-    exporting,
-    progress,
-    error,
-    notice,
-    onshare,
-    onexport,
-    oncancel,
-  }: Props = $props();
+  let { editor, ui, compact, nudgeShuffle, exporting, progress, error, notice, onshare, onexport, oncancel }: Props =
+    $props();
 
   const percent = $derived(progress && progress.tilesTotal > 0 ? (progress.tilesDone / progress.tilesTotal) * 100 : 0);
 </script>
@@ -48,9 +38,9 @@
       <button
         class="secondary box"
         aria-label="More like this"
-        aria-pressed={exploring}
+        aria-pressed={ui.exploring}
         title="More like this: variations of this design (M)"
-        onclick={() => (exploring = !exploring)}>more like this</button
+        onclick={() => (ui.exploring = !ui.exploring)}>more like this</button
       >
     {/if}
   </div>
@@ -104,7 +94,6 @@
     border: none;
     background: none;
   }
-  /* Bordered buttons of one height share the width of the row, so every edge lines up. */
   .box {
     flex: 1;
     min-width: 0;

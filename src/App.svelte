@@ -1,30 +1,31 @@
 <script lang="ts">
   import { readExportedDesign, type ExportedDesign } from './export/design-image';
   import { exportImage } from './export/exporter';
-  import type { ExportFormat, ExportProgress } from './export/types';
+  import type { ExportProgress } from './export/types';
   import { saveDesign, type SavedDesign } from './design/schema';
-  import { readAutosave, writeAutosave } from './ui/autosave';
+  import { readAutosave, writeAutosave } from './ui/state/autosave';
   import ControlPanel from './ui/ControlPanel.svelte';
-  import { EditorState, type EditorSnapshot } from './ui/editor.svelte';
-  import { Favourites, type Favourite } from './ui/favourites.svelte';
-  import { History } from './ui/history.svelte';
-  import { isTypingTarget } from './ui/keys';
-  import ImagePins from './ui/ImagePins.svelte';
-  import MeshOverlay from './ui/MeshOverlay.svelte';
-  import MoreLikeThis from './ui/MoreLikeThis.svelte';
-  import GridOverlay from './ui/GridOverlay.svelte';
-  import ContextOverlay from './ui/ContextOverlay.svelte';
-  import MonitorsOverlay from './ui/MonitorsOverlay.svelte';
-  import { MonitorsState } from './ui/monitors.svelte';
+  import { EditorState, type EditorSnapshot } from './ui/state/editor.svelte';
+  import { ExportSettings } from './ui/state/export-settings.svelte';
+  import { Favourites, type Favourite } from './ui/state/favourites.svelte';
+  import { PanelUi } from './ui/state/panel-ui.svelte';
+  import { History } from './ui/state/history.svelte';
+  import { isTypingTarget } from './ui/state/keys';
+  import ImagePins from './ui/overlays/ImagePins.svelte';
+  import MeshOverlay from './ui/overlays/MeshOverlay.svelte';
+  import MoreLikeThis from './ui/overlays/MoreLikeThis.svelte';
+  import GridOverlay from './ui/overlays/GridOverlay.svelte';
+  import ContextOverlay from './ui/overlays/ContextOverlay.svelte';
+  import MonitorsOverlay from './ui/overlays/MonitorsOverlay.svelte';
+  import { MonitorsState } from './ui/state/monitors.svelte';
   import { CONTEXT_SCREENS } from './context/screens';
   import Preview from './ui/Preview.svelte';
   import { dismissTips, markShuffleTried, shuffleTried, tipsDismissed } from './ui/tips';
   import Shortcuts from './ui/Shortcuts.svelte';
   import StatusBar from './ui/StatusBar.svelte';
   import Tips from './ui/Tips.svelte';
-  import { CanvasView } from './ui/view.svelte';
-  import { clearShareHash, LONG_LINK, readShareHash, shareUrl } from './ui/share-link';
-  import { CUSTOM_PRESET_ID, DEFAULT_PRESET_ID, SIZE_PRESETS } from './ui/presets';
+  import { CanvasView } from './ui/state/view.svelte';
+  import { clearShareHash, LONG_LINK, readShareHash, shareUrl } from './ui/state/share-link';
 
   import { untrack } from 'svelte';
   import type { Design } from './design/design';
@@ -32,7 +33,6 @@
   interface Props {
     /** The design in the page's share link, already decoded (main.ts). */
     shared?: SavedDesign | null;
-    /** There was a share link but it couldn't be read. */
     shareFailed?: boolean;
   }
   let { shared = null, shareFailed = false }: Props = $props();
@@ -59,33 +59,20 @@
   const history = new History<Step>({ editor: initial.snapshot(), favourites: favourites.items });
   // Class instance (not proxied); $state only so it can be bound down the panel tree.
   let editor = $state(initial);
-  let presetId = $state(DEFAULT_PRESET_ID);
-  /** The size preset being looked at in its open list: only the preview's frame changes. */
-  let presetPreview = $state<string | null>(null);
-  let customWidth = $state(1920);
-  let customHeight = $state(1080);
-  let format = $state<ExportFormat>('png');
-  let collapsed = $state(false);
-  let contextId = $state('');
-  let contextPreview = $state<string | null>(null);
-  const contextScreen = $derived(CONTEXT_SCREENS.find((s) => s.id === (contextPreview ?? contextId)) ?? null);
+  const exportSettings = new ExportSettings();
+  // Tips show on a first visit only; `?default` (tests) never shows them.
+  const ui = new PanelUi({ tips: !builtIn && !tipsDismissed() });
+  const contextScreen = $derived(CONTEXT_SCREENS.find((s) => s.id === (ui.contextPreview ?? ui.contextId)) ?? null);
   const monitors = new MonitorsState();
-  // First visit only; `?default` (tests) never shows them.
-  let tips = $state(!builtIn && !tipsDismissed());
-  let shortcuts = $state(false);
   // A first-time visitor is nudged toward shuffle until it has been used once (`?default` never nudges).
-  let nudgeShuffle = $state(!builtIn && !shuffleTried());
+  const nudgeOnLoad = !builtIn && !shuffleTried();
   const reelAtStart = initial.reel.length;
+  const shuffled = $derived(editor.reel.length !== reelAtStart);
+  const nudgeShuffle = $derived(nudgeOnLoad && !shuffled);
   $effect(() => {
-    if (nudgeShuffle && editor.reel.length !== reelAtStart) {
-      nudgeShuffle = false;
-      markShuffleTried();
-    }
+    if (nudgeOnLoad && shuffled) markShuffleTried();
   });
-  /** The "more like this" grid covers the preview. */
-  let exploring = $state(false);
-  /** Picking colors in the image window, beside the live design. */
-  const pinning = $derived(editor.pinning && editor.canPin && !exploring);
+  const pinning = $derived(editor.pins.pinning && editor.pins.canPin && !ui.exploring);
   /** The preview alone, in the browser's full screen; the panel, handles and overlays are hidden. */
   let fullscreen = $state(false);
   const canFullscreen = typeof document !== 'undefined' && document.fullscreenEnabled;
@@ -99,26 +86,22 @@
   const view = new CanvasView();
   let preview: Preview;
 
-  const output = $derived.by(() => {
-    const preset = SIZE_PRESETS.find((p) => p.id === presetId);
-    return presetId === CUSTOM_PRESET_ID || !preset
-      ? { width: customWidth, height: customHeight }
-      : { width: preset.width, height: preset.height };
-  });
+  const output = $derived(exportSettings.size);
 
   const wallpaper = $derived({ w: output.width, h: output.height });
   const renderDesign = $derived(editor.design);
   const aspect = $derived(output.width / output.height);
-  const previewPreset = $derived(presetPreview ? SIZE_PRESETS.find((p) => p.id === presetPreview) : undefined);
+  const previewPreset = $derived(exportSettings.previewPreset);
   const previewAspect = $derived(previewPreset ? previewPreset.width / previewPreset.height : aspect);
 
-  const showMonitors = $derived(monitors.on && !fullscreen && !exploring && !previewPreset);
+  const showMonitors = $derived(monitors.on && !fullscreen && !ui.exploring && !previewPreset);
   /** In the stretch fit the wallpaper is drawn bent to the block, whose shape the monitors keep. */
   const stretchedTo = $derived.by(() => {
     if (!showMonitors || monitors.fit !== 'stretch') return null;
     const r = monitors.rect(wallpaper);
     return r.w / r.h;
   });
+  // The editor clamps handle drags to the frame, so it needs the output's aspect.
   $effect(() => {
     editor.aspect = aspect;
   });
@@ -137,7 +120,6 @@
     if (!builtIn && linked === null) saveTimer = setTimeout(() => writeAutosave(design), 300);
   });
 
-  /** Copy a link to the current design. */
   async function share() {
     error = '';
     notice = '';
@@ -232,7 +214,7 @@
     const ac = new AbortController();
     abort = ac;
     const size = { ...output };
-    const fmt = format;
+    const fmt = exportSettings.format;
     exporting = true;
     progress = { tilesDone: 0, tilesTotal: 0 };
     error = '';
@@ -259,16 +241,8 @@
 
   const hasFiles = (e: DragEvent) => e.dataTransfer?.types.includes('Files') ?? false;
 
-  /** Reopen the design at the size it was exported at. */
   function openExport({ design, size }: ExportedDesign) {
-    const preset = SIZE_PRESETS.find((p) => p.width === size.width && p.height === size.height);
-    if (preset) {
-      presetId = preset.id;
-    } else {
-      presetId = CUSTOM_PRESET_ID;
-      customWidth = size.width;
-      customHeight = size.height;
-    }
+    exportSettings.open(size);
     editor.setDesign(design);
     view.reset();
   }
@@ -307,30 +281,30 @@
   aspect={previewAspect}
   stretchTo={stretchedTo}
   paused={exporting}
-  docked={!collapsed && !fullscreen}
+  docked={!ui.collapsed && !fullscreen}
   barred={!fullscreen}
   {view}
-  zoomable={!exploring && !fullscreen}
+  zoomable={!ui.exploring && !fullscreen}
   {fullscreen}
   onexitfullscreen={exitFullscreen}
 >
   {#snippet overlay()}
-    {#if !exploring && contextScreen && !previewPreset && !showMonitors}
+    {#if !ui.exploring && contextScreen && !previewPreset && !showMonitors}
       <ContextOverlay design={renderDesign} {aspect} screen={contextScreen} />
     {/if}
     {#if fullscreen}
       <!-- The image and the OS context only: no handles. -->
     {:else if showMonitors}
       <MonitorsOverlay {monitors} {wallpaper} design={renderDesign} context={contextScreen} />
-    {:else if exploring}
+    {:else if ui.exploring}
       <MoreLikeThis
         design={renderDesign}
         {aspect}
         onpick={(d) => {
           editor.setDesign(d);
-          exploring = false;
+          ui.exploring = false;
         }}
-        onclose={() => (exploring = false)}
+        onclose={() => (ui.exploring = false)}
       />
     {:else if editor.preview || previewPreset}
       <!-- A picker preview: the handles belong to the design underneath. -->
@@ -345,15 +319,8 @@
   <ControlPanel
     bind:editor
     {favourites}
-    bind:presetId
-    bind:presetPreview
-    bind:customWidth
-    bind:customHeight
-    {output}
-    bind:collapsed
-    bind:exploring
-    bind:tips
-    bind:shortcuts
+    {exportSettings}
+    {ui}
     canUndo={history.canUndo}
     canRedo={history.canRedo}
     onundo={undo}
@@ -371,10 +338,9 @@
 {#if !fullscreen}
   <StatusBar
     {editor}
-    docked={!collapsed}
-    bind:format
-    bind:contextId
-    bind:contextPreview
+    docked={!ui.collapsed}
+    {exportSettings}
+    {ui}
     {monitors}
     portrait={output.height > output.width}
     {view}
@@ -385,12 +351,12 @@
 {#if pinning && !fullscreen}
   <ImagePins {editor} />
 {/if}
-{#if shortcuts && !fullscreen}
-  <Shortcuts onclose={() => (shortcuts = false)} />
-{:else if tips && !fullscreen}
+{#if ui.shortcuts && !fullscreen}
+  <Shortcuts onclose={() => (ui.shortcuts = false)} />
+{:else if ui.tips && !fullscreen}
   <Tips
     onclose={() => {
-      tips = false;
+      ui.tips = false;
       dismissTips();
     }}
   />

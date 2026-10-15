@@ -1,8 +1,6 @@
-// Halftone (M8): every pixel becomes ink or paper on a 45° screen. Ink is a
-// darker, richer version of the color there and paper a lighter, paler one;
-// dots cover the share that mixes back to the color's luminance, so tones hold
-// from a distance. Dots are in image units, fixed on screen. The shader
-// (shaders/color/halftone.glsl) does the same in float32.
+// Every pixel becomes ink (darker, richer) or paper (lighter, paler) on a 45° screen; dots cover
+// the share that mixes back to the color's luminance. The shader (shaders/color/halftone.glsl)
+// does the same in float32.
 import { linearSrgbToOklab, oklabToLinearSrgb } from '../color/oklab';
 import type { Oklab, Rgb } from '../color/types';
 import type { Finish } from '../design/design';
@@ -32,10 +30,7 @@ function spot(u: number, v: number): number {
   return 0.5 - 0.25 * (Math.cos(TAU * x) + Math.cos(TAU * y));
 }
 
-/**
- * Threshold on the spot function that inks a share `i / (size - 1)` of the
- * image: quantiles of the spot function sampled over many cells.
- */
+/** Threshold on the spot function that inks a share `i / (size - 1)`: quantiles of the spot over many cells. */
 function coverageTable(): number[] {
   const n = 384;
   const span = 24 * HALFTONE_CELL;
@@ -52,7 +47,7 @@ function coverageTable(): number[] {
 
 export const HALFTONE_TABLE: readonly number[] = coverageTable();
 
-/** Ink/paper contrast for a finish; 0 = off. */
+/** 0 = off. */
 export function halftoneContrast(finish: Finish | undefined): number {
   return finish?.noise.type === 'halftone' ? HALFTONE_CONTRAST * clamp01(finish.noise.amount) : 0;
 }
@@ -65,13 +60,11 @@ export const HALFTONE_SHADER_CONSTANTS = {
   HALFTONE_LUT_SIZE,
 };
 
-/** GLSL smoothstep. */
 function smoothstep(a: number, b: number, x: number): number {
   const t = clamp01((x - a) / (b - a));
   return t * t * (3 - 2 * t);
 }
 
-/** How much of the pixel at (u, v) is ink, for an ink share `cover`. */
 function inkAt(cover: number, u: number, v: number, pixel: number): number {
   if (cover <= 0 || cover >= 1) return cover;
   const x = cover * (HALFTONE_LUT_SIZE - 1);
@@ -95,7 +88,6 @@ export function applyHalftone(contrast: number, rgb: Rgb, u: number, v: number, 
   const inkY = ink[0] ** 3;
   const cover = paperY > inkY ? (paperY - L ** 3) / (paperY - inkY) : 0;
   const t = inkAt(clamp01(cover), u, v, pixel);
-  // Edge pixels mix in linear light too.
   const inkRgb = oklabToLinearSrgb(ink);
   const paperRgb = oklabToLinearSrgb(paper);
   return [0, 1, 2].map((i) => paperRgb[i] + (inkRgb[i] - paperRgb[i]) * t) as Rgb;

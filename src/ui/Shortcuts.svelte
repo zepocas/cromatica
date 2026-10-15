@@ -68,9 +68,9 @@
 <style>
   .shortcuts {
     position: fixed;
-    right: 24px;
-    bottom: 24px;
-    z-index: 10;
+    right: var(--gap-page);
+    bottom: var(--gap-page);
+    z-index: var(--z-card);
     width: 420px;
     max-width: calc(100vw - 48px);
     box-sizing: border-box;

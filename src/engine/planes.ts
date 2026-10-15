@@ -1,6 +1,5 @@
-// Planes (D37): seeded flat-color quads with torn edges. The layout is made on
-// the CPU and passed to shaders/gradient/planes.glsl as uniforms; evaluatePlanes
-// is the same per-pixel math in doubles, for tests.
+// The layout is made on the CPU and passed to shaders/gradient/planes.glsl as uniforms;
+// evaluatePlanes is the same per-pixel math in doubles.
 import { gamutMapToLinearSrgb } from '../color/gamut';
 import { srgbDecode } from '../color/oklab';
 import type { Rgb } from '../color/types';
@@ -41,7 +40,6 @@ const OCTAVE_KEY_STEP = 0x632be5ab;
 
 const PAPER: Rgb = [srgbDecode(PAPER_SRGB[0]), srgbDecode(PAPER_SRGB[1]), srgbDecode(PAPER_SRGB[2])];
 
-/** Constants the shader shares, as #defines. */
 export const PLANES_SHADER_CONSTANTS = {
   MAX_PLANES,
   TEAR_FREQ: glslFloat(TEAR_FREQ),
@@ -96,7 +94,6 @@ function isConvexCcw(c: Vec2[]): boolean {
   return true;
 }
 
-/** Corners of one plane: a jittered rectangle, rotated and placed. */
 function planeCorners(rng: ReturnType<typeof createRng>, area: number, angle: number, center: Vec2): Vec2[] {
   const aspect = rng.range(1, MAX_PLANE_ASPECT);
   const hw = Math.sqrt(area * aspect) / 2;
@@ -185,7 +182,6 @@ export function preparePlanes(planes: PlanesPattern, output: OutputSize): Prepar
   };
 }
 
-/** Smooth value noise on the integer lattice, [0, 1). */
 function valueNoise(x: number, y: number, key: number): number {
   const ix = Math.floor(x);
   const iy = Math.floor(y);
@@ -224,7 +220,6 @@ function smoothstep(a: number, b: number, x: number): number {
   return t * t * (3 - 2 * t);
 }
 
-/** Linear sRGB of the collage at pattern-space point (x, y). */
 export function evaluatePlanes(p: PreparedPlanes, x: number, y: number): Rgb {
   const rgb: Rgb = [...p.background];
   const reach = p.tear + p.soft;

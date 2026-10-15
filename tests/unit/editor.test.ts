@@ -3,8 +3,8 @@ import { hexToOklch, oklchToHex } from '../../src/color/hex';
 import type { Oklch } from '../../src/color/types';
 import { MAX_MESH_POINTS, MAX_STOPS } from '../../src/design/design';
 import { shortestTurn } from '../../src/math';
-import { EditorState } from '../../src/ui/editor.svelte';
-import { emptiestSpot, median, widestGapCenter } from '../../src/ui/placement';
+import { EditorState } from '../../src/ui/state/editor.svelte';
+import { emptiestSpot, median, widestGapCenter } from '../../src/ui/state/placement';
 
 /** An editor on the built-in design (no opening shuffle). */
 const fresh = () => new EditorState({ shuffle: false });
@@ -263,21 +263,21 @@ describe('pins on the image', () => {
   const withImage = (e: EditorState) => {
     const data = new Uint8ClampedArray(4 * 2 * 4);
     for (let i = 0; i < 8; i++) data.set(i % 4 < 2 ? [220, 40, 40, 255] : [30, 60, 200, 255], i * 4);
-    e.source = { file: new Blob(), data, width: 4, height: 2, aspect: 2 };
+    e.pins.source = { file: new Blob(), data, width: 4, height: 2, aspect: 2 };
     return e;
   };
-  const hex = (e: EditorState, i: number) => oklchToHex(e.pins[i].color).toUpperCase();
+  const hex = (e: EditorState, i: number) => oklchToHex(e.pins.items[i].color).toUpperCase();
 
   it('a click adds a color while the pattern can grow, and replaces the selected one at its limit', () => {
     const e = withImage(fresh());
     const before = e.mesh.points.length;
-    expect(e.addPin(0.9, 0.5)).toBe(before);
+    expect(e.pins.add(0.9, 0.5)).toBe(before);
     expect(e.mesh.points).toHaveLength(before + 1);
 
     while (e.canAddColor) e.addColor();
     expect(e.mesh.points).toHaveLength(MAX_MESH_POINTS);
     e.selectedPoint = 2;
-    expect(e.addPin(0.1, 0.5)).toBe(2);
+    expect(e.pins.add(0.1, 0.5)).toBe(2);
     expect(e.mesh.points).toHaveLength(MAX_MESH_POINTS);
     expect(hex(e, 2)).toBe('#DC2828');
   });
@@ -288,20 +288,20 @@ describe('pins on the image', () => {
     while (e.canAddColor) e.addColor();
     expect(e.ramp.stops).toHaveLength(MAX_STOPS);
     e.selectedStop = 1;
-    expect(e.addPin(0.9, 0.5)).toBe(1);
+    expect(e.pins.add(0.9, 0.5)).toBe(1);
     expect(e.ramp.stops).toHaveLength(MAX_STOPS);
     expect(hex(e, 1)).toBe('#1E3CC8');
 
     e.kind = 'grid';
     const nodes = e.grid.nodes.length;
     e.selectedNode = 3;
-    expect(e.addPin(0.1, 0.5)).toBe(3);
+    expect(e.pins.add(0.1, 0.5)).toBe(3);
     expect(e.grid.nodes).toHaveLength(nodes);
     expect(hex(e, 3)).toBe('#DC2828');
   });
 
   it('does nothing without an image', () => {
     const e = fresh();
-    expect(e.addPin(0.5, 0.5)).toBeNull();
+    expect(e.pins.add(0.5, 0.5)).toBeNull();
   });
 });

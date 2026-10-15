@@ -137,7 +137,7 @@ function withDefaults(design: Json, finish: object = noFinish): Json {
 
 /** migrations[v] turns a version-v save into a version v + 1 save. */
 const migrations: Record<number, (save: Json) => Json> = {
-  // Version 1 is a bare Design as kept in memory before M6.
+  // Version 1 is a bare Design with no envelope.
   1: (design) => ({ version: 2, design: withDefaults(design, FINISH_V4) }),
   2: (save) => {
     const design = isObject(save.design) ? save.design : {};

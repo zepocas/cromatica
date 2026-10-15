@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { defaultDesign } from '../../src/design/design';
 import { saveDesign } from '../../src/design/schema';
-import { AUTOSAVE_KEY, LEGACY_AUTOSAVE_KEY, readAutosave, writeAutosave } from '../../src/ui/autosave';
+import { AUTOSAVE_KEY, LEGACY_AUTOSAVE_KEY, readAutosave, writeAutosave } from '../../src/ui/state/autosave';
 import { memoryStorage } from './support/storage';
 
 describe('autosave', () => {

@@ -9,7 +9,7 @@ import {
   resizeMonitor,
   touching,
   type Monitor,
-} from '../../src/ui/monitor-layout';
+} from '../../src/ui/state/monitor-layout';
 
 const size = { w: 2350, h: 1320 };
 const two = () => layoutRow([size, size]);

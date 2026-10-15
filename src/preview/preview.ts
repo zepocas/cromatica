@@ -7,10 +7,7 @@ export interface PreviewOptions {
   container?: HTMLElement;
   /** Width / height of the frame. Default 16 / 9. */
   aspect?: number;
-  /**
-   * Render at exactly this drawing-buffer size, ignoring layout and DPR
-   * (tests, and later the 1:1 loupe).
-   */
+  /** Render at exactly this drawing-buffer size, ignoring layout and DPR. */
   fixedSize?: OutputSize;
 }
 

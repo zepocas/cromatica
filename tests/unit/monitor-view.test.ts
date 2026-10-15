@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { layoutRow } from '../../src/ui/monitor-layout';
-import { coverNear, coverRect, onWallpaper, slid, stretchRect } from '../../src/ui/monitor-view';
-import { screenSize } from '../../src/ui/monitors.svelte';
+import { layoutRow } from '../../src/ui/state/monitor-layout';
+import { coverNear, coverRect, onWallpaper, slid, stretchRect } from '../../src/ui/state/monitor-view';
+import { screenSize } from '../../src/ui/state/monitors.svelte';
 
 const pair = layoutRow([
   { w: 2000, h: 1000 },

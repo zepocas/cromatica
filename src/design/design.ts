@@ -1,7 +1,5 @@
 // The design: everything that defines an image, independent of resolution
-// (D4). A base pattern (linear gradient or color-point mesh), a warp, film
-// noise and a whole-image transform. Versioned by engineVersion; the full
-// saved-design schema comes with M6.
+// (D4). Versioned by engineVersion.
 import type { Oklch } from '../color/types';
 
 export interface ColorStop {
@@ -124,17 +122,14 @@ export interface GridMesh {
   lines?: number;
 }
 
-/** Aurora blend for new designs: sharper than the look before blend existed (0.6). */
+/** Aurora blend for new designs; saves without a blend use LEGACY_AURORA_BLEND. */
 export const AURORA_BLEND = 0.35;
 export const MIN_GRID = 2;
 export const MAX_GRID = 5;
 
 export type BasePattern = RampGradient | PointMesh | PlanesPattern | AuroraPattern | GridMesh;
 
-/**
- * Coordinate distortion applied before the base pattern (D23). Experimental
- * catalogue — shapes that don't earn their place will be pruned (D22).
- */
+/** Coordinate distortion applied before the base pattern (D23). */
 export type WarpShape =
   | 'none'
   | 'domain' // recursive domain-warped fBm (IQ-style)
@@ -181,10 +176,9 @@ export interface Warp {
 }
 
 /**
- * Finishing effects (M4.5, D33), after the base pattern. Vignette is defined
- * on the frame (composition coords, before transform and warp), so it stays
- * put while the image turns. Bands steps ramp gradients along their ramp and
- * meshes along each point's influence.
+ * Finishing effects (D33), after the base pattern. Vignette is defined on the
+ * frame (composition coords, before transform and warp), so it stays put while
+ * the image turns.
  */
 /**
  * How bands cut a mesh. weights: each point's influence in steps (terraces
@@ -250,7 +244,7 @@ export interface Design {
   engineVersion: 1;
   base: BasePattern;
   warp: Warp;
-  /** Missing (designs saved before transforms existed) = identity. */
+  /** Missing = identity. */
   transform?: Transform;
   /** Missing = no finish. */
   finish?: Finish;

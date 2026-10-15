@@ -1,47 +1,30 @@
 <script lang="ts">
-  import type { ExportFormat } from '../export/types';
   import { CONTEXT_SCREENS } from '../context/screens';
   import Dropdown from './controls/Dropdown.svelte';
   import LockToggle from './controls/LockToggle.svelte';
-  import type { EditorState } from './editor.svelte';
-  import type { CanvasView } from './view.svelte';
-  import MonitorsPanel from './MonitorsPanel.svelte';
-  import type { MonitorsState } from './monitors.svelte';
+  import type { EditorState } from './state/editor.svelte';
+  import type { ExportSettings } from './state/export-settings.svelte';
+  import type { PanelUi } from './state/panel-ui.svelte';
+  import type { CanvasView } from './state/view.svelte';
+  import MonitorsPanel from './overlays/MonitorsPanel.svelte';
+  import type { MonitorsState } from './state/monitors.svelte';
 
   interface Props {
     editor: EditorState;
     view: CanvasView;
-    /** The OS screen drawn over the preview; '' = none. */
-    contextId: string;
-    /** The screen highlighted in the open list, shown until it closes; null = none. */
-    contextPreview: string | null;
+    ui: PanelUi;
     /** Portrait outputs list the phone screens first. */
     portrait: boolean;
     /** Beside the docked panel; otherwise the full width. */
     docked: boolean;
-    /** The multi-monitor preview over the image. */
     monitors: MonitorsState;
-    /** The file type of the download. */
-    format: ExportFormat;
+    exportSettings: ExportSettings;
     onzoom: (factor: number) => void;
     /** Absent where the browser can't. */
     onfullscreen?: () => void;
   }
 
-  let {
-    editor,
-    view,
-    docked,
-    format = $bindable(),
-    contextId = $bindable(),
-    // Write-only bindable: assigning it is how the value reaches the parent.
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    contextPreview = $bindable(),
-    monitors,
-    portrait,
-    onzoom,
-    onfullscreen,
-  }: Props = $props();
+  let { editor, view, docked, exportSettings, ui, monitors, portrait, onzoom, onfullscreen }: Props = $props();
 
   const OFF = 'off';
   const options = $derived.by(() => {
@@ -65,7 +48,7 @@
 
   function toggleMonitors() {
     monitors.on = !monitors.on;
-    if (monitors.on && CONTEXT_SCREENS.find((s) => s.id === contextId)?.group === 'mobile') contextId = '';
+    if (monitors.on && CONTEXT_SCREENS.find((s) => s.id === ui.contextId)?.group === 'mobile') ui.contextId = '';
   }
 
   const handles = $derived(
@@ -83,9 +66,9 @@
     <Dropdown
       ariaLabel="Format"
       title="File type of the download"
-      value={format}
+      value={exportSettings.format}
       options={[{ value: 'png' }, { value: 'jpeg' }]}
-      onchange={(f) => (format = f)}
+      onchange={(f) => (exportSettings.format = f)}
     />
   </span>
   <span class="sep" role="separator" aria-orientation="vertical"></span>
@@ -139,10 +122,10 @@
     <span>os context</span>
     <Dropdown
       ariaLabel="OS context"
-      value={contextId || OFF}
+      value={ui.contextId || OFF}
       {options}
-      onchange={(id) => (contextId = id === OFF ? '' : id)}
-      onactive={(id) => (contextPreview = id === null ? null : id === OFF ? '' : id)}
+      onchange={(id) => (ui.contextId = id === OFF ? '' : id)}
+      onactive={(id) => (ui.contextPreview = id === null ? null : id === OFF ? '' : id)}
       title="Show the OS on top of the image, and warn where its text would be hard to read"
     />
     <span class="monitors">
@@ -229,6 +212,7 @@
   .tool .name {
     display: none;
   }
+  /* The bar's width at which every tool label fits; measured by hand, so re-measure when adding or renaming items. */
   @container statusbar (min-width: 1130px) {
     .tool {
       padding: 1px 8px;
@@ -243,7 +227,6 @@
     align-items: center;
     gap: 4px;
   }
-  /* Each lock sits before its own label, so the pairs need more room between them. */
   .locks {
     gap: 12px;
   }
@@ -251,7 +234,6 @@
     color: var(--dim);
     font-variant-numeric: tabular-nums;
   }
-  /* A rule the full height of the bar, in the same color as the borders. */
   /* Dropdowns take the width of their value instead of shrinking to an ellipsis. */
   .statusbar :global(.dropdown) {
     flex: none;

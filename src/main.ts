@@ -1,7 +1,7 @@
 import { mount } from 'svelte';
 import './app.css';
 import App from './App.svelte';
-import { readShareHash } from './ui/share-link';
+import { readShareHash } from './ui/state/share-link';
 
 // A shared link is decoded before the first paint, so the app opens on it without showing the autosave first.
 const { design, failed } = await readShareHash(location.hash);
