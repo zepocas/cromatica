@@ -11,6 +11,7 @@ App.svelte                      owns the state and wires everything together
 ├── ControlPanel.svelte         the left panel
 │   ├── sections/PatternSection      pattern, warp shape, output size
 │   ├── sections/AdjustSection       warp, finishes, lighting, transform
+│   │   └── adjust/                  PatternAdjust (per pattern kind), FinishGroups (bands, noise, lighting), TransformControls
 │   ├── sections/ColorsSection       color rows, shuffle colors, palette from image
 │   ├── sections/FavouritesSection   saved designs
 │   └── ExportBar.svelte             shuffle, more like this, share link, download
