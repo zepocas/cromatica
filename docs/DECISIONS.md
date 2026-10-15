@@ -663,3 +663,8 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Spacing:** stacked controls in a section are 4 px apart (was 6), and a folded group is a normal row, not tucked into negative margins: the tucked version looked cramped next to the rest and overlapped the row above in colors. The tighter rows give back the height it costs, so at 1280 x 720 the colour stop strip still clears the footer.
 - **Panel title:** the "cromatica" row (title, help, undo, redo, fold) is sticky at the top of the panel, so it stays while a full panel scrolls.
 - **Numbering:** D84 is the monitor preview.
+
+## D85. Status bar scrolls on narrow windows
+
+- **Decision (2026-10-15, #61):** below the width where the groups fit, the bar scrolls sideways (no visible scrollbar; the mouse wheel scrolls it too) instead of overflowing the page. Folding groups into a menu or wrapping to two lines was left for M15, where the mobile layout will need its own answer.
+- **The popover leaves the scroller:** a scrolling box clips its children on both axes, so the monitors popover sits on the fixed bar frame, right-aligned, not under its button. Dropdown lists already render in `<body>`.
