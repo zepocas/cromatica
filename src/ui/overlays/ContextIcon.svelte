@@ -63,7 +63,6 @@
     padding: 18%;
     box-sizing: border-box;
   }
-  /* macOS: a squircle with a soft top-lit gloss and a drop shadow. */
   .app.mac {
     border-radius: 23%;
     background: linear-gradient(
@@ -83,7 +82,6 @@
     border-radius: 23% 23% 40% 40% / 23% 23% 20% 20%;
     background: linear-gradient(to bottom, rgb(255 255 255 / 0.4), rgb(255 255 255 / 0.05));
   }
-  /* Windows 11: flat, slightly rounded, no gloss. */
   .app.win {
     border-radius: 18%;
   }

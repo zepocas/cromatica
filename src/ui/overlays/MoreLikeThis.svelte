@@ -16,7 +16,6 @@
   // Gentle at the top, bolder further down; the middle cell is the design itself.
   const STRENGTHS = [0.35, 0.45, 0.55, 0.65, null, 0.75, 0.85, 0.95, 1];
   const GAP = 6;
-  /** Height kept for the again / close row under the grid. */
   const BAR = 24;
 
   let seed = $state(randomSeed());

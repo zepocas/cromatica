@@ -1,7 +1,6 @@
 /**
- * True when a key press belongs to the focused control: text-like inputs,
- * selects and editable content. Range sliders and buttons don't count, so
- * app shortcuts (Space, [ and ]) still work after touching them.
+ * True when a key press belongs to the focused control (text-like inputs, selects, editable content).
+ * Sliders and buttons don't count, so app shortcuts (Space, [ and ]) still work after touching them.
  */
 export function isTypingTarget(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null;
@@ -12,9 +11,8 @@ export function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 /**
- * True when the focused element is any form control, sliders included: it
- * owns the arrow keys and Delete, so canvas shortcuts (nudging and deleting
- * mesh points) must leave them alone.
+ * True when the focused element is any form control, sliders included: it owns the arrow keys and Delete,
+ * so canvas shortcuts must leave it alone.
  */
 export function isFormControl(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null;
@@ -23,7 +21,6 @@ export function isFormControl(target: EventTarget | null): boolean {
   );
 }
 
-/** True when the target is a point, node or stop handle, which nudge with the arrow keys. */
 export function isHandle(target: EventTarget | null): boolean {
   return !!(target as HTMLElement | null)?.closest?.('[data-point], [data-node], [data-stop]');
 }

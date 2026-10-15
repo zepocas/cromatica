@@ -17,7 +17,6 @@ export async function readShareHash(hash: string): Promise<{ design: SavedDesign
   }
 }
 
-/** A link to `design` on this page; the size and the editor's other state aren't part of it. */
 export async function shareUrl(design: Design, page: Location = location): Promise<string> {
   return `${page.origin}${page.pathname}#${await encodeShare(design)}`;
 }

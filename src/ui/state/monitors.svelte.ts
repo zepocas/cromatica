@@ -49,18 +49,16 @@ const withSize = (spec: Spec) => ({ ...spec, ...screenSize(spec) });
 const defaultScreens = (): Screen[] => layoutRow([withSize(DEFAULT_SPEC), withSize(DEFAULT_SPEC)]);
 
 /**
- * The multi-monitor preview: a view setting, never part of the design, the
- * export or the autosave. A class instance (not proxied), like the editor.
+ * The multi-monitor preview: a view setting, never part of the design, the export or the autosave.
+ * A class instance (not proxied), like the editor.
  */
 export class MonitorsState {
   on = $state(false);
-  /** Setting it re-fits the wallpaper to the block. */
   #fit = $state<Fit>('span');
   screens = $state.raw<Screen[]>(defaultScreens());
   /**
-   * Where the wallpaper sits in span, once set: moving a monitor never moves it, so the
-   * layout can be dragged anywhere without the image re-centring under it. Cleared (and so
-   * re-fitted to the block) when the block's size changes.
+   * Where the wallpaper sits in span, once set: moving a monitor never moves it, so the layout can be dragged
+   * without the image re-centring. Cleared (re-fitted to the block) when the block's size changes.
    */
   placement = $state.raw<WallpaperRect | null>(null);
 
@@ -73,7 +71,6 @@ export class MonitorsState {
     this.placement = null;
   }
 
-  /** The wallpaper in the monitors' space for an image of `wallpaper` pixels. */
   rect(wallpaper: Size): WallpaperRect {
     if (this.#fit === 'stretch') return stretchRect(this.screens);
     const p = this.placement;
@@ -89,15 +86,13 @@ export class MonitorsState {
     return this.screens[0]?.id === id;
   }
 
-  /** Moves one monitor next to another, inside `bounds` (the wallpaper) when given. */
   place(id: number, x: number, y: number, snap: number, bounds?: Bounds): void {
     this.screens = placeMonitor(this.screens, id, x, y, snap, bounds);
   }
 
   /**
-   * After a move: a block that no longer fits inside the wallpaper (span, e.g. two monitors
-   * stacked) gets the wallpaper re-fitted to cover it, as the OS would, staying as near as it
-   * can to where it was; otherwise the wallpaper stays put.
+   * After a move: a block that no longer fits inside the wallpaper (span, e.g. stacked monitors) gets the wallpaper
+   * re-fitted to cover it, staying near where it was; otherwise the wallpaper stays put.
    */
   settle(wallpaper: Size): void {
     const p = this.placement;
@@ -112,7 +107,6 @@ export class MonitorsState {
     if (!inside) this.placement = coverNear(this.screens, wallpaper, p);
   }
 
-  /** Another screen shape, diagonal or turn; the top-left corner stays. */
   change(id: number, patch: Partial<Spec>): void {
     const current = this.screens.find((s) => s.id === id);
     if (!current) return;

@@ -1,8 +1,6 @@
 /**
- * Monitor arrangement for the multi-monitor preview: rectangles in physical
- * space (hundredths of an inch), like the arrangement view of macOS and
- * Windows. The monitors always form one block: every monitor touches another
- * along an edge, and none overlap.
+ * Monitor arrangement for the multi-monitor preview: rectangles in physical space (hundredths of an inch).
+ * The monitors always form one block: every monitor touches another along an edge, and none overlap.
  */
 export interface Monitor {
   id: number;
@@ -17,7 +15,6 @@ export interface Size {
   h: number;
 }
 
-/** A rectangle in the same space: the wallpaper, which a monitor is kept inside. */
 export interface Bounds {
   left: number;
   top: number;
@@ -68,12 +65,10 @@ const within = (v: number, size: number, lo: number, hi: number) => v >= lo && v
 const BEYOND_PULL = 0.35;
 
 /**
- * The slot nearest to (x, y) where monitor `id` sits against another monitor
- * and keeps the block joined. Along the shared edge it follows the pointer,
- * and lines up with the neighbour's start, middle or end, or with the edges of
- * `bounds`, within `snap`. A monitor stays inside `bounds`, except to make an
- * arrangement the image can't cover (stacking a pair), and then only when the
- * pointer is clearly there. The layout is unchanged when there is no slot.
+ * The slot nearest to (x, y) where monitor `id` sits against another monitor and keeps the block joined.
+ * Along the shared edge it follows the pointer and snaps (within `snap`) to the neighbour's start, middle or end
+ * or to the edges of `bounds`. Leaves `bounds` only to stack an arrangement the image can't cover, and only when
+ * the pointer is clearly there. Unchanged when there is no slot.
  */
 export function placeMonitor<T extends Monitor>(
   monitors: readonly T[],
@@ -93,7 +88,6 @@ export function placeMonitor<T extends Monitor>(
   }
   const beyond = (BEYOND_PULL * Math.min(me.w, me.h)) ** 2;
 
-  /** Along the free axis: follow the target inside what touches, with alignment snaps. */
   const along = (
     target: number,
     size: number,
@@ -157,12 +151,10 @@ function inRow<T extends Monitor>(monitors: readonly T[]): T[] {
   });
 }
 
-/** The monitors side by side, tops aligned. `sizes` come with whatever else a monitor carries. */
 export function layoutRow<T extends Size>(monitors: readonly T[]): (T & Monitor)[] {
   return inRow(monitors.map((m, i) => ({ ...m, id: i + 1, x: 0, y: 0 })));
 }
 
-/** Another monitor against the right edge of the block, at the top. */
 export function addMonitor<T extends Monitor>(monitors: readonly T[], added: Omit<T, 'id' | 'x' | 'y'>): T[] {
   const id = Math.max(0, ...monitors.map((m) => m.id)) + 1;
   if (!monitors.length) return layoutRow<T>([{ ...added, id, x: 0, y: 0 } as T]);
@@ -185,7 +177,6 @@ export function resizeMonitor<T extends Monitor>(monitors: readonly T[], id: num
   return isValid(moved) ? moved : inRow(resized);
 }
 
-/** The smallest rectangle around all monitors. */
 export function blockBounds(monitors: readonly Monitor[]): { left: number; top: number; w: number; h: number } {
   const left = Math.min(...monitors.map((m) => m.x));
   const top = Math.min(...monitors.map((m) => m.y));

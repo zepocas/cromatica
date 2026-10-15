@@ -1,14 +1,12 @@
 // Where new mesh points and gradient stops go. Pure functions of the current
 // layout, in screen (composition) coordinates for points.
 
-/** Grid cells per side searched for the emptiest spot. */
 const EMPTY_SPOT_GRID = 12;
 /** Fraction of the frame the emptiest-spot search covers, so new points stay off the very edge. */
 const EMPTY_SPOT_INSET = 0.85;
 
 /**
- * The spot inside a frame of the given aspect (height 1, centered) farthest
- * from every point, by a coarse grid search.
+ * The spot inside a frame of the given aspect (height 1, centered) farthest from every point, by a coarse grid search.
  */
 export function emptiestSpot(points: readonly [number, number][], aspect: number): [number, number] {
   const n = EMPTY_SPOT_GRID;

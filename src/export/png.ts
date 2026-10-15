@@ -78,9 +78,7 @@ const abortError = () => new DOMException('PNG encoder was aborted', 'AbortError
 /**
  * Streaming PNG encoder: RGBA8 rows in, 8-bit RGB PNG out (color type 2,
  * alpha dropped, sRGB chunk). `text` entries become iTXt chunks before the
- * image data. Rows are filtered (Up, D17) and fed to
- * CompressionStream('deflate') in ~1 MiB batches; only the previous row and
- * the compressed output are retained.
+ * image data. Rows are filtered (Up, D17) and compressed in ~1 MiB batches.
  */
 export function createPngEncoder(size: OutputSize, text: Record<string, string> = {}): PngEncoder {
   const { width, height } = size;

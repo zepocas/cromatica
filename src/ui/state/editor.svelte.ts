@@ -77,7 +77,6 @@ export interface EditorSnapshot {
   palette: PaletteSnapshot;
 }
 
-/** A 3 × 3 grid over a 16:9 frame in the default colors (the opening shuffle replaces it). */
 function defaultGrid(): GridMesh {
   const colors = defaultMesh.points.map((p) => p.color);
   const nodes = gridLayout(null, 3, 3, 16 / 9).map((n, i) => ({ ...n, color: colors[i % colors.length] }));
@@ -87,7 +86,6 @@ function defaultGrid(): GridMesh {
 export { MAX_RADIUS, MIN_RADIUS };
 /** How far outside the frame (composition units) a point may be dragged. */
 const OUTSIDE_MARGIN = 0.5;
-/** Fewest stops a linear gradient keeps in the editor. */
 const MIN_STOPS = 2;
 
 /**
@@ -121,9 +119,7 @@ export class EditorState {
   warp = $state<Warp>({ ...defaultWarp });
   finish = $state<Finish>(structuredClone(noFinish));
   transform = $state<Transform>({ ...identityTransform });
-  /** Shuffle locks: a locked part is kept as is. */
   colorsLocked = $state(false);
-  /** Pattern: kind, layout and warp. */
   patternLocked = $state(false);
   /** Adjust: the finishes (noise, vignette, bands, lighting). The transform is never shuffled. */
   adjustLocked = $state(false);
@@ -152,7 +148,6 @@ export class EditorState {
 
   readonly reel = new Reel<EditorSnapshot>();
 
-  /** Opens on a full shuffle of the mesh (palette, layout and warp). */
   constructor(opts: { shuffle?: boolean } = {}) {
     if (opts.shuffle ?? true) this.applyShuffle(true, true, false, undefined);
   }
@@ -328,7 +323,6 @@ export class EditorState {
 
   // ---- Warp -----------------------------------------------------------------
 
-  /** Step through WARP_SHAPES (wrapping), e.g. with the [ and ] keys. */
   cycleWarpShape(step: 1 | -1): void {
     const n = WARP_SHAPES.length;
     const i = WARP_SHAPES.indexOf(this.warp.shape);
@@ -367,10 +361,7 @@ export class EditorState {
     this.transform.zoom = clampZoom(zoom);
   }
 
-  /**
-   * Mirror the image as seen on screen. Flips are stored in pattern space
-   * (before the rotation), so the rotation is negated to match.
-   */
+  /** Mirror the image as seen on screen. Flips live in pattern space (before the rotation), so the rotation is negated. */
   flip(axis: 'x' | 'y'): void {
     if (axis === 'x') this.transform.flipX = !this.transform.flipX;
     else this.transform.flipY = !this.transform.flipY;
@@ -409,7 +400,6 @@ export class EditorState {
     return this.kind === 'mesh' ? this.canRemovePoint : this.ramp.stops.length > MIN_STOPS;
   }
 
-  /** Points, nodes or stops of the active pattern, each with a `color`. */
   private get colorItems(): { color: Oklch }[] {
     if (this.kind === 'grid') return this.grid.nodes;
     return this.kind === 'mesh' ? this.mesh.points : this.ramp.stops;
@@ -435,7 +425,6 @@ export class EditorState {
 
   // ---- Palette from image ---------------------------------------------------
 
-  /** Take the palette from an image file (picker or drop). */
   async importImage(file: Blob): Promise<void> {
     this.imageStatus = 'reading image…';
     try {
@@ -449,10 +438,8 @@ export class EditorState {
   }
 
   /**
-   * Replace the active pattern's colors with an image's palette, one point or
-   * stop per color (D25). Mesh points start where their color sits in the
-   * image, sized by its area; stops follow the image along the gradient's
-   * direction. No rule made the palette, so it is custom, with no adjustment.
+   * Replace the active pattern's colors with an image's palette, one point or stop per color (D25).
+   * No rule made it, so the palette is custom, with no adjustment.
    */
   applyImagePalette({ palette, aspect: imageAspect, source }: ImagePalette): void {
     if (palette.length === 0) return;
@@ -499,7 +486,6 @@ export class EditorState {
 
   // ---- Pins on the image ----------------------------------------------------
 
-  /** Pins need an image to pick from, on any pattern. */
   get canPin(): boolean {
     return this.source !== null;
   }
@@ -512,7 +498,6 @@ export class EditorState {
     return this.kind === 'grid' ? 'nodes' : 'stops';
   }
 
-  /** The selected point, node or stop. */
   get selectedIndex(): number {
     const i = this.kind === 'mesh' ? this.selectedPoint : this.kind === 'grid' ? this.selectedNode : this.selectedStop;
     return Math.min(i, this.colorItems.length - 1);
@@ -532,12 +517,8 @@ export class EditorState {
   }
 
   /**
-   * One pin per color of the active pattern, as a position on the image. On
-   * the mesh a pin is its point, read back through the cover mapping. Stops
-   * and nodes have no place in the frame, so their pins are only where the
-   * color was picked: kept while the image there still matches the color, and
-   * otherwise moved to where the image matches it best (an undo, an edit or a
-   * hue shift leaves a pin on the nearest match).
+   * One pin per color, as a position on the image. Stops and nodes have no place in the frame, so their pins
+   * are remembered where the color was picked and move to the best match once the image there stops matching.
    */
   get pins(): { u: number; v: number; color: Oklch }[] {
     const source = this.source;
@@ -560,7 +541,6 @@ export class EditorState {
     });
   }
 
-  /** Where the image matches `color` best, away from the spots already taken. */
   private findSpot(source: ImageSource, color: Oklab, taken: ImageSpot[]): ImageSpot {
     let grid = this.samples.get(source);
     if (!grid) this.samples.set(source, (grid = sampleGrid(source.data, source.width, source.height)));
@@ -603,12 +583,7 @@ export class EditorState {
     this.palette.adopt(null);
   }
 
-  /**
-   * A click on the bare image at (u, v): a new color there, as in the colors
-   * list, or when the pattern can't grow (a net, or a pattern at its limit) the
-   * selected color replaced by the one found there. The index of the pin that
-   * took it, or null with no image.
-   */
+  /** A click on the bare image at (u, v): adds a color there, or replaces the selected one when the pattern can't grow. Returns the pin index, or null with no image. */
   addPin(u: number, v: number): number | null {
     if (!this.source) return null;
     if (!this.canAddColor) {
@@ -624,7 +599,6 @@ export class EditorState {
     return i;
   }
 
-  /** Remove the color of pin `i`, as the colors list does. */
   removePin(i: number): void {
     if (!this.canRemoveColor || i < 0 || i >= this.colorItems.length) return;
     if (this.kind !== 'mesh') this.rememberSpots(i, null);
@@ -633,7 +607,6 @@ export class EditorState {
 
   // ---- Linear stops ---------------------------------------------------------
 
-  /** A stop at position t, colored like the ramp there. */
   addStop(t: number): number | null {
     const stops = this.ramp.stops;
     if (stops.length >= MAX_STOPS) return null;
@@ -653,15 +626,13 @@ export class EditorState {
 
   // ---- Grid nodes -----------------------------------------------------------
 
-  /** Row and column of node i. */
   nodeCell(i: number): [row: number, col: number] {
     return [Math.floor(i / this.grid.cols), i % this.grid.cols];
   }
 
   /**
-   * Move node i to screen (x, y). Edge nodes slide along their edge (corners
-   * stay put), so the grid always spans its frame, and each node stays inside
-   * its neighbors along its row and column, so the grid can't fold.
+   * Move node i to screen (x, y). Edge nodes slide along their edge and each node stays inside its row and column
+   * neighbors, so the grid spans its frame and can't fold.
    */
   moveNode(i: number, x: number, y: number): void {
     const g = this.grid;
@@ -681,10 +652,7 @@ export class EditorState {
     node.y = py;
   }
 
-  /**
-   * New size, same picture: the new nodes sit where their rest spots land on
-   * the current grid and take the color there.
-   */
+  /** New size, same picture: new nodes take the color of the current grid at their rest spots. */
   setGridSize(rows: number, cols: number): void {
     rows = clamp(Math.round(rows), MIN_GRID, MAX_GRID);
     cols = clamp(Math.round(cols), MIN_GRID, MAX_GRID);
@@ -705,7 +673,6 @@ export class EditorState {
 
   // ---- Mesh points ----------------------------------------------------------
 
-  /** The selected point. */
   get point() {
     return this.mesh.points[Math.min(this.selectedPoint, this.mesh.points.length - 1)];
   }
@@ -754,7 +721,6 @@ export class EditorState {
     this.selectedPoint = Math.min(this.selectedPoint, this.mesh.points.length - 1);
   }
 
-  /** Move point i to screen (x, y). */
   movePoint(i: number, x: number, y: number): void {
     const p = this.mesh.points[i];
     if (p) [p.x, p.y] = this.toPattern(...this.clampPosition(x, y));

@@ -1,17 +1,15 @@
-// Grid mesh (D43): colored nodes on a bendable grid. The forward map takes a
-// point q of the rest grid to F(q) = q + D(q), D being the node offsets
-// interpolated with Catmull-Rom; a pixel p is pulled back by Newton steps on
-// F(q) = p, and its color is the nodes' colors interpolated at q (Catmull-Rom,
-// in Oklab). Exact where the grid doesn't fold; smooth and finite where it
-// does. Prepared on the CPU for shaders/gradient/grid.glsl; evaluateGrid is
-// the same math in doubles, for tests and the editor.
+// Grid mesh: the forward map takes a point q of the rest grid to F(q) = q + D(q), D being the
+// node offsets interpolated with Catmull-Rom; a pixel p is pulled back by Newton steps on
+// F(q) = p, and its color is the nodes' colors interpolated at q (Catmull-Rom, in Oklab).
+// Exact where the grid doesn't fold; smooth and finite where it does. Prepared for
+// shaders/gradient/grid.glsl; evaluateGrid is the same math in doubles.
 import { gamutMapSrgb } from '../color/gamut';
 import { oklchToOklab } from '../color/oklab';
 import type { Oklab } from '../color/types';
 import { type GridMesh, MAX_GRID, MIN_GRID } from '../design/design';
 
 export const MAX_GRID_NODES = MAX_GRID * MAX_GRID;
-/** Grid lines (D62): opacity reaches 1 at lines 0.5; width in composition units (frame height 1) from min to max. */
+/** Grid lines: opacity reaches 1 at lines 0.5; width in composition units (frame height 1) from min to max. */
 export const GRID_LINE_OPACITY_AT = 0.5;
 export const GRID_LINE_WIDTH: [min: number, max: number] = [0.002, 0.008];
 /** How far a line pushes the lightness at full opacity, and the lightness around which it flips from darkening to lightening. */
@@ -29,7 +27,6 @@ function glslFloat(x: number): string {
   return Number.isInteger(x) ? x.toFixed(1) : String(x);
 }
 
-/** The line constants as the shader's #defines. */
 export const GRID_LINE_SHADER_CONSTANTS = {
   GRID_LINE_OPACITY_AT: glslFloat(GRID_LINE_OPACITY_AT),
   GRID_LINE_WIDTH_MIN: glslFloat(GRID_LINE_WIDTH[0]),
@@ -184,11 +181,9 @@ export function colorAtRest(g: PreparedGrid, qx: number, qy: number): Oklab {
 }
 
 /**
- * Coverage [0, 1] of the grid lines at rest-grid point q (the pull-back of the
- * pixel at pattern-space (x, y)). The distance to the nearest grid line is in
- * pattern units: the line's distance in grid parameters divided by the pixel
- * gradient of that parameter, from the inverse Jacobian. `pixel` is one output
- * pixel in the same units, for the edge's antialiasing.
+ * Coverage [0, 1] of the grid lines at rest-grid point q. The distance to the nearest line is in
+ * pattern units: its distance in grid parameters divided by the parameter's pixel gradient (from
+ * the inverse Jacobian). `pixel` is one output pixel in the same units, for antialiasing.
  */
 export function lineCoverage(g: PreparedGrid, qx: number, qy: number, pixel: number): number {
   if (g.lines <= 0) return 0;
@@ -238,7 +233,7 @@ export function evaluateGrid(
   return lab;
 }
 
-/** Where rest-grid point q lands: F(q). For drawing the grid lines. */
+/** Where rest-grid point q lands: F(q). */
 export function forwardMap(g: PreparedGrid, qx: number, qy: number): [number, number] {
   const o = [0, 0, 0, 0, 0, 0];
   offsetAt(g, qx, qy, o);

@@ -52,7 +52,6 @@
     Math.min(isMesh ? editor.selectedPoint : isGrid ? editor.selectedNode : editor.selectedStop, colors.length - 1),
   );
 
-  /** Grid nodes listed as seen: top row first, left to right. */
   function gridRank(i: number): number {
     const [r, c] = editor.nodeCell(i);
     return (editor.grid.rows - 1 - r) * editor.grid.cols + c;
@@ -67,7 +66,6 @@
     if (isPlanes) return `color ${order.indexOf(i) + 1}`;
     return `${Math.round(editor.ramp.stops[i].position * 100)}%`;
   }
-  /** Colors before the adjustments; null when nothing is adjusted. */
   const original = $derived(palette.originalColors);
   const adjustedSummary = $derived.by(() => {
     const parts: string[] = [];
@@ -238,7 +236,6 @@
     margin: 0;
     padding: 0;
   }
-  /* Under the hex values, with room above it. */
   li.add {
     margin-top: 3px;
   }

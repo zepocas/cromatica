@@ -6,7 +6,6 @@
 
   interface Props {
     favourites: Favourites;
-    /** The design on screen, kept by the heart. */
     design: Design;
     onopen: (design: Design) => void;
   }
@@ -22,10 +21,8 @@
   let anchorY = $state(0);
   let trayHeight = $state(0);
   let viewHeight = $state(0);
-  /** The status bar's height, which the tray keeps clear of. */
   const BAR = 28;
   const MARGIN = 8;
-  /** Centred on the title line, so the arrow points at the middle of it, as far as the window allows. */
   const trayTop = $derived(
     Math.max(MARGIN, Math.min(anchorY - trayHeight / 2, viewHeight - BAR - MARGIN - trayHeight)),
   );
@@ -84,7 +81,6 @@
     {#if favourites.items.length === 0}
       <p class="hint">♡ keeps the current design here (up to {FAVOURITES_LIMIT})</p>
     {:else}
-      <!-- Each palette is a column, first color on top; the columns share the width. -->
       <ul>
         {#each favourites.items as fav, i (fav.id)}
           <li class:current={fav === current}>
@@ -120,7 +116,6 @@
     color: var(--dim);
     font-variant-numeric: tabular-nums;
   }
-  /* The one big, bordered control: easy to find, red when kept. */
   .heart {
     width: 26px;
     height: 24px;
@@ -135,7 +130,6 @@
   .heart:hover:not(:disabled) {
     border-color: var(--ink);
   }
-  /* The one splash of color in the panel, so a kept design stands out. */
   .heart[aria-pressed='true'] {
     border-color: oklch(0.68 0.2 22);
     color: oklch(0.68 0.2 22);
@@ -143,7 +137,6 @@
   /* Over the preview, so it never takes panel height. */
   .tray {
     position: fixed;
-    /* Flush with the panel, centred on the title line: it reads as the line pulled out. */
     left: var(--sidebar);
     z-index: 4;
     box-sizing: border-box;

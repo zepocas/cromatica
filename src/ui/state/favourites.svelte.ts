@@ -32,7 +32,6 @@ export class Favourites {
     this.items = this.read();
   }
 
-  /** The favourite that is exactly `design`, if any. */
   find(design: Design): Favourite | undefined {
     let key: string;
     try {
@@ -43,7 +42,6 @@ export class Favourites {
     return this.items.find((f) => JSON.stringify(f.design) === key);
   }
 
-  /** The heart: keeps `design`, or lets it go when it is already kept. */
   toggle(design: Design): void {
     const found = this.find(design);
     if (found) this.remove(found.id);
@@ -66,7 +64,6 @@ export class Favourites {
     this.write();
   }
 
-  /** Puts back an earlier list, for undo and redo. */
   restore(items: Favourite[]): void {
     this.items = items;
     this.notice = '';

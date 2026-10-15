@@ -3,12 +3,9 @@ import { createRng } from '../../design/random';
 
 /** Long side the image is reduced to before clustering: plenty for color, and k-means stays instant. */
 const SAMPLE_SIZE = 256;
-/** Most colors taken from an image. */
 export const IMAGE_PALETTE_MAX = 6;
 
-/** What the pins pick from, kept for the session. */
 export interface ImageSource {
-  /** The file itself, drawn behind the pins. */
   file: Blob;
   /** The downscaled pixels the colors are sampled from (RGBA8, sRGB). */
   data: Uint8ClampedArray;
@@ -19,7 +16,6 @@ export interface ImageSource {
 export interface ImagePalette {
   /** In pick order: the largest area first. */
   palette: ColorCluster[];
-  /** Width / height of the image. */
   aspect: number;
   /** Set when the palette comes from a file; absent for a palette made elsewhere. */
   source?: ImageSource;

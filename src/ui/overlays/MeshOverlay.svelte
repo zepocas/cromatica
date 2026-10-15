@@ -220,7 +220,6 @@
     border-style: dashed;
     opacity: 0.85;
   }
-  /* Arrow pointing toward where the off-frame point really is. */
   .handle.outside::after {
     content: '';
     position: absolute;

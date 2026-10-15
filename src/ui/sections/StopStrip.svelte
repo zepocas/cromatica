@@ -156,7 +156,6 @@
     height: 100%;
     image-rendering: auto;
   }
-  /* Square markers under the strip, ticked up into it. */
   .handle {
     position: absolute;
     top: 13px;

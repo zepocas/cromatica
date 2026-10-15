@@ -1,6 +1,6 @@
-// Relief (D46): the pattern lit as a height map. Shading is measured against a
-// flat surface, so where the pattern doesn't change the image is untouched.
-// The shader (shaders/color/relief.glsl) does the same in float32.
+// The pattern lit as a height map; shading is measured against a flat surface, so where the
+// pattern doesn't change the image is untouched. The shader (shaders/color/relief.glsl) does
+// the same in float32.
 import type { Rgb } from '../color/types';
 import type { Finish } from '../design/design';
 import { clamp01 } from '../math';
@@ -8,10 +8,7 @@ import { heightSlope } from './neighbours';
 
 /** Height-to-tilt factor at relief 1; the slider is squared so it starts gently. */
 const RELIEF_DEPTH = 3;
-/**
- * Tilt (slope × depth) is eased toward this so steep, detailed patterns don't
- * crumple while smooth ones still get depth.
- */
+/** Tilt (slope × depth) is eased toward this so steep, detailed patterns don't crumple. */
 const MAX_TILT = 1;
 /** Light elevation above the image plane. */
 const LIGHT_ELEVATION_DEG = 40;
@@ -81,7 +78,6 @@ const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const extraHighlight = (nh: number, flat: number, exponent: number) =>
   Math.max(0, Math.max(nh, 0) ** exponent - flat ** exponent);
 
-/** `rgb` (linear, the pattern at (u, v)) with relief applied. */
 export function applyRelief(
   r: PreparedRelief,
   colorAt: (u: number, v: number) => Rgb,

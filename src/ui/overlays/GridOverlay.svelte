@@ -15,7 +15,6 @@
 
   const NUDGE = 0.01;
   const NUDGE_LARGE = 0.05;
-  /** Samples per grid line segment between two nodes. */
   const LINE_SAMPLES = 12;
 
   let overlay: HTMLDivElement;

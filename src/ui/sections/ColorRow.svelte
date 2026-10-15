@@ -4,15 +4,12 @@
   import type { Oklch } from '../../color/types';
 
   interface Props {
-    /** Index of the point or stop. */
     index: number;
     color: Oklch;
     /** The color before the adjustments; undefined when not adjusted. */
     original: Oklch | undefined;
     selected: boolean;
-    /** What the row is called: "point 3" or a stop's position, "40%". */
     name: string;
-    /** "point" or "stop". */
     noun: string;
     canRemove: boolean;
     onselect: () => void;
@@ -82,7 +79,6 @@
     gap: 8px;
     padding: 1px 0;
   }
-  /* A terminal cursor marks the row the "more" sliders edit. */
   li::before {
     content: ' ';
     width: 1ch;

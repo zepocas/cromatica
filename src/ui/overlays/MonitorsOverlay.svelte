@@ -17,7 +17,6 @@
 
   let { monitors, wallpaper, design, context }: Props = $props();
 
-  /** A pointer this close to a neighbour's start, middle or end snaps to it. */
   const SNAP_SCREEN_PX = 20;
   /** An arrow key moves a monitor or the wallpaper by this share of the wallpaper's width. */
   const KEY_STEP = 0.01;
@@ -40,7 +39,6 @@
   const placed = $derived(monitors.screens.map((s) => ({ s, f: onWallpaper(s, rect) })));
   const wallpaperAspect = $derived(wallpaper.w / wallpaper.h);
 
-  /** The pointer as fractions of the wallpaper. */
   function fractions(e: MouseEvent): [number, number] {
     const r = box.getBoundingClientRect();
     return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height];
@@ -124,7 +122,6 @@
     monitors.settle(wallpaper);
   }
 
-  /** What a monitor draws of the OS: the primary all of it, the others a secondary's share (nothing for phones). */
   const contextFor = (s: Screen): ContextScreen | null => {
     if (!context) return null;
     const zones = monitors.isPrimary(s.id)

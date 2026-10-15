@@ -19,9 +19,7 @@
     portrait: boolean;
     /** Beside the docked panel; otherwise the full width. */
     docked: boolean;
-    /** The multi-monitor preview over the image. */
     monitors: MonitorsState;
-    /** The file type of the download. */
     format: ExportFormat;
     onzoom: (factor: number) => void;
     /** Absent where the browser can't. */
@@ -243,7 +241,6 @@
     align-items: center;
     gap: 4px;
   }
-  /* Each lock sits before its own label, so the pairs need more room between them. */
   .locks {
     gap: 12px;
   }
@@ -251,7 +248,6 @@
     color: var(--dim);
     font-variant-numeric: tabular-nums;
   }
-  /* A rule the full height of the bar, in the same color as the borders. */
   /* Dropdowns take the width of their value instead of shrinking to an ellipsis. */
   .statusbar :global(.dropdown) {
     flex: none;

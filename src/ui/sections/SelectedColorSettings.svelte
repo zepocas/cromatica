@@ -4,7 +4,6 @@
 
   interface Props {
     editor: EditorState;
-    /** Index of the selected point. */
     selected: number;
   }
 

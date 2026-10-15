@@ -1,9 +1,8 @@
 export const REEL_LIMIT = 20;
 
 /**
- * The recent shuffles, stepped through with ← and →. Each slot holds the last
- * state seen in it, so edits made after stepping to a shuffle are still there
- * when stepping back. A new shuffle always goes at the end.
+ * The recent shuffles, stepped through with ← and →. Each slot holds the last state seen in it, so edits
+ * survive stepping away and back. A new shuffle always goes at the end.
  */
 export class Reel<T> {
   position = $state(0);
@@ -20,7 +19,6 @@ export class Reel<T> {
     return this.position < this.length - 1;
   }
 
-  /** A shuffle turned `before` into `after`. */
   push(before: T, after: T): void {
     if (this.slots.length === 0) this.slots.push(before);
     else this.slots[this.position] = before;

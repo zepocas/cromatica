@@ -8,12 +8,10 @@
 
   interface Props {
     design: Design;
-    /** Width / height of the box the zones are placed in. */
     aspect: number;
     screen: ContextScreen;
     /** The part of the wallpaper under the box, as fractions of it; all of it when absent (one screen). */
     region?: ZoneRect;
-    /** Width / height of the wallpaper, when the box is only a part of it. */
     wallpaperAspect?: number;
   }
 
@@ -28,7 +26,6 @@
   let legibility = $state<{ screen: string; verdicts: (Legibility | null)[] } | null>(null);
 
   const placed = $derived(screen.zones.map((z) => ({ zone: z, rect: placeZone(screen, z, aspect) })));
-  /** Where a zone's rect falls on the wallpaper, which is what the legibility check reads. */
   const onWallpaper = (r: ZoneRect): ZoneRect => ({
     x: region.x + r.x * region.w,
     y: region.y + r.y * region.h,
@@ -142,7 +139,7 @@
     box-sizing: border-box;
     container-type: size;
   }
-  /* The macOS menu bar since 26: frosted glass, no tint of its own. */
+  /* Frosted glass, no tint of its own (macOS 26). */
   .area {
     backdrop-filter: blur(12px) saturate(1.3);
     -webkit-backdrop-filter: blur(12px) saturate(1.3);

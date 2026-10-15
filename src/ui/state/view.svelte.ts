@@ -4,10 +4,8 @@ export const MAX_ZOOM = 8;
 const SNAP = 1.01;
 
 /**
- * Zoom and pan of the preview, in screen terms only: it moves the frame on the
- * page and never reaches the design or the export. Offsets are in CSS pixels from
- * the centred, fitted frame, so `p -> offset + zoom * p` for a point `p` measured
- * from the frame's centre.
+ * Zoom and pan of the preview, in screen terms only: never reaches the design or the export. Offsets are CSS
+ * pixels from the centred, fitted frame, so `p -> offset + zoom * p` for a point `p` from the frame's centre.
  */
 export class CanvasView {
   zoom = $state(1);
@@ -25,8 +23,7 @@ export class CanvasView {
   }
 
   /**
-   * Scale by `factor`, keeping the point under (cx, cy) still. Coordinates are
-   * from the frame's centre; w and h are the fitted frame's size.
+   * Scale by `factor`, keeping the point under (cx, cy) still; coordinates are from the frame's centre.
    */
   zoomAt(factor: number, cx: number, cy: number, w: number, h: number): void {
     const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, this.zoom * factor));

@@ -33,7 +33,6 @@
     >
     <!-- The list of a detached section opens outside the panel: the heart follows the title, and the arrow at the end points where it goes. -->
     {#if detached && tools}{@render tools()}{/if}
-    <!-- The line is a handle too, and lights up with the title when either is pointed at. -->
     <button
       class="line"
       aria-hidden="true"
@@ -57,7 +56,6 @@
     <div class="body">
       {@render children?.()}
       {#if more}
-        <!-- Last, so what it opens appears right under it. -->
         <Group title="advanced" ariaLabel="Advanced {title} settings" bind:collapsed={advancedFolded}>
           {@render more()}
         </Group>
@@ -84,7 +82,6 @@
     color: var(--ink);
     cursor: pointer;
   }
-  /* Bigger than the text, and set off from it. */
   .arrow {
     display: inline-block;
     font-size: 17px;

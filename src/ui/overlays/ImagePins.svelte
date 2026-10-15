@@ -27,7 +27,6 @@
 
   const pct = (t: number) => `${t * 100}%`;
 
-  /** Image position under the pointer, held to the part the frame shows. */
   function imageAt(e: MouseEvent): [number, number] {
     const r = picture!.getBoundingClientRect();
     const clamp = (t: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, t));
@@ -45,7 +44,6 @@
     picture!.setPointerCapture(e.pointerId);
   }
 
-  /** On a pin: pick it up. On the bare image: put a new pin there and carry on dragging it. */
   function onPicturePointerDown(e: PointerEvent) {
     // Ctrl+click is a right-click on a Mac: it removes, it must not also add.
     if (e.button !== 0 || e.ctrlKey) return;
@@ -55,7 +53,6 @@
     if (i !== null) startDrag(e, i);
   }
 
-  /** Right-click on a pin removes it. The browser's own menu has nothing to offer over the picture. */
   function onPictureContextMenu(e: MouseEvent) {
     e.preventDefault();
     const hit = (e.target as HTMLElement).closest<HTMLElement>('[data-pin]');
@@ -273,7 +270,6 @@
     height: 100%;
     pointer-events: none;
   }
-  /* The part of the image inside the frame; everything around it is dimmed. */
   .frame {
     position: absolute;
     box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.55);

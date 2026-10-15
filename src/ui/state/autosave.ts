@@ -3,7 +3,7 @@ import { loadDesign, saveDesign, type SavedDesign } from '../../design/schema';
 
 // Best-effort (D13): a failed read or write only costs the saved copy.
 export const AUTOSAVE_KEY = 'cromatica.design';
-// The key before the rename (D49); read when there's no save under the new one.
+// Legacy key, read when there is no save under the new one.
 export const LEGACY_AUTOSAVE_KEY = 'wallpaper.design';
 
 /** The autosaved design, or null on a first visit or when it can't be read. */

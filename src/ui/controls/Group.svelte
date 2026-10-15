@@ -3,7 +3,6 @@
 
   interface Props {
     title: string;
-    /** Folded to its title line; bindable. */
     collapsed?: boolean;
     /** The button's accessible name, when "Expand x" and "Collapse x" are not it. */
     ariaLabel?: string;
@@ -15,7 +14,6 @@
   const verb = $derived(collapsed ? 'Expand' : 'Collapse');
 </script>
 
-<!-- A titled box inside a section: indented from the section's own header, which it echoes (arrow, title, line). -->
 <div class="group" class:folded={collapsed}>
   <div class="head">
     <button
@@ -38,7 +36,6 @@
 <style>
   .group {
     min-width: 0;
-    /* The indent: the title starts further in than the section's own. */
     margin: 2px 0 0 12px;
   }
   .head {
@@ -82,7 +79,6 @@
   .title:hover {
     color: var(--ink);
   }
-  /* Starts level with the line, which is its top edge. */
   .box {
     display: flex;
     flex-direction: column;

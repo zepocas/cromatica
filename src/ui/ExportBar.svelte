@@ -104,7 +104,6 @@
     border: none;
     background: none;
   }
-  /* Bordered buttons of one height share the width of the row, so every edge lines up. */
   .box {
     flex: 1;
     min-width: 0;

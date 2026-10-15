@@ -36,7 +36,6 @@ export function hashKey(seed: number, salt: number): number {
   return (seed ^ imul(salt, 0x9e3779b9)) >>> 0;
 }
 
-/** Key of octave i of a key. */
 function octaveKey(key: number, i: number): number {
   return (key + imul(i, 0x632be5ab)) >>> 0;
 }
@@ -95,10 +94,7 @@ export function simplex(px: number, py: number, key: number): [number, number, n
   return [70 * out[0], 70 * out[1], 70 * out[2]];
 }
 
-/**
- * Ridged simplex fBm, ≈ [-1, 1]: each octave is (1 - |n|)², sharp creases
- * where the noise crosses zero. Same octave rotation and gains as fbm.
- */
+/** Ridged simplex fBm, ≈ [-1, 1]: each octave is (1 - |n|)², creased where the noise crosses zero. Octave rotation and gains as fbm. */
 export function ridged(px: number, py: number, key: number, octaves: number): number {
   let sum = 0;
   let amp = 1;

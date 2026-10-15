@@ -15,21 +15,15 @@ import { normalizeDegrees } from '../../math';
 /** Who owns a set of colors: the mesh's points, the grid's nodes, or the stops the ramp-colored patterns share. */
 export type PaletteOwner = 'mesh' | 'ramp' | 'grid';
 
-/** What the palette editor needs from the editor that owns the pattern. */
 export interface PaletteHost {
-  /** Whose colors are active; palette state is kept per owner. */
   kind(): PaletteOwner;
-  /** The active pattern's points or stops, each with a mutable color. */
   colorItems(): { color: Oklch }[];
-  /** Give the active pattern a generated palette from this seed (fresh when omitted), keeping its layout. */
   regenerate(options: PaletteOptions, seed?: number): void;
 }
 
 /**
- * Non-destructive adjustment (D27): the colors on screen are `from` graded
- * by `grade` (hue turn, brightness, contrast, saturation). `out` is what was last
- * rendered; once the colors differ from it (a direct edit), the adjustment no
- * longer applies and the edited colors are the new originals.
+ * Non-destructive adjustment (D27): the colors on screen are `from` graded by `grade`. `out` is what was last
+ * rendered; once the colors differ from it (a direct edit), the edited colors become the new originals.
  */
 interface Adjustment {
   from: Oklch[];
@@ -53,9 +47,8 @@ export interface PaletteSnapshot {
 }
 
 /**
- * The palette side of the editor: how new palettes are steered (rule, mood,
- * key, base hue), how existing colors are edited (linked, remix, order), and
- * the adjustments (base hue, brightness, contrast, saturation). State is kept per pattern kind.
+ * The palette side of the editor: how new palettes are steered, how existing colors are edited, and the
+ * adjustments. State is kept per pattern kind.
  */
 export class PaletteEditor {
   /** Keep the current palette's rule, mood and key for ⟳ and shuffle; off = all random. */
@@ -92,35 +85,29 @@ export class PaletteEditor {
     this.spareSeed = s.spareSeed;
   }
 
-  /** Rule, mood and key of the active palette; null when custom. */
   get info(): PaletteInfo | null {
     return this.infos[this.host.kind()];
   }
 
-  /** The active pattern's colors, as plain arrays. */
   get colors(): Oklch[] {
     return plain(this.host.colorItems().map((x) => x.color));
   }
 
   // ---- New palettes ---------------------------------------------------------
 
-  /** How the next shuffled palette is steered: kept rule, mood and key, and the base hue. */
   shuffleOptions(): PaletteOptions {
     const kept = this.keep ? this.info : null;
     return { rule: kept?.rule, mood: kept?.mood ?? 'any', key: kept?.key ?? 'any', baseHue: this.baseHue ?? undefined };
   }
 
-  /** A new palette in this rule, keeping the current mood and key. */
   setRule(rule: HarmonyRule): void {
     this.regenerate({ rule });
   }
 
-  /** A new palette in this mood, keeping the current rule and key. */
   setMood(mood: PaletteMood): void {
     this.regenerate({ mood });
   }
 
-  /** A new palette in this value key, keeping the current rule and mood. */
   setKey(key: ValueKey): void {
     this.regenerate({ key });
   }
@@ -140,9 +127,7 @@ export class PaletteEditor {
   }
 
   /**
-   * The editor just gave the active pattern new colors. They are the new
-   * originals; generated ones remember what made them and their seed (null =
-   * custom).
+   * The editor just gave the active pattern new colors: they are the new originals (null source = custom).
    */
   adopt(generated: { info: PaletteInfo; seed: number } | null): void {
     const kind = this.host.kind();
@@ -162,7 +147,6 @@ export class PaletteEditor {
     else items[i].color = next;
   }
 
-  /** New take on the palette: one random linked shift, relationships kept. */
   remix(): void {
     this.setAll(shiftPalette(this.colors, remixShift(createRng(randomSeed()))));
   }
@@ -203,7 +187,6 @@ export class PaletteEditor {
     return this.liveAdjustment?.from ?? null;
   }
 
-  /** The current adjustments. */
   get grade(): Grade {
     return this.liveAdjustment?.grade ?? NO_GRADE;
   }
@@ -223,7 +206,6 @@ export class PaletteEditor {
     this.baseHue = null;
   }
 
-  /** Move the base hue; the palette turns with it, keeping its hue gaps. */
   setBaseHue(h: number): void {
     if (this.baseHue !== null) this.adjust({ hue: this.hueOffset + (h - this.baseHue) });
     this.baseHue = h;
@@ -244,13 +226,11 @@ export class PaletteEditor {
     this.adjust({ saturation: v });
   }
 
-  /** Back to the original colors; the base hue goes back with them. */
   resetAdjustments(): void {
     if (this.baseHue !== null) this.baseHue = normalizeDegrees(this.baseHue - this.hueOffset);
     this.adjust(NO_GRADE);
   }
 
-  /** Change part of the grade and render it over the original colors. */
   private adjust(change: Partial<Grade>): void {
     const base = this.liveAdjustment ?? { from: this.colors, grade: NO_GRADE };
     const grade = { ...base.grade, ...change };

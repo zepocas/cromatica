@@ -62,13 +62,11 @@
   const current = $derived(options.find((o) => o.value === value));
   const labelOf = (o: DropdownOption<T>) => o.label ?? o.value;
 
-  /** Place the list under the button, or above it when there is more room there. */
   function placeList() {
     const r = button.getBoundingClientRect();
     const margin = 8;
     const below = window.innerHeight - r.bottom - margin;
     const aboveSpace = r.top - margin;
-    // Open downward unless the list wouldn't fit there and there is more room above.
     const above = below < options.length * 20 && aboveSpace > below;
     place = {
       left: r.left,
@@ -103,7 +101,6 @@
     if (o && o.value !== value) onchange(o.value);
   }
 
-  /** Jump to the next option whose label starts with `ch`, after the active one. */
   function typeAhead(ch: string) {
     const n = options.length;
     for (let k = 1; k <= n; k++) {

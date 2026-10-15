@@ -1,10 +1,8 @@
 export const UNDO_LIMIT = 100;
 
 /**
- * Undo and redo over snapshots of some state. Changes come in through
- * `record` and collect into one pending step until `commit`, so everything
- * between two commits (a whole slider drag, say) is undone at once. The app
- * commits at the start of every pointer press and key press.
+ * Undo and redo over snapshots of some state. `record` collects changes into one pending step until `commit`,
+ * so a whole slider drag is undone at once. The app commits at the start of every pointer and key press.
  */
 export class History<T> {
   canUndo = $state(false);
@@ -31,7 +29,6 @@ export class History<T> {
     this.canRedo = this.future.length > 0 && this.pending === null;
   }
 
-  /** Close the pending step, if any. */
   commit(): void {
     if (this.pending === null) return;
     this.past.push(this.current);
@@ -40,7 +37,6 @@ export class History<T> {
     this.setCurrent(this.pending);
   }
 
-  /** The state to go back to, or null. */
   undo(): T | null {
     this.commit();
     const prev = this.past.pop();

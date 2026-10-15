@@ -32,7 +32,6 @@
   interface Props {
     /** The design in the page's share link, already decoded (main.ts). */
     shared?: SavedDesign | null;
-    /** There was a share link but it couldn't be read. */
     shareFailed?: boolean;
   }
   let { shared = null, shareFailed = false }: Props = $props();
@@ -73,7 +72,6 @@
   // First visit only; `?default` (tests) never shows them.
   let tips = $state(!builtIn && !tipsDismissed());
   let shortcuts = $state(false);
-  // A first-time visitor is nudged toward shuffle until it has been used once (`?default` never nudges).
   let nudgeShuffle = $state(!builtIn && !shuffleTried());
   const reelAtStart = initial.reel.length;
   $effect(() => {
@@ -82,9 +80,7 @@
       markShuffleTried();
     }
   });
-  /** The "more like this" grid covers the preview. */
   let exploring = $state(false);
-  /** Picking colors in the image window, beside the live design. */
   const pinning = $derived(editor.pinning && editor.canPin && !exploring);
   /** The preview alone, in the browser's full screen; the panel, handles and overlays are hidden. */
   let fullscreen = $state(false);
@@ -137,7 +133,6 @@
     if (!builtIn && linked === null) saveTimer = setTimeout(() => writeAutosave(design), 300);
   });
 
-  /** Copy a link to the current design. */
   async function share() {
     error = '';
     notice = '';
@@ -259,7 +254,6 @@
 
   const hasFiles = (e: DragEvent) => e.dataTransfer?.types.includes('Files') ?? false;
 
-  /** Reopen the design at the size it was exported at. */
   function openExport({ design, size }: ExportedDesign) {
     const preset = SIZE_PRESETS.find((p) => p.width === size.width && p.height === size.height);
     if (preset) {

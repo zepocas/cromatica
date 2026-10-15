@@ -15,7 +15,6 @@
     presetPreview: string | null;
     customWidth: number;
     customHeight: number;
-    /** Export size in pixels (from the preset or the custom size). */
     output: { width: number; height: number };
   }
 
@@ -81,7 +80,6 @@
     presetId = id;
   }
 
-  /** Typing a size switches to custom, starting from the current size. */
   function setSize(axis: 'width' | 'height', v: number) {
     const size = clamp(Math.round(Number.isFinite(v) ? v : 1), 1, MAX_SIZE);
     customWidth = axis === 'width' ? size : output.width;

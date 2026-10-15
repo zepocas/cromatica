@@ -13,9 +13,7 @@
     paused?: boolean;
     /** Rendered over the canvas, in a box that matches its displayed rect exactly. */
     overlay?: Snippet;
-    /** Leave room for the docked sidebar (--sidebar) on the left. */
     docked?: boolean;
-    /** Leave room for the status bar (--statusbar) at the bottom. */
     barred?: boolean;
     /** Pinch/zoom and pan of the frame. Screen only: never reaches the design or the export. */
     view: CanvasView;
@@ -79,7 +77,6 @@
     view.reset();
   });
 
-  /** Zoom about the centre, for the status bar's buttons. */
   export function zoomBy(factor: number) {
     view.zoomAt(factor, 0, 0, frame.offsetWidth, frame.offsetHeight);
   }
@@ -134,7 +131,6 @@
   let pan: { pointerId: number; x: number; y: number } | null = null;
   let panning = $state(false);
 
-  /** Dragging anywhere but a handle or a button pans, once zoomed in. */
   function onPointerDown(e: PointerEvent) {
     if (!zoomable || !view.zoomed || e.button !== 0) return;
     if ((e.target as HTMLElement).closest('[data-point], [data-node], button')) return;

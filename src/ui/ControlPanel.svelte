@@ -21,9 +21,7 @@
     /** Collapsed to a one-line bar floating over a full-width preview. */
     collapsed: boolean;
     exploring: boolean;
-    /** The tips card is showing. */
     tips: boolean;
-    /** The shortcut list is showing. */
     shortcuts: boolean;
     canUndo: boolean;
     canRedo: boolean;
@@ -164,7 +162,6 @@
 </aside>
 
 <style>
-  /* Docked: a full-height column next to the preview, never over it. */
   .panel {
     --pad: 13px;
     position: fixed;
@@ -187,7 +184,6 @@
   .bottom {
     margin-top: auto;
   }
-  /* Stays put while the sections scroll under it. */
   header {
     position: sticky;
     top: 0;

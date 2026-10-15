@@ -1,7 +1,5 @@
-// Warp stage (D23): composition coords → warped composition coords, evaluated
-// before the base pattern. This is the CPU reference, in doubles; the shader
-// chunks in src/engine/shaders/warp/ do the same math in fp32, read the same
-// prepared uniforms (prepareWarp) and get the constants below as #defines
+// CPU reference (doubles) of the warp stage. The shader chunks in src/engine/shaders/warp/ do the
+// same math in fp32 from the same prepared uniforms and get the constants below as #defines
 // (WARP_SHADER_CONSTANTS), so CPU and GPU can't drift apart.
 import { type Warp, WARP_SHAPES, type WarpShape } from '../design/design';
 import { clamp, clamp01 } from '../math';
@@ -13,13 +11,10 @@ export const WARP_PARAM_SLOTS = 6;
 const MAX_WARP_COORD = 64;
 /** Width of the softened steps of rows/columns/voronoi, composition units. */
 const WARP_EDGE = 0.0015;
-/** fBm octaves of the domain warp (its recursion adds the detail). */
 const DOMAIN_OCTAVES = 3;
 /** Inner warp strength of the domain warp, noise units (IQ uses 4; lower is silkier). */
 const DOMAIN_K = 1.5;
-/** fBm octaves of the fbm warp. */
 const FBM_OCTAVES = 5;
-/** Curl-flow integration steps. */
 const CURL_STEPS = 8;
 /** Border distance (cell units) over which a worley bubble ramps to full strength. */
 const WORLEY_RIM = 0.2;
@@ -31,9 +26,8 @@ const MARBLE_OCTAVES = 4;
 const MARBLE_TURBULENCE = 4.5;
 
 /**
- * Bristle (D61): broad strokes (noise frequency along and across the stroke, long along) plus
- * a finer layer; the stroke direction drifts by up to BEND radians at a frequency of
- * BEND_FREQ, lines wobble across by WOBBLE, and strength varies per stroke.
+ * Bristle: broad strokes (noise frequency along and across the stroke, long along) plus a finer
+ * layer; direction drifts by up to BEND radians at BEND_FREQ, lines wobble across by WOBBLE.
  */
 const BRISTLE_ALONG = 0.15;
 const BRISTLE_ACROSS = 5;
@@ -108,7 +102,7 @@ const TUNING: Record<Exclude<WarpShape, 'none'>, ShapeTuning> = {
   voronoi: { gain: 0.25, density: 2, coupling: 0.5 },
   curl: { gain: 0.6, density: 1, coupling: 0.5 },
   ridged: { gain: 0.6, density: 0.6, coupling: 0.5 },
-  marble: { gain: 0.8, density: 1, coupling: 1 }, // displacement ∝ band spacing; was density 2 (D81)
+  marble: { gain: 0.8, density: 1, coupling: 1 }, // displacement ∝ band spacing
   bristle: { gain: 0.7, density: 1, coupling: 0.5, span: 0.5 }, // stays broad at small sizes
 };
 
@@ -137,9 +131,7 @@ function seededParams(shape: WarpShape, seed: number): Float64Array {
   const set = (slot: number, ...v: number[]) => p.set(v, slot * 4);
   switch (shape) {
     case 'waves': {
-      // Three waves at well-separated seeded angles; displacement is transverse
-      // (along the wave fronts), which ripples like silk. Weights fall off so one
-      // wave leads.
+      // Three waves at well-separated angles, displacing along the fronts; weights fall off so one leads.
       const base = r(0) * TAU;
       const weights = [0.55, 0.3, 0.15];
       for (let i = 0; i < 3; i++) {
@@ -155,7 +147,6 @@ function seededParams(shape: WarpShape, seed: number): Float64Array {
     case 'ridged':
     case 'marble':
     case 'bristle': {
-      // Folds (silk), bands (marble) or strokes (brushed) along a seeded direction.
       const a = r(0) * Math.PI;
       set(0, Math.cos(a), Math.sin(a), 0, 0);
       break;
@@ -192,9 +183,7 @@ const smoothstep = (a: number, b: number, x: number) => {
 
 const saltKey = (w: PreparedWarp, i: number) => hashKey(w.seed, SALT[i]);
 
-// Stepped bands along one axis: coordinate `along` is shifted by the band's
-// hashed offset; band index comes from `across`. The step to the next band is
-// a smoothstep over WARP_EDGE.
+// Stepped bands: the band index comes from `across`; the step to the next band is a smoothstep over WARP_EDGE.
 function bandOffset(across: number, w: PreparedWarp): number {
   const n = 2 * w.freq;
   const yy = clampCoord(across * n);
@@ -265,9 +254,8 @@ export function voronoiCells(sx: number, sy: number, key: number): VoronoiCells 
 }
 
 function worley(x: number, y: number, w: PreparedWarp): Vec2 {
-  // Bubbles: each cell pulls toward (or pushes from) its feature point, with a
-  // signed hashed strength that fades to 0 at the cell border, so the field
-  // is continuous with creases along the borders.
+  // Each cell pulls toward (or pushes from) its feature point, with a signed strength fading to 0
+  // at the cell border, so the field is continuous with creases along the borders.
   const sx = clampCoord(x * w.freq);
   const sy = clampCoord(y * w.freq);
   const v = voronoiCells(sx, sy, saltKey(w, 0));
@@ -293,8 +281,7 @@ function voronoi(x: number, y: number, w: PreparedWarp): Vec2 {
 }
 
 function curl(x: number, y: number, w: PreparedWarp): Vec2 {
-  // Stateless streamline integration: CURL_STEPS Euler steps along the curl of
-  // a two-octave simplex stream function.
+  // Stateless streamline: CURL_STEPS Euler steps along the curl of a two-octave simplex stream function.
   const k0 = saltKey(w, 0);
   const k1 = saltKey(w, 1);
   const step = (w.amp * 0.25) / CURL_STEPS;
@@ -313,7 +300,7 @@ function curl(x: number, y: number, w: PreparedWarp): Vec2 {
 }
 
 function domain(x: number, y: number, w: PreparedWarp): Vec2 {
-  // IQ recursive domain warp: p + A · fbm(s + K · fbm(s)). Liquid, silky folds.
+  // IQ recursive domain warp: p + A · fbm(s + K · fbm(s)).
   const sx = x * w.freq;
   const sy = y * w.freq;
   const qx = fbm(sx, sy, saltKey(w, 0), DOMAIN_OCTAVES);
@@ -375,8 +362,7 @@ function oval(x: number, y: number, w: PreparedWarp): Vec2 {
 }
 
 function silk(x: number, y: number, w: PreparedWarp): Vec2 {
-  // Long folds along a seeded direction d: ridged noise that runs slowly
-  // along d and fast across it, displacing across d like draped satin.
+  // Ridged noise slow along the seeded direction d and fast across it, displacing across d.
   const [dx, dy] = w.params;
   const along = (dx * x + dy * y) * SILK_ALONG * w.freq;
   const across = (-dy * x + dx * y) * w.freq;
@@ -385,8 +371,7 @@ function silk(x: number, y: number, w: PreparedWarp): Vec2 {
 }
 
 function marble(x: number, y: number, w: PreparedWarp): Vec2 {
-  // Displace along the band normal by a sine of the band phase, the phase
-  // stirred by fBm: the color ramp veins like stone.
+  // Displace along the band normal by a sine of the band phase, stirred by fBm.
   const [dx, dy] = w.params;
   const turbulence = MARBLE_TURBULENCE * fbm(x * w.freq, y * w.freq, saltKey(w, 0), MARBLE_OCTAVES);
   const s = w.amp * Math.sin(TAU * w.freq * (dx * x + dy * y) + turbulence);
@@ -394,9 +379,7 @@ function marble(x: number, y: number, w: PreparedWarp): Vec2 {
 }
 
 function bristle(x: number, y: number, w: PreparedWarp): Vec2 {
-  // Dry-brush strokes: noise fast across the stroke and slow along it, displacing along it, so
-  // colors smear into streaks. The direction drifts across the frame, a finer layer mixes in,
-  // and each stroke has its own strength, so no two strokes match.
+  // Noise fast across the stroke and slow along it, displacing along it; per-stroke strength via `mask`.
   const [d0x, d0y] = w.params;
   const qx = x * w.freq;
   const qy = y * w.freq;
@@ -434,23 +417,16 @@ const SHAPES: Record<Exclude<WarpShape, 'none'>, (x: number, y: number, w: Prepa
   bristle,
 };
 
-/** Warped composition coords of (x, y) under a prepared warp. */
 export function warpPreparedPoint(w: PreparedWarp, x: number, y: number): Vec2 {
   if (w.shape === 'none') return [x, y];
   return SHAPES[w.shape](clamp(x, -MAX_WARP_COORD, MAX_WARP_COORD), clamp(y, -MAX_WARP_COORD, MAX_WARP_COORD), w);
 }
 
-/**
- * CPU reference of the warp stage: composition coordinates → warped
- * composition coordinates, where the base pattern is then evaluated. Same
- * math as the shader, in doubles (GPU results may differ slightly in fp32).
- * Used by the UI (the color under a new mesh point) and by tests.
- */
+/** Warped composition coords of (x, y), same math as the shader but in doubles (fp32 on the GPU may differ slightly). */
 export function warpPoint(warp: Warp, x: number, y: number): [x: number, y: number] {
   return warpPreparedPoint(prepareWarp(warp), x, y);
 }
 
-/** Fast evaluator for many points of one warp (prepares once). */
 export function createWarp(warp: Warp): (x: number, y: number) => Vec2 {
   const w = prepareWarp(warp);
   return (x, y) => warpPreparedPoint(w, x, y);

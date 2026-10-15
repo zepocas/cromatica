@@ -4,7 +4,6 @@
 
   interface Props {
     design: Design;
-    /** Width / height of the frame. */
     aspect: number;
     /** Displayed width in CSS pixels. */
     width: number;

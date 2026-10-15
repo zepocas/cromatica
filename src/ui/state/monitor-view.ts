@@ -8,7 +8,6 @@ import { blockBounds, type Monitor, type Size } from './monitor-layout';
  */
 export type Fit = 'span' | 'stretch';
 
-/** The wallpaper in the monitors' physical space. */
 export interface WallpaperRect {
   left: number;
   top: number;
@@ -23,7 +22,6 @@ export interface Fractions {
   h: number;
 }
 
-/** The wallpaper scaled to just cover the block, centred on it. */
 export function coverRect(monitors: readonly Monitor[], wallpaper: Size): WallpaperRect {
   const b = blockBounds(monitors);
   const scale = Math.max(b.w / wallpaper.w, b.h / wallpaper.h);
@@ -32,7 +30,6 @@ export function coverRect(monitors: readonly Monitor[], wallpaper: Size): Wallpa
   return { left: b.left - (w - b.w) / 2, top: b.top - (h - b.h) / 2, w, h };
 }
 
-/** The wallpaper bent to exactly the block. */
 export function stretchRect(monitors: readonly Monitor[]): WallpaperRect {
   return { ...blockBounds(monitors) };
 }
@@ -43,9 +40,8 @@ export function onWallpaper(m: Monitor, r: WallpaperRect): Fractions {
 }
 
 /**
- * The wallpaper after the block moved by (dx, dy) over it. It keeps covering
- * the block, or stays inside it when it is smaller, so the monitors never show
- * a gap on a side the image could fill.
+ * The wallpaper after the block moved by (dx, dy) over it. It keeps covering the block (or stays inside it when
+ * smaller), so the monitors never show a gap the image could fill.
  */
 export function slid(monitors: readonly Monitor[], r: WallpaperRect, dx: number, dy: number): WallpaperRect {
   const b = blockBounds(monitors);
@@ -57,9 +53,8 @@ export function slid(monitors: readonly Monitor[], r: WallpaperRect, dx: number,
 }
 
 /**
- * The wallpaper re-fitted to cover a block it no longer covers, kept as close to
- * where it was as it can be: scaled about its own centre, then pushed only as far
- * as covering the block takes, so the image does not jump to a centre.
+ * The wallpaper re-fitted to cover a block it no longer covers: scaled about its own centre, then pushed only
+ * as far as covering takes, so the image does not jump to a centre.
  */
 export function coverNear(monitors: readonly Monitor[], wallpaper: Size, prev: WallpaperRect): WallpaperRect {
   const b = blockBounds(monitors);
