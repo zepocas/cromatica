@@ -4,6 +4,7 @@ Several agents work in this repo at the same time. Read README.md (Development) 
 
 ## Where things live
 
+- `docs/UI.md` maps the interface code (which file owns which control, how a slider reaches the canvas).
 - `docs/ROADMAP.md` is the plan, `docs/DECISIONS.md` holds the decisions (`D<n>`, newest last). Record a new decision there instead of in code comments or the PR alone.
 - Open work is tracked in GitHub Issues and the project board <https://github.com/users/zepocas/projects/3>. Check `gh issue list` before starting, reference the issue in the PR (`fixes #<n>`), and ask before creating or closing issues.
 - Keep users' stored data minimal: anything saved in the browser (favourites, autosave) is local, small and needs no account.

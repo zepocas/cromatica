@@ -99,6 +99,10 @@ const MIN_STOPS = 2;
  * Mesh points are stored in pattern space. The UI works in screen
  * (composition) coords, so everything that takes or shows a position or size
  * goes through the transform (toScreen / toPattern, pointSize).
+ *
+ * Sections below, in order: fields, `design`, Shuffle, Warp, Transform, Colors
+ * (mesh points or stops, whichever is active), Palette from image, Pins on the
+ * image, Linear stops, Grid nodes, Mesh points. See docs/UI.md for the map.
  */
 export class EditorState {
   kind = $state<PatternKind>('mesh');

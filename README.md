@@ -48,6 +48,7 @@ Phase 1 is in progress; see the roadmap for where things stand.
 - [Phase 1 plan](docs/PLAN.md)
 - [Design decisions](docs/DECISIONS.md)
 - [Roadmap (WIP)](docs/ROADMAP.md)
+- [UI map](docs/UI.md): where things are in `src/`
 
 ## Development
 
