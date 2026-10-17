@@ -634,3 +634,9 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Marble, oval, bristle forced on all nine kinds (60 tiles, form only, density 1):** marble 4.50 (24 tiles), bristle 4.28, oval 4.11. Marble on noise 4.00 with "features too small" on 3 of 3 (D81: 3.71, same tag), the only consistent weak cell. Aurora with oval and bristle 3.0 (2 tiles each, almost no tags) and bristle "too smoky" on 4 of 18 (1 tile per kind) are too thin to act on.
 - **Noise base sheet (60 tiles, no warp, no finishes, contour and ridged x six scale bins, form only):** mean 4.22. "Features too small" by scale bin (each ±0.04): 0.02 to 0.26 on 2 of 40 tiles (means 4.4 to 4.6), 0.34 on 5 of 10 (4.10), 0.45 on 10 of 10 (3.30); "too big" never. So scale does drive it and the cliff is near 0.30; `RAMP_SHUFFLE.scale.noise` is 0.05-0.28 (was 0.05-0.32). Ridged 3.90 against contour 4.53 (30 tiles each, about 3 standard errors, lower at every scale up to 0.26 too), so shuffled noise is 65% contour (`RAMP_SHUFFLE.contourShare`; the surprise slot keeps 50/50). The "too small" tags in val4 and the marble sheet at low scale therefore come from the warps, not the base (my guess about fine octaves was wrong).
 - **Also thin:** grid "too blurry" on 3 of 11 val4 tiles (mean 3.36).
+
+## D84. Seeded warp centers stay in a 16:9 box
+
+- **Decision (2026-10-17):** no change. The `circular` and `oval` warps keep their seeded centers in a fixed box of about 16:9 (`seededParams` in `warp.ts`), whatever the frame's aspect. Issue #73 was closed as not planned.
+- **Why:** not a problem in practice. The box is a fixed area of the composition (D4), so a wider frame shows more of the same layout. Following the aspect would also move the centers of saved designs whenever the frame changes.
+- **Reopen if:** a centered swirl or ring is visibly stuck near the middle of an ultrawide frame, or out of reach of the sides on a square one.
