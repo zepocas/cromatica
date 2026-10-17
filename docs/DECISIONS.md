@@ -668,3 +668,9 @@ Decisions made during the architecture review. Reopen one only if new informatio
 
 - **Decision (2026-10-15, #61):** below the width where the groups fit, the bar scrolls sideways (no visible scrollbar; the mouse wheel scrolls it too) instead of overflowing the page. Folding groups into a menu or wrapping to two lines was left for M15, where the mobile layout will need its own answer.
 - **The popover leaves the scroller:** a scrolling box clips its children on both axes, so the monitors popover sits on the fixed bar frame, right-aligned, not under its button. Dropdown lists already render in `<body>`.
+
+## D86. Seeded warp centers stay in a 16:9 box
+
+- **Decision (2026-10-17):** no change. The `circular` and `oval` warps keep their seeded centers in a fixed box of about 16:9 (`seededParams` in `warp.ts`), whatever the frame's aspect. Issue #73 was closed as not planned.
+- **Why:** not a problem in practice. The box is a fixed area of the composition (D4), so a wider frame shows more of the same layout. Following the aspect would also move the centers of saved designs whenever the frame changes.
+- **Reopen if:** a centered swirl or ring is visibly stuck near the middle of an ultrawide frame, or out of reach of the sides on a square one.
