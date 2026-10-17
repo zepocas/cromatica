@@ -2,11 +2,7 @@ import { BLUE_NOISE_RANKS_BASE64, BLUE_NOISE_SIZE } from './blue-noise.generated
 
 export { BLUE_NOISE_SIZE };
 
-/**
- * Per-channel (R, G, B) offsets into the blue-noise tile. Blue noise has
- * ~zero autocorrelation at large lags, so shifted copies decorrelate the
- * channels (no colored dither structure) while each stays blue.
- */
+/** Per-channel (R, G, B) offsets into the blue-noise tile: shifted copies decorrelate the channels while each stays blue. */
 export const DITHER_CHANNEL_OFFSETS: readonly (readonly [number, number])[] = [
   [0, 0],
   [21, 43],

@@ -6,6 +6,8 @@
     /** Options with the same group sit under one heading. */
     group?: string;
     title?: string;
+    /** Shown greyed out: it can't be picked or stepped onto. */
+    disabled?: boolean;
   }
 
   /** Renders the list at the end of <body>, so the panel's scroll and backdrop don't clip or offset it. */
@@ -16,7 +18,7 @@
 </script>
 
 <script lang="ts" generics="T extends string">
-  import { untrack } from 'svelte';
+  import { untrack, type Snippet } from 'svelte';
 
   // An in-page replacement for <select>: native popups can't be sized, and
   // Firefox-based browsers scroll lists that would fit.
@@ -33,6 +35,8 @@
     id?: string;
     /** The option under the pointer or the arrow keys while open; null once closed. */
     onactive?: (value: T | null) => void;
+    /** A small picture drawn after each label, in the list and on the button. */
+    icon?: Snippet<[T]>;
   }
 
   let {
@@ -45,6 +49,7 @@
     title,
     id,
     onactive,
+    icon,
   }: Props = $props();
 
   const uid = $props.id();
@@ -57,13 +62,11 @@
   const current = $derived(options.find((o) => o.value === value));
   const labelOf = (o: DropdownOption<T>) => o.label ?? o.value;
 
-  /** Place the list under the button, or above it when there is more room there. */
   function placeList() {
     const r = button.getBoundingClientRect();
     const margin = 8;
     const below = window.innerHeight - r.bottom - margin;
     const aboveSpace = r.top - margin;
-    // Open downward unless the list wouldn't fit there and there is more room above.
     const above = below < options.length * 20 && aboveSpace > below;
     place = {
       left: r.left,
@@ -74,12 +77,16 @@
     };
   }
 
+  /** The nearest option that can be picked from `from` in `dir` (including `from`); `from` when there is none. */
+  function enabledFrom(from: number, dir: 1 | -1): number {
+    for (let i = from; i >= 0 && i < options.length; i += dir) if (!options[i].disabled) return i;
+    return from;
+  }
+
   function show() {
     placeList();
-    active = Math.max(
-      0,
-      options.findIndex((o) => o.value === value),
-    );
+    const at = options.findIndex((o) => o.value === value);
+    active = enabledFrom(Math.max(0, at), 1);
     open = true;
   }
 
@@ -89,16 +96,16 @@
 
   function pick(i: number) {
     const o = options[i];
+    if (o?.disabled) return;
     hide();
     if (o && o.value !== value) onchange(o.value);
   }
 
-  /** Jump to the next option whose label starts with `ch`, after the active one. */
   function typeAhead(ch: string) {
     const n = options.length;
     for (let k = 1; k <= n; k++) {
       const i = (active + k) % n;
-      if (labelOf(options[i]).toLowerCase().startsWith(ch)) {
+      if (!options[i].disabled && labelOf(options[i]).toLowerCase().startsWith(ch)) {
         active = i;
         return;
       }
@@ -110,10 +117,10 @@
     if (!open) {
       if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) show();
       else return;
-    } else if (e.key === 'ArrowDown') active = Math.min(active + 1, last);
-    else if (e.key === 'ArrowUp') active = Math.max(active - 1, 0);
-    else if (e.key === 'Home') active = 0;
-    else if (e.key === 'End') active = last;
+    } else if (e.key === 'ArrowDown') active = enabledFrom(Math.min(active + 1, last), 1);
+    else if (e.key === 'ArrowUp') active = enabledFrom(Math.max(active - 1, 0), -1);
+    else if (e.key === 'Home') active = enabledFrom(0, 1);
+    else if (e.key === 'End') active = enabledFrom(last, -1);
     else if (e.key === 'Enter' || e.key === ' ') pick(active);
     else if (e.key === 'Escape') hide();
     else if (e.key === 'Tab') return hide();
@@ -166,7 +173,10 @@
   {disabled}
   onclick={() => (open ? hide() : show())}
   onkeydown={onKeyDown}
-  onkeyup={(e) => e.key === ' ' && e.preventDefault()}>{current ? labelOf(current) : placeholder}</button
+  onkeyup={(e) => e.key === ' ' && e.preventDefault()}
+  ><span class="label">{current ? labelOf(current) : placeholder}</span>{#if icon && current}{@render icon(
+      current.value,
+    )}{/if}</button
 >
 
 {#if open}
@@ -191,14 +201,16 @@
         id={`${uid}-${i}`}
         role="option"
         aria-selected={o.value === value}
+        aria-disabled={o.disabled || undefined}
         data-value={o.value}
         class:active={i === active}
+        class:disabled={o.disabled}
         title={o.title}
         onpointerdown={(e) => e.preventDefault()}
-        onpointermove={() => (active = i)}
+        onpointermove={() => !o.disabled && (active = i)}
         onclick={() => pick(i)}
       >
-        {o.value === value ? '› ' : '  '}{labelOf(o)}
+        <span class="label">{o.value === value ? '› ' : '  '}{labelOf(o)}</span>{#if icon}{@render icon(o.value)}{/if}
       </li>
     {/each}
   </ul>

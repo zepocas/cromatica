@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { History } from '../../src/ui/history.svelte';
+import { History } from '../../src/ui/state/history.svelte';
 
 describe('history', () => {
   it('undoes and redoes committed steps', () => {

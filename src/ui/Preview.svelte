@@ -2,18 +2,18 @@
   import { untrack, type Snippet } from 'svelte';
   import type { Design } from '../design/design';
   import { createPreview, type PreviewController } from '../preview/preview';
-  import { isTypingTarget } from './keys';
-  import type { CanvasView } from './view.svelte';
+  import { isTypingTarget } from './state/keys';
+  import type { CanvasView } from './state/view.svelte';
 
   interface Props {
     design: Design;
     aspect: number;
+    /** Show the frame at this shape, stretching the picture to it (the monitors' stretch fit); null = as drawn. */
+    stretchTo?: number | null;
     paused?: boolean;
     /** Rendered over the canvas, in a box that matches its displayed rect exactly. */
     overlay?: Snippet;
-    /** Leave room for the docked sidebar (--sidebar) on the left. */
     docked?: boolean;
-    /** Leave room for the status bar (--statusbar) at the bottom. */
     barred?: boolean;
     /** Pinch/zoom and pan of the frame. Screen only: never reaches the design or the export. */
     view: CanvasView;
@@ -27,6 +27,7 @@
   let {
     design,
     aspect,
+    stretchTo = null,
     paused = false,
     overlay,
     docked = false,
@@ -67,15 +68,15 @@
 
   $effect(() => controller?.setDesign(design));
   $effect(() => controller?.setAspect(aspect));
+  $effect(() => controller?.setDisplayAspect(stretchTo));
   $effect(() => controller?.setPaused(paused));
 
   // A new shape is a new composition: start fitted.
   $effect(() => {
-    void aspect;
+    void aspect; // read only so the effect re-runs when the shape changes
     view.reset();
   });
 
-  /** Zoom about the centre, for the status bar's buttons. */
   export function zoomBy(factor: number) {
     view.zoomAt(factor, 0, 0, frame.offsetWidth, frame.offsetHeight);
   }
@@ -130,7 +131,6 @@
   let pan: { pointerId: number; x: number; y: number } | null = null;
   let panning = $state(false);
 
-  /** Dragging anywhere but a handle or a button pans, once zoomed in. */
   function onPointerDown(e: PointerEvent) {
     if (!zoomable || !view.zoomed || e.button !== 0) return;
     if ((e.target as HTMLElement).closest('[data-point], [data-node], button')) return;
@@ -234,13 +234,13 @@
     overflow: hidden;
   }
   .viewport.docked {
-    inset: 24px 24px 24px calc(var(--sidebar) + 24px);
+    inset: var(--gap-page) var(--gap-page) var(--gap-page) calc(var(--sidebar) + var(--gap-page));
   }
   .viewport.barred {
     bottom: var(--statusbar);
   }
   .viewport.barred.docked {
-    bottom: calc(24px + var(--statusbar));
+    bottom: calc(var(--gap-page) + var(--statusbar));
   }
   .viewport.zoomed {
     cursor: grab;

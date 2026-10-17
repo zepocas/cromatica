@@ -66,10 +66,7 @@ interface ShuffleContext {
 
 type Range = [min: number, max: number];
 
-/**
- * Per-shape warp ranges for shuffle. First guesses, to be tuned against the
- * warp contact sheet. weight is relative; 'none' is kept at ~5%.
- */
+/** Per-shape warp ranges for shuffle. weight is relative; 'none' is kept at ~5%. */
 export const WARP_SHUFFLE_TABLE: Record<WarpShape, { weight: number; amount: Range; size: Range }> = {
   none: { weight: 0.65, amount: [0, 0], size: [0.5, 0.5] },
   domain: { weight: 1.2, amount: [0.08, 0.85], size: [0, 0.4] },
@@ -93,7 +90,6 @@ export type MeshComposition = 'scatter' | 'clusters' | 'line' | 'arc' | 'side';
 export const MESH_SHUFFLE = {
   /** Sharpness range (0 = haze, 1 = blobby); haze is rare (D76). */
   sharpness: [0.45, 0.9] as Range,
-  /** The range before the tuning, for the surprise slot. */
   sharpnessFlat: [0.1, 0.8] as Range,
   /** Radius as a fraction of the mean point spacing sqrt(frameArea / n): tighter blobs read less soft (D76). */
   radius: [0.3, 0.85] as Range,
@@ -103,22 +99,19 @@ export const MESH_SHUFFLE = {
   dominantScale: 1.7,
   dominantFlat: 0.4,
   dominantScaleFlat: 1.6,
-  /** Points are sampled in the frame scaled by this factor, so a few sit just outside (more so with the tuning, D76). */
+  /** Points are sampled in the frame scaled by this factor, so a few sit just outside. */
   overscan: 1.3,
   overscanFlat: 1.15,
   /** Probability of changing the point count by ±1 (only when colors are shuffled too). */
   countChange: 0.35,
-  /** Best-candidate samples per point (Mitchell), drawn per shuffle: fewer = looser, less even layouts (D76: looser). */
+  /** Best-candidate samples per point (Mitchell), drawn per shuffle: fewer = looser, less even layouts. */
   candidates: [3, 6] as Range,
   candidatesFlat: [3, 10] as Range,
   /** How close to (or past) the frame edge a point may sit before it is penalised, in spacings. */
   edgeSlack: 0.55,
   /** No two points closer than this many spacings, even in a loose layout. */
   minGap: 0.3,
-  /**
-   * Compositions a layout shuffle draws from (D76): even best-candidate scatter was the only one, so every mesh was
-   * the same evenly sprinkled field. The rest gather points into clusters, along a line or arc, or into one side.
-   */
+  /** Compositions a layout shuffle draws from (D76); scatter alone gave every mesh the same evenly sprinkled field. */
   compositionsFlat: { scatter: 1, clusters: 0, line: 0, arc: 0, side: 0 } as Record<MeshComposition, number>,
   compositions: { scatter: 0.2, clusters: 0.25, line: 0.15, arc: 0.15, side: 0.25 } as Record<MeshComposition, number>,
 };
@@ -129,12 +122,8 @@ export const RAMP_SHUFFLE = {
   /** Ranges of the first and last stop positions. */
   first: [0, 0.12] as Range,
   last: [0.88, 1] as Range,
-  /**
-   * Noise and cells: scale range. A higher scale is MORE and smaller features (0.6 * 10^scale per image height), so
-   * the larger-features tuning of D76 and D78 went the wrong way; fixed in D80, per kind.
-   */
+  /** Noise and cells: scale range per kind. A higher scale is MORE and smaller features (0.6 * 10^scale per image height). */
   scale: { cells: [0.12, 0.42] as Range, noise: [0.05, 0.28] as Range },
-  /** The range before the tuning, for the surprise slot (D76). */
   scaleFlat: [0.1, 0.6] as Range,
   /** Noise: share of contour against ridged (D83); the surprise slot keeps an even split. */
   contourShare: 0.65,
@@ -146,7 +135,6 @@ export const PLANES_SHUFFLE = {
   /** Zoom-in for planes: how often a shuffle draws one, and how far (fewer, larger planes). */
   zoomChance: 0.85,
   zoom: [1.7, 2.6] as Range,
-  /** The range before the tuning, for the surprise slot (D76). */
   countFlat: [0.15, 0.65] as Range,
 };
 
@@ -180,7 +168,6 @@ export const STYLE_SHUFFLE = {
     planes: 0.22,
     aurora: 0.08,
   } as Record<BasePattern['kind'], number>,
-  /** The odds before the tuning, for the surprise slot (D76). */
   kindsFlat: {
     mesh: 0.22,
     grid: 0.14,
@@ -199,7 +186,7 @@ export const STYLE_SHUFFLE = {
   /** Not for planes, which are flat already. */
   bands: { chance: 0.4, range: [0.2, 0.7] as Range },
   bandsFlat: { chance: 0.15, range: [0.2, 0.7] as Range },
-  /** Subtle (2026-10-07; ranges set in M12, D63). Light from the upper left. */
+  /** Subtle. Light from the upper left. */
   relief: { chance: 0.25, range: [0.1, 0.5] as Range, light: [100, 170] as Range },
   reliefFlat: { chance: 0.3, range: [0.1, 0.5] as Range },
   halftone: { chance: 0.12, range: [0.1, 0.35] as Range },
@@ -218,7 +205,7 @@ const STYLE_STREAM = 0xc2b2ae35;
 const ROTATE_STREAM = 0x27d4eb2f;
 const SURPRISE_STREAM = 0x165667b1;
 
-/** How many shuffles ignore the tuned tables and draw from the old, even ones (D76). */
+/** Share of shuffles that ignore the tuned tables and use the flat ones (D76). */
 export const SURPRISE_CHANCE = 1 / 6;
 
 /** Whether a seed lands in the surprise slot. */
@@ -235,9 +222,8 @@ const WARP_WEIGHTS = Object.fromEntries(WARP_SHAPES.map((k) => [k, WARP_SHUFFLE_
 >;
 
 /**
- * Per-kind profiles (D76, D77): how a kind changes what shuffle draws. Planes look worse with hard
- * cuts and corners: `warp` scales shapes' weights and `finish` the finishes' chances (missing = 1). The surprise slot
- * skips profiles.
+ * Per-kind profiles (D76, D77): `warp` scales shape weights and `finish` the finishes' chances
+ * (missing = 1). The surprise slot skips profiles.
  */
 export const KIND_PROFILE: Partial<
   Record<
@@ -426,7 +412,6 @@ function shuffleWarp(
   };
 }
 
-/** Best-candidate (Mitchell) sampling over the overscanned frame: even, not grid-like. */
 /** Points for the non-scatter compositions: clusters, a line, an arc, or a mass on one side (D76). */
 function composePoints(
   rng: Rng,
@@ -496,6 +481,7 @@ function composePoints(
   return pts;
 }
 
+/** Best-candidate (Mitchell) sampling over the overscanned frame: even, not grid-like. */
 function layoutPoints(rng: Rng, n: number, aspect: number, candidates: number, overscan: number): [number, number][] {
   const fw = aspect / 2;
   const hw = fw * overscan;
@@ -611,7 +597,6 @@ function withKind(base: BasePattern, kind: BasePattern['kind']): BasePattern {
   if (kind === 'aurora')
     return { kind, colors: colors.slice(0, n), count: 0.5, glow: 0.5, blend: AURORA_BLEND, seed: 0 };
   if (kind === 'grid') {
-    // Placeholder geometry: the layout shuffle that follows lays the grid out.
     const nodes = Array.from({ length: 9 }, (_, i) => ({ x: 0, y: 0, color: copyColor(colors[i % colors.length]) }));
     return { kind, rows: 3, cols: 3, nodes, rest: [0.89, 0.5] };
   }

@@ -1,7 +1,5 @@
-// Aurora: glowing ribbons that flow across the frame over a dark sky, with a
-// crisp lower edge, a long upward fade and vertical curtain rays. Prepared on
-// the CPU and passed to shaders/gradient/aurora.glsl as uniforms;
-// evaluateAurora is the same per-pixel math in doubles, for tests.
+// Prepared on the CPU and passed to shaders/gradient/aurora.glsl as uniforms;
+// evaluateAurora is the same per-pixel math in doubles.
 import { gamutMapToLinearSrgb } from '../color/gamut';
 import type { Rgb } from '../color/types';
 import { type AuroraPattern, MAX_STOPS } from '../design/design';
@@ -11,7 +9,6 @@ import { fbm, hashKey } from './noise';
 
 export const MAX_RIBBONS = 6;
 
-/** Constants the shader shares, as #defines. */
 export const AURORA_SHADER_CONSTANTS = {
   MAX_RIBBONS,
   FLOW_FREQ: '1.2',
@@ -36,11 +33,7 @@ export const FLOW_AMP = 0.18;
 export const FLOW_OCTAVES = 3;
 /** Upward fade length at glow 0 and 1. */
 const GLOW_WIDTH: [narrow: number, wide: number] = [0.025, 0.13];
-/**
- * Blend 0 → 1 (crisp → soft): the lower edge as a fraction of the upward
- * fade, and how deep the rays cut the glow. Blend 0.6 is the look from before
- * blend existed (0.25 and 0.45), which older saves migrate to.
- */
+/** Blend 0 → 1 (crisp → soft): the lower edge as a fraction of the upward fade, and how deep the rays cut the glow. */
 const LOWER_EDGE: [crisp: number, soft: number] = [0.05, 0.05 + 1 / 3];
 const RAY_DEPTH: [crisp: number, soft: number] = [0.75, 0.25];
 /** Curtain rays: frequency across and along them, octaves, and how deep they cut the glow. */
@@ -74,7 +67,6 @@ export interface PreparedAurora {
   rays: number;
 }
 
-/** Ribbons slider [0, 1] → number of ribbons. */
 export function ribbonCount(count: number): number {
   const c = clamp01(Number.isFinite(count) ? count : 0.5);
   return Math.round(RIBBON_COUNT[0] + (RIBBON_COUNT[1] - RIBBON_COUNT[0]) * c);
@@ -108,13 +100,11 @@ export function prepareAurora(aurora: AuroraPattern): PreparedAurora {
   return { count: n, sky, colors, lines, key: hashKey(seed, AURORA_SALT), up, down, rays };
 }
 
-/** Glow of ribbon i at (x, y), in [0, 1]. */
 function ribbonGlow(p: PreparedAurora, i: number, x: number, y: number): number {
   const key = (p.key + Math.imul(i, RIBBON_KEY_STEP)) >>> 0;
   const [base, tilt, strength] = p.lines.subarray(i * 3, i * 3 + 3);
   const center = base + tilt * x + FLOW_AMP * fbm(x * FLOW_FREQ, 0, key, FLOW_OCTAVES);
   const d = y - center;
-  // Crisp below the line, a long fade above it.
   const profile = d < 0 ? Math.exp(-((d / p.down) ** 2)) : Math.exp(-d / p.up);
   const rays = 1 - p.rays * (0.5 + 0.5 * fbm(x * RAY_FREQ, y * RAY_STRETCH, (key + RAY_KEY_OFFSET) >>> 0, RAY_OCTAVES));
   const m = fbm(x * MASK_FREQ, 0, (key + MASK_KEY_OFFSET) >>> 0, 2);
@@ -127,7 +117,6 @@ function smoothstep(a: number, b: number, x: number): number {
   return t * t * (3 - 2 * t);
 }
 
-/** Linear sRGB of the aurora at pattern-space point (x, y). */
 export function evaluateAurora(p: PreparedAurora, x: number, y: number): Rgb {
   const rgb: Rgb = [...p.sky];
   for (let i = 0; i < p.count; i++) {

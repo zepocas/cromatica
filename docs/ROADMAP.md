@@ -115,10 +115,10 @@ Each milestone uses the same structure:
   - Grain has a small chroma component (0.2× luma).
   - Default grain amount is 0.35.
   - Space shuffles everywhere except text, number and color inputs, selects and editable content.
-  - Seeded warp centers sit in a 16:9 box regardless of the frame's aspect; left as is (D84, #73 closed as not planned).
+  - Seeded warp centers sit in a 16:9 box regardless of the frame's aspect; left as is (D86, #73 closed as not planned).
 - **Still open:**
   - Vivid palettes with 5–6 colors can look garish (tune in M4).
-  - Grain in the preview differs from the export at DPR below 1 (the 1:1 loupe was dropped from M11, 2026-10-08).
+  - Grain in the preview is approximate: it matches the export only at 1:1, and softens below DPR 1. Won't fix without the true zoom (D70).
 
 ### M3.5 — UI refinement (photogradient-style panel) and transforms ✅
 
@@ -389,7 +389,7 @@ Each milestone uses the same structure:
 - **Open questions:**
   - Which settings move (show points, preview zoom, output size, autosave state, others).
   - What it means for the mobile panel (M15).
-  - **Narrow windows:** the bar is about 1200px wide and does not wrap or collapse, so it overflows below that (deferred, user, 2026-10-11). Likely answers: fold groups into a menu or wrap to two lines; settle it with M15.
+  - **Narrow windows:** the bar is about 1200px wide, so below that it scrolls sideways (D85, #61, 2026-10-15). Folding groups into a menu or wrapping is still open for M15.
   - Locks on the section headers (a padlock on pattern, adjust and colors) instead of or besides the bar.
   - A first-time "easy mode" (the collapsed panel, with the device's resolution preselected): not decided; the shuffle nudge is the cheap first step.
 
@@ -436,8 +436,9 @@ Each milestone uses the same structure:
 
 ---
 
-## Phase 2 — Multi-monitor preview (sketch)
+## Phase 2 — Multi-monitor preview (first version built, D84)
 
+- **Built (2026-10-14, D84):** a status bar button with joined, draggable monitor rectangles (aspect ratio and diagonal) over the wallpaper, span or stretch (the picture is drawn bent in stretch), Shift-drag to slide the wallpaper in span, and the OS context drawn inside each monitor (full on the primary, a secondary screen's share on the rest). The sketch below is the earlier idea; bezel gaps and a wallpaper-size-to-layout action were left out.
 - **Scope (user, 2026-10-12):** a preview of a window and monitor layout, so a wallpaper can be judged spanned across several displays for immersion. It is not an export: no per-monitor images and no ZIP.
 - A canvas for arranging displays. Each display is modelled as aspect ratio + physical size (from its diagonal) + position. Optional bezel-gap compensation.
 - A single composition spans the whole arrangement; the output size is the arrangement's total (for two 4K screens side by side, 7680x2160, which the custom size already allows up to 16384 px per side).
@@ -467,4 +468,5 @@ Each milestone uses the same structure:
 - **Comment density:** go through the code and cut comments that restate the code or narrate history; keep the ones that explain why (conventions, math, invariants). The user finds the current amount excessive (2026-10-04).
 - **Pattern previews in the select box** (reconsider, try later, user 2026-10-12): small previews of each pattern in the kind select, to see if it makes the app friendlier. It was discarded earlier; worth a quick experiment.
 - **Simplified vs in-depth UI** (user, 2026-10-12): keep polishing the panel and settings so it is less cluttered, with a simple intuitive version and a way to reach the in-depth options. Related to the "easy mode" idea of the first-time experience (M14 open questions). Needs a design discussion before any build.
+- **Onboarding: easy mode and first-time tutorial** (user, 2026-10-14): a first-time experience for new visitors, so the app is approachable before the in-depth panel. Ideas to weigh: open with the side panel collapsed and the device's resolution preselected; a short guided tour or tips (shuffle, lock, favourites, download); a simple mode that shows few controls and leads to the in-depth ones. Builds on the shuffle nudge (D73) and goes with the "simplified vs in-depth UI" item above. Needs a design discussion before any build.
 - **Mobile layout (M15)** stays last in priority, and the M13 browser and resolution checks stay a pre-release pass (user, 2026-10-12).

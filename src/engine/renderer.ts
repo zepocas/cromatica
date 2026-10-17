@@ -57,7 +57,7 @@ function rampShapeUniforms(g: RampGradient, output: OutputSize, transform: Desig
   };
 }
 
-/** Mesh uniforms, padded to MAX_MESH_POINTS; uploaded every render (tiny). */
+/** Mesh uniforms, padded to MAX_MESH_POINTS. */
 function meshUniforms(mesh: PointMesh) {
   const m = prepareMesh(mesh);
   const points = new Float32Array(MAX_MESH_POINTS * 3);
@@ -67,7 +67,7 @@ function meshUniforms(mesh: PointMesh) {
   return { u_meshCount: m.count, u_meshExponent: m.exponent, u_meshPoint: points, u_meshColor: colors };
 }
 
-/** Planes uniforms, padded to MAX_PLANES; uploaded every render (small). */
+/** Planes uniforms, padded to MAX_PLANES. */
 function planesUniforms(planes: PlanesPattern, output: OutputSize) {
   const p = preparePlanes(planes, output);
   const edges = new Float32Array(MAX_PLANES * 12);
@@ -107,7 +107,6 @@ function noiseDefines(g: RampGradient): Defines {
   };
 }
 
-/** Aurora uniforms, padded to MAX_RIBBONS. */
 function auroraUniforms(aurora: AuroraPattern) {
   const p = prepareAurora(aurora);
   const colors = new Float32Array(MAX_RIBBONS * 3);
@@ -125,7 +124,6 @@ function auroraUniforms(aurora: AuroraPattern) {
   };
 }
 
-/** Grid uniforms, padded to MAX_GRID_NODES. */
 function gridUniforms(grid: GridMesh) {
   const g = prepareGrid(grid);
   const offsets = new Float32Array(MAX_GRID_NODES * 2);
@@ -141,7 +139,6 @@ function gridUniforms(grid: GridMesh) {
   };
 }
 
-/** Base-pattern variant defines: one of BASE_RAMP (with its shape), BASE_MESH, BASE_PLANES. */
 function baseDefines(base: Design['base']): Defines {
   const kind = base.kind;
   const defines: Defines = {
@@ -202,7 +199,6 @@ function warpUniforms(w: PreparedWarp) {
   };
 }
 
-/** Cheap structural key of the stops; the ramp is re-baked only when it changes. */
 function stopsKey(stops: readonly ColorStop[]): string {
   return stops.map((s) => `${s.position},${s.color[0]},${s.color[1]},${s.color[2]}`).join('|');
 }
@@ -218,7 +214,6 @@ function createTexture(gl: WebGL2RenderingContext, filter: GLenum, wrap: GLenum)
 }
 
 export function createRenderer(gl: WebGL2RenderingContext): Renderer {
-  // Program variants keyed by their #define set (base pattern × warp shape).
   const programs = new Map<string, twgl.ProgramInfo>();
   let compiled = 0;
   const vao = gl.createVertexArray();
@@ -357,7 +352,6 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       gl.pixelStorei(gl.PACK_ALIGNMENT, 1);
       gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, out);
-      // GL rows are bottom-up; flip in place.
       const row = new Uint8Array(stride);
       for (let top = 0, bottom = height - 1; top < bottom; top++, bottom--) {
         const a = top * stride;

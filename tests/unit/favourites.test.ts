@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { defaultDesign, defaultMesh, type Design } from '../../src/design/design';
 import { saveDesign } from '../../src/design/schema';
 import { shuffleDesign } from '../../src/design/shuffle';
-import { FAVOURITES_KEY, FAVOURITES_LIMIT, Favourites, swatchesOf } from '../../src/ui/favourites.svelte';
+import { FAVOURITES_KEY, FAVOURITES_LIMIT, Favourites, swatchesOf } from '../../src/ui/state/favourites.svelte';
 import { memoryStorage } from './support/storage';
 
 const designs = (n: number): Design[] => {

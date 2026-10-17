@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CanvasView, MAX_ZOOM } from '../../src/ui/view.svelte';
+import { CanvasView, MAX_ZOOM } from '../../src/ui/state/view.svelte';
 
 const W = 800;
 const H = 450;
