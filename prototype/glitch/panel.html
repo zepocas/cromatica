@@ -1,0 +1,236 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>glitch panel prototype</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #111; color: #ddd; font: 13px system-ui; overflow: hidden; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #ui { position: absolute; top: 12px; left: 12px; width: 250px; display: flex; flex-direction: column; gap: 10px; z-index: 2; }
+  fieldset { background: #000b; border: 1px solid #fff2; border-radius: 8px; padding: 8px 12px 10px; margin: 0; }
+  legend { padding: 0 6px; font-weight: 600; }
+  .row { display: grid; grid-template-columns: 90px 1fr 34px; gap: 8px; align-items: center; margin: 5px 0; }
+  .test { opacity: .75; }
+  button { margin-top: 6px; background: #333; color: #ddd; border: 1px solid #fff3; border-radius: 4px; padding: 3px 10px; cursor: pointer; }
+  #hint { position: absolute; bottom: 10px; right: 12px; background: #000a; padding: 3px 8px; border-radius: 4px; }
+</style>
+<canvas id="c"></canvas>
+<div id="ui"></div>
+<div id="hint">hold <b>space</b> to compare with glitch off · <b>h</b> hides the panel</div>
+<script>
+// Throwaway prototype of the glitch finish as it would sit in the panel: one group, four sliders.
+// Under the hood: split (fringe along the edge) -> mosh (blocks) -> corrupt (row jitter, patches,
+// scanlines, bit crush), all gated to the neighbourhood of color boundaries. Stateless per pixel.
+const G = [
+  ['amount', 'Amount', 0.6, 'how hard everything hits: fringe, row jitter, scanlines, bit crush'],
+  ['reach', 'Reach', 0.5, 'how far from a boundary the glitch spreads, and how weak an edge may be'],
+  ['blocks', 'Blocks', 0.3, 'share of boundary blocks that pixelate and crush'],
+  ['color', 'Color shift', 0.2, 'share of blocks and patches that take the wrong color'],
+];
+const MODES = ['palette', 'hue', 'channels', 'negative'];
+const T = [['palette', 'Palette', 0, 0, 2, 1], ['sharp', 'Contrast', 0.5, 0, 1, 0.01]];
+const V = { seed: 1 };
+G.forEach(g => (V[g[0]] = g[2]));
+V.mode = 0;
+T.forEach(t => (V[t[0]] = t[2]));
+let bypass = false, dirty = true;
+
+const frag = `precision highp float;
+uniform vec4 box; // x0,y0,w,h in pixels
+uniform float mode, strength, edgeStep, gain, thresh, rows, cells, fringe, reach, anomaly, blocks, colorMode, seed, sharp, palette;
+float gSplit=0., gMosh=0.;
+float h11(float n){ return fract(sin(n*127.1+seed*311.7)*43758.5453); }
+float h21(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7))+seed*74.7)*43758.5453); }
+vec2 h22(vec2 p){ return vec2(h21(p),h21(p+31.7)); }
+float vn(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*(3.-2.*f);
+  return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x),f.y); }
+// Pattern noise must not depend on the glitch seed, or the seed would change the base image.
+float ph(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+float pn(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*(3.-2.*f);
+  return mix(mix(ph(i),ph(i+vec2(1,0)),f.x),mix(ph(i+vec2(0,1)),ph(i+vec2(1,1)),f.x),f.y); }
+float fld(vec2 p){ return pn(p*1.7)*.6+pn(p*3.9+4.)*.3+pn(p*8.+9.)*.1; }
+vec3 ramp(float t){
+  t=clamp(t,0.,1.)*4.;
+  vec3 a,b,c,d,e;
+  if(palette<.5){ a=vec3(.05,.07,.25); b=vec3(.45,.1,.55); c=vec3(.95,.3,.35); d=vec3(1.,.75,.4); e=vec3(.98,.95,.85); }
+  else if(palette<1.5){ a=vec3(.02,.12,.18); b=vec3(.0,.45,.5); c=vec3(.5,.8,.7); d=vec3(.95,.9,.6); e=vec3(.95,.45,.3); }
+  else { a=vec3(.9,.9,.85); b=vec3(.15,.2,.4); c=vec3(.9,.25,.2); d=vec3(.1,.1,.12); e=vec3(.95,.8,.3); }
+  return t<1.?mix(a,b,t):t<2.?mix(b,c,t-1.):t<3.?mix(c,d,t-2.):mix(d,e,t-3.);
+}
+// Stand-in pattern: warped noise field through a palette, partly posterized so there are both soft
+// gradients and color boundaries, like the real designs.
+vec3 pat(vec2 p){
+  vec2 q=p+.35*vec2(pn(p*2.+1.7)-.5,pn(p*2.+8.3)-.5);
+  float t=fld(q*1.3);
+  t=(t-.2)/.6;
+  float s=t*3.;
+  t=mix(t,(floor(s)+smoothstep(.35,.65,fract(s)))/3.,sharp);
+  return ramp(t);
+}
+// xy = unit gradient direction (toward lighter), z = edge strength 0..1.5
+vec3 edgeAt(vec2 p){
+  float e=edgeStep;
+  vec3 dx=pat(p+vec2(e,0.))-pat(p-vec2(e,0.));
+  vec3 dy=pat(p+vec2(0.,e))-pat(p-vec2(0.,e));
+  float m=sqrt(dot(dx,dx)+dot(dy,dy))/(2.*e)*0.05*gain;
+  vec2 g=vec2(dot(dx,vec3(.3,.6,.1)),dot(dy,vec3(.3,.6,.1)));
+  vec2 dir=length(g)>1e-5?normalize(g):vec2(1.,0.);
+  return vec3(dir, smoothstep(thresh,thresh+.35,m)*min(m,1.5));
+}
+vec3 split3(vec2 p,float k){
+  vec3 ed=edgeAt(p); vec2 off=ed.xy*ed.z*fringe*strength*3.*k;
+  return vec3(pat(p+off).r, pat(p).g, pat(p-off).b);
+}
+vec3 samp(vec2 p){ return gSplit>.5?split3(p,1.):pat(p); }
+vec2 tearOff(vec2 p){
+  float y=p.y+.05*(pn(vec2(p.x*1.3,p.y*2.)+seed)-.5)+.02*sin(p.x*7.+p.y*5.);
+  float band=floor(y*rows); float h=h11(band);
+  vec2 c=vec2(p.x,(band+.5)/rows);
+  float e=edgeAt(c).z;
+  float on=step(.35,h11(band+91.));
+  return vec2((h-.5)*2.*e*on*strength*.5, 0.);
+}
+vec3 smearTear(vec2 p, float k){
+  vec2 off=tearOff(p); vec3 acc=vec3(0.);
+  for(int i=0;i<6;i++) acc+=split3(p+off*float(i)/5.,k);
+  return acc/6.;
+}
+float luma(vec3 c){ return dot(c,vec3(.3,.6,.1)); }
+// Edge zone: strongest edge within "reach" of p, so artifacts spread a little beyond the boundary line.
+float zoneAt(vec2 p){
+  float z=edgeAt(p).z;
+  z=max(z,edgeAt(p+vec2(reach,0.)).z); z=max(z,edgeAt(p-vec2(reach,0.)).z);
+  z=max(z,edgeAt(p+vec2(0.,reach)).z); z=max(z,edgeAt(p-vec2(0.,reach)).z);
+  return z;
+}
+// Wrong-color modes: 0 borrows the color from elsewhere in the same pattern (always on-palette), 1 rotates
+// the hue, 2 swaps channels, 3 inverts.
+vec3 anomaly3(vec3 c,vec2 p,float k){
+  if(colorMode<.5) return pat(p+(vec2(k,fract(k*7.31))-.5)*1.2);
+  if(colorMode<1.5){
+    float a=(k-.5)*2.4; vec3 ax=vec3(.57735);
+    return c*cos(a)+cross(ax,c)*sin(a)+ax*dot(ax,c)*(1.-cos(a));
+  }
+  if(colorMode<2.5) return k<.5?c.bgr:c.gbr;
+  k=floor(k*3.);
+  return k<1.?c.bgr:k<2.?1.-c:c.gbr;
+}
+// Compression-style corruption: blocks of two sizes near boundaries are pixelated, shifted, bit-crushed
+// and sometimes recolored.
+vec3 mosh(vec2 p){
+  float sc=h21(floor(p*cells*.5))>.5?cells*.5:cells;
+  vec2 id=floor(p*sc); vec2 q=(id+.5)/sc;
+  float on=step(h21(id+5.),blocks*.6);
+  if(on>.5) on=step(.2,zoneAt(q));
+  vec2 pp=mix(p,q,on)+on*vec2((h21(id+2.)-.5)*.06*strength,0.);
+  vec3 c=samp(pp);
+  if(on>.5){
+    if(h21(id+77.)<anomaly) c=anomaly3(c,q,h21(id+9.));
+    c=floor(c*5.+.5)/5.;
+  }
+  return c;
+}
+// Pixel-sort-like streaks: the brightest color within a run to the side wins, so bright shapes smear
+// out of their boundaries; run length and direction are hashed per row.
+vec3 sortAt(vec2 p){
+  float z=zoneAt(p);
+  float row=floor(p.y*rows);
+  float len=strength*.35*smoothstep(.1,.5,z)*(.3+h11(row))*(h11(row+5.)>.5?1.:-1.);
+  vec3 best=pat(p); float bl=luma(best);
+  for(int i=1;i<=14;i++){
+    vec3 c=pat(p+vec2(len*float(i)/14.,0.)); float l=luma(c);
+    if(l>bl){best=c;bl=l;}
+  }
+  return best;
+}
+vec3 base(vec2 p){ return gMosh>.5?mosh(p):samp(p); }
+// Everything at once, the digital version: per-row independent channel jitter, rectangular
+// anomaly patches, scanlines and bit crush, all gated to the boundary zone.
+vec3 corrupt(vec2 p){
+  float z=zoneAt(p);
+  if(z<.05) return base(p);
+  float row=floor(p.y*rows*1.5);
+  float amp=z*strength*.09*step(.4,h11(row+40.));
+  vec3 c=vec3(base(p+vec2((h11(row)-.5)*amp,0.)).r, base(p).g, base(p+vec2((h11(row+13.)-.5)*amp,0.)).b);
+  vec2 pid=floor(p*vec2(cells*.7,rows*.2));
+  if(z>.25 && h21(pid)<anomaly*.6) c=anomaly3(c,p,h21(pid+3.));
+  c*=1.-.14*step(.5,fract(p.y*rows*1.5))*smoothstep(.1,.4,z);
+  return mix(c,floor(c*6.+.5)/6.,step(.45,z));
+}
+vec3 echoAt(vec2 p){
+  vec3 ed=edgeAt(p);
+  float k=floor(pn(p*5.+seed*5.)*4.)-1.;
+  vec2 off=ed.xy*ed.z*k*strength*.05;
+  return base(p+off);
+}
+void main(){
+  vec2 px=gl_FragCoord.xy-box.xy;
+  if(px.x<0.||px.y<0.||px.x>box.z||px.y>box.w){discard;}
+  vec2 p=px/box.w;
+  vec3 col;
+  gSplit=1.; gMosh=1.;
+  col=strength<.001?pat(p):corrupt(p);
+  gl_FragColor=vec4(pow(clamp(col,0.,1.),vec3(1./1.0)),1.);
+}`;
+const vert = 'attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}';
+const cv = document.getElementById('c');
+const gl = cv.getContext('webgl');
+function sh(t, s) {
+  const o = gl.createShader(t);
+  gl.shaderSource(o, s);
+  gl.compileShader(o);
+  if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) { document.title = 'ERR ' + gl.getShaderInfoLog(o); throw new Error(gl.getShaderInfoLog(o)); }
+  return o;
+}
+const pr = gl.createProgram();
+gl.attachShader(pr, sh(gl.VERTEX_SHADER, vert));
+gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, frag));
+gl.linkProgram(pr);
+gl.useProgram(pr);
+gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+const loc = gl.getAttribLocation(pr, 'a');
+gl.enableVertexAttribArray(loc);
+gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+const U = n => gl.getUniformLocation(pr, n);
+
+const ui = document.getElementById('ui');
+const row = (k, label, v, mn, mx, st, tip) =>
+  `<div class=row title="${tip || ''}"><span>${label}</span><input type=range id=s_${k} min=${mn} max=${mx} step=${st} value=${v}><span id=v_${k}>${v}</span></div>`;
+ui.innerHTML =
+  '<fieldset><legend>Glitch</legend>' + G.map(g => row(g[0], g[1], g[2], 0, 1, 0.01, g[3])).join('') + '<div class=row><span>Color mode</span><select id=mode>' + MODES.map((m, i) => `<option value=${i}>${m}</option>`).join('') + '</select><span></span></div><button id=reroll>Reroll</button></fieldset>' +
+  '<fieldset class=test><legend>Test pattern</legend>' + T.map(t => row(t[0], t[1], t[2], t[3], t[4], t[5])).join('') + '</fieldset>';
+for (const k of Object.keys(V)) {
+  const el = ui.querySelector('#s_' + k);
+  if (el) el.oninput = e => { V[k] = +e.target.value; ui.querySelector('#v_' + k).textContent = V[k]; };
+}
+ui.querySelector('#reroll').onclick = () => { V.seed = Math.floor(Math.random() * 100); dirty = true; };
+ui.querySelector('#mode').onchange = e => { V.mode = +e.target.value; dirty = true; };
+ui.addEventListener('input', () => (dirty = true));
+addEventListener('keydown', e => {
+  if (e.key === ' ') { bypass = true; dirty = true; e.preventDefault(); }
+  if (e.key === 'h') ui.style.display = ui.style.display === 'none' ? '' : 'none';
+});
+addEventListener('keyup', e => { if (e.key === ' ') { bypass = false; dirty = true; } });
+addEventListener('resize', () => (dirty = true));
+const q = new URLSearchParams(location.search);
+if (q.has('mode')) { V.mode = +q.get('mode'); ui.querySelector('#mode').value = V.mode; }
+if (q.has('hide')) ui.style.display = 'none';
+for (const [k, v] of q) if (k in V) V[k] = +v;
+
+function draw() {
+  if (!dirty) return requestAnimationFrame(draw);
+  dirty = false;
+  const dpr = 1;
+  const W = (cv.width = Math.round(innerWidth * dpr)), H = (cv.height = Math.round(innerHeight * dpr));
+  const u = {
+    strength: bypass ? 0 : V.amount, thresh: 0.7 - 0.55 * V.reach, reach: 0.006 + 0.03 * V.reach,
+    blocks: V.blocks, anomaly: V.color, colorMode: V.mode, edgeStep: 0.01, gain: 6, rows: 70, cells: 28, fringe: 0.035,
+    seed: V.seed, sharp: V.sharp, palette: V.palette, mode: 0,
+  };
+  for (const k in u) gl.uniform1f(U(k), u[k]);
+  gl.uniform4f(U('box'), 0, 0, W, H);
+  gl.viewport(0, 0, W, H);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+</script>
