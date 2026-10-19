@@ -674,3 +674,12 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Decision (2026-10-17):** no change. The `circular` and `oval` warps keep their seeded centers in a fixed box of about 16:9 (`seededParams` in `warp.ts`), whatever the frame's aspect. Issue #73 was closed as not planned.
 - **Why:** not a problem in practice. The box is a fixed area of the composition (D4), so a wider frame shows more of the same layout. Following the aspect would also move the centers of saved designs whenever the frame changes.
 - **Reopen if:** a centered swirl or ring is visibly stuck near the middle of an ultrawide frame, or out of reach of the sides on a square one.
+
+## D87. Glitch as a post stage is parked; the prototypes stay
+
+- **Decision (2026-10-19, #62):** no glitch finish for now. The edge-reactive prototypes in `prototype/glitch/` stay in the repo; nothing in them is loaded by the generator (the build's only entry is the root `index.html`, and `prototype` is in `.prettierignore`).
+- **What was tried:** edge strength and direction from the pattern sampled at ±a few pixels (D46), still per pixel and stateless (D4), driving six looks: channel split along the edge, wavy row tears, voronoi shards, color drag, noise-patch echoes, and block "mosh" and "corrupt" passes (pixelation, bit crush, row jitter, scanlines, wrong-color patches).
+- **What worked:** the digital looks, split, mosh and corrupt, alone or stacked. Gating everything to a zone around real color boundaries (high edge threshold, small reach) keeps the form readable; without it blocks and scanlines cover the whole image. Wrong colors borrowed from elsewhere in the same pattern stay on palette; inversion and channel swaps read as foreign. `panel.html` shows the finish as one group of four sliders (amount, reach, blocks, color shift) plus a color mode.
+- **What did not:** tears, shards, drag and echo felt organic but did not read as glitch, or looked like stained glass or a blur. A soft drag barely shows on soft gradients, the same reason the warp attempt failed.
+- **Why parked:** the generator already has a wide range of looks, and the best stack costs about 100 pattern reads per pixel (several edge probes, three jittered channel reads, mosh on top), too much for a finish unless it is cut down.
+- **Reopen if:** a single look is found that is clearly better than the rest and cheap enough (a few pattern reads per pixel). Start from split + corrupt in `panel.html`, which was the strongest.

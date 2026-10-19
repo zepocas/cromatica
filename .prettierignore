@@ -4,3 +4,4 @@ test-results
 playwright-report
 package-lock.json
 src/engine/blue-noise.generated.ts
+prototype
