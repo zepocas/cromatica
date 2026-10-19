@@ -8,6 +8,8 @@ uniform vec3 u_planeBackground;               // linear sRGB
 uniform vec4 u_planeEdge[MAX_PLANES * 3];     // per plane 4 × (nx, ny, c): inside distance dot(n, p) - c
 uniform vec3 u_planeBound[MAX_PLANES];        // bounding circle: x, y, radius
 uniform vec3 u_planeColor[MAX_PLANES];        // linear sRGB
+uniform int u_planeId[MAX_PLANES];            // layout index: the torn-edge noise key follows the plane
+uniform vec2 u_planeShift[MAX_PLANES];        // how far the plane was moved; its torn-edge noise moves too
 uniform uint u_planeKey;                      // torn-edge noise key of plane 0
 uniform float u_planeTear;                    // how far a torn edge wanders; 0 = clean
 uniform float u_planeRim;                     // paper rim strength; 0 = none
@@ -57,7 +59,7 @@ vec3 planesColor(vec2 p) {
     if (d < -reach) continue;
     float rim = 0.0;
     if (d < near) {
-      if (u_planeTear > 0.0) d += u_planeTear * tearNoise(p, u_planeKey + uint(i) * PLANE_KEY_STEP);
+      if (u_planeTear > 0.0) d += u_planeTear * tearNoise(p - u_planeShift[i], u_planeKey + uint(u_planeId[i]) * PLANE_KEY_STEP);
       rim = u_planeRim * (1.0 - smoothstep(0.0, RIM_WIDTH, d));
     }
     float cover = smoothstep(-u_planeSoft, u_planeSoft, d);

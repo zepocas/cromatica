@@ -2,6 +2,9 @@
 import { expect, test } from '@playwright/test';
 import type { Design } from '../../src/design/design';
 import { planesDesign, warp, withLook } from './support/designs';
+import type { PlaneEdits } from '../../src/design/design';
+
+const withEdits = (d: Design, edits: PlaneEdits): Design => ({ ...d, base: { ...d.base, edits } as Design['base'] });
 import { engineHarness, openEngineHarness, logBench } from './support/harness';
 
 test.beforeEach(async ({ page }) => {
@@ -31,6 +34,18 @@ test.describe('planes vs CPU reference (dither off)', () => {
     ['torn', planesDesign(0.4, 1)],
     ['many, torn', planesDesign(1, 0.6)],
     ['blended', planesDesign(0.6, 0.5, 0.7)],
+    [
+      'moved and reordered',
+      withEdits(planesDesign(0.5, 1), {
+        order: [4, 0, 9, 2],
+        shifts: [
+          [0.2, 0.1],
+          [0, 0],
+          [-0.3, 0.05],
+          [0.1, -0.2],
+        ],
+      }),
+    ],
   ];
   for (const [name, d] of cases) {
     for (const [w, h] of [

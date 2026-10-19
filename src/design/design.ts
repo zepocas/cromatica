@@ -60,6 +60,17 @@ export interface PointMesh {
   sharpness: number;
 }
 
+/** Most planes a layout holds (count slider at 1). */
+export const MAX_PLANES = 24;
+
+/** Hand edits laid over the seeded layout (D88); the seed's own random draws stay as they were. */
+export interface PlaneEdits {
+  /** Plane indexes back to front. Indexes past the count are skipped, missing ones follow in index order. */
+  order: number[];
+  /** Offset per plane index in pattern space (x right, y up); missing = [0, 0]. */
+  shifts: [number, number][];
+}
+
 /**
  * Planes (D37): a collage of seeded, overlapping flat-color quads with torn
  * edges over a background fill (src/engine/planes.ts). The layout comes from
@@ -77,6 +88,8 @@ export interface PlanesPattern {
   blend: number;
   /** uint32 seed of the layout and the color order. */
   seed: number;
+  /** Absent = the layout exactly as the seed makes it. Cleared when the seed or the count changes. */
+  edits?: PlaneEdits;
 }
 
 /**

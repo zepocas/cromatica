@@ -76,12 +76,18 @@ function planesUniforms(planes: PlanesPattern, output: OutputSize) {
   edges.set(p.edges);
   bounds.set(p.bounds);
   colors.set(p.colors);
+  const ids = new Int32Array(MAX_PLANES);
+  const shifts = new Float32Array(MAX_PLANES * 2);
+  ids.set(p.ids);
+  shifts.set(p.shifts);
   return {
     u_planeCount: p.count,
     u_planeBackground: p.background,
     u_planeEdge: edges,
     u_planeBound: bounds,
     u_planeColor: colors,
+    u_planeId: ids,
+    u_planeShift: shifts,
     u_planeKey: p.key,
     u_planeTear: p.tear,
     u_planeRim: p.rim,

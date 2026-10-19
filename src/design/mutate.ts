@@ -61,14 +61,16 @@ function mutateBase(base: BasePattern, rng: Rng, s: number, zoom: number): BaseP
       };
     case 'grid':
       return { ...base, nodes: base.nodes.map((n) => ({ ...n, x: move(n.x), y: move(n.y) })) };
-    case 'planes':
+    case 'planes': {
       // A different plane count re-deals the whole collage, so it is as rare as a new seed.
-      return {
-        ...base,
-        count: rng.next() < NUDGE.reseed * s * s ? slider(base.count) : base.count,
-        roughness: slider(base.roughness),
-        seed: seed(base.seed),
-      };
+      const count = rng.next() < NUDGE.reseed * s * s ? slider(base.count) : base.count;
+      const roughness = slider(base.roughness);
+      const nextSeed = seed(base.seed);
+      const { edits, ...rest } = base;
+      // Hand edits belong to one layout: a new count or seed deals a different one (D88).
+      const keep = edits && count === base.count && nextSeed === base.seed;
+      return { ...rest, ...(keep ? { edits } : {}), count, roughness, seed: nextSeed };
+    }
     case 'aurora':
       return {
         ...base,

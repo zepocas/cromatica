@@ -4,6 +4,7 @@
   import { planeCount } from '../../../engine/planes';
   import Choice from '../../controls/Choice.svelte';
   import { degrees, fixed2 } from '../../controls/format';
+  import Group from '../../controls/Group.svelte';
   import SliderRow from '../../controls/SliderRow.svelte';
   import type { EditorState } from '../../state/editor.svelte';
 
@@ -13,6 +14,16 @@
 
   // Bindable so child bindings into the editor's state pass Svelte's ownership checks.
   let { editor = $bindable() }: Props = $props();
+
+  let arrangeFolded = $state(true);
+  const stack = $derived(editor.planeStack);
+  const place = $derived(stack.indexOf(editor.selectedPlane));
+  const picked = $derived(place >= 0);
+
+  /** Step the pick through the stack, so a plane hidden behind others can still be chosen. */
+  function stepPick(by: -1 | 1) {
+    editor.selectedPlane = stack[picked ? Math.max(0, Math.min(stack.length - 1, place + by)) : stack.length - 1];
+  }
 </script>
 
 <!-- The controls that belong to the active pattern kind. -->
@@ -33,7 +44,8 @@
     min={0}
     max={1}
     step={0.01}
-    bind:value={editor.planes.count}
+    value={editor.planes.count}
+    oninput={(v) => editor.setPlanesCount(v)}
     display={(v) => String(planeCount(v))}
   />
   <SliderRow
@@ -64,6 +76,55 @@
     bind:value={editor.planes.blend}
     display={fixed2}
   />
+  <Group title="arrange" ariaLabel="Arrange layout" bind:collapsed={arrangeFolded}>
+    <div class="row">
+      <span>plane</span>
+      <button class="icon" aria-label="Plane behind" disabled={picked && place === 0} onclick={() => stepPick(-1)}
+        >◂</button
+      >
+      <output aria-label="Picked plane">{picked ? `${place + 1} / ${stack.length}` : 'none'}</output>
+      <button
+        class="icon"
+        aria-label="Plane in front"
+        disabled={picked && place === stack.length - 1}
+        onclick={() => stepPick(1)}>▸</button
+      >
+    </div>
+    <div class="row">
+      <span>stack</span>
+      <button
+        class="btn"
+        title="Send the plane one step back"
+        disabled={!picked || place === 0}
+        onclick={() => editor.restack(editor.selectedPlane, 'back')}>back</button
+      >
+      <button
+        class="btn"
+        title="Bring the plane one step forward"
+        disabled={!picked || place === stack.length - 1}
+        onclick={() => editor.restack(editor.selectedPlane, 'forward')}>forward</button
+      >
+    </div>
+    <div class="row">
+      <span></span>
+      <button
+        class="btn"
+        title="Put this plane back where the layout had it"
+        disabled={!picked}
+        onclick={() => editor.resetPlane(editor.selectedPlane)}>reset plane</button
+      >
+      <button
+        class="btn"
+        title="Undo every move and reorder"
+        disabled={!editor.planes.edits}
+        onclick={() => editor.clearPlaneEdits()}>reset all</button
+      >
+    </div>
+    <p class="hint">drag a plane on the image; arrows nudge it</p>
+    {#if editor.hasWarp}
+      <p class="hint">a warp bends the planes, so the outlines are close, not exact</p>
+    {/if}
+  </Group>
 {:else if editor.kind === 'grid'}
   <SliderRow
     label="rows"
@@ -175,3 +236,10 @@
     display={degrees}
   />
 {/if}
+
+<style>
+  .hint {
+    margin: 4px 0 0;
+    color: var(--dim);
+  }
+</style>

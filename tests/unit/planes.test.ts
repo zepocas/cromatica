@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Oklch } from '../../src/color/types';
-import type { PlanesPattern } from '../../src/design/design';
+import type { PlaneEdits, PlanesPattern } from '../../src/design/design';
 import { evaluatePlanes, MAX_PLANES, planeCount, preparePlanes, tearNoise } from '../../src/engine/planes';
 
 const colors: Oklch[] = [
@@ -69,6 +69,89 @@ describe('planes layout', () => {
 
   it('rejects an empty palette', () => {
     expect(() => preparePlanes(planes({ colors: [] }), frame)).toThrow(RangeError);
+  });
+});
+
+describe('planes edits', () => {
+  const base = preparePlanes(planes({ count: 0.5 }), frame);
+  const n = base.count;
+  const edited = (edits: PlaneEdits) => preparePlanes(planes({ count: 0.5, edits }), frame);
+
+  it('leaves the layout alone for no edits, an identity order and zero shifts', () => {
+    const identity = edited({
+      order: Array.from({ length: n }, (_, i) => i),
+      shifts: Array.from({ length: n }, () => [0, 0]),
+    });
+    expect(identity.edges).toEqual(base.edges);
+    expect(identity.corners).toEqual(base.corners);
+    expect(identity.ids).toEqual(base.ids);
+    expect(base.ids).toEqual(Array.from({ length: n }, (_, i) => i));
+    expect(base.shifts.every((s) => s === 0)).toBe(true);
+  });
+
+  it('moves one plane and nothing else', () => {
+    const shifts: [number, number][] = Array.from({ length: n }, () => [0, 0]);
+    shifts[3] = [0.2, -0.1];
+    const p = edited({ order: [], shifts });
+    for (let i = 0; i < n; i++) {
+      const same = i !== 3;
+      expect(p.corners.subarray(i * 8, i * 8 + 8).every((c, k) => c === base.corners[i * 8 + k])).toBe(same);
+    }
+    expect(p.corners[3 * 8]).toBeCloseTo(base.corners[3 * 8] + 0.2, 12);
+    expect(p.corners[3 * 8 + 1]).toBeCloseTo(base.corners[3 * 8 + 1] - 0.1, 12);
+    expect(p.bounds[3 * 3]).toBeCloseTo(base.bounds[3 * 3] + 0.2, 12);
+    expect(p.colors).toEqual(base.colors);
+    // The edge planes still put the center inside by the same margin.
+    for (let e = 0; e < 4; e++) {
+      const [nx, ny, c] = p.edges.subarray(3 * 12 + e * 3, 3 * 12 + e * 3 + 3);
+      const inside = nx * p.bounds[3 * 3] + ny * p.bounds[3 * 3 + 1] - c;
+      const [bx, by, bc] = base.edges.subarray(3 * 12 + e * 3, 3 * 12 + e * 3 + 3);
+      expect(inside).toBeCloseTo(bx * base.bounds[3 * 3] + by * base.bounds[3 * 3 + 1] - bc, 12);
+    }
+  });
+
+  it('reorders the stack and the colors, ids and torn edges go with the planes', () => {
+    const order = Array.from({ length: n }, (_, i) => n - 1 - i);
+    const p = edited({ order, shifts: [] });
+    expect(p.ids).toEqual(order);
+    expect(p.colorIndex).toEqual(order.map((id) => base.colorIndex[id]));
+    for (let slot = 0; slot < n; slot++) {
+      const id = order[slot];
+      expect(Array.from(p.corners.subarray(slot * 8, slot * 8 + 8))).toEqual(
+        Array.from(base.corners.subarray(id * 8, id * 8 + 8)),
+      );
+    }
+  });
+
+  it('survives an order with duplicates, out-of-range and non-integer entries', () => {
+    const p = edited({ order: [5, 5, 99, -1, 2.5, 0], shifts: [] });
+    expect(p.ids.slice(0, 2)).toEqual([5, 0]);
+    expect([...p.ids].sort((a, b) => a - b)).toEqual(Array.from({ length: n }, (_, i) => i));
+  });
+
+  it('treats a bad shift as no shift', () => {
+    const p = edited({ order: [], shifts: [[NaN, Infinity]] });
+    expect(p.corners).toEqual(base.corners);
+  });
+
+  it('moving every plane by one vector moves the whole picture, torn edges included', () => {
+    const rough = preparePlanes(planes({ count: 0.5, roughness: 1 }), frame);
+    const s: [number, number] = [0.31, -0.17];
+    const moved = preparePlanes(
+      planes({ count: 0.5, roughness: 1, edits: { order: [], shifts: Array.from({ length: n }, () => s) } }),
+      frame,
+    );
+    let checked = 0;
+    for (let i = 0; i < 400; i++) {
+      // Walk along the first plane's edges, where the tear noise acts.
+      const x = -1 + (i % 20) * 0.1;
+      const y = -0.5 + Math.floor(i / 20) * 0.05;
+      const a = evaluatePlanes(rough, x, y);
+      const b = evaluatePlanes(moved, x + s[0], y + s[1]);
+      for (let c = 0; c < 3; c++) expect(b[c]).toBeCloseTo(a[c], 9);
+      if (a.some((v, c) => v !== rough.background[c])) checked++;
+    }
+    expect(checked).toBeGreaterThan(50);
   });
 });
 

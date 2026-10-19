@@ -116,7 +116,7 @@ export function previewProbe(page: Page) {
     await expect(canvas).toHaveAttribute('data-settled', 'true');
     return canvas.screenshot({
       style:
-        'aside, [data-testid="mesh-overlay"], [data-testid="context-overlay"], [data-testid="monitors-overlay"], [data-testid="monitors-panel"], [data-testid="favourites-tray"] { visibility: hidden; }',
+        'aside, [data-testid="mesh-overlay"], [data-testid="planes-overlay"], [data-testid="context-overlay"], [data-testid="monitors-overlay"], [data-testid="monitors-panel"], [data-testid="favourites-tray"] { visibility: hidden; }',
     });
   };
   /** Poll until the settled preview differs from `before`. */

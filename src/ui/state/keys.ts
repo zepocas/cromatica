@@ -22,5 +22,5 @@ export function isFormControl(target: EventTarget | null): boolean {
 }
 
 export function isHandle(target: EventTarget | null): boolean {
-  return !!(target as HTMLElement | null)?.closest?.('[data-point], [data-node], [data-stop]');
+  return !!(target as HTMLElement | null)?.closest?.('[data-point], [data-node], [data-stop], [data-plane-overlay]');
 }

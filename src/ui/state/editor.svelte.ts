@@ -32,9 +32,10 @@ import {
 import { randomSeed } from '../../design/random';
 import { gridLayout, shuffleDesign } from '../../design/shuffle';
 import { evaluateGrid, forwardMap, prepareGrid, restPoint } from '../../engine/grid';
+import { planeCount, planeOrder, preparePlanes } from '../../engine/planes';
 import { prepareRampShape, rampT } from '../../engine/ramp-shape';
 import { applyMat2, clampZoom, inverseTransformMatrix, transformMatrix } from '../../engine/transform';
-import { warpPoint } from '../../engine/warp';
+import { createWarp, warpPoint } from '../../engine/warp';
 import { clamp, normalizeDegrees } from '../../math';
 import { paletteFromImage, type ImagePalette } from './image-palette';
 import { PaletteEditor, type PaletteSnapshot } from './palette.svelte';
@@ -69,6 +70,8 @@ export { MAX_RADIUS, MIN_RADIUS };
 /** How far outside the frame (composition units) a point may be dragged. */
 const OUTSIDE_MARGIN = 0.5;
 const MIN_STOPS = 2;
+/** Iterations that put a plane corner where a warp shows it. */
+const WARP_INVERSE_STEPS = 6;
 
 /**
  * UI editing state: the design being edited, plus selection and UI-only
@@ -110,6 +113,8 @@ export class EditorState {
   selectedNode = $state(0);
   /** Index into linear.stops (user order, not position order). */
   selectedStop = $state(0);
+  /** Layout index of the plane picked on the preview (D88); -1 = none. */
+  selectedPlane = $state(-1);
   showHandles = $state(true);
   /** Palette-from-image progress or failure, shown in the colors section; '' when idle. */
   imageStatus = $state('');
@@ -300,6 +305,7 @@ export class EditorState {
     this.selectedPoint = clamp(this.selectedPoint, 0, this.mesh.points.length - 1);
     this.selectedNode = clamp(this.selectedNode, 0, this.grid.nodes.length - 1);
     this.selectedStop = clamp(this.selectedStop, 0, this.ramp.stops.length - 1);
+    if (this.selectedPlane >= planeCount(this.planes.count)) this.selectedPlane = -1;
   }
 
   /** Planes colors onto the ramp's stops, in position order; evenly spaced stops if the count changed. */
@@ -329,6 +335,115 @@ export class EditorState {
 
   newPlanesLayout(): void {
     this.planes.seed = randomSeed();
+    this.clearPlaneEdits();
+  }
+
+  /** A different number of planes deals a different collage, so hand edits go; the slider moving within one count keeps them. */
+  setPlanesCount(count: number): void {
+    if (planeCount(count) !== planeCount(this.planes.count)) this.clearPlaneEdits();
+    this.planes.count = count;
+  }
+
+  // ---- Planes: move and reorder (D88) ----------------------------------------
+
+  private get warpActive(): boolean {
+    return this.warp.shape !== 'none' && this.warp.amount > 0;
+  }
+
+  get planeTotal(): number {
+    return planeCount(this.planes.count);
+  }
+
+  /** Layout indexes, back to front. */
+  get planeStack(): number[] {
+    return planeOrder(this.planes.edits, this.planeTotal);
+  }
+
+  /**
+   * The planes back to front with their corners in screen (composition) coords. A warp moves what is drawn
+   * where, so each corner is put where the warp shows it (found by iterating, which holds for the gentle
+   * displacements of a warp); the edges stay straight, so under a warp the outlines are close, not exact.
+   */
+  planeShapes(): { id: number; corners: [number, number][] }[] {
+    const base = this.design.base;
+    if (base.kind !== 'planes') return [];
+    const p = preparePlanes(base, { width: 1920, height: 1080 });
+    const warp = this.warpActive ? createWarp($state.snapshot(this.warp)) : null;
+    const shown = (cx: number, cy: number): [number, number] => {
+      let tx = cx;
+      let ty = cy;
+      for (let i = 0; warp && i < WARP_INVERSE_STEPS; i++) {
+        const [wx, wy] = warp(tx, ty);
+        tx -= wx - cx;
+        ty -= wy - cy;
+      }
+      return this.toScreen(tx, ty);
+    };
+    return p.ids.map((id, slot) => ({
+      id,
+      corners: [0, 1, 2, 3].map((k) => shown(p.corners[slot * 8 + k * 2], p.corners[slot * 8 + k * 2 + 1])),
+    }));
+  }
+
+  /** The pattern point a screen point shows: the transform, then the warp. Moving by the difference of two keeps a grabbed plane under the pointer. */
+  patternAt(x: number, y: number): [number, number] {
+    const [px, py] = this.toPattern(x, y);
+    return this.warpActive ? warpPoint($state.snapshot(this.warp), px, py) : [px, py];
+  }
+
+  get hasWarp(): boolean {
+    return this.warpActive;
+  }
+
+  planeShift(id: number): [number, number] {
+    const s = this.planes.edits?.shifts[id];
+    return s ? [s[0], s[1]] : [0, 0];
+  }
+
+  /** A screen-space move as the pattern-space offset it makes. */
+  patternDelta(dx: number, dy: number): [number, number] {
+    const [x0, y0] = this.toPattern(0, 0);
+    const [x1, y1] = this.toPattern(dx, dy);
+    return [x1 - x0, y1 - y0];
+  }
+
+  setPlaneShift(id: number, x: number, y: number): void {
+    const shifts = (this.planes.edits?.shifts ?? []).map((s): [number, number] => [s[0], s[1]]);
+    while (shifts.length <= id) shifts.push([0, 0]);
+    shifts[id] = [x, y];
+    this.writePlaneEdits(this.planes.edits?.order ?? [], shifts);
+  }
+
+  /** Move a plane one step in the stack, or to the very front or back. */
+  restack(id: number, to: 'back' | 'forward' | 'front' | 'backmost'): void {
+    const order = this.planeStack;
+    const at = order.indexOf(id);
+    if (at < 0) return;
+    order.splice(at, 1);
+    const target = { back: at - 1, forward: at + 1, front: order.length, backmost: 0 }[to];
+    order.splice(Math.max(0, Math.min(order.length, target)), 0, id);
+    this.writePlaneEdits(order, this.planes.edits?.shifts ?? []);
+  }
+
+  resetPlane(id: number): void {
+    const shifts = (this.planes.edits?.shifts ?? []).map((s): [number, number] => [s[0], s[1]]);
+    if (id < shifts.length) shifts[id] = [0, 0];
+    this.writePlaneEdits(this.planes.edits?.order ?? [], shifts);
+  }
+
+  clearPlaneEdits(): void {
+    delete this.planes.edits;
+    this.selectedPlane = -1;
+  }
+
+  /** Stores the edits, or none at all when they say nothing, so an untouched layout saves as it always did. */
+  private writePlaneEdits(order: number[], shifts: [number, number][]): void {
+    let last = shifts.length;
+    while (last > 0 && shifts[last - 1][0] === 0 && shifts[last - 1][1] === 0) last--;
+    const kept = shifts.slice(0, last);
+    const moved = order.some((id, i) => id !== i);
+    if (!moved && kept.length === 0) delete this.planes.edits;
+    else this.planes.edits = { order: moved ? [...order] : [], shifts: kept };
   }
 
   newAuroraLayout(): void {

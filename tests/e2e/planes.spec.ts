@@ -65,3 +65,76 @@ test('aurora: shares the ramp colors, has ribbons, glow and new layout', async (
   await expect(layout).not.toHaveAttribute('data-seed', seed!);
   await expectPreviewChanged(before);
 });
+
+test('planes: drag a plane on the image, reorder the stack, undo and reset', async ({ page }) => {
+  await openApp(page);
+  const { settled, expectPreviewChanged } = previewProbe(page);
+  await choose(page.getByLabel('Gradient', { exact: true }), 'planes');
+  await page.getByRole('button', { name: 'Arrange layout' }).click();
+  await expect(page.getByRole('button', { name: 'Reset all' })).toBeDisabled();
+
+  // The topmost plane whose center is in the frame: its outline polygon is where the pointer lands.
+  const canvas = (await page.getByTestId('preview-canvas').boundingBox())!;
+  const planes = page.locator('[data-plane]');
+  const centers = await planes.evaluateAll((els) =>
+    els.map((el) => {
+      const poly = el as SVGPolygonElement;
+      const pts = Array.from(poly.points);
+      const m = poly.ownerSVGElement!.getScreenCTM()!;
+      const cx = pts.reduce((a, p) => a + p.x, 0) / pts.length;
+      const cy = pts.reduce((a, p) => a + p.y, 0) / pts.length;
+      return { id: poly.dataset.plane!, x: m.a * cx + m.e, y: m.d * cy + m.f };
+    }),
+  );
+  const inside = (c: { x: number; y: number }) =>
+    c.x > canvas.x + 20 &&
+    c.x < canvas.x + canvas.width - 20 &&
+    c.y > canvas.y + 20 &&
+    c.y < canvas.y + canvas.height - 20;
+  const target = centers.filter(inside).at(-1)!;
+  expect(target).toBeTruthy();
+  const plane = page.locator(`[data-plane="${target.id}"]`);
+  const outline = await plane.getAttribute('points');
+
+  const before = await settled();
+  await page.mouse.move(target.x, target.y);
+  await page.mouse.down();
+  await page.mouse.move(target.x + canvas.height * 0.15, target.y + canvas.height * 0.1, { steps: 6 });
+  await page.mouse.up();
+  await expect(plane).toHaveAttribute('aria-pressed', 'true');
+  expect(await plane.getAttribute('points')).not.toBe(outline);
+  await expectPreviewChanged(before);
+  await expect(page.getByRole('button', { name: 'Reset all' })).toBeEnabled();
+
+  // One drag is one undo step.
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(plane).toHaveAttribute('points', outline!);
+  await expect(page.getByRole('button', { name: 'Reset all' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Redo' }).click();
+  expect(await plane.getAttribute('points')).not.toBe(outline);
+
+  // Stack buttons move the plane one step; the readout and the drawing order follow (the outlines are in drawing order).
+  const readout = page.getByLabel('Picked plane');
+  const order = () => planes.evaluateAll((els) => els.map((el) => (el as SVGElement).dataset.plane!));
+  const place = Number((await readout.textContent())!.split(' / ')[0]);
+  expect(place).toBeGreaterThan(1);
+  const stacked = await order();
+  expect(stacked.indexOf(target.id)).toBe(place - 1);
+  await page.getByRole('button', { name: 'back', exact: true }).click();
+  await expect(readout).toHaveText(`${place - 1} / ${stacked.length}`);
+  const behind = await order();
+  expect(behind.indexOf(target.id)).toBe(place - 2);
+  expect([...behind].sort()).toEqual([...stacked].sort());
+  await page.getByRole('button', { name: 'forward', exact: true }).click();
+  expect(await order()).toEqual(stacked);
+
+  await page.getByRole('button', { name: 'Reset all' }).click();
+  await expect(plane).toHaveAttribute('points', outline!);
+  await expect(page.getByRole('button', { name: 'Reset all' })).toBeDisabled();
+
+  // The default design has a warp: the group says the outlines are close, not exact, and none of it breaks without one.
+  await expect(page.getByText('outlines are close')).toBeVisible();
+  await choose(page.getByLabel('Warp shape'), 'none');
+  await expect(page.getByText('outlines are close')).toHaveCount(0);
+  await expect(page.locator('[data-plane]')).not.toHaveCount(0);
+});

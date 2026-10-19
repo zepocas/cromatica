@@ -660,7 +660,16 @@ function shufflePlanes(
   const palette = opts.colors ? ctx.makePalette(n) : null;
   const colors = palette ? palette.colors : base.colors.slice(0, n).map(copyColor);
   return {
-    pattern: { kind: 'planes', colors, count, roughness: base.roughness, blend: base.blend, seed },
+    pattern: {
+      kind: 'planes',
+      colors,
+      count,
+      roughness: base.roughness,
+      blend: base.blend,
+      seed,
+      // Hand edits belong to the layout they were made on (D88).
+      ...(base.edits && !opts.layout ? { edits: base.edits } : {}),
+    },
     palette: palette && paletteInfo(palette),
   };
 }

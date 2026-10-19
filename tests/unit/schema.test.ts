@@ -128,6 +128,29 @@ describe('design schema', () => {
     expect(kinds.size).toBe(9);
   });
 
+  it('round-trips plane edits and leaves designs without them untouched', () => {
+    const planes = (edits?: object): Design => ({
+      ...defaultDesign,
+      base: {
+        kind: 'planes',
+        colors: [[0.5, 0.1, 30]],
+        count: 0.4,
+        roughness: 0.5,
+        blend: 0,
+        seed: 7,
+        ...(edits ? { edits } : {}),
+      } as Design['base'],
+    });
+    const edited = planes({ order: [2, 0, 1], shifts: [[0.1, -0.2]] });
+    expect(roundTrip(edited)).toMatchObject(edited);
+    expect(roundTrip(roundTrip(edited))).toEqual(roundTrip(edited));
+    expect('edits' in (roundTrip(planes()).base as object)).toBe(false);
+    expect(() => saveDesign(planes({ order: [24], shifts: [] }))).toThrow();
+    const stored = JSON.parse(JSON.stringify(saveDesign(edited)));
+    stored.design.base.edits.order = [24];
+    expect(() => loadDesign(stored)).toThrow(DesignLoadError);
+  });
+
   it('rejects what is not a valid design', () => {
     const bad = [
       null,

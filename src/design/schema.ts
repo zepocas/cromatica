@@ -7,6 +7,7 @@ import {
   identityTransform,
   MAX_GRID,
   MAX_MESH_POINTS,
+  MAX_PLANES,
   MAX_STOPS,
   MIN_GRID,
   MIN_ZOOM,
@@ -63,6 +64,12 @@ const planes = z.object({
   roughness: unit,
   blend: unit,
   seed,
+  edits: z
+    .object({
+      order: z.array(z.number().int().min(0).lt(MAX_PLANES)).max(MAX_PLANES),
+      shifts: z.array(z.tuple([z.number(), z.number()])).max(MAX_PLANES),
+    })
+    .optional(),
 });
 
 const aurora = z.object({
