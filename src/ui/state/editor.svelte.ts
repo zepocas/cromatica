@@ -97,7 +97,7 @@ export class EditorState {
   });
   mesh = $state<PointMesh>(structuredClone(defaultMesh));
   /** Planes layout; its colors are the ramp's stops. */
-  planes = $state<PlanesLayout>({ count: 0.4, roughness: 0.5, blend: 0, seed: 1 });
+  planes = $state<PlanesLayout>({ count: 0.7333, roughness: 0.5, blend: 0, seed: 1 });
   /** Aurora layout; its colors are the ramp's stops. */
   aurora = $state<AuroraLayout>({ count: 0.5, glow: 0.5, blend: AURORA_BLEND, seed: 1 });
   grid = $state<GridMesh>(defaultGrid());

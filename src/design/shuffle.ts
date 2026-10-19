@@ -131,11 +131,11 @@ export const RAMP_SHUFFLE = {
 
 export const PLANES_SHUFFLE = {
   /** Count range of a shuffled layout. Roughness and blend are kept: they are deliberate choices. */
-  count: [0.12, 0.5] as Range,
+  count: [0.36, 0.8667] as Range,
   /** Zoom-in for planes: how often a shuffle draws one, and how far (fewer, larger planes). */
   zoomChance: 0.85,
   zoom: [1.7, 2.6] as Range,
-  countFlat: [0.15, 0.65] as Range,
+  countFlat: [0.4, 1] as Range,
 };
 
 export const GRID_SHUFFLE = {
@@ -593,7 +593,7 @@ function withKind(base: BasePattern, kind: BasePattern['kind']): BasePattern {
     return { kind, sharpness: 0.35, points: colors.map((color) => ({ x: 0, y: 0, radius: 0.4, color })) };
   }
   const n = Math.min(colors.length, MAX_STOPS);
-  if (kind === 'planes') return { kind, colors: colors.slice(0, n), count: 0.4, roughness: 0.5, blend: 0, seed: 0 };
+  if (kind === 'planes') return { kind, colors: colors.slice(0, n), count: 0.7333, roughness: 0.5, blend: 0, seed: 0 };
   if (kind === 'aurora')
     return { kind, colors: colors.slice(0, n), count: 0.5, glow: 0.5, blend: AURORA_BLEND, seed: 0 };
   if (kind === 'grid') {

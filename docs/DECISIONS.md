@@ -693,3 +693,9 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Under a warp:** the planes bend, so each outline corner is put where the warp shows it (six fixed-point steps; the edges stay straight, so the outline is close, not exact), and a drag moves the pattern point under the pointer, so the grabbed plane follows it. The group says so while a warp is on.
 - **Limits:** a plane fully covered by others can't be clicked; the ◂ ▸ buttons step the pick through the stack to reach it. The color rule "no plane takes the color of the one below it" holds for the seeded order only; reordering can put equal colors next to each other.
 - **Tests:** CPU unit tests for the offsets, order, ids and bad input; a translated collage equals the original shifted, torn edges included; the GPU matches the CPU reference with edits on; an e2e test drags, undoes, restacks and resets.
+
+## D89. Planes: 1 to 16 planes
+
+- **Decision (2026-10-19, #64):** the planes slider runs from 1 plane to 16 (was 4 to 24, D37). 24 was far too many to read as planes, and one big plane over the background is a valid look.
+- **Same layouts, new slider positions:** a layout depends only on the plane *number*, so schema version 7 re-maps the saved count (`round(4 + 20c)` became `round(1 + 15c)`) to keep it: the migration sets `c = (3 + 20c) / 15`, so saves of up to 16 planes look exactly as before and those of 17 to 24 keep 16. Shuffle ranges and the defaults (editor, `withKind`) were re-mapped the same way, so shuffles still deal the same plane numbers, now capped at 16.
+- **Shared links:** the link reference stays at version 6 and the prefix at `v1.`. The migration only touches planes, the reference is linear, and an old link carries its own version, so it migrates on load.

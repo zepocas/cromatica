@@ -10,7 +10,7 @@ import { hash1, hashKey } from './noise';
 import type { OutputSize } from './types';
 
 export { MAX_PLANES };
-const PLANE_COUNT: [few: number, many: number] = [4, 24];
+const PLANE_COUNT: [few: number, many: number] = [1, MAX_PLANES];
 /** Half extents of the field the planes are spread over. Fixed (D4): a wider frame shows more of it. */
 const FIELD: [x: number, y: number] = [1.2, 0.6];
 /** Summed plane area over field area: on average each point is under this many planes. */

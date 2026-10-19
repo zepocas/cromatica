@@ -21,10 +21,10 @@ const planes = (over: Partial<PlanesPattern> = {}): PlanesPattern => ({
 });
 
 describe('planes layout', () => {
-  it('maps the count slider to 4..24 planes', () => {
-    expect(planeCount(0)).toBe(4);
+  it('maps the count slider to 1..16 planes', () => {
+    expect(planeCount(0)).toBe(1);
     expect(planeCount(1)).toBe(MAX_PLANES);
-    expect(planeCount(NaN)).toBe(14);
+    expect(planeCount(NaN)).toBe(9);
     expect(preparePlanes(planes({ count: 1 }), frame).count).toBe(MAX_PLANES);
   });
 
@@ -65,6 +65,14 @@ describe('planes layout', () => {
   it('works with a single color', () => {
     const p = preparePlanes(planes({ colors: [colors[0]] }), frame);
     expect(new Set([p.backgroundIndex, ...p.colorIndex])).toEqual(new Set([0]));
+  });
+
+  it('works with a single plane', () => {
+    const p = preparePlanes(planes({ count: 0 }), frame);
+    expect(p.count).toBe(1);
+    const rgb = evaluatePlanes(p, p.bounds[0], p.bounds[1]);
+    rgb.forEach((c, k) => expect(c).toBeCloseTo(p.colors[k], 12));
+    expect(evaluatePlanes(p, 50, 50)).toEqual(p.background);
   });
 
   it('rejects an empty palette', () => {

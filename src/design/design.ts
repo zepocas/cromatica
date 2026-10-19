@@ -61,7 +61,7 @@ export interface PointMesh {
 }
 
 /** Most planes a layout holds (count slider at 1). */
-export const MAX_PLANES = 24;
+export const MAX_PLANES = 16;
 
 /** Hand edits laid over the seeded layout (D88); the seed's own random draws stay as they were. */
 export interface PlaneEdits {

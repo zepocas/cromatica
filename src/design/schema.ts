@@ -19,7 +19,7 @@ import {
   type Design,
 } from './design';
 
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 /** Where lithograph ends on the version-4 print scale; above it a print was a xerox. */
 const LITHO_END = 0.7;
 /** Aurora blend that reproduces auroras saved before blend existed. */
@@ -176,6 +176,15 @@ const migrations: Record<number, (save: Json) => Json> = {
   },
   // D63/D66: the per-stop blend field is gone; every ramp blends perceptually. Old stops keep a stray blend key, which the schema strips.
   5: (save) => ({ ...save, version: 6 }),
+  // D89: the planes slider runs 1 to 16 planes, not 4 to 24. The same number of planes deals the same layout, so the slider value is re-mapped
+  // to keep it (the count was round(4 + 20c), now round(1 + 15c)); layouts of more than 16 planes keep 16.
+  6: (save) => {
+    const design = isObject(save.design) ? save.design : {};
+    const base = isObject(design.base) ? design.base : {};
+    if (base.kind !== 'planes' || typeof base.count !== 'number') return { ...save, version: 7 };
+    const count = Math.min(1, Math.max(0, (3 + 20 * base.count) / 15));
+    return { ...save, version: 7, design: { ...design, base: { ...base, count: Math.round(count * 1e4) / 1e4 } } };
+  },
 };
 
 function versionOf(save: Json): number {
