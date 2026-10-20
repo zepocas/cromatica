@@ -17,7 +17,10 @@ vec3 relief(vec3 rgb, vec2 comp) {
   float tilt = dot(n, u_reliefLight) - u_reliefLight.z;
   float nh = dot(n, u_reliefHalf);
 #if RELIEF_GLASS
-  vec3 under = patternColor(comp + n.xy * GLASS_REFRACT);
+  vec2 shift = n.xy * GLASS_REFRACT;
+  float shiftLength = length(shift);
+  shift *= min(1.0, GLASS_ROOM * refractRoom(comp) / max(shiftLength, 1e-6));
+  vec3 under = patternColor(comp + shift);
   float rim = GLASS_RIM * (1.0 - n.z) * (1.0 - n.z);
   float glint = GLASS_GLINT_WEIGHT * extraHighlight(nh, u_reliefHalf.z, GLASS_GLINT_EXP);
   return under * (1.0 + GLASS_SHADE * tilt) + (rim + glint) * (1.0 - GLASS_TINT + GLASS_TINT * under);

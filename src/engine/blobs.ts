@@ -375,3 +375,17 @@ export function evaluateBlobsHeight(p: PreparedBlobs, x: number, y: number): Rgb
   const gray = height * height * height;
   return [gray, gray, gray];
 }
+
+/** How deep (x, y) is inside the blobs, the visible ones weighted by how much of it they cover: the room the glass has to refract before an outline. */
+export function evaluateBlobsRoom(p: PreparedBlobs, x: number, y: number): number {
+  let room = 0;
+  let remaining = 1;
+  for (let i = p.count - 1; i >= 0 && remaining > 0.001; i--) {
+    if (!reaches(p, i, x, y)) continue;
+    const cover = 1 - smoothstep(-p.soft, p.soft, blobDistance(p, i, x, y));
+    if (cover <= 0) continue;
+    room += remaining * cover * Math.max(blobDepth(p, i, x, y), 0);
+    remaining *= 1 - cover;
+  }
+  return room;
+}

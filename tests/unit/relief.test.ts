@@ -31,4 +31,14 @@ describe('relief', () => {
     expect(at(180)).toBeGreaterThan(ramp(0)[0]);
     expect(at(0)).toBeLessThan(ramp(0)[0]);
   });
+
+  it('refracts no further than the room before an edge', () => {
+    const glass = relief(1, 'glass');
+    const colors = (u: number): Rgb => (u < 0 ? [0.9, 0.9, 0.9] : ramp(u));
+    const roomy = applyRelief(glass, colors, 0.001, 0, colors(0.001), ramp, () => 1e9);
+    const none = applyRelief(glass, colors, 0.001, 0, colors(0.001), ramp, () => 0);
+    const unrefracted = applyRelief(glass, () => colors(0.001), 0.001, 0, colors(0.001), ramp);
+    expect(none).toEqual(unrefracted);
+    expect(roomy).not.toEqual(none);
+  });
 });
