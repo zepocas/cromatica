@@ -60,7 +60,7 @@ App.svelte                      owns the state and wires everything together
 | a slider's look                     | `src/app.css` (sliders) and `controls/SliderRow.svelte`                                                                                   |
 | a color row, hex field or picker    | `sections/ColorRow.svelte`                                                                                                                |
 | shuffle, harmony, mood, key         | `state/palette.svelte.ts`, `src/design/shuffle.ts`, `src/color/`                                                                          |
-| the drag handles on the image       | `overlays/MeshOverlay`, `GridOverlay`, `PlanesOverlay`, `ImagePins`                                                                       |
+| the drag handles on the image       | `overlays/MeshOverlay`, `GridOverlay`, `PlanesOverlay` (planes and blobs), `ImagePins`                                                    |
 | the bottom bar                      | `StatusBar.svelte`                                                                                                                        |
 | the OS mockups and legibility check | `overlays/ContextOverlay`, `src/context/`                                                                                                 |
 | keyboard shortcuts                  | `App.svelte` (`onKeyDown`: undo, full screen, save) and `ControlPanel.svelte` (`onWindowKeyDown`: the rest), listed in `Shortcuts.svelte` |
