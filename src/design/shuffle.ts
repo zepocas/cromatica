@@ -183,6 +183,7 @@ export const STYLE_SHUFFLE = {
     cells: 0.22,
     planes: 0.22,
     aurora: 0.08,
+    blobs: 0.16,
   } as Record<BasePattern['kind'], number>,
   kindsFlat: {
     mesh: 0.22,
@@ -194,6 +195,7 @@ export const STYLE_SHUFFLE = {
     cells: 0.08,
     planes: 0.22,
     aurora: 0.09,
+    blobs: 0.16,
   } as Record<BasePattern['kind'], number>,
   vignette: { chance: 0.55, range: [0.2, 0.6] as Range },
   vignetteFlat: { chance: 0.3, range: [0.2, 0.6] as Range },
@@ -239,7 +241,7 @@ const WARP_WEIGHTS = Object.fromEntries(WARP_SHAPES.map((k) => [k, WARP_SHUFFLE_
 
 /**
  * Per-kind profiles (D76, D77): `warp` scales shape weights, `finish` the finishes' chances
- * (missing = 1). The surprise slot skips profiles.
+ * (missing = 1) and `maxWarpAmount` caps a warp's strength. The surprise slot skips profiles.
  */
 export const KIND_PROFILE: Partial<
   Record<
@@ -247,6 +249,10 @@ export const KIND_PROFILE: Partial<
     {
       warp: Partial<Record<WarpShape, number>>;
       finish?: Partial<Record<FinishChance, number>>;
+      /** Strongest amount a shuffle gives a warp shape on this kind (missing = the shape's own range). */
+      maxWarpAmount?: Partial<Record<WarpShape, number>>;
+      /** Smallest size a shuffle gives a warp shape on this kind: a small size is a fine, high-frequency warp. */
+      minWarpSize?: Partial<Record<WarpShape, number>>;
     }
   >
 > = {
@@ -277,6 +283,33 @@ export const KIND_PROFILE: Partial<
       circular: 1.5,
       oval: 1.5,
       marble: 1.5,
+    },
+  },
+  // Chosen by eye from blob shuffles, not measured (D90): a hard-cut warp tears the lumpy outlines, a strong
+  // liquid one folds them, so the smooth shapes are favoured; the stipple is its own grain, and a black base
+  // with a vignette over it adds little, so grain and vignette are rarer; the lighting suits the domes.
+  blobs: {
+    finish: { print: 0.4, relief: 1.4, vignette: 0.5 },
+    // Fbm shreds the outlines into torn strips at full strength; a faint, coarse one just bends them. The smooth shapes
+    // (waves, swirl, ripples, flow) stay uncapped.
+    maxWarpAmount: { fbm: 0.15 },
+    // A small size is a fine turbulence, which tears the edges into strips at any amount, so keep it coarse.
+    minWarpSize: { fbm: 0.4 },
+    warp: {
+      rows: 0,
+      columns: 0,
+      voronoi: 0,
+      worley: 0.4,
+      ridged: 0.4,
+      bristle: 0.5,
+      // Liquid and simplex fray the outlines into fur even at a faint amount (12-shuffle sheets): never shuffled.
+      domain: 0,
+      simplex: 0,
+      fbm: 0.4,
+      waves: 1.3,
+      circular: 1.3,
+      oval: 1.3,
+      curl: 1.3,
     },
   },
   // Rows and columns forced on every kind (60 tiles, D79): they break the shape of aurora, planes, cells and noise
@@ -421,8 +454,11 @@ function shuffleWarp(
   const drawnShape = pickWeighted(rng, kind ? kindWarpWeights(kind) : WARP_WEIGHTS);
   const shape = parts.shape ? drawnShape : current.shape;
   const t = WARP_SHUFFLE_TABLE[shape];
-  const amount = round4(rng.range(t.amount[0], t.amount[1]));
-  const size = round4(rng.range(t.size[0], t.size[1]));
+  const cap = kind ? KIND_PROFILE[kind]?.maxWarpAmount?.[shape] : undefined;
+  // Drawn in full whatever the cap, so the other draws of the shuffle are the same.
+  const amount = Math.min(round4(rng.range(t.amount[0], t.amount[1])), cap ?? Infinity);
+  const minSize = kind ? KIND_PROFILE[kind]?.minWarpSize?.[shape] : undefined;
+  const size = Math.max(round4(rng.range(t.size[0], t.size[1])), minSize ?? 0);
   const seed = rng.uint32();
   return {
     shape,

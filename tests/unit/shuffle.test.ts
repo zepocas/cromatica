@@ -474,7 +474,9 @@ describe('style shuffle (pattern kind and finishes)', () => {
       if (d.finish!.bands > 0) banded++;
       if (d.base.kind === 'planes' || d.base.kind === 'aurora') expect(d.finish!.bands).toBe(0);
     }
-    expect(kinds).toEqual(new Set(['mesh', 'grid', 'linear', 'radial', 'conic', 'noise', 'cells', 'planes', 'aurora']));
+    expect(kinds).toEqual(
+      new Set(['mesh', 'grid', 'linear', 'radial', 'conic', 'noise', 'cells', 'planes', 'aurora', 'blobs']),
+    );
     expect(printed).toBeGreaterThan(20);
     expect(printed).toBeLessThan(100);
     expect(banded).toBeGreaterThan(5);
