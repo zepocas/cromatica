@@ -40,8 +40,10 @@ const FADE = 1;
 const LIGHT_SHIFT = 0.3;
 const LIGHT_DIR: [number, number] = [-0.6, 0.8];
 /** Depth over which the height rises from the edge to the top of the dome, as a share of the radius. */
-const DOME = 0.45;
+const DOME = 0.8;
 const DENSITY_POWER = 1.1;
+/** Rounds the peak at a blob's centre: the depth falls off with sqrt(length² + e²), e this share of the radius, so the lighting doesn't catch a crease there. 0 = a sharp cone. */
+const PEAK = 0.15;
 /**
  * Palette base: the body is the ink's own color, shaded with dots of a deeper shade of it (its hue, its lightness times
  * SHADE_LIGHTNESS, nearly all its chroma), thickest at the edge and on the dark side. They only start where the
@@ -49,7 +51,7 @@ const DENSITY_POWER = 1.1;
  */
 const SHADE_LIGHTNESS = 0.35;
 const SHADE_CHROMA = 0.9;
-const SHADE_CLEAR = 0.7;
+const SHADE_CLEAR = 0.9;
 /** With no stipple the ink is a smooth tone: its ramp reaches full ink at this share of the density ramp, so it is nearly solid and the ridge down a blob's middle doesn't show. */
 const SMOOTH_SOLID = 0.55;
 /** Edge antialiasing half width, output pixels. */
@@ -73,6 +75,7 @@ export const BLOBS_SHADER_CONSTANTS = {
   BLOB_LIGHT_DIR: `vec2(${LIGHT_DIR.join(', ')})`,
   BLOB_DOME: glslFloat(DOME),
   BLOB_DENSITY_POWER: glslFloat(DENSITY_POWER),
+  BLOB_PEAK: glslFloat(PEAK),
   BLOB_SMOOTH_SOLID: glslFloat(SMOOTH_SOLID),
   BLOB_SHADE_CLEAR: glslFloat(SHADE_CLEAR),
   DOT_RADIUS_BASE: glslFloat(DOT_RADIUS[0]),
@@ -211,8 +214,8 @@ function applyEdits(p: PreparedBlobs, edits: BlobEdits | undefined): void {
   p.ids = order;
 }
 
-/** Distance-like value to blob i's outline (negative inside) in its own stretched, turned frame. */
-export function blobDistance(p: PreparedBlobs, i: number, x: number, y: number): number {
+/** [distance from blob i's centre, how far its outline is in that direction], in its own stretched, turned frame. */
+function blobPolar(p: PreparedBlobs, i: number, x: number, y: number): [number, number] {
   const [cx, cy, radius, turn] = p.shape0.subarray(i * 4, i * 4 + 4);
   const [stretch, a2, a3, a4] = p.shape1.subarray(i * 4, i * 4 + 4);
   const [p2, p3, p4] = p.shape2.subarray(i * 4, i * 4 + 3);
@@ -225,7 +228,24 @@ export function blobDistance(p: PreparedBlobs, i: number, x: number, y: number):
   const qy = (-sn * dx + cs * dy) * s;
   const phi = Math.atan2(qy, qx);
   const r = radius * (1 + a2 * Math.cos(2 * phi + p2) + a3 * Math.cos(3 * phi + p3) + a4 * Math.cos(4 * phi + p4));
-  return Math.hypot(qx, qy) - r;
+  return [Math.hypot(qx, qy), r];
+}
+
+/** Distance-like value to blob i's outline (negative inside). */
+export function blobDistance(p: PreparedBlobs, i: number, x: number, y: number): number {
+  const [length, r] = blobPolar(p, i, x, y);
+  return length - r;
+}
+
+/**
+ * How deep (x, y) is inside blob i: the radius times the share of the way from the outline to the centre, so the
+ * contours of constant depth are scaled copies of the outline and the ink follows the blob's own form (a little rounded at the centre, see PEAK).
+ */
+function blobDepth(p: PreparedBlobs, i: number, x: number, y: number): number {
+  const [length, r] = blobPolar(p, i, x, y);
+  const radius = p.shape0[i * 4 + 2];
+  const e = PEAK * radius;
+  return radius * (1 - (Math.hypot(length, e) - e) / (Math.hypot(r, e) - e));
 }
 
 /** Blue noise in (0, 1) for a dot cell shifted by (ox, oy), the same ranks the dither reads. */
@@ -302,11 +322,11 @@ function reaches(p: PreparedBlobs, i: number, x: number, y: number): boolean {
   return Math.hypot(x - p.shape0[i * 4], y - p.shape0[i * 4 + 1]) <= blobReach(p, i);
 }
 
-/** Share of full ink at (x, y) inside blob i, where the outline distance is d. */
-function inkDensity(p: PreparedBlobs, i: number, x: number, y: number, d: number): number {
+/** Share of full ink at (x, y) inside blob i. */
+function inkDensity(p: PreparedBlobs, i: number, x: number, y: number): number {
   const radius = p.shape0[i * 4 + 2];
   const lit = ((x - p.shape0[i * 4]) * LIGHT_DIR[0] + (y - p.shape0[i * 4 + 1]) * LIGHT_DIR[1]) / radius;
-  const depth = Math.max(-d, 0) / radius + LIGHT_SHIFT * lit;
+  const depth = Math.max(blobDepth(p, i, x, y), 0) / radius + LIGHT_SHIFT * lit;
   return clamp01((depth - RIM) / (FADE - RIM)) ** DENSITY_POWER;
 }
 
@@ -320,7 +340,7 @@ export function evaluateBlobs(p: PreparedBlobs, x: number, y: number, cx = x, cy
     const d = blobDistance(p, i, x, y);
     const cover = 1 - smoothstep(-p.soft, p.soft, d);
     if (cover <= 0) continue;
-    const density = inkDensity(p, i, x, y, d);
+    const density = inkDensity(p, i, x, y);
     const ink = p.shape2[i * 4 + 3];
     const [dr, dg, db, mode] = p.inkDots.subarray(ink * 4, ink * 4 + 4);
     // The share of the dots' color over the body: the ink's own density on the black base, its mirror for the deeper
@@ -348,7 +368,7 @@ export function evaluateBlobsHeight(p: PreparedBlobs, x: number, y: number): Rgb
     const d = blobDistance(p, i, x, y);
     const cover = 1 - smoothstep(-p.soft, p.soft, d);
     if (cover <= 0) continue;
-    const inside = clamp01(-d / (DOME * p.shape0[i * 4 + 2]));
+    const inside = clamp01(blobDepth(p, i, x, y) / (DOME * p.shape0[i * 4 + 2]));
     height += remaining * cover * (1 - (1 - inside) ** 2);
     remaining *= 1 - cover;
   }

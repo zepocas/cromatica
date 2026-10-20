@@ -13,8 +13,8 @@ uniform vec4 u_blobShape2[MAX_BLOBS];       // the phases of those lumps, then t
 uniform float u_blobDot;                    // stipple dot cell; 0 = no stipple, a smooth tone
 uniform float u_blobSoft;                   // edge half width: antialiasing
 
-// Distance-like value to blob i's outline (negative inside) in its own stretched, turned frame.
-float blobDist(int i, vec2 p) {
+// How far p is from blob i's centre and how far the outline is in that direction, in the blob's own stretched, turned frame.
+vec2 blobPolar(int i, vec2 p) {
   vec4 a = u_blobShape0[i];
   vec4 b = u_blobShape1[i];
   vec4 c = u_blobShape2[i];
@@ -25,7 +25,22 @@ float blobDist(int i, vec2 p) {
   vec2 q = vec2((cs * d.x + sn * d.y) / s, (-sn * d.x + cs * d.y) * s);
   float phi = atan(q.y, q.x);
   float r = a.z * (1.0 + b.y * cos(2.0 * phi + c.x) + b.z * cos(3.0 * phi + c.y) + b.w * cos(4.0 * phi + c.z));
-  return length(q) - r;
+  return vec2(length(q), r);
+}
+
+// Distance-like value to blob i's outline (negative inside).
+float blobDist(int i, vec2 p) {
+  vec2 lr = blobPolar(i, p);
+  return lr.x - lr.y;
+}
+
+// How deep p is inside blob i: the radius times the share of the way from the outline to the centre, so the
+// contours of constant depth are scaled copies of the outline and the ink follows the blob's own form (a little rounded at the centre, see PEAK).
+float blobDepth(int i, vec2 p) {
+  vec2 lr = blobPolar(i, p);
+  float radius = u_blobShape0[i].z;
+  float e = BLOB_PEAK * radius;
+  return radius * (1.0 - (length(vec2(lr.x, e)) - e) / (length(vec2(lr.y, e)) - e));
 }
 
 float blobNoise(ivec2 cell, ivec2 tap) {
@@ -60,12 +75,12 @@ bool blobReaches(int i, vec2 p) {
   return length(p - a.xy) <= (a.z * (1.0 + b.y + b.z + b.w) + u_blobSoft) * sqrt(b.x);
 }
 
-// Share of full ink at p inside blob i, where the outline distance is d: none in the black rim, full deep in,
+// Share of full ink at p inside blob i, none in the black rim, full deep in,
 // and deeper on the light side.
-float blobDensity(int i, vec2 p, float d) {
+float blobDensity(int i, vec2 p) {
   vec4 a = u_blobShape0[i];
   float lit = dot(p - a.xy, BLOB_LIGHT_DIR) / a.z;
-  float depth = max(-d, 0.0) / a.z + BLOB_LIGHT_SHIFT * lit;
+  float depth = max(blobDepth(i, p), 0.0) / a.z + BLOB_LIGHT_SHIFT * lit;
   return pow(clamp((depth - BLOB_RIM) / (BLOB_FADE - BLOB_RIM), 0.0, 1.0), BLOB_DENSITY_POWER);
 }
 
@@ -93,7 +108,7 @@ vec3 blobsColor(vec2 p, vec2 comp) {
     float d = blobDist(i, p);
     float cover = 1.0 - smoothstep(-u_blobSoft, u_blobSoft, d);
     if (cover <= 0.0) continue;
-    float density = blobDensity(i, p, d);
+    float density = blobDensity(i, p);
     vec3 color = blobColor(int(u_blobShape2[i].w), density, comp);
     rgb += remaining * cover * color;
     remaining *= 1.0 - cover;
@@ -112,7 +127,7 @@ vec3 blobsHeight(vec2 p) {
     float d = blobDist(i, p);
     float cover = 1.0 - smoothstep(-u_blobSoft, u_blobSoft, d);
     if (cover <= 0.0) continue;
-    float inside = clamp(-d / (BLOB_DOME * u_blobShape0[i].z), 0.0, 1.0);
+    float inside = clamp(blobDepth(i, p) / (BLOB_DOME * u_blobShape0[i].z), 0.0, 1.0);
     height += remaining * cover * (1.0 - (1.0 - inside) * (1.0 - inside));
     remaining *= 1.0 - cover;
   }
