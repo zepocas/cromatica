@@ -142,7 +142,7 @@ describe('planes edits', () => {
     expect(p.corners).toEqual(base.corners);
   });
 
-  it("scales one plane about its center and nothing else,", () => {
+  it('scales one plane about its center and nothing else,', () => {
     const p = edited({ order: [], shifts: [], scales: [1, 1, 1, 1.5, 1] });
     for (let i = 0; i < n; i++) {
       const factor = i === 3 ? 1.5 : 1;
