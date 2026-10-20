@@ -15,8 +15,8 @@ float oklabLightness(vec3 rgb) {
 // apart in composition units so the look doesn't depend on the output size.
 vec2 heightSlope(vec2 comp) {
   vec2 e = vec2(NEIGHBOUR_STEP, 0.0);
-  float dx = oklabLightness(patternColor(comp + e.xy)) - oklabLightness(patternColor(comp - e.xy));
-  float dy = oklabLightness(patternColor(comp + e.yx)) - oklabLightness(patternColor(comp - e.yx));
+  float dx = oklabLightness(heightColor(comp + e.xy)) - oklabLightness(heightColor(comp - e.xy));
+  float dy = oklabLightness(heightColor(comp + e.yx)) - oklabLightness(heightColor(comp - e.yx));
   return vec2(dx, dy) / (2.0 * NEIGHBOUR_STEP);
 }
 #endif

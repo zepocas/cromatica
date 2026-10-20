@@ -313,7 +313,7 @@
       <MeshOverlay {editor} {aspect} />
     {:else if editor.kind === 'grid'}
       <GridOverlay {editor} {aspect} />
-    {:else if editor.kind === 'planes'}
+    {:else if editor.kind === 'planes' || editor.kind === 'blobs'}
       <PlanesOverlay {editor} {aspect} />
     {/if}
   {/snippet}

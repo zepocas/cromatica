@@ -71,6 +71,22 @@ function mutateBase(base: BasePattern, rng: Rng, s: number, zoom: number): BaseP
       const keep = edits && count === base.count && nextSeed === base.seed;
       return { ...rest, ...(keep ? { edits } : {}), count, roughness, seed: nextSeed };
     }
+    case 'blobs': {
+      // A different blob count re-deals the whole layout, so it is as rare as a new seed (as for planes).
+      const count = rng.next() < NUDGE.reseed * s * s ? slider(base.count) : base.count;
+      const nextSeed = seed(base.seed);
+      const { edits, ...rest } = base;
+      const keep = edits && count === base.count && nextSeed === base.seed;
+      return {
+        ...rest,
+        ...(keep ? { edits } : {}),
+        count,
+        size: slider(base.size),
+        wobble: slider(base.wobble),
+        grain: slider(base.grain),
+        seed: nextSeed,
+      };
+    }
     case 'aurora':
       return {
         ...base,

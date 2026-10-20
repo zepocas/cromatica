@@ -65,4 +65,5 @@ export const PATTERN_ICONS: Record<string, string> = {
         `<path d="M${3 + i * 7} 13C${1 + i * 7} 9 ${6 + i * 7} 6 ${4 + i * 7} 1" fill="none" stroke="currentColor" stroke-opacity="${o}" stroke-width="2.6" stroke-linecap="round"/>`,
     )
     .join(''),
+  blobs: `<g fill="currentColor"><rect x="2" y="2" width="12" height="5.5" rx="2.75" fill-opacity=".9" transform="rotate(-12 8 5)"/><rect x="9" y="6.5" width="12" height="5.5" rx="2.75" fill-opacity=".55" transform="rotate(10 15 9)"/><circle cx="19" cy="3.5" r="2" fill-opacity=".3"/></g>`,
 };

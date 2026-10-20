@@ -7,6 +7,8 @@ import {
   identityTransform,
   MAX_GRID,
   MAX_MESH_POINTS,
+  BLOB_SCALE,
+  MAX_BLOBS,
   MAX_PLANES,
   MAX_STOPS,
   MIN_GRID,
@@ -81,6 +83,24 @@ const aurora = z.object({
   seed,
 });
 
+const blobs = z.object({
+  kind: z.literal('blobs'),
+  colors: paletteColors,
+  count: unit,
+  size: unit,
+  wobble: unit,
+  grain: unit,
+  base: z.enum(['black', 'palette']).optional(),
+  seed,
+  edits: z
+    .object({
+      order: z.array(z.number().int().min(0).lt(MAX_BLOBS)).max(MAX_BLOBS),
+      shifts: z.array(z.tuple([z.number(), z.number()])).max(MAX_BLOBS),
+      scales: z.array(z.number().min(BLOB_SCALE[0]).max(BLOB_SCALE[1])).max(MAX_BLOBS).optional(),
+    })
+    .optional(),
+});
+
 const gridSide = z.number().int().min(MIN_GRID).max(MAX_GRID);
 const grid = z
   .object({
@@ -95,7 +115,7 @@ const grid = z
 
 const designSchema = z.object({
   engineVersion: z.literal(1),
-  base: z.union([rampGradient, pointMesh, planes, aurora, grid]),
+  base: z.union([rampGradient, pointMesh, planes, aurora, blobs, grid]),
   warp: z.object({ shape: z.enum(WARP_SHAPES), amount: unit, size: unit, seed }),
   transform: z.object({
     rotate: z.number().min(0).lt(360),
