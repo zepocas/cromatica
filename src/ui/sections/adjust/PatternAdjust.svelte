@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { BLOB_SCALE, MAX_GRID, MIN_GRID } from '../../../design/design';
+  import { MAX_GRID, MIN_GRID, PLANE_SCALE } from '../../../design/design';
   import { ribbonCount } from '../../../engine/aurora';
   import { blobCount } from '../../../engine/blobs';
   import { planeCount } from '../../../engine/planes';
@@ -58,20 +58,18 @@
         onclick={() => editor.restack(editor.selectedPlane, 'forward')}>forward</button
       >
     </div>
-    {#if noun === 'blob'}
-      <SliderRow
-        label="size"
-        ariaLabel="Blob size"
-        title="This blob's own size, relative to the size slider"
-        min={BLOB_SCALE[0]}
-        max={BLOB_SCALE[1]}
-        step={0.01}
-        value={picked ? editor.blobScale(editor.selectedPlane) : 1}
-        disabled={!picked}
-        oninput={(v) => editor.setBlobScale(editor.selectedPlane, v)}
-        display={(v) => `×${v.toFixed(2)}`}
-      />
-    {/if}
+    <SliderRow
+      label="size"
+      ariaLabel="{Noun} size"
+      title={noun === 'blob' ? "This blob's own size, relative to the size slider" : "This plane's own size"}
+      min={PLANE_SCALE[0]}
+      max={PLANE_SCALE[1]}
+      step={0.01}
+      value={picked ? editor.planeScale(editor.selectedPlane) : 1}
+      disabled={!picked}
+      oninput={(v) => editor.setPlaneScale(editor.selectedPlane, v)}
+      display={(v) => `×${v.toFixed(2)}`}
+    />
     <div class="row">
       <span>reset</span>
       <button

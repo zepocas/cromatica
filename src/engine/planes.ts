@@ -3,7 +3,7 @@
 import { gamutMapToLinearSrgb } from '../color/gamut';
 import { srgbDecode } from '../color/oklab';
 import type { Rgb } from '../color/types';
-import { MAX_PLANES, MAX_STOPS, type PlaneEdits, type PlanesPattern } from '../design/design';
+import { MAX_PLANES, MAX_STOPS, PLANE_SCALE, type PlaneEdits, type PlanesPattern } from '../design/design';
 import { createRng } from '../design/random';
 import { clamp01 } from '../math';
 import { hash1, hashKey } from './noise';
@@ -132,11 +132,18 @@ export function planeOrder(edits: PlaneEdits | undefined, n: number): number[] {
   return order;
 }
 
-/** Reorders and moves the planes as `edits` say. Without edits the arrays are returned as they are. */
+/** Reorders, moves and resizes the planes as `edits` say. Without edits the arrays are returned as they are. */
 function applyEdits(p: PreparedPlanes, edits: PlaneEdits | undefined): void {
   const n = p.count;
   const order = planeOrder(edits, n);
-  const moved = order.some((id, i) => id !== i) || (edits?.shifts ?? []).some((s) => s && (s[0] !== 0 || s[1] !== 0));
+  const scale = (id: number) => {
+    const s = edits?.scales?.[id];
+    return Number.isFinite(s) ? Math.min(PLANE_SCALE[1], Math.max(PLANE_SCALE[0], s as number)) : 1;
+  };
+  const moved =
+    order.some((id, i) => id !== i) ||
+    (edits?.shifts ?? []).some((s) => s && (s[0] !== 0 || s[1] !== 0)) ||
+    order.some((id) => scale(id) !== 1);
   p.ids = order;
   p.shifts = new Float64Array(n * 2);
   if (!moved) return;
@@ -148,12 +155,18 @@ function applyEdits(p: PreparedPlanes, edits: PlaneEdits | undefined): void {
   order.forEach((id, slot) => {
     const dx = Number.isFinite(edits?.shifts[id]?.[0]) ? edits!.shifts[id][0] : 0;
     const dy = Number.isFinite(edits?.shifts[id]?.[1]) ? edits!.shifts[id][1] : 0;
+    const s = scale(id);
+    const [cx, cy, radius] = p.bounds.subarray(id * 3, id * 3 + 3);
     for (let e = 0; e < 4; e++) {
       const [nx, ny, c] = p.edges.subarray(id * 12 + e * 3, id * 12 + e * 3 + 3);
-      edges.set([nx, ny, c + nx * dx + ny * dy], slot * 12 + e * 3);
-      corners.set([p.corners[id * 8 + e * 2] + dx, p.corners[id * 8 + e * 2 + 1] + dy], slot * 8 + e * 2);
+      // Grown about the center, then moved: the edge keeps its direction and its distance from the center scales.
+      const fromCenter = nx * cx + ny * cy;
+      edges.set([nx, ny, fromCenter + s * (c - fromCenter) + nx * dx + ny * dy], slot * 12 + e * 3);
+      const ax = p.corners[id * 8 + e * 2];
+      const ay = p.corners[id * 8 + e * 2 + 1];
+      corners.set([cx + s * (ax - cx) + dx, cy + s * (ay - cy) + dy], slot * 8 + e * 2);
     }
-    bounds.set([p.bounds[id * 3] + dx, p.bounds[id * 3 + 1] + dy, p.bounds[id * 3 + 2]], slot * 3);
+    bounds.set([cx + dx, cy + dy, radius * s], slot * 3);
     colors.set(p.colors.subarray(id * 3, id * 3 + 3), slot * 3);
     colorIndex.push(p.colorIndex[id]);
     p.shifts.set([dx, dy], slot * 2);

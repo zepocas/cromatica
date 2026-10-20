@@ -69,14 +69,15 @@ export interface PlaneEdits {
   order: number[];
   /** Offset per plane index in pattern space (x right, y up); missing = [0, 0]. */
   shifts: [number, number][];
-}
-
-/** Hand edits on blobs: the same stack order and shifts as planes, plus a size multiplier per blob index (missing = 1). */
-export interface BlobEdits extends PlaneEdits {
+  /** Size multiplier per plane or blob index, about its center (missing = 1). */
   scales?: number[];
 }
+/** Blobs take the same edits as planes (D88). */
+export type BlobEdits = PlaneEdits;
 /** The range a blob's own size can be set to, relative to the size slider. */
 export const BLOB_SCALE: [min: number, max: number] = [0.25, 2.5];
+/** The range a plane's own size can be set to (a multiple of the size the layout dealt it). */
+export const PLANE_SCALE = BLOB_SCALE;
 
 /**
  * Planes (D37): a collage of seeded, overlapping flat-color quads with torn
