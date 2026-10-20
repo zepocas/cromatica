@@ -9,9 +9,9 @@ test('K keeps or releases the favourite; 1 2 3 toggle the keep locks', async ({ 
   await expect(page.getByRole('button', { name: 'Add to favourites' })).toBeVisible();
 
   for (const [key, name] of [
-    ['1', 'Lock colors'],
-    ['2', 'Lock pattern'],
-    ['3', 'Lock adjust'],
+    ['1', 'Lock pattern'],
+    ['2', 'Lock adjust'],
+    ['3', 'Lock colors'],
   ]) {
     const toggle = page.getByRole('button', { name });
     await expect(toggle).toHaveAttribute('aria-pressed', 'false');

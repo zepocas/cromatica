@@ -16,7 +16,7 @@
         ['← →', 'step back and forward through recent shuffles'],
         ['m', 'more like this: variations of the current design'],
         ['[ ]', 'previous and next warp shape'],
-        ['1 2 3', 'keep colors, pattern, adjust (toggle)'],
+        ['1 2 3', 'keep pattern, adjust, colors (toggle)'],
       ],
     ],
     [
