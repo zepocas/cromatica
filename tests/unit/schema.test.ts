@@ -9,6 +9,7 @@ import {
 } from '../../src/design/design';
 import { DesignLoadError, LEGACY_AURORA_BLEND, loadDesign, saveDesign, SCHEMA_VERSION } from '../../src/design/schema';
 import { shuffleDesign } from '../../src/design/shuffle';
+import { planeCount } from '../../src/engine/planes';
 import v1Linear from './fixtures/design-v1-linear.json';
 import v1Mesh from './fixtures/design-v1-mesh.json';
 
@@ -125,7 +126,57 @@ describe('design schema', () => {
       expect(loaded).toMatchObject(design);
       expect(roundTrip(loaded)).toEqual(loaded);
     }
-    expect(kinds.size).toBe(9);
+    expect(kinds.size).toBe(10);
+  });
+
+  it('round-trips plane edits and leaves designs without them untouched', () => {
+    const planes = (edits?: object): Design => ({
+      ...defaultDesign,
+      base: {
+        kind: 'planes',
+        colors: [[0.5, 0.1, 30]],
+        count: 0.4,
+        roughness: 0.5,
+        blend: 0,
+        seed: 7,
+        ...(edits ? { edits } : {}),
+      } as Design['base'],
+    });
+    const edited = planes({ order: [2, 0, 1], shifts: [[0.1, -0.2]] });
+    expect(roundTrip(edited)).toMatchObject(edited);
+    expect(roundTrip(roundTrip(edited))).toEqual(roundTrip(edited));
+    expect('edits' in (roundTrip(planes()).base as object)).toBe(false);
+    expect(() => saveDesign(planes({ order: [24], shifts: [] }))).toThrow();
+    const stored = JSON.parse(JSON.stringify(saveDesign(edited)));
+    stored.design.base.edits.order = [24];
+    expect(() => loadDesign(stored)).toThrow(DesignLoadError);
+  });
+
+  it('migrates the planes count to the 1 to 16 range without changing the layout (D89)', () => {
+    const save = (kind: string, count: number) => ({
+      version: 6,
+      design: {
+        ...saveDesign(defaultDesign).design,
+        base: { kind, colors: [[0.5, 0.1, 30]], count, roughness: 0.5, blend: 0, seed: 7 },
+      },
+    });
+    for (const count of [0, 0.1, 0.4, 0.5, 0.7, 0.75]) {
+      const old = Math.min(16, Math.round(4 + 20 * count));
+      const got = loadDesign(save('planes', count)).base;
+      expect(got.kind === 'planes' && planeCount(got.count)).toBe(old);
+    }
+    // More planes than the new top keep the top.
+    const many = loadDesign(save('planes', 1)).base;
+    expect(many.kind === 'planes' && planeCount(many.count)).toBe(16);
+    // Other kinds keep their count.
+    const aurora = loadDesign({
+      ...save('aurora', 0.4),
+      design: {
+        ...save('aurora', 0.4).design,
+        base: { kind: 'aurora', colors: [[0.5, 0.1, 30]], count: 0.4, glow: 0.4, blend: 0.5, seed: 7 },
+      },
+    }).base;
+    expect(aurora.kind === 'aurora' && aurora.count).toBe(0.4);
   });
 
   it('rejects what is not a valid design', () => {

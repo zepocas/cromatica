@@ -11,7 +11,7 @@
     ['← →', 'step back through recent shuffles'],
     ['?', 'every keyboard shortcut'],
     ['↑↓ hover', "preview a list's options on the canvas, click to choose"],
-    ['+ more', 'plenty of advanced settings in each section'],
+    ['+ advanced', 'plenty more settings at the end of each section'],
     ['png', 'exports keep the design: drop one back here to keep editing (any other image gives its colors)'],
   ];
 </script>
@@ -30,9 +30,9 @@
 <style>
   .tips {
     position: fixed;
-    right: 24px;
-    bottom: 24px;
-    z-index: 10;
+    right: var(--gap-page);
+    bottom: var(--gap-page);
+    z-index: var(--z-card);
     width: 460px;
     max-width: calc(100vw - 48px);
     box-sizing: border-box;

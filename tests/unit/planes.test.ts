@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Oklch } from '../../src/color/types';
-import type { PlanesPattern } from '../../src/design/design';
+import type { PlaneEdits, PlanesPattern } from '../../src/design/design';
 import { evaluatePlanes, MAX_PLANES, planeCount, preparePlanes, tearNoise } from '../../src/engine/planes';
 
 const colors: Oklch[] = [
@@ -21,10 +21,10 @@ const planes = (over: Partial<PlanesPattern> = {}): PlanesPattern => ({
 });
 
 describe('planes layout', () => {
-  it('maps the count slider to 4..24 planes', () => {
-    expect(planeCount(0)).toBe(4);
+  it('maps the count slider to 1..16 planes', () => {
+    expect(planeCount(0)).toBe(1);
     expect(planeCount(1)).toBe(MAX_PLANES);
-    expect(planeCount(NaN)).toBe(14);
+    expect(planeCount(NaN)).toBe(9);
     expect(preparePlanes(planes({ count: 1 }), frame).count).toBe(MAX_PLANES);
   });
 
@@ -67,8 +67,130 @@ describe('planes layout', () => {
     expect(new Set([p.backgroundIndex, ...p.colorIndex])).toEqual(new Set([0]));
   });
 
+  it('works with a single plane', () => {
+    const p = preparePlanes(planes({ count: 0 }), frame);
+    expect(p.count).toBe(1);
+    const rgb = evaluatePlanes(p, p.bounds[0], p.bounds[1]);
+    rgb.forEach((c, k) => expect(c).toBeCloseTo(p.colors[k], 12));
+    expect(evaluatePlanes(p, 50, 50)).toEqual(p.background);
+  });
+
   it('rejects an empty palette', () => {
     expect(() => preparePlanes(planes({ colors: [] }), frame)).toThrow(RangeError);
+  });
+});
+
+describe('planes edits', () => {
+  const base = preparePlanes(planes({ count: 0.5 }), frame);
+  const n = base.count;
+  const edited = (edits: PlaneEdits) => preparePlanes(planes({ count: 0.5, edits }), frame);
+
+  it('leaves the layout alone for no edits, an identity order and zero shifts', () => {
+    const identity = edited({
+      order: Array.from({ length: n }, (_, i) => i),
+      shifts: Array.from({ length: n }, () => [0, 0]),
+    });
+    expect(identity.edges).toEqual(base.edges);
+    expect(identity.corners).toEqual(base.corners);
+    expect(identity.ids).toEqual(base.ids);
+    expect(base.ids).toEqual(Array.from({ length: n }, (_, i) => i));
+    expect(base.shifts.every((s) => s === 0)).toBe(true);
+  });
+
+  it('moves one plane and nothing else', () => {
+    const shifts: [number, number][] = Array.from({ length: n }, () => [0, 0]);
+    shifts[3] = [0.2, -0.1];
+    const p = edited({ order: [], shifts });
+    for (let i = 0; i < n; i++) {
+      const same = i !== 3;
+      expect(p.corners.subarray(i * 8, i * 8 + 8).every((c, k) => c === base.corners[i * 8 + k])).toBe(same);
+    }
+    expect(p.corners[3 * 8]).toBeCloseTo(base.corners[3 * 8] + 0.2, 12);
+    expect(p.corners[3 * 8 + 1]).toBeCloseTo(base.corners[3 * 8 + 1] - 0.1, 12);
+    expect(p.bounds[3 * 3]).toBeCloseTo(base.bounds[3 * 3] + 0.2, 12);
+    expect(p.colors).toEqual(base.colors);
+    // The edge planes still put the center inside by the same margin.
+    for (let e = 0; e < 4; e++) {
+      const [nx, ny, c] = p.edges.subarray(3 * 12 + e * 3, 3 * 12 + e * 3 + 3);
+      const inside = nx * p.bounds[3 * 3] + ny * p.bounds[3 * 3 + 1] - c;
+      const [bx, by, bc] = base.edges.subarray(3 * 12 + e * 3, 3 * 12 + e * 3 + 3);
+      expect(inside).toBeCloseTo(bx * base.bounds[3 * 3] + by * base.bounds[3 * 3 + 1] - bc, 12);
+    }
+  });
+
+  it('reorders the stack and the colors, ids and torn edges go with the planes', () => {
+    const order = Array.from({ length: n }, (_, i) => n - 1 - i);
+    const p = edited({ order, shifts: [] });
+    expect(p.ids).toEqual(order);
+    expect(p.colorIndex).toEqual(order.map((id) => base.colorIndex[id]));
+    for (let slot = 0; slot < n; slot++) {
+      const id = order[slot];
+      expect(Array.from(p.corners.subarray(slot * 8, slot * 8 + 8))).toEqual(
+        Array.from(base.corners.subarray(id * 8, id * 8 + 8)),
+      );
+    }
+  });
+
+  it('survives an order with duplicates, out-of-range and non-integer entries', () => {
+    const p = edited({ order: [5, 5, 99, -1, 2.5, 0], shifts: [] });
+    expect(p.ids.slice(0, 2)).toEqual([5, 0]);
+    expect([...p.ids].sort((a, b) => a - b)).toEqual(Array.from({ length: n }, (_, i) => i));
+  });
+
+  it('treats a bad shift as no shift', () => {
+    const p = edited({ order: [], shifts: [[NaN, Infinity]] });
+    expect(p.corners).toEqual(base.corners);
+  });
+
+  it("scales one plane about its center and nothing else,", () => {
+    const p = edited({ order: [], shifts: [], scales: [1, 1, 1, 1.5, 1] });
+    for (let i = 0; i < n; i++) {
+      const factor = i === 3 ? 1.5 : 1;
+      expect(p.bounds[i * 3]).toBe(base.bounds[i * 3]);
+      expect(p.bounds[i * 3 + 2]).toBeCloseTo(base.bounds[i * 3 + 2] * factor, 12);
+      const [cx, cy] = p.bounds.subarray(i * 3, i * 3 + 2);
+      for (let e = 0; e < 4; e++) {
+        const [ax, ay] = p.corners.subarray(i * 8 + e * 2, i * 8 + e * 2 + 2);
+        const [bx, by] = base.corners.subarray(i * 8 + e * 2, i * 8 + e * 2 + 2);
+        expect(ax).toBeCloseTo(cx + factor * (bx - cx), 12);
+        expect(ay).toBeCloseTo(cy + factor * (by - cy), 12);
+        // Each corner still lies on both edges it joins.
+        const [nx, ny, c] = p.edges.subarray(i * 12 + e * 3, i * 12 + e * 3 + 3);
+        expect(nx * ax + ny * ay - c).toBeCloseTo(0, 9);
+      }
+    }
+    expect(p.colors).toEqual(base.colors);
+  });
+
+  it('keeps a plane its size when moved or restacked, clamps it, and treats a bad one as 1', () => {
+    const order = Array.from({ length: n }, (_, i) => n - 1 - i);
+    const p = edited({ order, shifts: [[0.1, 0]], scales: [2] });
+    const slot = order.indexOf(0);
+    expect(p.bounds[slot * 3 + 2]).toBeCloseTo(base.bounds[2] * 2, 12);
+    expect(p.bounds[slot * 3]).toBeCloseTo(base.bounds[0] + 0.1, 12);
+    expect(edited({ order: [], shifts: [], scales: [100] }).bounds[2]).toBeCloseTo(base.bounds[2] * 2.5, 12);
+    expect(edited({ order: [], shifts: [], scales: [0.001] }).bounds[2]).toBeCloseTo(base.bounds[2] * 0.25, 12);
+    expect(edited({ order: [], shifts: [], scales: [NaN] }).corners).toEqual(base.corners);
+  });
+
+  it('moving every plane by one vector moves the whole picture, torn edges included', () => {
+    const rough = preparePlanes(planes({ count: 0.5, roughness: 1 }), frame);
+    const s: [number, number] = [0.31, -0.17];
+    const moved = preparePlanes(
+      planes({ count: 0.5, roughness: 1, edits: { order: [], shifts: Array.from({ length: n }, () => s) } }),
+      frame,
+    );
+    let checked = 0;
+    for (let i = 0; i < 400; i++) {
+      // Walk along the first plane's edges, where the tear noise acts.
+      const x = -1 + (i % 20) * 0.1;
+      const y = -0.5 + Math.floor(i / 20) * 0.05;
+      const a = evaluatePlanes(rough, x, y);
+      const b = evaluatePlanes(moved, x + s[0], y + s[1]);
+      for (let c = 0; c < 3; c++) expect(b[c]).toBeCloseTo(a[c], 9);
+      if (a.some((v, c) => v !== rough.background[c])) checked++;
+    }
+    expect(checked).toBeGreaterThan(50);
   });
 });
 

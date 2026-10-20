@@ -6,7 +6,10 @@ import ts from 'typescript-eslint';
 import svelteConfig from './svelte.config.js';
 
 export default ts.config(
-  { ignores: ['dist', 'test-results', 'playwright-report', 'src/engine/blue-noise.generated.ts'] },
+  {
+    // The prototypes are throwaway pages built on the engine, outside the TypeScript project.
+    ignores: ['dist', 'test-results', 'playwright-report', 'src/engine/blue-noise.generated.ts', 'prototype'],
+  },
   js.configs.recommended,
   ...ts.configs.recommended,
   ...svelte.configs.recommended,

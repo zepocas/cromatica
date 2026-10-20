@@ -65,3 +65,125 @@ test('aurora: shares the ramp colors, has ribbons, glow and new layout', async (
   await expect(layout).not.toHaveAttribute('data-seed', seed!);
   await expectPreviewChanged(before);
 });
+
+test('planes: drag a plane on the image, reorder the stack, undo and reset', async ({ page }) => {
+  await openApp(page);
+  const { settled, expectPreviewChanged } = previewProbe(page);
+  await choose(page.getByLabel('Gradient', { exact: true }), 'planes');
+  await page.getByRole('button', { name: 'Arrange layout' }).click();
+  await expect(page.getByRole('button', { name: 'Reset all' })).toBeDisabled();
+
+  // The topmost plane whose center is in the frame: its outline polygon is where the pointer lands.
+  const canvas = (await page.getByTestId('preview-canvas').boundingBox())!;
+  const planes = page.locator('[data-plane]');
+  const centers = await planes.evaluateAll((els) =>
+    els.map((el) => {
+      const poly = el as SVGPolygonElement;
+      const pts = Array.from(poly.points);
+      const m = poly.ownerSVGElement!.getScreenCTM()!;
+      const cx = pts.reduce((a, p) => a + p.x, 0) / pts.length;
+      const cy = pts.reduce((a, p) => a + p.y, 0) / pts.length;
+      return { id: poly.dataset.plane!, x: m.a * cx + m.e, y: m.d * cy + m.f };
+    }),
+  );
+  const inside = (c: { x: number; y: number }) =>
+    c.x > canvas.x + 20 &&
+    c.x < canvas.x + canvas.width - 20 &&
+    c.y > canvas.y + 20 &&
+    c.y < canvas.y + canvas.height - 20;
+  const target = centers.filter(inside).at(-1)!;
+  expect(target).toBeTruthy();
+  const plane = page.locator(`[data-plane="${target.id}"]`);
+  const outline = await plane.getAttribute('points');
+
+  const before = await settled();
+  await page.mouse.move(target.x, target.y);
+  await page.mouse.down();
+  await page.mouse.move(target.x + canvas.height * 0.15, target.y + canvas.height * 0.1, { steps: 6 });
+  await page.mouse.up();
+  await expect(plane).toHaveAttribute('aria-pressed', 'true');
+  expect(await plane.getAttribute('points')).not.toBe(outline);
+  await expectPreviewChanged(before);
+  await expect(page.getByRole('button', { name: 'Reset all' })).toBeEnabled();
+
+  // One drag is one undo step.
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(plane).toHaveAttribute('points', outline!);
+  await expect(page.getByRole('button', { name: 'Reset all' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Redo' }).click();
+  expect(await plane.getAttribute('points')).not.toBe(outline);
+
+  // Stack buttons move the plane one step; the readout and the drawing order follow (the outlines are in drawing order).
+  const readout = page.getByLabel('Picked plane');
+  const order = () => planes.evaluateAll((els) => els.map((el) => (el as SVGElement).dataset.plane!));
+  const place = Number((await readout.textContent())!.split(' / ')[0]);
+  expect(place).toBeGreaterThan(1);
+  const stacked = await order();
+  expect(stacked.indexOf(target.id)).toBe(place - 1);
+  await page.getByRole('button', { name: 'back', exact: true }).click();
+  await expect(readout).toHaveText(`${place - 1} / ${stacked.length}`);
+  const behind = await order();
+  expect(behind.indexOf(target.id)).toBe(place - 2);
+  expect([...behind].sort()).toEqual([...stacked].sort());
+  await page.getByRole('button', { name: 'forward', exact: true }).click();
+  expect(await order()).toEqual(stacked);
+
+  await page.getByRole('button', { name: 'Reset all' }).click();
+  await expect(plane).toHaveAttribute('points', outline!);
+  await expect(page.getByRole('button', { name: 'Reset all' })).toBeDisabled();
+
+  // The default design has a warp: the group says the outlines are close, not exact, and none of it breaks without one.
+  await expect(page.getByText('outlines are close')).toBeVisible();
+  await choose(page.getByLabel('Warp shape'), 'none');
+  await expect(page.getByText('outlines are close')).toHaveCount(0);
+  await expect(page.locator('[data-plane]')).not.toHaveCount(0);
+});
+
+test('planes and blobs: stay pickable when the mesh points toggle is off', async ({ page }) => {
+  await openApp(page);
+  const gradient = page.getByLabel('Gradient', { exact: true });
+  await choose(page.getByLabel('Mesh points'), 'off');
+  await choose(gradient, 'planes');
+  await expect(page.locator('[data-plane]').first()).toBeAttached();
+  await expect(page.getByTestId('planes-overlay')).not.toHaveCSS('pointer-events', 'none');
+  await choose(gradient, 'blobs');
+  await expect(page.getByTestId('planes-overlay')).not.toHaveCSS('pointer-events', 'none');
+});
+
+test('planes: size one plane from the arrange group', async ({ page }) => {
+  await openApp(page);
+  await choose(page.getByLabel('Gradient', { exact: true }), 'planes');
+  await page.getByRole('button', { name: 'Arrange layout' }).click();
+  const size = page.getByLabel('Plane size', { exact: true });
+  // Nothing is picked yet: the slider waits for a plane.
+  await expect(size).toBeDisabled();
+  const canvas = (await page.getByTestId('preview-canvas').boundingBox())!;
+  const readout = page.getByLabel('Picked plane');
+  for (const [fx, fy] of [
+    [0.5, 0.5],
+    [0.3, 0.4],
+    [0.7, 0.4],
+    [0.5, 0.75],
+    [0.2, 0.7],
+    [0.8, 0.7],
+  ]) {
+    await page.mouse.click(canvas.x + canvas.width * fx, canvas.y + canvas.height * fy);
+    if ((await readout.textContent()) !== 'none') break;
+  }
+  await expect(size).toBeEnabled();
+  await expect(size).toHaveValue('1');
+  const outline = page.locator('[data-plane][aria-pressed="true"]');
+  const drawn = await outline.getAttribute('points');
+  await expect(page.getByRole('button', { name: 'Reset all' })).toBeDisabled();
+
+  await size.fill('1.6');
+  expect(await outline.getAttribute('points')).not.toBe(drawn);
+  await expect(page.getByRole('button', { name: 'Reset all' })).toBeEnabled();
+  // One slider drag is one undo step.
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(size).toHaveValue('1');
+  await page.getByRole('button', { name: 'Redo' }).click();
+  await expect(size).toHaveValue('1.6');
+  await page.getByRole('button', { name: 'Reset plane' }).click();
+  await expect(size).toHaveValue('1');
+});

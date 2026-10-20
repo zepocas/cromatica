@@ -1,4 +1,6 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
+
   interface Props {
     /** Row label, lowercase; also the slider's accessible name, capitalized, unless ariaLabel is set. */
     label: string;
@@ -13,6 +15,10 @@
     display?: (value: number) => string;
     /** Handle input yourself (e.g. a log scale); otherwise `value` is bound. */
     oninput?: (value: number) => void;
+    /** Extra controls between the slider and its readout (a dice button, quarter turns). */
+    trailing?: Snippet;
+    /** Extra controls after the readout. */
+    after?: Snippet;
   }
 
   let {
@@ -26,6 +32,8 @@
     title,
     display,
     oninput,
+    trailing,
+    after,
   }: Props = $props();
 
   function onInput(e: Event & { currentTarget: HTMLInputElement }) {
@@ -38,5 +46,7 @@
 <label class="row">
   <span>{label}</span>
   <input type="range" {min} {max} {step} aria-label={ariaLabel} {disabled} {title} {value} oninput={onInput} />
+  {@render trailing?.()}
   {#if display}<output>{display(value)}</output>{/if}
+  {@render after?.()}
 </label>

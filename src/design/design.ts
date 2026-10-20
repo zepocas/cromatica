@@ -1,7 +1,5 @@
 // The design: everything that defines an image, independent of resolution
-// (D4). A base pattern (linear gradient or color-point mesh), a warp, film
-// noise and a whole-image transform. Versioned by engineVersion; the full
-// saved-design schema comes with M6.
+// (D4). Versioned by engineVersion.
 import type { Oklch } from '../color/types';
 
 export interface ColorStop {
@@ -62,6 +60,25 @@ export interface PointMesh {
   sharpness: number;
 }
 
+/** Most planes a layout holds (count slider at 1). */
+export const MAX_PLANES = 16;
+
+/** Hand edits laid over the seeded layout (D88); the seed's own random draws stay as they were. */
+export interface PlaneEdits {
+  /** Plane indexes back to front. Indexes past the count are skipped, missing ones follow in index order. */
+  order: number[];
+  /** Offset per plane index in pattern space (x right, y up); missing = [0, 0]. */
+  shifts: [number, number][];
+  /** Size multiplier per plane or blob index, about its center (missing = 1). */
+  scales?: number[];
+}
+/** Blobs take the same edits as planes (D88). */
+export type BlobEdits = PlaneEdits;
+/** The range a blob's own size can be set to, relative to the size slider. */
+export const BLOB_SCALE: [min: number, max: number] = [0.25, 2.5];
+/** The range a plane's own size can be set to (a multiple of the size the layout dealt it). */
+export const PLANE_SCALE = BLOB_SCALE;
+
 /**
  * Planes (D37): a collage of seeded, overlapping flat-color quads with torn
  * edges over a background fill (src/engine/planes.ts). The layout comes from
@@ -79,6 +96,8 @@ export interface PlanesPattern {
   blend: number;
   /** uint32 seed of the layout and the color order. */
   seed: number;
+  /** Absent = the layout exactly as the seed makes it. Cleared when the seed or the count changes. */
+  edits?: PlaneEdits;
 }
 
 /**
@@ -96,6 +115,38 @@ export interface AuroraPattern {
   /** Edges and rays, [0, 1]: crisp ↔ soft. */
   blend: number;
   seed: number;
+}
+
+/** Most blobs a layout holds (count slider at 1). */
+export const MAX_BLOBS = 16;
+
+/** What a blob is made of: ink dots over a black body, or a body in its palette color with black or white dots on it. */
+export type BlobBase = 'black' | 'palette';
+
+/**
+ * Blobs: grainy lava-lamp bubbles (src/engine/blobs.ts). Seeded, lumpy and independent of each
+ * other, stacked back to front like planes over a light background; each has a flat ink stippled
+ * over a black base, thin toward its edge and full in its middle. The lightest palette color is
+ * the background, the others are the inks.
+ */
+export interface BlobsPattern {
+  kind: 'blobs';
+  /** 1..MAX_STOPS palette colors. */
+  colors: Oklch[];
+  /** How many blobs, [0, 1]. */
+  count: number;
+  /** Blob size, [0, 1]. */
+  size: number;
+  /** How lumpy the outlines are, [0, 1]: smooth ovals ↔ irregular bubbles. */
+  wobble: number;
+  /** Stipple dot size, [0, 1]: fine ↔ coarse. */
+  grain: number;
+  /** Absent = black. */
+  base?: BlobBase;
+  /** uint32 seed of the layout and the ink order. */
+  seed: number;
+  /** Absent = the layout exactly as the seed makes it. Moved and restacked like planes (D88); cleared when the seed or the count changes. */
+  edits?: BlobEdits;
 }
 
 /** A node of the grid mesh: where it sits (composition coords) and its color. */
@@ -124,17 +175,14 @@ export interface GridMesh {
   lines?: number;
 }
 
-/** Aurora blend for new designs: sharper than the look before blend existed (0.6). */
+/** Aurora blend for new designs; saves without a blend use LEGACY_AURORA_BLEND. */
 export const AURORA_BLEND = 0.35;
 export const MIN_GRID = 2;
 export const MAX_GRID = 5;
 
-export type BasePattern = RampGradient | PointMesh | PlanesPattern | AuroraPattern | GridMesh;
+export type BasePattern = RampGradient | PointMesh | PlanesPattern | AuroraPattern | GridMesh | BlobsPattern;
 
-/**
- * Coordinate distortion applied before the base pattern (D23). Experimental
- * catalogue — shapes that don't earn their place will be pruned (D22).
- */
+/** Coordinate distortion applied before the base pattern (D23). */
 export type WarpShape =
   | 'none'
   | 'domain' // recursive domain-warped fBm (IQ-style)
@@ -181,10 +229,9 @@ export interface Warp {
 }
 
 /**
- * Finishing effects (M4.5, D33), after the base pattern. Vignette is defined
- * on the frame (composition coords, before transform and warp), so it stays
- * put while the image turns. Bands steps ramp gradients along their ramp and
- * meshes along each point's influence.
+ * Finishing effects (D33), after the base pattern. Vignette is defined on the
+ * frame (composition coords, before transform and warp), so it stays put while
+ * the image turns.
  */
 /**
  * How bands cut a mesh. weights: each point's influence in steps (terraces
@@ -250,7 +297,7 @@ export interface Design {
   engineVersion: 1;
   base: BasePattern;
   warp: Warp;
-  /** Missing (designs saved before transforms existed) = identity. */
+  /** Missing = identity. */
   transform?: Transform;
   /** Missing = no finish. */
   finish?: Finish;

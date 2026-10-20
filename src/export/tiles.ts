@@ -15,7 +15,6 @@ export function assertOutputSize(output: OutputSize): void {
 /**
  * Split `output` into bands (top→bottom) of tiles (left→right). Every tile
  * is at most tileSize × tileSize; the last column/band holds the remainder.
- * Tiles in a band share y and height, and the tiles cover the output exactly.
  */
 export function planTiles(output: OutputSize, tileSize: number): Tile[][] {
   assertOutputSize(output);

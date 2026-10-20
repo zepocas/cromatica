@@ -6,6 +6,7 @@ import { clamp } from '../math';
 import {
   AURORA_BLEND,
   type AuroraPattern,
+  type BlobsPattern,
   type BasePattern,
   type GridMesh,
   MAX_GRID,
@@ -66,10 +67,7 @@ interface ShuffleContext {
 
 type Range = [min: number, max: number];
 
-/**
- * Per-shape warp ranges for shuffle. First guesses, to be tuned against the
- * warp contact sheet. weight is relative; 'none' is kept at ~5%.
- */
+/** Per-shape warp ranges for shuffle. weight is relative; 'none' is kept at ~5%. */
 export const WARP_SHUFFLE_TABLE: Record<WarpShape, { weight: number; amount: Range; size: Range }> = {
   none: { weight: 0.65, amount: [0, 0], size: [0.5, 0.5] },
   domain: { weight: 1.2, amount: [0.08, 0.85], size: [0, 0.4] },
@@ -93,7 +91,6 @@ export type MeshComposition = 'scatter' | 'clusters' | 'line' | 'arc' | 'side';
 export const MESH_SHUFFLE = {
   /** Sharpness range (0 = haze, 1 = blobby); haze is rare (D76). */
   sharpness: [0.45, 0.9] as Range,
-  /** The range before the tuning, for the surprise slot. */
   sharpnessFlat: [0.1, 0.8] as Range,
   /** Radius as a fraction of the mean point spacing sqrt(frameArea / n): tighter blobs read less soft (D76). */
   radius: [0.3, 0.85] as Range,
@@ -103,22 +100,19 @@ export const MESH_SHUFFLE = {
   dominantScale: 1.7,
   dominantFlat: 0.4,
   dominantScaleFlat: 1.6,
-  /** Points are sampled in the frame scaled by this factor, so a few sit just outside (more so with the tuning, D76). */
+  /** Points are sampled in the frame scaled by this factor, so a few sit just outside. */
   overscan: 1.3,
   overscanFlat: 1.15,
   /** Probability of changing the point count by ±1 (only when colors are shuffled too). */
   countChange: 0.35,
-  /** Best-candidate samples per point (Mitchell), drawn per shuffle: fewer = looser, less even layouts (D76: looser). */
+  /** Best-candidate samples per point (Mitchell), drawn per shuffle: fewer = looser, less even layouts. */
   candidates: [3, 6] as Range,
   candidatesFlat: [3, 10] as Range,
   /** How close to (or past) the frame edge a point may sit before it is penalised, in spacings. */
   edgeSlack: 0.55,
   /** No two points closer than this many spacings, even in a loose layout. */
   minGap: 0.3,
-  /**
-   * Compositions a layout shuffle draws from (D76): even best-candidate scatter was the only one, so every mesh was
-   * the same evenly sprinkled field. The rest gather points into clusters, along a line or arc, or into one side.
-   */
+  /** Compositions a layout shuffle draws from (D76); scatter alone gave every mesh the same evenly sprinkled field. */
   compositionsFlat: { scatter: 1, clusters: 0, line: 0, arc: 0, side: 0 } as Record<MeshComposition, number>,
   compositions: { scatter: 0.2, clusters: 0.25, line: 0.15, arc: 0.15, side: 0.25 } as Record<MeshComposition, number>,
 };
@@ -129,12 +123,8 @@ export const RAMP_SHUFFLE = {
   /** Ranges of the first and last stop positions. */
   first: [0, 0.12] as Range,
   last: [0.88, 1] as Range,
-  /**
-   * Noise and cells: scale range. A higher scale is MORE and smaller features (0.6 * 10^scale per image height), so
-   * the larger-features tuning of D76 and D78 went the wrong way; fixed in D80, per kind.
-   */
+  /** Noise and cells: scale range per kind. A higher scale is MORE and smaller features (0.6 * 10^scale per image height). */
   scale: { cells: [0.12, 0.42] as Range, noise: [0.05, 0.28] as Range },
-  /** The range before the tuning, for the surprise slot (D76). */
   scaleFlat: [0.1, 0.6] as Range,
   /** Noise: share of contour against ridged (D83); the surprise slot keeps an even split. */
   contourShare: 0.65,
@@ -142,12 +132,11 @@ export const RAMP_SHUFFLE = {
 
 export const PLANES_SHUFFLE = {
   /** Count range of a shuffled layout. Roughness and blend are kept: they are deliberate choices. */
-  count: [0.12, 0.5] as Range,
+  count: [0.36, 0.8667] as Range,
   /** Zoom-in for planes: how often a shuffle draws one, and how far (fewer, larger planes). */
   zoomChance: 0.85,
   zoom: [1.7, 2.6] as Range,
-  /** The range before the tuning, for the surprise slot (D76). */
-  countFlat: [0.15, 0.65] as Range,
+  countFlat: [0.4, 1] as Range,
 };
 
 export const GRID_SHUFFLE = {
@@ -167,6 +156,21 @@ export const AURORA_SHUFFLE = {
   blend: [0.1, 0.6] as Range,
 };
 
+/** A shuffled blobs palette has at least this many colors: the background and three inks. */
+const BLOBS_MIN_COLORS = 4;
+
+export const BLOBS_SHUFFLE = {
+  count: [0.3, 0.75] as Range,
+  size: [0.3, 0.7] as Range,
+  wobble: [0.3, 0.9] as Range,
+  /** The dot size follows the slider squared (D90): below about 0.4 the dots are near a pixel. */
+  grain: [0.45, 0.85] as Range,
+  /** How often a shuffle turns the stipple off (grain 0, smooth ink). */
+  smooth: 0.15,
+  /** How often a shuffle gives the blobs a body in their palette color, not black. */
+  palette: 0.4,
+};
+
 /** Style shuffle: how often each pattern kind comes up, and the finishes' odds and ranges. */
 export const STYLE_SHUFFLE = {
   kinds: {
@@ -179,8 +183,8 @@ export const STYLE_SHUFFLE = {
     cells: 0.22,
     planes: 0.22,
     aurora: 0.08,
+    blobs: 0.16,
   } as Record<BasePattern['kind'], number>,
-  /** The odds before the tuning, for the surprise slot (D76). */
   kindsFlat: {
     mesh: 0.22,
     grid: 0.14,
@@ -191,6 +195,7 @@ export const STYLE_SHUFFLE = {
     cells: 0.08,
     planes: 0.22,
     aurora: 0.09,
+    blobs: 0.16,
   } as Record<BasePattern['kind'], number>,
   vignette: { chance: 0.55, range: [0.2, 0.6] as Range },
   vignetteFlat: { chance: 0.3, range: [0.2, 0.6] as Range },
@@ -199,7 +204,7 @@ export const STYLE_SHUFFLE = {
   /** Not for planes, which are flat already. */
   bands: { chance: 0.4, range: [0.2, 0.7] as Range },
   bandsFlat: { chance: 0.15, range: [0.2, 0.7] as Range },
-  /** Subtle (2026-10-07; ranges set in M12, D63). Light from the upper left. */
+  /** Subtle. Light from the upper left. */
   relief: { chance: 0.25, range: [0.1, 0.5] as Range, light: [100, 170] as Range },
   reliefFlat: { chance: 0.3, range: [0.1, 0.5] as Range },
   halftone: { chance: 0.12, range: [0.1, 0.35] as Range },
@@ -218,7 +223,7 @@ const STYLE_STREAM = 0xc2b2ae35;
 const ROTATE_STREAM = 0x27d4eb2f;
 const SURPRISE_STREAM = 0x165667b1;
 
-/** How many shuffles ignore the tuned tables and draw from the old, even ones (D76). */
+/** Share of shuffles that ignore the tuned tables and use the flat ones (D76). */
 export const SURPRISE_CHANCE = 1 / 6;
 
 /** Whether a seed lands in the surprise slot. */
@@ -235,14 +240,20 @@ const WARP_WEIGHTS = Object.fromEntries(WARP_SHAPES.map((k) => [k, WARP_SHUFFLE_
 >;
 
 /**
- * Per-kind profiles (D76, D77): how a kind changes what shuffle draws. Planes look worse with hard
- * cuts and corners: `warp` scales shapes' weights and `finish` the finishes' chances (missing = 1). The surprise slot
- * skips profiles.
+ * Per-kind profiles (D76, D77): `warp` scales shape weights, `finish` the finishes' chances
+ * (missing = 1) and `maxWarpAmount` caps a warp's strength. The surprise slot skips profiles.
  */
 export const KIND_PROFILE: Partial<
   Record<
     BasePattern['kind'],
-    { warp: Partial<Record<WarpShape, number>>; finish?: Partial<Record<FinishChance, number>> }
+    {
+      warp: Partial<Record<WarpShape, number>>;
+      finish?: Partial<Record<FinishChance, number>>;
+      /** Strongest amount a shuffle gives a warp shape on this kind (missing = the shape's own range). */
+      maxWarpAmount?: Partial<Record<WarpShape, number>>;
+      /** Smallest size a shuffle gives a warp shape on this kind: a small size is a fine, high-frequency warp. */
+      minWarpSize?: Partial<Record<WarpShape, number>>;
+    }
   >
 > = {
   // 60 stratified mesh tiles (D77): grain and vignette +0.74 each, adding up (neither 2.73, both 4.20); voronoi 2.43.
@@ -272,6 +283,33 @@ export const KIND_PROFILE: Partial<
       circular: 1.5,
       oval: 1.5,
       marble: 1.5,
+    },
+  },
+  // Chosen by eye from blob shuffles, not measured (D90): a hard-cut warp tears the lumpy outlines, a strong
+  // liquid one folds them, so the smooth shapes are favoured; the stipple is its own grain, and a black base
+  // with a vignette over it adds little, so grain and vignette are rarer; the lighting suits the domes.
+  blobs: {
+    finish: { print: 0.4, relief: 1.4, vignette: 0.5 },
+    // Fbm shreds the outlines into torn strips at full strength; a faint, coarse one just bends them. The smooth shapes
+    // (waves, swirl, ripples, flow) stay uncapped.
+    maxWarpAmount: { fbm: 0.15 },
+    // A small size is a fine turbulence, which tears the edges into strips at any amount, so keep it coarse.
+    minWarpSize: { fbm: 0.4 },
+    warp: {
+      rows: 0,
+      columns: 0,
+      voronoi: 0,
+      worley: 0.4,
+      ridged: 0.4,
+      bristle: 0.5,
+      // Liquid and simplex fray the outlines into fur even at a faint amount (12-shuffle sheets): never shuffled.
+      domain: 0,
+      simplex: 0,
+      fbm: 0.4,
+      waves: 1.3,
+      circular: 1.3,
+      oval: 1.3,
+      curl: 1.3,
     },
   },
   // Rows and columns forced on every kind (60 tiles, D79): they break the shape of aurora, planes, cells and noise
@@ -353,7 +391,7 @@ export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 
     if (pickFinish)
       finish = shuffleFinish(
         styleRng,
-        b.kind === 'planes' || b.kind === 'aurora',
+        b.kind === 'planes' || b.kind === 'aurora' || b.kind === 'blobs',
         surprise,
         surprise ? undefined : b.kind,
       );
@@ -365,9 +403,11 @@ export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 
         ? shufflePlanes(b, ctx)
         : b.kind === 'aurora'
           ? shuffleAurora(b, ctx)
-          : b.kind === 'grid'
-            ? shuffleGrid(b, ctx)
-            : shuffleRamp(b, ctx);
+          : b.kind === 'blobs'
+            ? shuffleBlobs(b, ctx)
+            : b.kind === 'grid'
+              ? shuffleGrid(b, ctx)
+              : shuffleRamp(b, ctx);
   let base = shuffled.pattern;
   if (base.kind === 'mesh' && opts.layout && transform) base = toPatternSpace(base, transform);
   const levels = opts.levels ?? opts.layout;
@@ -414,8 +454,11 @@ function shuffleWarp(
   const drawnShape = pickWeighted(rng, kind ? kindWarpWeights(kind) : WARP_WEIGHTS);
   const shape = parts.shape ? drawnShape : current.shape;
   const t = WARP_SHUFFLE_TABLE[shape];
-  const amount = round4(rng.range(t.amount[0], t.amount[1]));
-  const size = round4(rng.range(t.size[0], t.size[1]));
+  const cap = kind ? KIND_PROFILE[kind]?.maxWarpAmount?.[shape] : undefined;
+  // Drawn in full whatever the cap, so the other draws of the shuffle are the same.
+  const amount = Math.min(round4(rng.range(t.amount[0], t.amount[1])), cap ?? Infinity);
+  const minSize = kind ? KIND_PROFILE[kind]?.minWarpSize?.[shape] : undefined;
+  const size = Math.max(round4(rng.range(t.size[0], t.size[1])), minSize ?? 0);
   const seed = rng.uint32();
   return {
     shape,
@@ -426,7 +469,6 @@ function shuffleWarp(
   };
 }
 
-/** Best-candidate (Mitchell) sampling over the overscanned frame: even, not grid-like. */
 /** Points for the non-scatter compositions: clusters, a line, an arc, or a mass on one side (D76). */
 function composePoints(
   rng: Rng,
@@ -496,6 +538,7 @@ function composePoints(
   return pts;
 }
 
+/** Best-candidate (Mitchell) sampling over the overscanned frame: even, not grid-like. */
 function layoutPoints(rng: Rng, n: number, aspect: number, candidates: number, overscan: number): [number, number][] {
   const fw = aspect / 2;
   const hw = fw * overscan;
@@ -591,7 +634,7 @@ function shuffleMesh(base: PointMesh, ctx: ShuffleContext): { pattern: PointMesh
 
 function baseColors(base: BasePattern): Oklch[] {
   if (base.kind === 'mesh') return base.points.map((p) => copyColor(p.color));
-  if (base.kind === 'planes' || base.kind === 'aurora') return base.colors.map(copyColor);
+  if (base.kind === 'planes' || base.kind === 'aurora' || base.kind === 'blobs') return base.colors.map(copyColor);
   if (base.kind === 'grid') return base.nodes.map((n) => copyColor(n.color));
   return base.stops.map((s) => copyColor(s.color));
 }
@@ -607,15 +650,31 @@ function withKind(base: BasePattern, kind: BasePattern['kind']): BasePattern {
     return { kind, sharpness: 0.35, points: colors.map((color) => ({ x: 0, y: 0, radius: 0.4, color })) };
   }
   const n = Math.min(colors.length, MAX_STOPS);
-  if (kind === 'planes') return { kind, colors: colors.slice(0, n), count: 0.4, roughness: 0.5, blend: 0, seed: 0 };
+  if (kind === 'planes') return { kind, colors: colors.slice(0, n), count: 0.7333, roughness: 0.5, blend: 0, seed: 0 };
   if (kind === 'aurora')
     return { kind, colors: colors.slice(0, n), count: 0.5, glow: 0.5, blend: AURORA_BLEND, seed: 0 };
+  if (kind === 'blobs')
+    return {
+      kind,
+      colors: colors.slice(0, n),
+      count: 0.5,
+      size: 0.5,
+      wobble: 0.65,
+      grain: 0.25,
+      base: 'black',
+      seed: 0,
+    };
   if (kind === 'grid') {
-    // Placeholder geometry: the layout shuffle that follows lays the grid out.
     const nodes = Array.from({ length: 9 }, (_, i) => ({ x: 0, y: 0, color: copyColor(colors[i % colors.length]) }));
     return { kind, rows: 3, cols: 3, nodes, rest: [0.89, 0.5] };
   }
-  if (base.kind !== 'mesh' && base.kind !== 'planes' && base.kind !== 'aurora' && base.kind !== 'grid') {
+  if (
+    base.kind !== 'mesh' &&
+    base.kind !== 'planes' &&
+    base.kind !== 'aurora' &&
+    base.kind !== 'blobs' &&
+    base.kind !== 'grid'
+  ) {
     return { ...base, kind };
   }
   const ramp = n === 1 ? [colors[0], colors[0]] : colors.slice(0, n);
@@ -675,7 +734,16 @@ function shufflePlanes(
   const palette = opts.colors ? ctx.makePalette(n) : null;
   const colors = palette ? palette.colors : base.colors.slice(0, n).map(copyColor);
   return {
-    pattern: { kind: 'planes', colors, count, roughness: base.roughness, blend: base.blend, seed },
+    pattern: {
+      kind: 'planes',
+      colors,
+      count,
+      roughness: base.roughness,
+      blend: base.blend,
+      seed,
+      // Hand edits belong to the layout they were made on (D88).
+      ...(base.edits && !opts.layout ? { edits: base.edits } : {}),
+    },
     palette: palette && paletteInfo(palette),
   };
 }
@@ -768,6 +836,38 @@ function shuffleAurora(
   const palette = opts.colors ? ctx.makePalette(n) : null;
   const colors = palette ? palette.colors : base.colors.slice(0, n).map(copyColor);
   return { pattern: { kind: 'aurora', colors, count, glow, blend, seed }, palette: palette && paletteInfo(palette) };
+}
+
+/** Blobs: a new layout is a new seed, blob count, size, wobble and grain. */
+function shuffleBlobs(base: BlobsPattern, ctx: ShuffleContext): { pattern: BlobsPattern; palette: PaletteInfo | null } {
+  const { opts, layoutRng } = ctx;
+  const count = opts.layout ? round4(layoutRng.range(...BLOBS_SHUFFLE.count)) : base.count;
+  const size = opts.layout ? round4(layoutRng.range(...BLOBS_SHUFFLE.size)) : base.size;
+  const wobble = opts.layout ? round4(layoutRng.range(...BLOBS_SHUFFLE.wobble)) : base.wobble;
+  const grainRoll = opts.layout ? round4(layoutRng.range(...BLOBS_SHUFFLE.grain)) : base.grain;
+  const grain = opts.layout && layoutRng.next() < BLOBS_SHUFFLE.smooth ? 0 : grainRoll;
+  const seed = opts.layout ? layoutRng.uint32() : base.seed;
+  // Drawn after the seed, so the other layout values match the shuffles from before the base existed.
+  const body = opts.layout ? (layoutRng.next() < BLOBS_SHUFFLE.palette ? 'palette' : 'black') : (base.base ?? 'black');
+  // A background and at least three inks: fewer reads as one blob color.
+  const n = Math.min(Math.max(base.colors.length, BLOBS_MIN_COLORS), MAX_STOPS);
+  const palette = opts.colors ? ctx.makePalette(n) : null;
+  const colors = palette ? palette.colors : base.colors.slice(0, MAX_STOPS).map(copyColor);
+  return {
+    pattern: {
+      kind: 'blobs',
+      colors,
+      count,
+      size,
+      wobble,
+      grain,
+      base: body,
+      seed,
+      // Hand edits belong to the layout they were made on (D88).
+      ...(base.edits && !opts.layout ? { edits: base.edits } : {}),
+    },
+    palette: palette && paletteInfo(palette),
+  };
 }
 
 /** Layouts are made on screen; map them under the transform so they land in view. */

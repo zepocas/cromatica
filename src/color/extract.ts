@@ -4,7 +4,7 @@ import { linearSrgbToOklab, srgbDecode } from './oklab';
 import type { Oklab } from './types';
 
 /*
- * Palette from image (M4 step 6). Two stages:
+ * Palette from image. Two stages:
  *
  * 1. clusterImage: k-means++ in Oklab over a downscaled image, many more
  *    clusters than the palette needs. Each cluster keeps its area share and

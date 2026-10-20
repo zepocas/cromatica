@@ -14,6 +14,7 @@ import { evaluatePlanes, preparePlanes } from '../../../src/engine/planes';
 import { evaluateAurora, prepareAurora } from '../../../src/engine/aurora';
 import { evaluateGrid, GRID_LINE_WARP, prepareGrid } from '../../../src/engine/grid';
 import { createRenderer } from '../../../src/engine/renderer';
+import { evaluateBlobs, evaluateBlobsHeight, prepareBlobs } from '../../../src/engine/blobs';
 import { applyRelief, prepareRelief } from '../../../src/engine/relief';
 import { applyHalftone, halftoneContrast } from '../../../src/engine/halftone';
 import { createWarp } from '../../../src/engine/warp';
@@ -129,15 +130,25 @@ function createReference(design: Design, output: OutputSize, halfFloat = false) 
   const relief = prepareRelief(design.finish);
   const halftone = halftoneContrast(design.finish);
   const pattern = createPatternReference(design, output, halfFloat);
+  const height = createHeightReference(design, output);
   return (px: number, py: number): Triple => {
     const [u, v] = compositionCoord(px, py, w, h);
     let rgb = pattern(u, v);
-    if (relief.depth > 0) rgb = applyRelief(relief, pattern, u, v, rgb);
+    if (relief.depth > 0) rgb = applyRelief(relief, pattern, u, v, rgb, height);
     const dim = vignetteFactor(finish, u, v);
     rgb = rgb.map((c) => c * dim) as Rgb;
     if (halftone > 0) rgb = applyHalftone(halftone, rgb, u, v, 1 / h);
     return [srgbEncode(rgb[0]) * 255, srgbEncode(rgb[1]) * 255, srgbEncode(rgb[2]) * 255];
   };
+}
+
+/** What relief reads as height where the pattern is stippled (blobs); undefined = the pattern itself. */
+function createHeightReference(design: Design, output: OutputSize): ((u: number, v: number) => Rgb) | undefined {
+  if (design.base.kind !== 'blobs') return undefined;
+  const warp = createWarp(design.warp ?? noWarp);
+  const m = transformMatrix(design.transform);
+  const blobs = prepareBlobs(design.base, output);
+  return (u, v) => evaluateBlobsHeight(blobs, ...warp(...applyMat2(m, u, v)));
 }
 
 /** The pattern's linear RGB at composition coords (u, v). */
@@ -163,6 +174,10 @@ function createPatternReference(design: Design, output: OutputSize, halfFloat: b
   if (base.kind === 'aurora') {
     const aurora = prepareAurora(base);
     return (u, v) => evaluateAurora(aurora, ...at(u, v));
+  }
+  if (base.kind === 'blobs') {
+    const blobs = prepareBlobs(base, output);
+    return (u, v) => evaluateBlobs(blobs, ...at(u, v), u, v);
   }
   if (base.kind === 'planes') {
     const planes = preparePlanes(base, output);

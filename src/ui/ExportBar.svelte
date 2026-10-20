@@ -1,31 +1,25 @@
 <script lang="ts">
   import type { ExportProgress } from '../export/types';
-  import type { EditorState } from './editor.svelte';
+  import type { EditorState } from './state/editor.svelte';
+  import type { PanelUi } from './state/panel-ui.svelte';
 
   interface Props {
     editor: EditorState;
-    exploring: boolean;
+    ui: PanelUi;
     /** Collapsed panel: only shuffle and download. */
     compact: boolean;
     nudgeShuffle: boolean;
     exporting: boolean;
     progress: ExportProgress | null;
     error: string;
+    notice: string;
+    onshare: () => void;
     onexport: () => void;
     oncancel: () => void;
   }
 
-  let {
-    editor,
-    exploring = $bindable(),
-    compact,
-    nudgeShuffle,
-    exporting,
-    progress,
-    error,
-    onexport,
-    oncancel,
-  }: Props = $props();
+  let { editor, ui, compact, nudgeShuffle, exporting, progress, error, notice, onshare, onexport, oncancel }: Props =
+    $props();
 
   const percent = $derived(progress && progress.tilesTotal > 0 ? (progress.tilesDone / progress.tilesTotal) * 100 : 0);
 </script>
@@ -44,9 +38,9 @@
       <button
         class="secondary box"
         aria-label="More like this"
-        aria-pressed={exploring}
+        aria-pressed={ui.exploring}
         title="More like this: variations of this design (M)"
-        onclick={() => (exploring = !exploring)}>more like this</button
+        onclick={() => (ui.exploring = !ui.exploring)}>more like this</button
       >
     {/if}
   </div>
@@ -55,11 +49,16 @@
       <progress max="100" value={percent} aria-label="Export progress"></progress>
       <button class="box" onclick={oncancel}>cancel</button>
     {:else}
+      <button class="box" aria-label="Copy share link" title="Copy a link to this design" onclick={onshare}
+        >share link</button
+      >
       <button class="strong box" aria-label="Download" title="Download (⌘S)" onclick={onexport}>download</button>
     {/if}
   </div>
   {#if error}
     <p class="error" role="alert">{error}</p>
+  {:else if notice}
+    <p class="notice" role="status">{notice}</p>
   {/if}
 </footer>
 
@@ -95,7 +94,6 @@
     border: none;
     background: none;
   }
-  /* Bordered buttons of one height share the width of the row, so every edge lines up. */
   .box {
     flex: 1;
     min-width: 0;
@@ -117,5 +115,9 @@
   .error {
     margin: 0;
     color: var(--warn);
+  }
+  .notice {
+    margin: 0;
+    color: var(--dim);
   }
 </style>

@@ -1,6 +1,21 @@
+/* Global styles. Where to change what (more in docs/UI.md):
+   - The panel's look (colors, sliders, buttons, dropdowns, inputs) lives here, under `.panel`.
+     `.panel` is a theme scope, not only the sidebar: the status bar, tips, shortcuts and an open
+     dropdown list carry it too, so they pick up the same variables.
+   - Layout and anything specific to one component lives in that component's <style> block.
+   - Colors, the layer order and the page gutter are variables, here and under `.panel` below. */
 :root {
   --sidebar: 300px;
   --statusbar: 28px;
+  /* Space between the preview and the window edge, and between floating cards and it. */
+  --gap-page: 24px;
+  /* Layer order, lowest first. A bare `z-index: 1` in a component only orders things inside it. */
+  --z-panel: 2;
+  --z-tray: 4;
+  --z-popover: 5;
+  --z-card: 10;
+  --z-pins: 20;
+  --z-dropdown: 100;
   color-scheme: dark;
   font-family:
     system-ui,
@@ -30,6 +45,21 @@ body,
   --dim: #96938b;
   --rule: #494842;
   --warn: #e0b562;
+  /* Text on an inked (filled) button, and the raised and highlighted rows of an open list. */
+  --on-ink: #111;
+  --panel-raised: #222221;
+  --panel-active: #2f2f2d;
+  /* Even lightness and chroma all round, so no hue looks brighter than another. */
+  --hue-wheel: linear-gradient(
+    to right,
+    oklch(0.72 0.12 0),
+    oklch(0.72 0.12 60),
+    oklch(0.72 0.12 120),
+    oklch(0.72 0.12 180),
+    oklch(0.72 0.12 240),
+    oklch(0.72 0.12 300),
+    oklch(0.72 0.12 360)
+  );
   font-family: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
   font-size: 12px;
   line-height: 1.5;
@@ -92,7 +122,7 @@ body,
 }
 .panel .seg button[aria-pressed='true'] {
   background: var(--ink);
-  color: #111;
+  color: var(--on-ink);
 }
 .panel .seg button[aria-pressed='false']:hover {
   color: var(--ink);
@@ -109,7 +139,7 @@ body,
 .panel button.primary {
   border-color: var(--ink);
   background: var(--ink);
-  color: #111;
+  color: var(--on-ink);
 }
 .panel button.primary:hover:not(:disabled) {
   color: #000;
@@ -122,7 +152,7 @@ body,
 .panel button.secondary:hover:not(:disabled),
 .panel button.secondary[aria-pressed='true'] {
   background: var(--ink);
-  color: #111;
+  color: var(--on-ink);
 }
 .panel button:disabled,
 .panel select:disabled,
@@ -149,7 +179,7 @@ body,
   border-color: var(--rule);
 }
 .panel select option {
-  background: #222221;
+  background: var(--panel-raised);
 }
 .panel button.dropdown {
   overflow: hidden;
@@ -157,17 +187,42 @@ body,
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Label first, then the picture of the option pushed to the far end. */
+.panel button.dropdown:has(.shape-icon) {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dropdown .label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dropdown .shape-icon,
+.dropdown-list .shape-icon {
+  flex: none;
+  opacity: 0.8;
+}
+.dropdown-list li:has(.shape-icon) {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.dropdown-list li .label {
+  flex: 1;
+}
 /* The open list of a Dropdown, rendered at the end of <body>. */
 .dropdown-list {
   position: fixed;
-  z-index: 100;
+  z-index: var(--z-dropdown);
   box-sizing: border-box;
   margin: 0;
   padding: 2px 0;
   overflow-y: auto;
   list-style: none;
   border: 1px solid var(--rule);
-  background: #222221;
+  background: var(--panel-raised);
 }
 .dropdown-list.above {
   transform: translateY(-100%);
@@ -182,7 +237,11 @@ body,
   color: var(--ink);
 }
 .dropdown-list li.active {
-  background: #2f2f2d;
+  background: var(--panel-active);
+}
+.dropdown-list li.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 .dropdown-list li.group {
   padding-top: 4px;
@@ -239,35 +298,36 @@ body,
   border-radius: 50%;
   background: var(--ink);
 }
-/* Hue sliders: the track is the hue wheel itself, at an even lightness and chroma. */
+/* Hue sliders: the track is the hue wheel itself. Both track rules are needed (WebKit and Firefox). */
 .panel input[type='range'].hue::-webkit-slider-runnable-track {
   height: 3px;
-  background: linear-gradient(
-    to right,
-    oklch(0.72 0.12 0),
-    oklch(0.72 0.12 60),
-    oklch(0.72 0.12 120),
-    oklch(0.72 0.12 180),
-    oklch(0.72 0.12 240),
-    oklch(0.72 0.12 300),
-    oklch(0.72 0.12 360)
-  );
+  background: var(--hue-wheel);
 }
 .panel input[type='range'].hue::-moz-range-track {
   height: 3px;
-  background: linear-gradient(
-    to right,
-    oklch(0.72 0.12 0),
-    oklch(0.72 0.12 60),
-    oklch(0.72 0.12 120),
-    oklch(0.72 0.12 180),
-    oklch(0.72 0.12 240),
-    oklch(0.72 0.12 300),
-    oklch(0.72 0.12 360)
-  );
+  background: var(--hue-wheel);
 }
 .panel input[type='range'].hue::-webkit-slider-thumb {
   margin-top: -3px;
+}
+
+/* A fingertip needs a bigger target than a cursor; the thumb centres itself on the track (WebKit by the margin). */
+@media (pointer: coarse) {
+  .panel input[type='range'] {
+    height: 22px;
+  }
+  .panel input[type='range']::-webkit-slider-thumb {
+    width: 16px;
+    height: 16px;
+    margin-top: -8px;
+  }
+  .panel input[type='range']::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+  }
+  .panel input[type='range'].hue::-webkit-slider-thumb {
+    margin-top: -6.5px;
+  }
 }
 
 .panel :focus-visible {

@@ -19,7 +19,7 @@ export interface PaletteOptions {
   baseHue?: number;
   /** Default 'full' (the whole lightness range); 'any' picks one, leaning full. */
   key?: ValueKey | 'any';
-  /** Draw 'any' choices from the even pre-tuning weights instead of the tuned ones (D76); shuffle's surprise slot. */
+  /** Draw 'any' choices from the even weights instead of the tuned ones (D76); shuffle's surprise slot. */
   flat?: boolean;
 }
 
@@ -53,7 +53,7 @@ const RULE_WEIGHTS: Record<HarmonyRule, number> = {
   tetradic: 0.09,
 };
 
-/** The even weights from before the tuning (D76). */
+/** Even weights, for the surprise slot (D76). */
 const RULE_WEIGHTS_FLAT: Record<HarmonyRule, number> = {
   monochrome: 0.1,
   analogous: 0.3,
@@ -65,10 +65,7 @@ const RULE_WEIGHTS_FLAT: Record<HarmonyRule, number> = {
 
 export const PALETTE_MOODS: readonly PaletteMood[] = ['natural', 'vivid', 'muted', 'earthy', 'pastel', 'neon'];
 
-/**
- * How mood 'any' resolves (sums to 1): natural, muted and earthy lead; vivid, pastel and neon are
- * the exceptions (user, 2026-10-12, D76; before: natural 38, vivid 17, muted 16, earthy 12, pastel 15, neon 2).
- */
+/** How mood 'any' resolves (sums to 1): natural, muted and earthy lead; vivid, pastel and neon are the exceptions (D76). */
 const MOOD_WEIGHTS: Record<PaletteMood, number> = {
   natural: 0.38,
   vivid: 0.1,

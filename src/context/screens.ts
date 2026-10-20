@@ -25,6 +25,7 @@ export const CONTEXT_SCREENS: ContextScreen[] = [
     device: 'MacBook Pro 16-inch at 1800 × 1169',
     width: 1800,
     height: 1169,
+    secondary: ['menu bar', 'menus', 'menu clock', 'dock'],
     zones: [
       { kind: 'area', label: 'menu bar', x: 0, y: 0, w: 0, h: 38, anchorX: 'stretch', check: true },
       {
@@ -84,6 +85,7 @@ export const CONTEXT_SCREENS: ContextScreen[] = [
     device: '1920 × 1080 at 100%',
     width: 1920,
     height: 1080,
+    secondary: ['taskbar', 'taskbar apps', 'tray clock'],
     zones: [
       {
         kind: 'icons',

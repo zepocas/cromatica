@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Reel } from '../../src/ui/reel.svelte';
+import { Reel } from '../../src/ui/state/reel.svelte';
 
 describe('Reel', () => {
   it('steps back to the state before the first shuffle and forward again', () => {

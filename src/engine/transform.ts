@@ -1,7 +1,5 @@
-// Whole-image transform (D24): composition coords → pattern coords, applied
-// before the warp. The shader reads the same matrix (u_transform), so CPU and
-// GPU agree; the identity matrix is exact in fp32, so untransformed designs
-// render bit-identically to before.
+// Whole-image transform, applied before the warp. The shader reads the same matrix
+// (u_transform); the identity matrix is exact in fp32, so untransformed designs are unchanged.
 import { MAX_ZOOM, MIN_ZOOM, type Transform } from '../design/design';
 import { normalizeDegrees } from '../math';
 

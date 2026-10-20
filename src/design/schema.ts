@@ -7,6 +7,10 @@ import {
   identityTransform,
   MAX_GRID,
   MAX_MESH_POINTS,
+  BLOB_SCALE,
+  PLANE_SCALE,
+  MAX_BLOBS,
+  MAX_PLANES,
   MAX_STOPS,
   MIN_GRID,
   MIN_ZOOM,
@@ -18,7 +22,7 @@ import {
   type Design,
 } from './design';
 
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 /** Where lithograph ends on the version-4 print scale; above it a print was a xerox. */
 const LITHO_END = 0.7;
 /** Aurora blend that reproduces auroras saved before blend existed. */
@@ -63,6 +67,13 @@ const planes = z.object({
   roughness: unit,
   blend: unit,
   seed,
+  edits: z
+    .object({
+      order: z.array(z.number().int().min(0).lt(MAX_PLANES)).max(MAX_PLANES),
+      shifts: z.array(z.tuple([z.number(), z.number()])).max(MAX_PLANES),
+      scales: z.array(z.number().min(PLANE_SCALE[0]).max(PLANE_SCALE[1])).max(MAX_PLANES).optional(),
+    })
+    .optional(),
 });
 
 const aurora = z.object({
@@ -72,6 +83,24 @@ const aurora = z.object({
   glow: unit,
   blend: unit,
   seed,
+});
+
+const blobs = z.object({
+  kind: z.literal('blobs'),
+  colors: paletteColors,
+  count: unit,
+  size: unit,
+  wobble: unit,
+  grain: unit,
+  base: z.enum(['black', 'palette']).optional(),
+  seed,
+  edits: z
+    .object({
+      order: z.array(z.number().int().min(0).lt(MAX_BLOBS)).max(MAX_BLOBS),
+      shifts: z.array(z.tuple([z.number(), z.number()])).max(MAX_BLOBS),
+      scales: z.array(z.number().min(BLOB_SCALE[0]).max(BLOB_SCALE[1])).max(MAX_BLOBS).optional(),
+    })
+    .optional(),
 });
 
 const gridSide = z.number().int().min(MIN_GRID).max(MAX_GRID);
@@ -88,7 +117,7 @@ const grid = z
 
 const designSchema = z.object({
   engineVersion: z.literal(1),
-  base: z.union([rampGradient, pointMesh, planes, aurora, grid]),
+  base: z.union([rampGradient, pointMesh, planes, aurora, blobs, grid]),
   warp: z.object({ shape: z.enum(WARP_SHAPES), amount: unit, size: unit, seed }),
   transform: z.object({
     rotate: z.number().min(0).lt(360),
@@ -137,7 +166,7 @@ function withDefaults(design: Json, finish: object = noFinish): Json {
 
 /** migrations[v] turns a version-v save into a version v + 1 save. */
 const migrations: Record<number, (save: Json) => Json> = {
-  // Version 1 is a bare Design as kept in memory before M6.
+  // Version 1 is a bare Design with no envelope.
   1: (design) => ({ version: 2, design: withDefaults(design, FINISH_V4) }),
   2: (save) => {
     const design = isObject(save.design) ? save.design : {};
@@ -169,6 +198,15 @@ const migrations: Record<number, (save: Json) => Json> = {
   },
   // D63/D66: the per-stop blend field is gone; every ramp blends perceptually. Old stops keep a stray blend key, which the schema strips.
   5: (save) => ({ ...save, version: 6 }),
+  // D89: the planes slider runs 1 to 16 planes, not 4 to 24. The same number of planes deals the same layout, so the slider value is re-mapped
+  // to keep it (the count was round(4 + 20c), now round(1 + 15c)); layouts of more than 16 planes keep 16.
+  6: (save) => {
+    const design = isObject(save.design) ? save.design : {};
+    const base = isObject(design.base) ? design.base : {};
+    if (base.kind !== 'planes' || typeof base.count !== 'number') return { ...save, version: 7 };
+    const count = Math.min(1, Math.max(0, (3 + 20 * base.count) / 15));
+    return { ...save, version: 7, design: { ...design, base: { ...base, count: Math.round(count * 1e4) / 1e4 } } };
+  },
 };
 
 function versionOf(save: Json): number {

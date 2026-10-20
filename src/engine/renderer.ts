@@ -7,6 +7,7 @@ import {
   MAX_MESH_POINTS,
   MAX_STOPS,
   type AuroraPattern,
+  type BlobsPattern,
   type GridMesh,
   type PlanesPattern,
   type PointMesh,
@@ -25,6 +26,7 @@ import {
   RIDGE_OCTAVES,
 } from './ramp-shape';
 import { MAX_PLANES, PLANES_SHADER_CONSTANTS, preparePlanes } from './planes';
+import { BLOBS_SHADER_CONSTANTS, MAX_BLOBS, prepareBlobs } from './blobs';
 import { AURORA_SHADER_CONSTANTS, MAX_RIBBONS, prepareAurora } from './aurora';
 import {
   GRID_LINE_SHADER_CONSTANTS,
@@ -57,7 +59,7 @@ function rampShapeUniforms(g: RampGradient, output: OutputSize, transform: Desig
   };
 }
 
-/** Mesh uniforms, padded to MAX_MESH_POINTS; uploaded every render (tiny). */
+/** Mesh uniforms, padded to MAX_MESH_POINTS. */
 function meshUniforms(mesh: PointMesh) {
   const m = prepareMesh(mesh);
   const points = new Float32Array(MAX_MESH_POINTS * 3);
@@ -67,7 +69,7 @@ function meshUniforms(mesh: PointMesh) {
   return { u_meshCount: m.count, u_meshExponent: m.exponent, u_meshPoint: points, u_meshColor: colors };
 }
 
-/** Planes uniforms, padded to MAX_PLANES; uploaded every render (small). */
+/** Planes uniforms, padded to MAX_PLANES. */
 function planesUniforms(planes: PlanesPattern, output: OutputSize) {
   const p = preparePlanes(planes, output);
   const edges = new Float32Array(MAX_PLANES * 12);
@@ -76,12 +78,18 @@ function planesUniforms(planes: PlanesPattern, output: OutputSize) {
   edges.set(p.edges);
   bounds.set(p.bounds);
   colors.set(p.colors);
+  const ids = new Int32Array(MAX_PLANES);
+  const shifts = new Float32Array(MAX_PLANES * 2);
+  ids.set(p.ids);
+  shifts.set(p.shifts);
   return {
     u_planeCount: p.count,
     u_planeBackground: p.background,
     u_planeEdge: edges,
     u_planeBound: bounds,
     u_planeColor: colors,
+    u_planeId: ids,
+    u_planeShift: shifts,
     u_planeKey: p.key,
     u_planeTear: p.tear,
     u_planeRim: p.rim,
@@ -107,7 +115,6 @@ function noiseDefines(g: RampGradient): Defines {
   };
 }
 
-/** Aurora uniforms, padded to MAX_RIBBONS. */
 function auroraUniforms(aurora: AuroraPattern) {
   const p = prepareAurora(aurora);
   const colors = new Float32Array(MAX_RIBBONS * 3);
@@ -125,7 +132,33 @@ function auroraUniforms(aurora: AuroraPattern) {
   };
 }
 
-/** Grid uniforms, padded to MAX_GRID_NODES. */
+/** Blobs uniforms, padded to MAX_BLOBS and MAX_STOPS inks. */
+function blobsUniforms(blobs: BlobsPattern, output: OutputSize) {
+  const p = prepareBlobs(blobs, output);
+  const shape0 = new Float32Array(MAX_BLOBS * 4);
+  const shape1 = new Float32Array(MAX_BLOBS * 4);
+  const shape2 = new Float32Array(MAX_BLOBS * 4);
+  const inks = new Float32Array(MAX_STOPS * 3);
+  const inkDots = new Float32Array(MAX_STOPS * 4);
+  shape0.set(p.shape0);
+  shape1.set(p.shape1);
+  shape2.set(p.shape2);
+  inks.set(p.inks);
+  inkDots.set(p.inkDots);
+  return {
+    u_blobCount: p.count,
+    u_blobBackground: p.background,
+    u_blobBase: p.base,
+    u_blobInk: inks,
+    u_blobInkDot: inkDots,
+    u_blobShape0: shape0,
+    u_blobShape1: shape1,
+    u_blobShape2: shape2,
+    u_blobDot: p.dot,
+    u_blobSoft: p.soft,
+  };
+}
+
 function gridUniforms(grid: GridMesh) {
   const g = prepareGrid(grid);
   const offsets = new Float32Array(MAX_GRID_NODES * 2);
@@ -141,7 +174,6 @@ function gridUniforms(grid: GridMesh) {
   };
 }
 
-/** Base-pattern variant defines: one of BASE_RAMP (with its shape), BASE_MESH, BASE_PLANES. */
 function baseDefines(base: Design['base']): Defines {
   const kind = base.kind;
   const defines: Defines = {
@@ -150,6 +182,7 @@ function baseDefines(base: Design['base']): Defines {
     BASE_PLANES: kind === 'planes',
     BASE_AURORA: kind === 'aurora',
     BASE_GRID: kind === 'grid',
+    BASE_BLOBS: kind === 'blobs',
   };
   if (kind === 'mesh') return { ...defines, MAX_MESH_POINTS, GAMUT_CLIP_STEPS };
   if (kind === 'planes') return { ...defines, ...PLANES_SHADER_CONSTANTS };
@@ -164,6 +197,7 @@ function baseDefines(base: Design['base']): Defines {
       GRID_MAX_STEP: String(GRID_MAX_STEP),
     };
   }
+  if (kind === 'blobs') return { ...defines, ...BLOBS_SHADER_CONSTANTS };
   if (kind === 'aurora') return { ...defines, NOISE_LIB: 1, ...AURORA_SHADER_CONSTANTS };
   return {
     ...defines,
@@ -202,7 +236,6 @@ function warpUniforms(w: PreparedWarp) {
   };
 }
 
-/** Cheap structural key of the stops; the ramp is re-baked only when it changes. */
 function stopsKey(stops: readonly ColorStop[]): string {
   return stops.map((s) => `${s.position},${s.color[0]},${s.color[1]},${s.color[2]}`).join('|');
 }
@@ -218,7 +251,6 @@ function createTexture(gl: WebGL2RenderingContext, filter: GLenum, wrap: GLenum)
 }
 
 export function createRenderer(gl: WebGL2RenderingContext): Renderer {
-  // Program variants keyed by their #define set (base pattern × warp shape).
   const programs = new Map<string, twgl.ProgramInfo>();
   let compiled = 0;
   const vao = gl.createVertexArray();
@@ -296,6 +328,8 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
         baseUniforms = auroraUniforms(base);
       } else if (base.kind === 'grid') {
         baseUniforms = gridUniforms(base);
+      } else if (base.kind === 'blobs') {
+        baseUniforms = blobsUniforms(base, output);
       } else {
         updateRamp(base.stops);
         baseUniforms = {
@@ -357,7 +391,6 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       gl.pixelStorei(gl.PACK_ALIGNMENT, 1);
       gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, out);
-      // GL rows are bottom-up; flip in place.
       const row = new Uint8Array(stride);
       for (let top = 0, bottom = height - 1; top < bottom; top++, bottom--) {
         const a = top * stride;

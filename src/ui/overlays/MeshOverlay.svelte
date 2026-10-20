@@ -1,0 +1,236 @@
+<script lang="ts">
+  import { oklchToHex } from '../../color/hex';
+  import type { EditorState } from '../state/editor.svelte';
+  import { isFormControl, isHandle } from '../state/keys';
+
+  interface Props {
+    editor: EditorState;
+    /** Frame width / height; the overlay box is exactly the displayed canvas rect. */
+    aspect: number;
+  }
+
+  let { editor, aspect }: Props = $props();
+
+  const NUDGE = 0.01;
+  const NUDGE_LARGE = 0.05;
+
+  let overlay: HTMLDivElement;
+  let drag: { index: number; pointerId: number; u0: number; v0: number; x0: number; y0: number } | null = null;
+  let dragging = $state(false);
+
+  // Composition coords (height = 1, origin at center, +y up; src/engine/types.ts)
+  // ↔ fractions of the overlay box, which matches the canvas's displayed rect.
+  const leftPct = (x: number) => (x / aspect + 0.5) * 100;
+  const topPct = (y: number) => (0.5 - y) * 100;
+
+  function toComposition(e: MouseEvent): [number, number] {
+    const r = overlay.getBoundingClientRect();
+    return [(e.clientX - r.left - r.width / 2) / r.height, (r.top + r.height / 2 - e.clientY) / r.height];
+  }
+
+  function isOutside(x: number, y: number): boolean {
+    return Math.abs(x) > aspect / 2 || Math.abs(y) > 0.5;
+  }
+
+  function focusHandle(i: number) {
+    queueMicrotask(() => overlay?.querySelector<HTMLElement>(`[data-point="${i}"]`)?.focus());
+  }
+
+  function onHandlePointerDown(e: PointerEvent, i: number) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    editor.selectedPoint = i;
+    const [u0, v0] = toComposition(e);
+    const p = editor.mesh.points[i];
+    const [x0, y0] = editor.toScreen(p.x, p.y);
+    // Move by pointer delta, so clamped edge indicators can be dragged without the point jumping.
+    drag = { index: i, pointerId: e.pointerId, u0, v0, x0, y0 };
+    dragging = true;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    (e.currentTarget as HTMLElement).focus();
+  }
+
+  function onHandlePointerMove(e: PointerEvent) {
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    const [u, v] = toComposition(e);
+    editor.movePoint(drag.index, drag.x0 + u - drag.u0, drag.y0 + v - drag.v0);
+  }
+
+  function endDrag(e: PointerEvent) {
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    drag = null;
+    dragging = false;
+    const el = e.currentTarget as HTMLElement;
+    if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+  }
+
+  function onOverlayDblClick(e: MouseEvent) {
+    if ((e.target as HTMLElement).closest('[data-point]')) return;
+    const [x, y] = toComposition(e);
+    const i = editor.addPoint(x, y);
+    if (i !== null) focusHandle(i);
+  }
+
+  function onWindowKeyDown(e: KeyboardEvent) {
+    if (editor.kind !== 'mesh' || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (isFormControl(e.target)) return;
+    if (e.key === 'h' || e.key === 'H') {
+      editor.showMeshPoints = !editor.showMeshPoints;
+      e.preventDefault();
+      return;
+    }
+    if (!editor.showMeshPoints) return;
+    // Arrows belong to the shuffle history unless a handle has focus.
+    if (e.key.startsWith('Arrow') && !isHandle(e.target)) return;
+    // Nudges follow the screen, whatever the transform.
+    const [px, py] = editor.toScreen(editor.point.x, editor.point.y);
+    const p = { x: px, y: py };
+    const step = e.shiftKey ? NUDGE_LARGE : NUDGE;
+    switch (e.key) {
+      case 'Delete':
+      case 'Backspace':
+        editor.removePoint();
+        if (overlay.contains(document.activeElement)) focusHandle(editor.selectedPoint);
+        break;
+      case 'ArrowLeft':
+        editor.movePoint(editor.selectedPoint, p.x - step, p.y);
+        break;
+      case 'ArrowRight':
+        editor.movePoint(editor.selectedPoint, p.x + step, p.y);
+        break;
+      case 'ArrowUp':
+        editor.movePoint(editor.selectedPoint, p.x, p.y + step);
+        break;
+      case 'ArrowDown':
+        editor.movePoint(editor.selectedPoint, p.x, p.y - step);
+        break;
+      default:
+        return;
+    }
+    e.preventDefault();
+  }
+</script>
+
+<svelte:window onkeydown={onWindowKeyDown} />
+
+<div
+  class="overlay"
+  class:hidden={!editor.showMeshPoints}
+  class:dragging
+  bind:this={overlay}
+  role="group"
+  aria-label="Color points"
+  data-testid="mesh-overlay"
+  ondblclick={onOverlayDblClick}
+>
+  {#if editor.showMeshPoints}
+    {@const [sx, sy] = editor.toScreen(editor.point.x, editor.point.y)}
+    {@const size = editor.pointSize()}
+    <div
+      class="radius"
+      style:left="{leftPct(sx)}%"
+      style:top="{topPct(sy)}%"
+      style:width="{((2 * size) / aspect) * 100}%"
+      style:height="{2 * size * 100}%"
+    ></div>
+    {#each editor.mesh.points as p, i (i)}
+      {@const [x, y] = editor.toScreen(p.x, p.y)}
+      {@const outside = isOutside(x, y)}
+      <div
+        class="handle"
+        class:selected={i === editor.selectedPoint}
+        class:outside
+        data-point={i}
+        data-x={p.x.toFixed(4)}
+        data-y={p.y.toFixed(4)}
+        data-r={p.radius.toFixed(4)}
+        data-color={p.color.map((c) => c.toFixed(4)).join(' ')}
+        role="button"
+        tabindex="0"
+        aria-label="Point {i + 1}"
+        aria-pressed={i === editor.selectedPoint}
+        title={outside ? 'Outside the frame — drag to bring it back' : 'Drag to move · Delete to remove'}
+        style:left="clamp(var(--inset), {leftPct(x)}%, calc(100% - var(--inset)))"
+        style:top="clamp(var(--inset), {topPct(y)}%, calc(100% - var(--inset)))"
+        style:--color={oklchToHex(p.color)}
+        style:--angle="{Math.atan2(-y, x)}rad"
+        onfocus={() => (editor.selectedPoint = i)}
+        onpointerdown={(e) => onHandlePointerDown(e, i)}
+        onpointermove={onHandlePointerMove}
+        onpointerup={endDrag}
+        onpointercancel={endDrag}
+      ></div>
+    {/each}
+  {/if}
+</div>
+
+<style>
+  /* The frame scales with the view; handles and ring lines keep their on-screen size. */
+  .overlay {
+    --inset: calc(14px / var(--zoom, 1));
+    position: absolute;
+    inset: 0;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .overlay.hidden {
+    pointer-events: none;
+  }
+  .radius {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    border: calc(1px / var(--zoom, 1)) dashed rgba(255, 255, 255, 0.45);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  .handle {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    transform: translate(-50%, -50%) scale(calc(1 / var(--zoom, 1)));
+    background: var(--color);
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.35),
+      0 1px 4px rgba(0, 0, 0, 0.5);
+    cursor: grab;
+    outline: none;
+  }
+  .dragging .handle {
+    cursor: grabbing;
+  }
+  .handle.selected {
+    width: 18px;
+    height: 18px;
+    box-shadow:
+      0 0 0 2px rgba(0, 0, 0, 0.55),
+      0 0 0 4px #fff,
+      0 1px 6px rgba(0, 0, 0, 0.5);
+    z-index: 1;
+  }
+  .handle:focus-visible {
+    box-shadow:
+      0 0 0 2px rgba(0, 0, 0, 0.55),
+      0 0 0 4px #7ab8ff;
+  }
+  .handle.outside {
+    border-style: dashed;
+    opacity: 0.85;
+  }
+  .handle.outside::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 0;
+    height: 0;
+    border-left: 6px solid #fff;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    transform: rotate(var(--angle)) translate(11px, -50%);
+    transform-origin: 0 0;
+  }
+</style>

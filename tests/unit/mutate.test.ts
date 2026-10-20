@@ -4,7 +4,7 @@ import { mutateDesign } from '../../src/design/mutate';
 import { createRng } from '../../src/design/random';
 import { saveDesign } from '../../src/design/schema';
 import { shuffleDesign } from '../../src/design/shuffle';
-import { swatchesOf } from '../../src/ui/favourites.svelte';
+import { swatchesOf } from '../../src/ui/state/favourites.svelte';
 
 function* shuffled(n: number): Generator<Design> {
   let d: Design = { ...defaultDesign, base: defaultMesh };
@@ -29,7 +29,7 @@ describe('mutateDesign', () => {
         expect(m).not.toEqual(d);
       }
     }
-    expect(kinds.size).toBe(9);
+    expect(kinds.size).toBe(10);
   });
 
   it('changes the warp shape often in bold variations and rarely in gentle ones', () => {
