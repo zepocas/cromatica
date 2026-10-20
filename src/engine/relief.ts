@@ -84,8 +84,10 @@ export function applyRelief(
   u: number,
   v: number,
   rgb: Rgb,
+  /** What is read as the height where that isn't the color itself (a stippled pattern reads a smooth stand-in). */
+  heightAt: (u: number, v: number) => Rgb = colorAt,
 ): Rgb {
-  const [sx, sy] = heightSlope(colorAt, u, v);
+  const [sx, sy] = heightSlope(heightAt, u, v);
   const ease = 1 / Math.sqrt(1 + (Math.hypot(sx, sy) * r.depth) ** 2 / MAX_TILT ** 2);
   const nx = -sx * r.depth * ease;
   const ny = -sy * r.depth * ease;

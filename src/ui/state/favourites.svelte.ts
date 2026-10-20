@@ -17,7 +17,7 @@ export function swatchesOf(design: Design): Oklch[] {
   const base = design.base;
   if (base.kind === 'mesh') return base.points.map((p) => p.color);
   if (base.kind === 'grid') return base.nodes.map((n) => n.color);
-  if (base.kind === 'planes' || base.kind === 'aurora') return base.colors;
+  if (base.kind === 'planes' || base.kind === 'aurora' || base.kind === 'blobs') return base.colors;
   return base.stops.map((s) => s.color);
 }
 

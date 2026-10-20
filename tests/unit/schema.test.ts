@@ -126,7 +126,7 @@ describe('design schema', () => {
       expect(loaded).toMatchObject(design);
       expect(roundTrip(loaded)).toEqual(loaded);
     }
-    expect(kinds.size).toBe(9);
+    expect(kinds.size).toBe(10);
   });
 
   it('round-trips plane edits and leaves designs without them untouched', () => {

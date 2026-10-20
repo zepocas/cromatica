@@ -398,7 +398,7 @@ describe('style shuffle (pattern kind and finishes)', () => {
   const colorsOf = (d: Design) => {
     const b = d.base;
     if (b.kind === 'mesh') return b.points.map((p) => p.color);
-    if (b.kind === 'planes' || b.kind === 'aurora') return b.colors;
+    if (b.kind === 'planes' || b.kind === 'aurora' || b.kind === 'blobs') return b.colors;
     if (b.kind === 'grid') return b.nodes.map((n) => n.color);
     return b.stops.map((s) => s.color);
   };
@@ -474,7 +474,9 @@ describe('style shuffle (pattern kind and finishes)', () => {
       if (d.finish!.bands > 0) banded++;
       if (d.base.kind === 'planes' || d.base.kind === 'aurora') expect(d.finish!.bands).toBe(0);
     }
-    expect(kinds).toEqual(new Set(['mesh', 'grid', 'linear', 'radial', 'conic', 'noise', 'cells', 'planes', 'aurora']));
+    expect(kinds).toEqual(
+      new Set(['mesh', 'grid', 'linear', 'radial', 'conic', 'noise', 'cells', 'planes', 'aurora', 'blobs']),
+    );
     expect(printed).toBeGreaterThan(20);
     expect(printed).toBeLessThan(100);
     expect(banded).toBeGreaterThan(5);

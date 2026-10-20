@@ -7,6 +7,7 @@ import mesh from './gradient/mesh.glsl?raw';
 import planes from './gradient/planes.glsl?raw';
 import aurora from './gradient/aurora.glsl?raw';
 import grid from './gradient/grid.glsl?raw';
+import blobs from './gradient/blobs.glsl?raw';
 import pattern from './gradient/pattern.glsl?raw';
 import oklab from './color/oklab.glsl?raw';
 import ramp from './color/ramp.glsl?raw';
@@ -62,6 +63,8 @@ const WARP_CHUNKS = [
 const FRAGMENT_CHUNKS = [
   coords,
   hash,
+  // Before the base patterns: blobs stipple against its blue noise.
+  dither,
   ...WARP_CHUNKS,
   // Before the base patterns: the mesh bands its weights with bandLevel.
   finish,
@@ -70,6 +73,7 @@ const FRAGMENT_CHUNKS = [
   planes,
   aurora,
   grid,
+  blobs,
   ramp,
   oklab,
   pattern,
@@ -79,7 +83,6 @@ const FRAGMENT_CHUNKS = [
   srgb,
   print,
   grain,
-  dither,
   fragMain,
 ];
 

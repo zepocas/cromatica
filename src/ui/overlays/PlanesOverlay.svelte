@@ -16,8 +16,20 @@
   let overlay: SVGSVGElement;
   let drag: { id: number; pointerId: number; p0: [number, number]; shift: [number, number] } | null = null;
   let dragging = $state(false);
+  /** The blob under the pointer (layout index), or -1: blobs have no shapes to hover, so it is picked on move. */
+  let hover = $state(-1);
 
   const active = $derived(editor.showHandles);
+  const noun = $derived(editor.kind === 'blobs' ? 'Blob' : 'Plane');
+  // Blobs are picked by math (the warp can fold them), so only the picked one has an outline to draw.
+  const hoverPath = $derived(
+    active && editor.kind === 'blobs' && hover >= 0 && hover !== editor.selectedPlane
+      ? editor.blobOutlinePath(hover)
+      : '',
+  );
+  const blobPath = $derived(
+    active && editor.kind === 'blobs' && editor.selectedPlane >= 0 ? editor.blobOutlinePath(editor.selectedPlane) : '',
+  );
   // Read the design here so the outlines follow every edit; planeShapes() is plain math on a copy.
   const shapes = $derived(active ? editor.planeShapes() : []);
 
@@ -41,7 +53,11 @@
   }
 
   function onPointerMove(e: PointerEvent) {
-    if (!drag || e.pointerId !== drag.pointerId) return;
+    if (!drag) {
+      hover = active && editor.kind === 'blobs' ? editor.blobAt(...toComposition(e)) : -1;
+      return;
+    }
+    if (e.pointerId !== drag.pointerId) return;
     const [x, y] = editor.patternAt(...toComposition(e));
     editor.setPlaneShift(drag.id, drag.shift[0] + x - drag.p0[0], drag.shift[1] + y - drag.p0[1]);
   }
@@ -50,12 +66,18 @@
     if (!drag || e.pointerId !== drag.pointerId) return;
     drag = null;
     dragging = false;
+    hover = -1;
     if (overlay.hasPointerCapture(e.pointerId)) overlay.releasePointerCapture(e.pointerId);
   }
 
   // A press on the picture between planes lets go of the selection.
   function onBackgroundPointerDown(e: PointerEvent) {
     if (e.button !== 0 || drag) return;
+    const id = editor.kind === 'blobs' ? editor.blobAt(...toComposition(e)) : -1;
+    if (id >= 0) {
+      onPlanePointerDown(e, id);
+      return;
+    }
     editor.selectedPlane = -1;
     overlay.focus();
   }
@@ -68,7 +90,7 @@
   }
 
   function onWindowKeyDown(e: KeyboardEvent) {
-    if (editor.kind !== 'planes' || e.metaKey || e.ctrlKey || e.altKey) return;
+    if ((editor.kind !== 'planes' && editor.kind !== 'blobs') || e.metaKey || e.ctrlKey || e.altKey) return;
     if (isFormControl(e.target)) return;
     if (e.key === 'h' || e.key === 'H') {
       editor.showHandles = !editor.showHandles;
@@ -108,16 +130,18 @@
   class="overlay"
   class:hidden={!active}
   class:dragging
+  class:grab={hover >= 0}
   bind:this={overlay}
   viewBox="{-aspect / 2} -0.5 {aspect} 1"
   preserveAspectRatio="none"
   role="group"
-  aria-label="Plane layout"
+  aria-label="{noun} layout"
   tabindex="-1"
   data-plane-overlay
   data-testid="planes-overlay"
   onpointerdown={onBackgroundPointerDown}
   onpointermove={onPointerMove}
+  onpointerleave={() => (hover = -1)}
   onpointerup={endDrag}
   onpointercancel={endDrag}
 >
@@ -129,7 +153,7 @@
       data-selected={s.id === editor.selectedPlane}
       role="button"
       tabindex="-1"
-      aria-label="Plane {s.id + 1}"
+      aria-label="{noun} {s.id + 1}"
       aria-pressed={s.id === editor.selectedPlane}
       points={points(s.corners)}
       onpointerdown={(e) => onPlanePointerDown(e, s.id)}
@@ -139,6 +163,12 @@
   {#each shapes.filter((s) => s.id === editor.selectedPlane) as s (s.id)}
     <polygon class="outline" points={points(s.corners)} />
   {/each}
+  {#if hoverPath}
+    <path class="hover" d={hoverPath} />
+  {/if}
+  {#if blobPath}
+    <path class="outline" d={blobPath} />
+  {/if}
 </svg>
 
 <style>
@@ -166,8 +196,19 @@
   .plane:hover {
     stroke: rgba(255, 255, 255, 0.45);
   }
-  .dragging .plane {
+  .overlay.grab {
+    cursor: grab;
+  }
+  .dragging .plane,
+  .overlay.dragging {
     cursor: grabbing;
+  }
+  .hover {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.45);
+    stroke-width: 1.5px;
+    vector-effect: non-scaling-stroke;
+    pointer-events: none;
   }
   .outline {
     fill: none;

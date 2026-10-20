@@ -71,6 +71,13 @@ export interface PlaneEdits {
   shifts: [number, number][];
 }
 
+/** Hand edits on blobs: the same stack order and shifts as planes, plus a size multiplier per blob index (missing = 1). */
+export interface BlobEdits extends PlaneEdits {
+  scales?: number[];
+}
+/** The range a blob's own size can be set to, relative to the size slider. */
+export const BLOB_SCALE: [min: number, max: number] = [0.25, 2.5];
+
 /**
  * Planes (D37): a collage of seeded, overlapping flat-color quads with torn
  * edges over a background fill (src/engine/planes.ts). The layout comes from
@@ -109,6 +116,38 @@ export interface AuroraPattern {
   seed: number;
 }
 
+/** Most blobs a layout holds (count slider at 1). */
+export const MAX_BLOBS = 16;
+
+/** What a blob is made of: ink dots over a black body, or a body in its palette color with black or white dots on it. */
+export type BlobBase = 'black' | 'palette';
+
+/**
+ * Blobs: grainy lava-lamp bubbles (src/engine/blobs.ts). Seeded, lumpy and independent of each
+ * other, stacked back to front like planes over a light background; each has a flat ink stippled
+ * over a black base, thin toward its edge and full in its middle. The lightest palette color is
+ * the background, the others are the inks.
+ */
+export interface BlobsPattern {
+  kind: 'blobs';
+  /** 1..MAX_STOPS palette colors. */
+  colors: Oklch[];
+  /** How many blobs, [0, 1]. */
+  count: number;
+  /** Blob size, [0, 1]. */
+  size: number;
+  /** How lumpy the outlines are, [0, 1]: smooth ovals ↔ irregular bubbles. */
+  wobble: number;
+  /** Stipple dot size, [0, 1]: fine ↔ coarse. */
+  grain: number;
+  /** Absent = black. */
+  base?: BlobBase;
+  /** uint32 seed of the layout and the ink order. */
+  seed: number;
+  /** Absent = the layout exactly as the seed makes it. Moved and restacked like planes (D88); cleared when the seed or the count changes. */
+  edits?: BlobEdits;
+}
+
 /** A node of the grid mesh: where it sits (composition coords) and its color. */
 export interface GridNode {
   x: number;
@@ -140,7 +179,7 @@ export const AURORA_BLEND = 0.35;
 export const MIN_GRID = 2;
 export const MAX_GRID = 5;
 
-export type BasePattern = RampGradient | PointMesh | PlanesPattern | AuroraPattern | GridMesh;
+export type BasePattern = RampGradient | PointMesh | PlanesPattern | AuroraPattern | GridMesh | BlobsPattern;
 
 /** Coordinate distortion applied before the base pattern (D23). */
 export type WarpShape =
