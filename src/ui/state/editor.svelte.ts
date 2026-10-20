@@ -20,6 +20,8 @@ import {
   type Design,
   type Finish,
   type AuroraPattern,
+  type BlobsPattern,
+  BLOB_SCALE,
   type GridMesh,
   MAX_GRID,
   MIN_GRID,
@@ -32,9 +34,12 @@ import {
 import { randomSeed } from '../../design/random';
 import { gridLayout, shuffleDesign } from '../../design/shuffle';
 import { evaluateGrid, forwardMap, prepareGrid, restPoint } from '../../engine/grid';
+import { blobCount, blobDistance, blobOutline, blobReach, prepareBlobs } from '../../engine/blobs';
+import { contourPath } from './contour';
+import { planeCount, planeOrder, preparePlanes } from '../../engine/planes';
 import { prepareRampShape, rampT } from '../../engine/ramp-shape';
 import { applyMat2, clampZoom, inverseTransformMatrix, transformMatrix } from '../../engine/transform';
-import { warpPoint } from '../../engine/warp';
+import { createWarp, warpPoint } from '../../engine/warp';
 import { clamp, normalizeDegrees } from '../../math';
 import { paletteFromImage, type ImagePalette } from './image-palette';
 import { PaletteEditor, type PaletteSnapshot } from './palette.svelte';
@@ -45,6 +50,7 @@ import { Reel } from './reel.svelte';
 export type PatternKind = BasePattern['kind'];
 export type PlanesLayout = Omit<PlanesPattern, 'kind' | 'colors'>;
 export type AuroraLayout = Omit<AuroraPattern, 'kind' | 'colors'>;
+export type BlobsLayout = Omit<BlobsPattern, 'kind' | 'colors'>;
 
 export interface EditorSnapshot {
   kind: PatternKind;
@@ -52,6 +58,7 @@ export interface EditorSnapshot {
   mesh: PointMesh;
   planes: PlanesLayout;
   aurora: AuroraLayout;
+  blobs: BlobsLayout;
   grid: GridMesh;
   warp: Warp;
   finish: Finish;
@@ -69,6 +76,12 @@ export { MAX_RADIUS, MIN_RADIUS };
 /** How far outside the frame (composition units) a point may be dragged. */
 const OUTSIDE_MARGIN = 0.5;
 const MIN_STOPS = 2;
+/** Grid of the traced blob outline under a warp: samples across the frame width. */
+const OUTLINE_GRID = 160;
+/** Grid points further than a blob's reach plus this are not measured against it: they are outside, and the cell edge is never that far. */
+const OUTLINE_MARGIN = 0.2;
+/** Iterations that put a plane corner where a warp shows it. */
+const WARP_INVERSE_STEPS = 6;
 
 /**
  * UI editing state: the design being edited, plus selection and UI-only
@@ -94,9 +107,11 @@ export class EditorState {
   });
   mesh = $state<PointMesh>(structuredClone(defaultMesh));
   /** Planes layout; its colors are the ramp's stops. */
-  planes = $state<PlanesLayout>({ count: 0.4, roughness: 0.5, blend: 0, seed: 1 });
+  planes = $state<PlanesLayout>({ count: 0.7333, roughness: 0.5, blend: 0, seed: 1 });
   /** Aurora layout; its colors are the ramp's stops. */
   aurora = $state<AuroraLayout>({ count: 0.5, glow: 0.5, blend: AURORA_BLEND, seed: 1 });
+  /** Blobs layout; its colors are the ramp's stops. */
+  blobs = $state<BlobsLayout>({ count: 0.5, size: 0.5, wobble: 0.65, grain: 0.25, base: 'black', seed: 1 });
   grid = $state<GridMesh>(defaultGrid());
   warp = $state<Warp>({ ...defaultWarp });
   finish = $state<Finish>(structuredClone(noFinish));
@@ -110,6 +125,8 @@ export class EditorState {
   selectedNode = $state(0);
   /** Index into linear.stops (user order, not position order). */
   selectedStop = $state(0);
+  /** Layout index of the plane picked on the preview (D88); -1 = none. */
+  selectedPlane = $state(-1);
   showHandles = $state(true);
   /** Palette-from-image progress or failure, shown in the colors section; '' when idle. */
   imageStatus = $state('');
@@ -153,13 +170,15 @@ export class EditorState {
       base = $state.snapshot(this.mesh) as PointMesh;
     } else if (this.kind === 'grid') {
       base = $state.snapshot(this.grid) as GridMesh;
-    } else if (this.kind === 'planes' || this.kind === 'aurora') {
+    } else if (this.kind === 'planes' || this.kind === 'aurora' || this.kind === 'blobs') {
       const stops = ($state.snapshot(this.ramp.stops) as ColorStop[]).sort((a, b) => a.position - b.position);
       const colors = stops.map((s) => s.color);
       base =
         this.kind === 'planes'
           ? { kind: 'planes', colors, ...this.planes }
-          : { kind: 'aurora', colors, ...$state.snapshot(this.aurora) };
+          : this.kind === 'blobs'
+            ? { kind: 'blobs', colors, ...$state.snapshot(this.blobs) }
+            : { kind: 'aurora', colors, ...$state.snapshot(this.aurora) };
     } else {
       // Linear, radial and conic share one ramp: same stops and angle.
       const ramp = $state.snapshot(this.ramp) as RampGradient;
@@ -241,9 +260,15 @@ export class EditorState {
       const { kind: _, colors, ...layout } = base;
       this.aurora = layout;
       this.setRampColors(colors);
+    } else if (base.kind === 'blobs') {
+      const { kind: _, colors, ...layout } = base;
+      this.blobs = layout;
+      this.setRampColors(colors);
     } else {
       this.ramp = { scale: 0.35, seed: 1, noiseStyle: 'contour', ...base };
     }
+    // The picked plane or blob belongs to the kind it was picked in.
+    if (base.kind !== this.kind) this.selectedPlane = -1;
     this.kind = base.kind;
     this.warp = { ...design.warp };
     this.finish = structuredClone({ ...noFinish, ...design.finish });
@@ -273,6 +298,7 @@ export class EditorState {
       mesh: $state.snapshot(this.mesh) as PointMesh,
       planes: $state.snapshot(this.planes),
       aurora: $state.snapshot(this.aurora),
+      blobs: $state.snapshot(this.blobs),
       grid: $state.snapshot(this.grid) as GridMesh,
       warp: $state.snapshot(this.warp),
       finish: $state.snapshot(this.finish),
@@ -288,6 +314,7 @@ export class EditorState {
     this.mesh = copy.mesh;
     this.planes = copy.planes;
     this.aurora = copy.aurora;
+    this.blobs = copy.blobs;
     this.grid = copy.grid;
     this.warp = copy.warp;
     this.finish = copy.finish;
@@ -300,6 +327,7 @@ export class EditorState {
     this.selectedPoint = clamp(this.selectedPoint, 0, this.mesh.points.length - 1);
     this.selectedNode = clamp(this.selectedNode, 0, this.grid.nodes.length - 1);
     this.selectedStop = clamp(this.selectedStop, 0, this.ramp.stops.length - 1);
+    if (this.selectedPlane >= this.planeTotal) this.selectedPlane = -1;
   }
 
   /** Planes colors onto the ramp's stops, in position order; evenly spaced stops if the count changed. */
@@ -329,10 +357,239 @@ export class EditorState {
 
   newPlanesLayout(): void {
     this.planes.seed = randomSeed();
+    this.clearPlaneEdits();
+  }
+
+  /** A different number of planes deals a different collage, so hand edits go; the slider moving within one count keeps them. */
+  setPlanesCount(count: number): void {
+    if (planeCount(count) !== planeCount(this.planes.count)) this.clearPlaneEdits();
+    this.planes.count = count;
+  }
+
+  // ---- Planes and blobs: move and reorder (D88) -------------------------------
+
+  private get warpActive(): boolean {
+    return this.warp.shape !== 'none' && this.warp.amount > 0;
+  }
+
+  /** The layout hand edits go on: the blobs', or else the planes'. */
+  private get shapeLayout(): PlanesLayout | BlobsLayout {
+    return this.kind === 'blobs' ? this.blobs : this.planes;
+  }
+
+  /** How many planes or blobs the layout holds. */
+  get planeTotal(): number {
+    return this.kind === 'blobs' ? blobCount(this.blobs.count) : planeCount(this.planes.count);
+  }
+
+  /** Layout indexes, back to front. */
+  get planeStack(): number[] {
+    return planeOrder(this.shapeLayout.edits, this.planeTotal);
+  }
+
+  /** Whether the layout has any hand edit. */
+  get hasShapeEdits(): boolean {
+    return !!this.shapeLayout.edits;
+  }
+
+  /**
+   * The planes back to front with their corners in screen (composition) coords. A warp moves what is drawn
+   * where, so each corner is put where the warp shows it (found by iterating, which holds for the gentle
+   * displacements of a warp); the edges stay straight, so under a warp the outlines are close, not exact.
+   */
+  planeShapes(): { id: number; corners: [number, number][] }[] {
+    const base = this.design.base;
+    if (base.kind !== 'planes') return [];
+    const warp = this.warpActive ? createWarp($state.snapshot(this.warp)) : null;
+    const shown = (cx: number, cy: number): [number, number] => {
+      let tx = cx;
+      let ty = cy;
+      for (let i = 0; warp && i < WARP_INVERSE_STEPS; i++) {
+        const [wx, wy] = warp(tx, ty);
+        tx -= wx - cx;
+        ty -= wy - cy;
+      }
+      return this.toScreen(tx, ty);
+    };
+    const size = { width: 1920, height: 1080 };
+    const p = preparePlanes(base, size);
+    return p.ids.map((id, slot) => ({
+      id,
+      corners: [0, 1, 2, 3].map((k) => shown(p.corners[slot * 8 + k * 2], p.corners[slot * 8 + k * 2 + 1])),
+    }));
+  }
+
+  /** Screen (composition) coords to the pattern point they show: the transform, then the warp. */
+  private patternMap(): (x: number, y: number) => [number, number] {
+    const warp = this.warpActive ? createWarp($state.snapshot(this.warp)) : null;
+    return (x, y) => {
+      const [px, py] = this.toPattern(x, y);
+      return warp ? warp(px, py) : [px, py];
+    };
+  }
+
+  /** The blob drawn at a screen point (its layout index), or -1: the topmost whose outline contains it, through the warp. */
+  blobAt(x: number, y: number): number {
+    const base = this.design.base;
+    if (base.kind !== 'blobs') return -1;
+    const p = prepareBlobs(base, { height: 1080 });
+    const [px, py] = this.patternMap()(x, y);
+    for (let slot = p.count - 1; slot >= 0; slot--) if (blobDistance(p, slot, px, py) < 0) return p.ids[slot];
+    return -1;
+  }
+
+  /** The pattern point of every grid point over the frame: it depends on the warp, the transform and the frame, not on any blob, so it is kept until one of them changes. */
+  private outlineGrid: {
+    key: string;
+    cols: number;
+    rows: number;
+    x0: number;
+    y0: number;
+    px: Float64Array;
+    py: Float64Array;
+  } | null = null;
+
+  private warpedGrid() {
+    const key = JSON.stringify([$state.snapshot(this.warp), $state.snapshot(this.transform), this.aspect]);
+    if (this.outlineGrid?.key === key) return this.outlineGrid;
+    const map = this.patternMap();
+    const cols = OUTLINE_GRID;
+    const rows = Math.max(2, Math.round(cols / this.aspect));
+    const x0 = -this.aspect / 2;
+    const y0 = -0.5;
+    const px = new Float64Array((cols + 1) * (rows + 1));
+    const py = new Float64Array((cols + 1) * (rows + 1));
+    for (let j = 0; j <= rows; j++) {
+      for (let i = 0; i <= cols; i++) {
+        [px[j * (cols + 1) + i], py[j * (cols + 1) + i]] = map(x0 + (i / cols) * this.aspect, y0 + j / rows);
+      }
+    }
+    return (this.outlineGrid = { key, cols, rows, x0, y0, px, py });
+  }
+
+  /**
+   * An SVG path (overlay coords: screen with y down) around blob `id`. Without a warp it is the blob's
+   * outline. Under a warp that outline is not where the blob is drawn (the warp can fold it), so the edge
+   * of what is drawn is traced on a grid instead.
+   */
+  blobOutlinePath(id: number): string {
+    const base = this.design.base;
+    if (base.kind !== 'blobs') return '';
+    const p = prepareBlobs(base, { height: 1080 });
+    const slot = p.ids.indexOf(id);
+    if (slot < 0) return '';
+    if (!this.warpActive) {
+      const points = blobOutline(p, slot).map(([x, y]) => this.toScreen(x, y));
+      return `M${points.map(([x, y]) => `${x} ${-y}`).join('L')}Z`;
+    }
+    const grid = this.warpedGrid();
+    const { cols, rows, x0, y0, px, py } = grid;
+    const [cx, cy] = p.shape0.subarray(slot * 4, slot * 4 + 2);
+    const near = blobReach(p, slot) + OUTLINE_MARGIN;
+    const field = new Float32Array((cols + 1) * (rows + 1)).fill(1);
+    for (let k = 0; k < field.length; k++) {
+      if (Math.hypot(px[k] - cx, py[k] - cy) <= near) field[k] = blobDistance(p, slot, px[k], py[k]);
+    }
+    return contourPath(field, cols, rows, (i, j) => [x0 + (i / cols) * this.aspect, -(y0 + j / rows)]);
+  }
+
+  /** The pattern point a screen point shows: the transform, then the warp. Moving by the difference of two keeps a grabbed plane under the pointer. */
+  patternAt(x: number, y: number): [number, number] {
+    const [px, py] = this.toPattern(x, y);
+    return this.warpActive ? warpPoint($state.snapshot(this.warp), px, py) : [px, py];
+  }
+
+  get hasWarp(): boolean {
+    return this.warpActive;
+  }
+
+  planeShift(id: number): [number, number] {
+    const s = this.shapeLayout.edits?.shifts[id];
+    return s ? [s[0], s[1]] : [0, 0];
+  }
+
+  /** A screen-space move as the pattern-space offset it makes. */
+  patternDelta(dx: number, dy: number): [number, number] {
+    const [x0, y0] = this.toPattern(0, 0);
+    const [x1, y1] = this.toPattern(dx, dy);
+    return [x1 - x0, y1 - y0];
+  }
+
+  setPlaneShift(id: number, x: number, y: number): void {
+    const shifts = (this.shapeLayout.edits?.shifts ?? []).map((s): [number, number] => [s[0], s[1]]);
+    while (shifts.length <= id) shifts.push([0, 0]);
+    shifts[id] = [x, y];
+    this.writePlaneEdits(this.shapeLayout.edits?.order ?? [], shifts);
+  }
+
+  /** Move a plane or blob one step in the stack, or to the very front or back. */
+  restack(id: number, to: 'back' | 'forward' | 'front' | 'backmost'): void {
+    const order = this.planeStack;
+    const at = order.indexOf(id);
+    if (at < 0) return;
+    order.splice(at, 1);
+    const target = { back: at - 1, forward: at + 1, front: order.length, backmost: 0 }[to];
+    order.splice(Math.max(0, Math.min(order.length, target)), 0, id);
+    this.writePlaneEdits(order, this.shapeLayout.edits?.shifts ?? []);
+  }
+
+  resetPlane(id: number): void {
+    const shifts = (this.shapeLayout.edits?.shifts ?? []).map((s): [number, number] => [s[0], s[1]]);
+    if (id < shifts.length) shifts[id] = [0, 0];
+    const scales = [...(this.blobs.edits?.scales ?? [])];
+    if (id < scales.length) scales[id] = 1;
+    this.writePlaneEdits(this.shapeLayout.edits?.order ?? [], shifts, scales);
+  }
+
+  clearPlaneEdits(): void {
+    delete this.shapeLayout.edits;
+    this.selectedPlane = -1;
+  }
+
+  /** A blob's own size, as a multiple of what the size slider gives every blob (1 = as dealt). */
+  blobScale(id: number): number {
+    return this.blobs.edits?.scales?.[id] ?? 1;
+  }
+
+  setBlobScale(id: number, scale: number): void {
+    const scales = [...(this.blobs.edits?.scales ?? [])];
+    while (scales.length <= id) scales.push(1);
+    scales[id] = Math.min(BLOB_SCALE[1], Math.max(BLOB_SCALE[0], scale));
+    const shifts = (this.blobs.edits?.shifts ?? []).map((s): [number, number] => [s[0], s[1]]);
+    this.writePlaneEdits(this.blobs.edits?.order ?? [], shifts, scales);
+  }
+
+  /** Stores the edits, or none at all when they say nothing, so an untouched layout saves as it always did. */
+  private writePlaneEdits(order: number[], shifts: [number, number][], scales = this.blobs.edits?.scales ?? []): void {
+    let last = shifts.length;
+    while (last > 0 && shifts[last - 1][0] === 0 && shifts[last - 1][1] === 0) last--;
+    const kept = shifts.slice(0, last);
+    let lastScale = scales.length;
+    while (lastScale > 0 && scales[lastScale - 1] === 1) lastScale--;
+    const keptScales = scales.slice(0, lastScale);
+    const moved = order.some((id, i) => id !== i);
+    const none = !moved && kept.length === 0 && keptScales.length === 0;
+    const edits = { order: moved ? [...order] : [], shifts: kept };
+    if (this.kind === 'blobs') {
+      if (none) delete this.blobs.edits;
+      else this.blobs.edits = { ...edits, ...(keptScales.length ? { scales: keptScales } : {}) };
+    } else if (none) delete this.planes.edits;
+    else this.planes.edits = edits;
   }
 
   newAuroraLayout(): void {
     this.aurora.seed = randomSeed();
+  }
+
+  newBlobsLayout(): void {
+    this.blobs.seed = randomSeed();
+    this.clearPlaneEdits();
+  }
+
+  /** A different number of blobs deals a different layout, so hand edits go; the slider moving within one count keeps them. */
+  setBlobsCount(count: number): void {
+    if (blobCount(count) !== blobCount(this.blobs.count)) this.clearPlaneEdits();
+    this.blobs.count = count;
   }
 
   /** Noise and cells: a new arrangement of the same field. */
@@ -463,7 +720,10 @@ export class EditorState {
       const shape = prepareRampShape(
         {
           ...this.ramp,
-          kind: this.kind === 'planes' || this.kind === 'aurora' ? 'linear' : (this.kind as RampGradient['kind']),
+          kind:
+            this.kind === 'planes' || this.kind === 'aurora' || this.kind === 'blobs'
+              ? 'linear'
+              : (this.kind as RampGradient['kind']),
         },
         { width: this.aspect, height: 1 },
         this.transform,

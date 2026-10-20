@@ -98,7 +98,9 @@ describe('step C: diff against the frozen reference', () => {
 
   it('is pinned to the schema version it was copied at', () => {
     // A schema bump lands here on purpose: decide whether the reference needs a new SHARE_PREFIX.
-    expect(SCHEMA_VERSION).toBe(SHARE_REFERENCE_VERSION);
+    // Version 7 only re-maps the planes count (D89) and the reference is linear, so it stays at 6; old links migrate on load.
+    expect(SHARE_REFERENCE_VERSION).toBe(6);
+    expect(SCHEMA_VERSION).toBe(7);
   });
 
   it('writes the default design as a tiny link', async () => {

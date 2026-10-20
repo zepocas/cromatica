@@ -398,7 +398,7 @@ describe('style shuffle (pattern kind and finishes)', () => {
   const colorsOf = (d: Design) => {
     const b = d.base;
     if (b.kind === 'mesh') return b.points.map((p) => p.color);
-    if (b.kind === 'planes' || b.kind === 'aurora') return b.colors;
+    if (b.kind === 'planes' || b.kind === 'aurora' || b.kind === 'blobs') return b.colors;
     if (b.kind === 'grid') return b.nodes.map((n) => n.color);
     return b.stops.map((s) => s.color);
   };
@@ -474,7 +474,9 @@ describe('style shuffle (pattern kind and finishes)', () => {
       if (d.finish!.bands > 0) banded++;
       if (d.base.kind === 'planes' || d.base.kind === 'aurora') expect(d.finish!.bands).toBe(0);
     }
-    expect(kinds).toEqual(new Set(['mesh', 'grid', 'linear', 'radial', 'conic', 'noise', 'cells', 'planes', 'aurora']));
+    expect(kinds).toEqual(
+      new Set(['mesh', 'grid', 'linear', 'radial', 'conic', 'noise', 'cells', 'planes', 'aurora', 'blobs']),
+    );
     expect(printed).toBeGreaterThan(20);
     expect(printed).toBeLessThan(100);
     expect(banded).toBeGreaterThan(5);
@@ -527,9 +529,43 @@ describe('style shuffle (pattern kind and finishes)', () => {
 
   it('is off without layout, and keeps the kind then', () => {
     for (let s = 0; s < 20; s++) {
-      const d = shuffled(meshDesign, { colors: true, layout: false, style: true, seed: s });
+      const d = shuffled(meshDesign, { colors: true, layout: false, style: false, seed: s });
       expect(d.base.kind).toBe('mesh');
       expect(d.finish).toEqual(meshDesign.finish);
+    }
+  });
+});
+
+describe('shuffle and plane edits', () => {
+  const edited: Design = {
+    ...defaultDesign,
+    base: {
+      kind: 'planes',
+      colors: [
+        [0.4, 0.08, 40],
+        [0.7, 0.1, 80],
+        [0.9, 0.03, 90],
+      ],
+      count: 0.5,
+      roughness: 0.4,
+      blend: 0.2,
+      seed: 11,
+      edits: { order: [1, 0], shifts: [[0.1, 0.1]] },
+    },
+  };
+
+  it('keeps the hand edits when only colors and finishes change', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const d = shuffleDesign(edited, { colors: true, layout: false, style: false, seed }).design;
+      expect(d.base.kind).toBe('planes');
+      expect(d.base.kind === 'planes' && d.base.edits).toEqual({ order: [1, 0], shifts: [[0.1, 0.1]] });
+    }
+  });
+
+  it('drops them when the layout is dealt again', () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const d = shuffleDesign(edited, { colors: false, layout: true, style: false, seed }).design;
+      expect(d.base.kind === 'planes' && 'edits' in d.base).toBe(false);
     }
   });
 });

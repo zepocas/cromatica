@@ -1,9 +1,11 @@
 <script lang="ts">
-  import { MAX_GRID, MIN_GRID } from '../../../design/design';
+  import { BLOB_SCALE, MAX_GRID, MIN_GRID } from '../../../design/design';
   import { ribbonCount } from '../../../engine/aurora';
+  import { blobCount } from '../../../engine/blobs';
   import { planeCount } from '../../../engine/planes';
   import Choice from '../../controls/Choice.svelte';
   import { degrees, fixed2 } from '../../controls/format';
+  import Group from '../../controls/Group.svelte';
   import SliderRow from '../../controls/SliderRow.svelte';
   import type { EditorState } from '../../state/editor.svelte';
 
@@ -13,7 +15,86 @@
 
   // Bindable so child bindings into the editor's state pass Svelte's ownership checks.
   let { editor = $bindable() }: Props = $props();
+
+  let arrangeFolded = $state(true);
+  const stack = $derived(editor.planeStack);
+  const place = $derived(stack.indexOf(editor.selectedPlane));
+  const picked = $derived(place >= 0);
+
+  /** Step the pick through the stack, so a plane hidden behind others can still be chosen. */
+  function stepPick(by: -1 | 1) {
+    editor.selectedPlane = stack[picked ? Math.max(0, Math.min(stack.length - 1, place + by)) : stack.length - 1];
+  }
 </script>
+
+{#snippet arrange(noun: 'plane' | 'blob')}
+  {@const Noun = noun === 'blob' ? 'Blob' : 'Plane'}
+  <Group title="arrange" ariaLabel="Arrange layout" bind:collapsed={arrangeFolded}>
+    <div class="row">
+      <span>{noun}</span>
+      <button class="icon" aria-label="{Noun} behind" disabled={picked && place === 0} onclick={() => stepPick(-1)}
+        >◂</button
+      >
+      <output aria-label="Picked {noun}">{picked ? `${place + 1} / ${stack.length}` : 'none'}</output>
+      <button
+        class="icon"
+        aria-label="{Noun} in front"
+        disabled={picked && place === stack.length - 1}
+        onclick={() => stepPick(1)}>▸</button
+      >
+    </div>
+    <div class="row">
+      <span>stack</span>
+      <button
+        class="btn"
+        title="Send the {noun} one step back"
+        disabled={!picked || place === 0}
+        onclick={() => editor.restack(editor.selectedPlane, 'back')}>back</button
+      >
+      <button
+        class="btn"
+        title="Bring the {noun} one step forward"
+        disabled={!picked || place === stack.length - 1}
+        onclick={() => editor.restack(editor.selectedPlane, 'forward')}>forward</button
+      >
+    </div>
+    {#if noun === 'blob'}
+      <SliderRow
+        label="size"
+        ariaLabel="Blob size"
+        title="This blob's own size, relative to the size slider"
+        min={BLOB_SCALE[0]}
+        max={BLOB_SCALE[1]}
+        step={0.01}
+        value={picked ? editor.blobScale(editor.selectedPlane) : 1}
+        disabled={!picked}
+        oninput={(v) => editor.setBlobScale(editor.selectedPlane, v)}
+        display={(v) => `×${v.toFixed(2)}`}
+      />
+    {/if}
+    <div class="row">
+      <span>reset</span>
+      <button
+        class="btn"
+        aria-label="Reset {noun}"
+        title="Put this {noun} back where the layout had it"
+        disabled={!picked}
+        onclick={() => editor.resetPlane(editor.selectedPlane)}>{noun}</button
+      >
+      <button
+        class="btn"
+        aria-label="Reset all"
+        title="Undo every move and reorder"
+        disabled={!editor.hasShapeEdits}
+        onclick={() => editor.clearPlaneEdits()}>all</button
+      >
+    </div>
+    <p class="hint">drag on the image; arrows nudge</p>
+    {#if editor.hasWarp && noun === 'plane'}
+      <p class="hint">a warp bends the {noun}s, so the outlines are close, not exact</p>
+    {/if}
+  </Group>
+{/snippet}
 
 <!-- The controls that belong to the active pattern kind. -->
 {#if editor.kind === 'mesh'}
@@ -33,7 +114,8 @@
     min={0}
     max={1}
     step={0.01}
-    bind:value={editor.planes.count}
+    value={editor.planes.count}
+    oninput={(v) => editor.setPlanesCount(v)}
     display={(v) => String(planeCount(v))}
   />
   <SliderRow
@@ -64,6 +146,7 @@
     bind:value={editor.planes.blend}
     display={fixed2}
   />
+  {@render arrange('plane')}
 {:else if editor.kind === 'grid'}
   <SliderRow
     label="rows"
@@ -131,6 +214,65 @@
     bind:value={editor.aurora.blend}
     display={fixed2}
   />
+{:else if editor.kind === 'blobs'}
+  <SliderRow
+    label="blobs"
+    title="How many blobs"
+    min={0}
+    max={1}
+    step={0.01}
+    value={editor.blobs.count}
+    oninput={(v) => editor.setBlobsCount(v)}
+    display={(v) => String(blobCount(v))}
+  >
+    {#snippet trailing()}
+      <button
+        class="icon"
+        aria-label="New blobs layout"
+        title="New arrangement of the blobs"
+        data-seed={editor.blobs.seed}
+        onclick={() => editor.newBlobsLayout()}>⚄</button
+      >
+    {/snippet}
+  </SliderRow>
+  <SliderRow
+    label="size"
+    title="Small ↔ large blobs"
+    min={0}
+    max={1}
+    step={0.01}
+    bind:value={editor.blobs.size}
+    display={fixed2}
+  />
+  <SliderRow
+    label="wobble"
+    title="Smooth ovals ↔ irregular bubbles"
+    min={0}
+    max={1}
+    step={0.01}
+    bind:value={editor.blobs.wobble}
+    display={fixed2}
+  />
+  <SliderRow
+    label="grain"
+    title="Off (smooth ink) ↔ fine stipple ↔ coarse stipple"
+    min={0}
+    max={1}
+    step={0.01}
+    bind:value={editor.blobs.grain}
+    display={(v) => (v === 0 ? 'off' : fixed2(v))}
+  />
+  <Choice
+    label="base"
+    ariaLabel="Blob base"
+    options={[
+      { value: 'black', title: 'Ink dots over a black body' },
+      { value: 'palette', title: 'A body in its palette color, with black or white dots' },
+    ]}
+    value={editor.blobs.base ?? 'black'}
+    onchange={(v) => (editor.blobs.base = v)}
+  />
+  {@render arrange('blob')}
 {:else if editor.kind === 'noise' || editor.kind === 'cells'}
   {#if editor.kind === 'noise'}
     <Choice
@@ -175,3 +317,10 @@
     display={degrees}
   />
 {/if}
+
+<style>
+  .hint {
+    margin: 4px 0 0;
+    color: var(--dim);
+  }
+</style>

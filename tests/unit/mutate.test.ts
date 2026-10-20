@@ -29,7 +29,7 @@ describe('mutateDesign', () => {
         expect(m).not.toEqual(d);
       }
     }
-    expect(kinds.size).toBe(9);
+    expect(kinds.size).toBe(10);
   });
 
   it('changes the warp shape often in bold variations and rarely in gentle ones', () => {

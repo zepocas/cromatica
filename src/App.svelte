@@ -15,6 +15,7 @@
   import MeshOverlay from './ui/overlays/MeshOverlay.svelte';
   import MoreLikeThis from './ui/overlays/MoreLikeThis.svelte';
   import GridOverlay from './ui/overlays/GridOverlay.svelte';
+  import PlanesOverlay from './ui/overlays/PlanesOverlay.svelte';
   import ContextOverlay from './ui/overlays/ContextOverlay.svelte';
   import MonitorsOverlay from './ui/overlays/MonitorsOverlay.svelte';
   import { MonitorsState } from './ui/state/monitors.svelte';
@@ -312,6 +313,8 @@
       <MeshOverlay {editor} {aspect} />
     {:else if editor.kind === 'grid'}
       <GridOverlay {editor} {aspect} />
+    {:else if editor.kind === 'planes' || editor.kind === 'blobs'}
+      <PlanesOverlay {editor} {aspect} />
     {/if}
   {/snippet}
 </Preview>

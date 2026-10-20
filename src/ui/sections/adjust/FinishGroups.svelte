@@ -34,7 +34,7 @@
 </script>
 
 <!-- Bands and edge, then the noise and lighting groups. -->
-{#if editor.kind !== 'planes' && editor.kind !== 'aurora' && editor.kind !== 'grid'}
+{#if editor.kind !== 'planes' && editor.kind !== 'aurora' && editor.kind !== 'blobs' && editor.kind !== 'grid'}
   <!-- Ramps band their position, so the readout is the step count; on a mesh the steps mean something different per style, so it shows the amount. -->
   {#if editor.kind === 'mesh'}
     <SliderRow

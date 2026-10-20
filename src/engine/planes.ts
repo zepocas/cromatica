@@ -3,14 +3,14 @@
 import { gamutMapToLinearSrgb } from '../color/gamut';
 import { srgbDecode } from '../color/oklab';
 import type { Rgb } from '../color/types';
-import { MAX_STOPS, type PlanesPattern } from '../design/design';
+import { MAX_PLANES, MAX_STOPS, type PlaneEdits, type PlanesPattern } from '../design/design';
 import { createRng } from '../design/random';
 import { clamp01 } from '../math';
 import { hash1, hashKey } from './noise';
 import type { OutputSize } from './types';
 
-export const MAX_PLANES = 24;
-const PLANE_COUNT: [few: number, many: number] = [4, 24];
+export { MAX_PLANES };
+const PLANE_COUNT: [few: number, many: number] = [1, MAX_PLANES];
 /** Half extents of the field the planes are spread over. Fixed (D4): a wider frame shows more of it. */
 const FIELD: [x: number, y: number] = [1.2, 0.6];
 /** Summed plane area over field area: on average each point is under this many planes. */
@@ -69,6 +69,10 @@ export interface PreparedPlanes {
   colorIndex: number[];
   backgroundIndex: number;
   corners: Float64Array;
+  /** Layout index of each plane in drawing order: a plane's torn edge follows it when it is moved or reordered. */
+  ids: number[];
+  /** Offset of each plane from where the seed put it (x, y per plane); the torn-edge noise moves with it. */
+  shifts: Float64Array;
   /** Torn-edge noise key of plane 0. */
   key: number;
   tear: number;
@@ -112,6 +116,53 @@ function planeCorners(rng: ReturnType<typeof createRng>, area: number, angle: nu
     pts.map(([x, y], k) => [center[0] + scale[k] * (cos * x - sin * y), center[1] + scale[k] * (sin * x + cos * y)]);
   const jittered = place(rect, jitter);
   return isConvexCcw(jittered) ? jittered : place(rect, [1, 1, 1, 1]);
+}
+
+/** Draw order from the edits: the listed planes first, then any the list misses. */
+export function planeOrder(edits: PlaneEdits | undefined, n: number): number[] {
+  const seen = new Set<number>();
+  const order: number[] = [];
+  for (const id of edits?.order ?? []) {
+    if (Number.isInteger(id) && id >= 0 && id < n && !seen.has(id)) {
+      seen.add(id);
+      order.push(id);
+    }
+  }
+  for (let id = 0; id < n; id++) if (!seen.has(id)) order.push(id);
+  return order;
+}
+
+/** Reorders and moves the planes as `edits` say. Without edits the arrays are returned as they are. */
+function applyEdits(p: PreparedPlanes, edits: PlaneEdits | undefined): void {
+  const n = p.count;
+  const order = planeOrder(edits, n);
+  const moved = order.some((id, i) => id !== i) || (edits?.shifts ?? []).some((s) => s && (s[0] !== 0 || s[1] !== 0));
+  p.ids = order;
+  p.shifts = new Float64Array(n * 2);
+  if (!moved) return;
+  const edges = new Float64Array(n * 12);
+  const bounds = new Float64Array(n * 3);
+  const colors = new Float64Array(n * 3);
+  const corners = new Float64Array(n * 8);
+  const colorIndex: number[] = [];
+  order.forEach((id, slot) => {
+    const dx = Number.isFinite(edits?.shifts[id]?.[0]) ? edits!.shifts[id][0] : 0;
+    const dy = Number.isFinite(edits?.shifts[id]?.[1]) ? edits!.shifts[id][1] : 0;
+    for (let e = 0; e < 4; e++) {
+      const [nx, ny, c] = p.edges.subarray(id * 12 + e * 3, id * 12 + e * 3 + 3);
+      edges.set([nx, ny, c + nx * dx + ny * dy], slot * 12 + e * 3);
+      corners.set([p.corners[id * 8 + e * 2] + dx, p.corners[id * 8 + e * 2 + 1] + dy], slot * 8 + e * 2);
+    }
+    bounds.set([p.bounds[id * 3] + dx, p.bounds[id * 3 + 1] + dy, p.bounds[id * 3 + 2]], slot * 3);
+    colors.set(p.colors.subarray(id * 3, id * 3 + 3), slot * 3);
+    colorIndex.push(p.colorIndex[id]);
+    p.shifts.set([dx, dy], slot * 2);
+  });
+  p.edges = edges;
+  p.bounds = bounds;
+  p.colors = colors;
+  p.corners = corners;
+  p.colorIndex = colorIndex;
 }
 
 export function preparePlanes(planes: PlanesPattern, output: OutputSize): PreparedPlanes {
@@ -165,7 +216,7 @@ export function preparePlanes(planes: PlanesPattern, output: OutputSize): Prepar
 
   const roughness = clamp01(Number.isFinite(planes.roughness) ? planes.roughness : 0);
   const blend = clamp01(Number.isFinite(planes.blend) ? planes.blend : 0);
-  return {
+  const prepared: PreparedPlanes = {
     count: n,
     background: palette[backgroundIndex],
     edges,
@@ -174,12 +225,16 @@ export function preparePlanes(planes: PlanesPattern, output: OutputSize): Prepar
     colorIndex,
     backgroundIndex,
     corners,
+    ids: [],
+    shifts: new Float64Array(0),
     key: hashKey(seed, PLANES_SALT),
     tear: TEAR_AMP * roughness,
     // A soft edge has no torn paper to show.
     rim: RIM_STRENGTH * roughness * (1 - blend),
     soft: AA_PIXELS / output.height + BLEND_MAX * blend,
   };
+  applyEdits(prepared, planes.edits);
+  return prepared;
 }
 
 function valueNoise(x: number, y: number, key: number): number {
@@ -235,7 +290,10 @@ export function evaluatePlanes(p: PreparedPlanes, x: number, y: number): Rgb {
     if (d < -reach) continue;
     let rim = 0;
     if (d < near) {
-      if (p.tear > 0) d += p.tear * tearNoise(x, y, (p.key + Math.imul(i, PLANE_KEY_STEP)) >>> 0);
+      if (p.tear > 0)
+        d +=
+          p.tear *
+          tearNoise(x - p.shifts[i * 2], y - p.shifts[i * 2 + 1], (p.key + Math.imul(p.ids[i], PLANE_KEY_STEP)) >>> 0);
       rim = p.rim * (1 - smoothstep(0, RIM_WIDTH, d));
     }
     const cover = smoothstep(-p.soft, p.soft, d);
