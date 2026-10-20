@@ -60,9 +60,9 @@
 
   const handles = $derived(
     editor.kind === 'mesh'
-      ? { label: 'mesh points', aria: 'Mesh points' }
+      ? { label: 'mesh points', aria: 'Mesh points', key: 'showMeshPoints' as const }
       : editor.kind === 'grid'
-        ? { label: 'grid nodes', aria: 'Grid nodes' }
+        ? { label: 'grid nodes', aria: 'Grid nodes', key: 'showGridNodes' as const }
         : null,
   );
 </script>
@@ -152,9 +152,9 @@
         <span>{handles.label}</span>
         <Dropdown
           ariaLabel={handles.aria}
-          value={editor.showHandles ? 'on' : 'off'}
+          value={editor[handles.key] ? 'on' : 'off'}
           options={[{ value: 'on' }, { value: 'off' }]}
-          onchange={(v) => (editor.showHandles = v === 'on')}
+          onchange={(v) => (editor[handles.key] = v === 'on')}
           title={`Show or hide the ${handles.label} on the image (H)`}
         />
       </span>

@@ -19,19 +19,16 @@
   /** The blob under the pointer (layout index), or -1: blobs have no shapes to hover, so it is picked on move. */
   let hover = $state(-1);
 
-  const active = $derived(editor.showHandles);
   const noun = $derived(editor.kind === 'blobs' ? 'Blob' : 'Plane');
   // Blobs are picked by math (the warp can fold them), so only the picked one has an outline to draw.
   const hoverPath = $derived(
-    active && editor.kind === 'blobs' && hover >= 0 && hover !== editor.selectedPlane
-      ? editor.blobOutlinePath(hover)
-      : '',
+    editor.kind === 'blobs' && hover >= 0 && hover !== editor.selectedPlane ? editor.blobOutlinePath(hover) : '',
   );
   const blobPath = $derived(
-    active && editor.kind === 'blobs' && editor.selectedPlane >= 0 ? editor.blobOutlinePath(editor.selectedPlane) : '',
+    editor.kind === 'blobs' && editor.selectedPlane >= 0 ? editor.blobOutlinePath(editor.selectedPlane) : '',
   );
   // Read the design here so the outlines follow every edit; planeShapes() is plain math on a copy.
-  const shapes = $derived(active ? editor.planeShapes() : []);
+  const shapes = $derived(editor.planeShapes());
 
   // Composition coords (height = 1, origin at center, +y up) with y flipped for SVG.
   const points = (corners: [number, number][]) => corners.map(([x, y]) => `${x},${-y}`).join(' ');
@@ -54,7 +51,7 @@
 
   function onPointerMove(e: PointerEvent) {
     if (!drag) {
-      hover = active && editor.kind === 'blobs' ? editor.blobAt(...toComposition(e)) : -1;
+      hover = editor.kind === 'blobs' ? editor.blobAt(...toComposition(e)) : -1;
       return;
     }
     if (e.pointerId !== drag.pointerId) return;
@@ -92,13 +89,8 @@
   function onWindowKeyDown(e: KeyboardEvent) {
     if ((editor.kind !== 'planes' && editor.kind !== 'blobs') || e.metaKey || e.ctrlKey || e.altKey) return;
     if (isFormControl(e.target)) return;
-    if (e.key === 'h' || e.key === 'H') {
-      editor.showHandles = !editor.showHandles;
-      e.preventDefault();
-      return;
-    }
     // Arrows belong to the shuffle history unless the overlay has focus.
-    if (!active || editor.selectedPlane < 0 || !overlay?.contains(e.target as Node)) return;
+    if (editor.selectedPlane < 0 || !overlay?.contains(e.target as Node)) return;
     const step = e.shiftKey ? NUDGE_LARGE : NUDGE;
     switch (e.key) {
       case 'ArrowLeft':
@@ -128,7 +120,6 @@
 
 <svg
   class="overlay"
-  class:hidden={!active}
   class:dragging
   class:grab={hover >= 0}
   bind:this={overlay}
@@ -181,9 +172,6 @@
     user-select: none;
     -webkit-user-select: none;
     outline: none;
-  }
-  .overlay.hidden {
-    pointer-events: none;
   }
   .plane {
     fill: transparent;
