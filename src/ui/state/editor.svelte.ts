@@ -127,7 +127,9 @@ export class EditorState {
   selectedStop = $state(0);
   /** Layout index of the plane picked on the preview (D88); -1 = none. */
   selectedPlane = $state(-1);
-  showHandles = $state(true);
+  /** Mesh points and grid nodes are shown on the preview; each net kind has its own switch. */
+  showMeshPoints = $state(true);
+  showGridNodes = $state(true);
   /** Palette-from-image progress or failure, shown in the colors section; '' when idle. */
   imageStatus = $state('');
   /** Frame aspect (width / height), for clamping drags to the frame. */

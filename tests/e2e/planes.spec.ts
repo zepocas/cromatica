@@ -138,3 +138,14 @@ test('planes: drag a plane on the image, reorder the stack, undo and reset', asy
   await expect(page.getByText('outlines are close')).toHaveCount(0);
   await expect(page.locator('[data-plane]')).not.toHaveCount(0);
 });
+
+test('planes and blobs: stay pickable when the mesh points toggle is off', async ({ page }) => {
+  await openApp(page);
+  const gradient = page.getByLabel('Gradient', { exact: true });
+  await choose(page.getByLabel('Mesh points'), 'off');
+  await choose(gradient, 'planes');
+  await expect(page.locator('[data-plane]').first()).toBeAttached();
+  await expect(page.getByTestId('planes-overlay')).not.toHaveCSS('pointer-events', 'none');
+  await choose(gradient, 'blobs');
+  await expect(page.getByTestId('planes-overlay')).not.toHaveCSS('pointer-events', 'none');
+});

@@ -89,11 +89,11 @@
     if (editor.kind !== 'grid' || e.metaKey || e.ctrlKey || e.altKey) return;
     if (isFormControl(e.target)) return;
     if (e.key === 'h' || e.key === 'H') {
-      editor.showHandles = !editor.showHandles;
+      editor.showGridNodes = !editor.showGridNodes;
       e.preventDefault();
       return;
     }
-    if (!editor.showHandles) return;
+    if (!editor.showGridNodes) return;
     // Arrows belong to the shuffle history unless a handle has focus.
     if (e.key.startsWith('Arrow') && !isHandle(e.target)) return;
     const n = editor.grid.nodes[editor.selectedNode];
@@ -117,14 +117,14 @@
 
 <div
   class="overlay"
-  class:hidden={!editor.showHandles}
+  class:hidden={!editor.showGridNodes}
   class:dragging
   bind:this={overlay}
   role="group"
   aria-label="Grid nodes"
   data-testid="grid-overlay"
 >
-  {#if editor.showHandles}
+  {#if editor.showGridNodes}
     <svg class="lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
       {#each lines as pts, i (i)}
         <polyline points={pts} />

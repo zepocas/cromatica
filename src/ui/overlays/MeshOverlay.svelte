@@ -76,11 +76,11 @@
     if (editor.kind !== 'mesh' || e.metaKey || e.ctrlKey || e.altKey) return;
     if (isFormControl(e.target)) return;
     if (e.key === 'h' || e.key === 'H') {
-      editor.showHandles = !editor.showHandles;
+      editor.showMeshPoints = !editor.showMeshPoints;
       e.preventDefault();
       return;
     }
-    if (!editor.showHandles) return;
+    if (!editor.showMeshPoints) return;
     // Arrows belong to the shuffle history unless a handle has focus.
     if (e.key.startsWith('Arrow') && !isHandle(e.target)) return;
     // Nudges follow the screen, whatever the transform.
@@ -116,7 +116,7 @@
 
 <div
   class="overlay"
-  class:hidden={!editor.showHandles}
+  class:hidden={!editor.showMeshPoints}
   class:dragging
   bind:this={overlay}
   role="group"
@@ -124,7 +124,7 @@
   data-testid="mesh-overlay"
   ondblclick={onOverlayDblClick}
 >
-  {#if editor.showHandles}
+  {#if editor.showMeshPoints}
     {@const [sx, sy] = editor.toScreen(editor.point.x, editor.point.y)}
     {@const size = editor.pointSize()}
     <div
