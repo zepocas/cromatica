@@ -8,6 +8,7 @@ import {
   MAX_GRID,
   MAX_MESH_POINTS,
   BLOB_SCALE,
+  PLANE_SCALE,
   MAX_BLOBS,
   MAX_PLANES,
   MAX_STOPS,
@@ -70,6 +71,7 @@ const planes = z.object({
     .object({
       order: z.array(z.number().int().min(0).lt(MAX_PLANES)).max(MAX_PLANES),
       shifts: z.array(z.tuple([z.number(), z.number()])).max(MAX_PLANES),
+      scales: z.array(z.number().min(PLANE_SCALE[0]).max(PLANE_SCALE[1])).max(MAX_PLANES).optional(),
     })
     .optional(),
 });

@@ -21,7 +21,7 @@ import {
   type Finish,
   type AuroraPattern,
   type BlobsPattern,
-  BLOB_SCALE,
+  PLANE_SCALE,
   type GridMesh,
   MAX_GRID,
   MIN_GRID,
@@ -538,7 +538,7 @@ export class EditorState {
   resetPlane(id: number): void {
     const shifts = (this.shapeLayout.edits?.shifts ?? []).map((s): [number, number] => [s[0], s[1]]);
     if (id < shifts.length) shifts[id] = [0, 0];
-    const scales = [...(this.blobs.edits?.scales ?? [])];
+    const scales = [...(this.shapeLayout.edits?.scales ?? [])];
     if (id < scales.length) scales[id] = 1;
     this.writePlaneEdits(this.shapeLayout.edits?.order ?? [], shifts, scales);
   }
@@ -548,21 +548,25 @@ export class EditorState {
     this.selectedPlane = -1;
   }
 
-  /** A blob's own size, as a multiple of what the size slider gives every blob (1 = as dealt). */
-  blobScale(id: number): number {
-    return this.blobs.edits?.scales?.[id] ?? 1;
+  /** A plane's or blob's own size, as a multiple of what the layout dealt it (1 = as dealt). */
+  planeScale(id: number): number {
+    return this.shapeLayout.edits?.scales?.[id] ?? 1;
   }
 
-  setBlobScale(id: number, scale: number): void {
-    const scales = [...(this.blobs.edits?.scales ?? [])];
+  setPlaneScale(id: number, scale: number): void {
+    const scales = [...(this.shapeLayout.edits?.scales ?? [])];
     while (scales.length <= id) scales.push(1);
-    scales[id] = Math.min(BLOB_SCALE[1], Math.max(BLOB_SCALE[0], scale));
-    const shifts = (this.blobs.edits?.shifts ?? []).map((s): [number, number] => [s[0], s[1]]);
-    this.writePlaneEdits(this.blobs.edits?.order ?? [], shifts, scales);
+    scales[id] = Math.min(PLANE_SCALE[1], Math.max(PLANE_SCALE[0], scale));
+    const shifts = (this.shapeLayout.edits?.shifts ?? []).map((s): [number, number] => [s[0], s[1]]);
+    this.writePlaneEdits(this.shapeLayout.edits?.order ?? [], shifts, scales);
   }
 
   /** Stores the edits, or none at all when they say nothing, so an untouched layout saves as it always did. */
-  private writePlaneEdits(order: number[], shifts: [number, number][], scales = this.blobs.edits?.scales ?? []): void {
+  private writePlaneEdits(
+    order: number[],
+    shifts: [number, number][],
+    scales = this.shapeLayout.edits?.scales ?? [],
+  ): void {
     let last = shifts.length;
     while (last > 0 && shifts[last - 1][0] === 0 && shifts[last - 1][1] === 0) last--;
     const kept = shifts.slice(0, last);
@@ -571,12 +575,14 @@ export class EditorState {
     const keptScales = scales.slice(0, lastScale);
     const moved = order.some((id, i) => id !== i);
     const none = !moved && kept.length === 0 && keptScales.length === 0;
-    const edits = { order: moved ? [...order] : [], shifts: kept };
-    if (this.kind === 'blobs') {
-      if (none) delete this.blobs.edits;
-      else this.blobs.edits = { ...edits, ...(keptScales.length ? { scales: keptScales } : {}) };
-    } else if (none) delete this.planes.edits;
-    else this.planes.edits = edits;
+    const edits = {
+      order: moved ? [...order] : [],
+      shifts: kept,
+      ...(keptScales.length ? { scales: keptScales } : {}),
+    };
+    const layout = this.shapeLayout;
+    if (none) delete layout.edits;
+    else layout.edits = edits;
   }
 
   newAuroraLayout(): void {

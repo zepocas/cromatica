@@ -142,6 +142,37 @@ describe('planes edits', () => {
     expect(p.corners).toEqual(base.corners);
   });
 
+  it("scales one plane about its center and nothing else,", () => {
+    const p = edited({ order: [], shifts: [], scales: [1, 1, 1, 1.5, 1] });
+    for (let i = 0; i < n; i++) {
+      const factor = i === 3 ? 1.5 : 1;
+      expect(p.bounds[i * 3]).toBe(base.bounds[i * 3]);
+      expect(p.bounds[i * 3 + 2]).toBeCloseTo(base.bounds[i * 3 + 2] * factor, 12);
+      const [cx, cy] = p.bounds.subarray(i * 3, i * 3 + 2);
+      for (let e = 0; e < 4; e++) {
+        const [ax, ay] = p.corners.subarray(i * 8 + e * 2, i * 8 + e * 2 + 2);
+        const [bx, by] = base.corners.subarray(i * 8 + e * 2, i * 8 + e * 2 + 2);
+        expect(ax).toBeCloseTo(cx + factor * (bx - cx), 12);
+        expect(ay).toBeCloseTo(cy + factor * (by - cy), 12);
+        // Each corner still lies on both edges it joins.
+        const [nx, ny, c] = p.edges.subarray(i * 12 + e * 3, i * 12 + e * 3 + 3);
+        expect(nx * ax + ny * ay - c).toBeCloseTo(0, 9);
+      }
+    }
+    expect(p.colors).toEqual(base.colors);
+  });
+
+  it('keeps a plane its size when moved or restacked, clamps it, and treats a bad one as 1', () => {
+    const order = Array.from({ length: n }, (_, i) => n - 1 - i);
+    const p = edited({ order, shifts: [[0.1, 0]], scales: [2] });
+    const slot = order.indexOf(0);
+    expect(p.bounds[slot * 3 + 2]).toBeCloseTo(base.bounds[2] * 2, 12);
+    expect(p.bounds[slot * 3]).toBeCloseTo(base.bounds[0] + 0.1, 12);
+    expect(edited({ order: [], shifts: [], scales: [100] }).bounds[2]).toBeCloseTo(base.bounds[2] * 2.5, 12);
+    expect(edited({ order: [], shifts: [], scales: [0.001] }).bounds[2]).toBeCloseTo(base.bounds[2] * 0.25, 12);
+    expect(edited({ order: [], shifts: [], scales: [NaN] }).corners).toEqual(base.corners);
+  });
+
   it('moving every plane by one vector moves the whole picture, torn edges included', () => {
     const rough = preparePlanes(planes({ count: 0.5, roughness: 1 }), frame);
     const s: [number, number] = [0.31, -0.17];
