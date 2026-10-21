@@ -45,8 +45,8 @@ export interface PerfLog {
   report(): string;
 }
 
-/** Collects samples, shows the slowest labels in a corner box and exposes `window.__perf` for the console. */
-export function createPerfLog(gl: WebGL2RenderingContext): PerfLog {
+/** Collects samples, shows the slowest labels in a corner box and exposes `window.__perf` for the console. `info` names the GPU and the buffer size. */
+export function createPerfLog(info: () => string): PerfLog {
   const samples: PerfSample[] = [];
   const box = document.createElement('pre');
   box.style.cssText =
@@ -92,10 +92,8 @@ export function createPerfLog(gl: WebGL2RenderingContext): PerfLog {
       }));
       rows.sort((a, b) => (b.compile || 0) - (a.compile || 0) || (b.draw || 0) - (a.draw || 0));
       const fmt = (v: number) => (Number.isNaN(v) ? '-' : v.toFixed(0));
-      const last = samples[samples.length - 1];
       return [
-        describeRenderer(gl),
-        last ? `${gl.drawingBufferWidth}x${gl.drawingBufferHeight}` : '',
+        info(),
         `page stalls: worst frame gap ${worstGap.toFixed(0)} ms, ${stalls} gaps over 100 ms`,
         'draw ms (median, n) | compile ms (worst) | variant',
         ...rows

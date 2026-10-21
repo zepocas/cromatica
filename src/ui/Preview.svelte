@@ -1,7 +1,8 @@
 <script lang="ts">
   import { untrack, type Snippet } from 'svelte';
   import type { Design } from '../design/design';
-  import { createPreview, type PreviewController } from '../preview/preview';
+  import type { PreviewHandle } from '../preview/preview';
+  import { createAutoPreview } from '../preview/preview-worker';
   import { isTypingTarget } from './state/keys';
   import type { CanvasView } from './state/view.svelte';
 
@@ -44,17 +45,18 @@
   let container: HTMLDivElement;
   let frame: HTMLDivElement;
   let canvas: HTMLCanvasElement;
-  let controller: PreviewController | null = null;
+  let controller: PreviewHandle | null = null;
   let error = $state('');
 
   $effect(() => {
     try {
-      controller = createPreview(
+      controller = createAutoPreview(
         canvas,
         untrack(() => design),
         {
           container,
           aspect: untrack(() => aspect),
+          onError: (message) => (error = message),
         },
       );
     } catch (err) {
