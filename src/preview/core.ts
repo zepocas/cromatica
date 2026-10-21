@@ -19,14 +19,20 @@ const TARGET_FRAME_MS = 16;
 /** Weight of the newest timing in the running estimate of a full-resolution frame. */
 const COST_SMOOTHING = 0.5;
 
-/** The design without the fine texture (noise), to tell texture-only edits apart. */
+/** The design without its fine textures, to tell texture-only edits apart: the noise, and a blobs pattern's grain. */
 function withoutTextures(d: Design): string {
-  return JSON.stringify({ ...d, finish: d.finish && { ...d.finish, noise: noFinish.noise } });
+  const base = d.base.kind === 'blobs' ? { ...d.base, grain: 0 } : d.base;
+  return JSON.stringify({ ...d, base, finish: d.finish && { ...d.finish, noise: noFinish.noise } });
 }
 
-/** A noise is on: its texture is per output pixel, so it must be drawn at full resolution to look the same as at rest. */
+/** A texture is on: it is per output pixel (the noise, the blobs' stipple), so it must be drawn at full resolution to look the same as at rest. */
 function hasTexture(d: Design): boolean {
-  return (d.finish?.noise.amount ?? 0) > 0;
+  return (d.finish?.noise.amount ?? 0) > 0 || (d.base.kind === 'blobs' && d.base.grain > 0);
+}
+
+/** Edits to a texture, and any edit while one is on, are drawn at full resolution: a reduced frame would show a different texture, then snap. */
+export function keepsFullResolution(from: Design, to: Design): boolean {
+  return withoutTextures(to) === withoutTextures(from) || hasTexture(to);
 }
 
 /** The resolution to edit at when a full-resolution frame costs `cost` ms: 1 when cheap enough, else down to MIN_SCALE. */
@@ -173,7 +179,7 @@ export function createPreviewCore(
   }
 
   // On slow GPUs, drop the resolution (down to half, as far as the frame cost calls for) while changes
-  // keep arriving; sharpen once idle. A noise on, or an edit to it, stays at full resolution: those
+  // keep arriving; sharpen once idle. A texture on, or an edit to it, stays at full resolution (keepsFullResolution): those
   // textures are a few pixels fine, so a reduced frame would show a different texture, then snap.
   function interact(keepFull: boolean): void {
     const reduced = opts.fixedSize || keepFull ? 1 : editingScale(fullFrameMs);
@@ -211,8 +217,7 @@ export function createPreviewCore(
   return {
     setDesign(next) {
       if (next === design) return;
-      // Edits to the noise, and any edit while a noise is on, stay at full resolution.
-      const keepFull = withoutTextures(next) === withoutTextures(design) || hasTexture(next);
+      const keepFull = keepsFullResolution(design, next);
       design = next;
       interact(keepFull);
     },
