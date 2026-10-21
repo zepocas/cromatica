@@ -1,6 +1,7 @@
 import { noFinish, type Design } from '../design/design';
 import { createRenderer } from '../engine/renderer';
 import { CONTEXT_ATTRIBUTES, type OutputSize, type Renderer } from '../engine/types';
+import { createPerfLog, describeDesign, perfEnabled } from './perf';
 
 export interface PreviewOptions {
   /** Element whose box the canvas is letterboxed into. Defaults to the canvas parent. */
@@ -75,6 +76,7 @@ export function createPreview(
   let aspect = opts.aspect ?? 16 / 9;
   let displayAspect: number | null = null;
   let renderer: Renderer | null = createRenderer(gl);
+  const perf = perfEnabled ? createPerfLog(gl) : null;
   let scale = 1;
   /** Cost of the last full-resolution frame, GPU included; Infinity until measured. */
   let fullFrameMs = Infinity;
@@ -120,8 +122,10 @@ export function createPreview(
     // A 1-pixel read waits for the GPU, so the time covers the whole frame. Cost follows the pixel
     // count, so a reduced frame still says what a full one would cost.
     gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, syncPixel);
+    const compiled = renderer.compiled !== compiledBefore;
+    perf?.record({ label: describeDesign(design), ms: performance.now() - t0, compiled });
     // A frame that compiled a shader says nothing about the cost of drawing.
-    if (renderer.compiled === compiledBefore) {
+    if (!compiled) {
       const full = (performance.now() - t0) / (scale * scale);
       fullFrameMs = Number.isFinite(fullFrameMs) ? fullFrameMs + COST_SMOOTHING * (full - fullFrameMs) : full;
     }
