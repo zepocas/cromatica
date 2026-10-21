@@ -11,7 +11,7 @@ import { engineHarness, openEngineHarness } from './support/harness';
 /** At most this share of pixels may differ by more than the tolerance. */
 const FLIPPED = 0.02;
 /** Glass lighting reads the pattern where the surface tilt shifts it, so a fine stipple flips more dots there. */
-const FLIPPED_GLASS = 0.05;
+const FLIPPED_GLASS = 0.06;
 /** A warp is float32 on the GPU too, so it moves a sample by rounding error and flips a few more dots. */
 const FLIPPED_WARPED = 0.03;
 const flipped = (over: number, w: number, h: number) => over / (w * h);

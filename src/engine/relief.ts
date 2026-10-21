@@ -22,6 +22,8 @@ const SATIN_SHEEN: readonly (readonly [exponent: number, weight: number])[] = [
 const SATIN_TINT = 0.6;
 /** Glass: how far the surface tilt shifts the pattern underneath, composition units. */
 const GLASS_REFRACT = 0.05;
+/** Blobs bend the pattern further: the cap below keeps that off their outlines. */
+const GLASS_REFRACT_BLOBS = 0.075;
 const GLASS_SHADE = 0.35;
 const GLASS_RIM = 0.2;
 const GLASS_GLINT: readonly [exponent: number, weight: number] = [160, 0.45];
@@ -67,6 +69,7 @@ export const RELIEF_SHADER_CONSTANTS = {
   SATIN_TINT: SATIN_TINT.toFixed(4),
   MAX_TILT: MAX_TILT.toFixed(4),
   GLASS_REFRACT: GLASS_REFRACT.toFixed(4),
+  GLASS_REFRACT_BLOBS: GLASS_REFRACT_BLOBS.toFixed(4),
   GLASS_SHADE: GLASS_SHADE.toFixed(4),
   GLASS_RIM: GLASS_RIM.toFixed(4),
   GLASS_GLINT_EXP: GLASS_GLINT[0].toFixed(1),
@@ -106,9 +109,14 @@ export function applyRelief(
     const shade = 1 + SATIN_SHADE * tilt;
     return rgb.map((c) => c * shade + sheen * (1 - SATIN_TINT + SATIN_TINT * c)) as Rgb;
   }
-  const shift = Math.hypot(n[0], n[1]) * GLASS_REFRACT;
-  const refract =
-    roomAt && shift > 0 ? Math.min(GLASS_REFRACT, (GLASS_ROOM * roomAt(u, v) * GLASS_REFRACT) / shift) : GLASS_REFRACT;
+  let refract = GLASS_REFRACT;
+  if (roomAt) {
+    const shift = Math.hypot(n[0], n[1]) * GLASS_REFRACT_BLOBS;
+    refract =
+      shift > 0
+        ? Math.min(GLASS_REFRACT_BLOBS, (GLASS_ROOM * roomAt(u, v) * GLASS_REFRACT_BLOBS) / shift)
+        : GLASS_REFRACT_BLOBS;
+  }
   const under = colorAt(u + n[0] * refract, v + n[1] * refract);
   const rim = GLASS_RIM * (1 - n[2]) ** 2;
   const glint = GLASS_GLINT[1] * extraHighlight(nh, r.half[2], GLASS_GLINT[0]);
