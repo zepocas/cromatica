@@ -182,7 +182,7 @@
     /* Only the monitors take the pointer; everything else falls through to pan and zoom. */
     pointer-events: none;
     overflow: hidden;
-    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    font-family: var(--font-mono);
   }
   .dim {
     position: absolute;
