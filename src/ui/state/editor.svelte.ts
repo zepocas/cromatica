@@ -205,7 +205,15 @@ export class EditorState {
   shuffle(): void {
     if (this.canShuffle) {
       this.reeled(() =>
-        this.applyShuffle(!this.colorsLocked, !this.patternLocked, !this.patternLocked, !this.adjustLocked),
+        this.applyShuffle(
+          !this.colorsLocked,
+          !this.patternLocked,
+          !this.patternLocked,
+          !this.adjustLocked,
+          undefined,
+          undefined,
+          this.patternLocked && !this.colorsLocked,
+        ),
       );
     }
   }
@@ -236,10 +244,12 @@ export class EditorState {
     adjust: boolean | undefined,
     palette = this.palette.shuffleOptions(),
     seed = randomSeed(),
+    /** Keep the pattern but deal planes, aurora and blobs a new arrangement. */
+    arrange = false,
   ): void {
     const next = shuffleDesign(
       this.design,
-      { colors, layout, style, finish: adjust, levels: adjust, palette, seed },
+      { colors, layout, style, finish: adjust, levels: adjust, palette, seed, arrange },
       this.aspect,
     );
     this.setDesign(next.design);
