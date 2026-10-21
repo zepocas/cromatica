@@ -1,4 +1,4 @@
-// The preview draws in a worker where it can (D91) and on the main thread otherwise (`?mainthread`); both show the same picture.
+// The preview draws in a worker where it can (D93) and on the main thread otherwise (`?mainthread`); both show the same picture.
 import type { Locator, Page } from '@playwright/test';
 import { expect, previewProbe, test } from './support/app';
 

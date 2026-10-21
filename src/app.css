@@ -4,7 +4,17 @@
      dropdown list carry it too, so they pick up the same variables.
    - Layout and anything specific to one component lives in that component's <style> block.
    - Colors, the layer order and the page gutter are variables, here and under `.panel` below. */
+/* JetBrains Mono (OFL), bundled so every OS draws the same glyphs and metrics. The private name
+   keeps an installed JetBrains Mono (NL, Nerd Font, other builds) from taking its place. */
+@font-face {
+  font-family: 'Cromatica Mono';
+  src: url('./assets/fonts/JetBrainsMono-wght.woff2') format('woff2');
+  font-weight: 100 800;
+  font-display: swap;
+}
+
 :root {
+  --font-mono: 'Cromatica Mono', Menlo, Consolas, monospace;
   --sidebar: 300px;
   --statusbar: 28px;
   /* Space between the preview and the window edge, and between floating cards and it. */
@@ -17,12 +27,9 @@
   --z-pins: 20;
   --z-dropdown: 100;
   color-scheme: dark;
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  font-family: var(--font-mono);
+  /* Ligatures would merge "->" and "!=" in labels; the panel reads as plain terminal text. */
+  font-variant-ligatures: none;
   line-height: 1.4;
   background: #0b0b0d;
   -webkit-font-smoothing: antialiased;
@@ -60,7 +67,7 @@ body,
     oklch(0.72 0.12 300),
     oklch(0.72 0.12 360)
   );
-  font-family: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.5;
   color: var(--dim);

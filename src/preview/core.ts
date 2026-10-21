@@ -78,7 +78,7 @@ export interface PreviewCore {
 
 /**
  * The preview's drawing loop with no page in it: it sizes the buffer from a layout it is given, so it runs
- * the same on the main thread and in a worker (D91).
+ * the same on the main thread and in a worker (D93).
  */
 export function createPreviewCore(
   canvas: HTMLCanvasElement | OffscreenCanvas,

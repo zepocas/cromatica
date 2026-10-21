@@ -34,7 +34,7 @@ function post(worker: Worker, msg: ToPreviewWorker, transfer: Transferable[] = [
 
 /**
  * The preview with its WebGL in a worker, so a shader compile (seconds on some Windows drivers) stalls the
- * worker and not the page (D91). The page keeps measuring the frame and sizing the canvas; the worker draws.
+ * worker and not the page (D93). The page keeps measuring the frame and sizing the canvas; the worker draws.
  */
 function createWorkerPreview(
   canvas: HTMLCanvasElement,
