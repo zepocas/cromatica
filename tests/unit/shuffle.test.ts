@@ -230,7 +230,8 @@ describe('shuffleDesign', () => {
   it('lays a grid out over the turned frame, so every screen corner falls inside it', () => {
     const aspect = 16 / 9;
     let grids = 0;
-    for (let s = 0; s < 80; s++) {
+    // Grids are rare in shuffles (D92), so look at a lot of seeds.
+    for (let s = 0; s < 600; s++) {
       const out = shuffled(meshDesign, { ...all(s), style: true }, aspect);
       if (out.base.kind !== 'grid') continue;
       grids++;
