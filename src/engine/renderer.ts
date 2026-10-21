@@ -41,7 +41,7 @@ import { BLUE_NOISE_SIZE, DITHER_CHANNEL_OFFSETS, blueNoiseRanks } from './blue-
 import { prepareFinish, VIGNETTE_INNER } from './finish';
 import { buildShaderSources, variantKey, type Defines } from './shaders';
 import { NEIGHBOUR_SHADER_CONSTANTS } from './neighbours';
-import { prepareRelief, RELIEF_SHADER_CONSTANTS, type PreparedRelief } from './relief';
+import { prepareRelief, RELIEF_SHADER_CONSTANTS, RELIEF_TAPS, type PreparedRelief } from './relief';
 import { GRAIN_CHROMA, prepareGrain } from './grain';
 import { HALFTONE_SHADER_CONSTANTS, HALFTONE_TABLE, halftoneContrast } from './halftone';
 import { prepareWarp, WARP_SHADER_CONSTANTS, type PreparedWarp } from './warp';
@@ -250,8 +250,26 @@ function createTexture(gl: WebGL2RenderingContext, filter: GLenum, wrap: GLenum)
   return tex;
 }
 
+/** Everything that picks the shader variant; the same inputs always give the same key. */
+function variantDefines(base: Design['base'], warp: PreparedWarp, relief: PreparedRelief, halftone: number): Defines {
+  return {
+    BLUE_NOISE_SIZE,
+    VIGNETTE_INNER: VIGNETTE_INNER.toFixed(4),
+    ...baseDefines(base),
+    ...warpDefines(warp),
+    ...reliefDefines(relief),
+    ...(halftone > 0 ? { ...HALFTONE_SHADER_CONSTANTS, GAMUT_CLIP_STEPS } : {}),
+  };
+}
+
+/** KHR_parallel_shader_compile's query for a finished compile and link (the constant is not in the DOM typings). */
+const COMPLETION_STATUS_KHR = 0x91b1;
+
 export function createRenderer(gl: WebGL2RenderingContext): Renderer {
   const programs = new Map<string, twgl.ProgramInfo>();
+  /** Programs handed to the driver whose compile and link have not been collected yet. */
+  const pending = new Map<string, { program: WebGLProgram; shaders: WebGLShader[] }>();
+  const parallelCompile = gl.getExtension('KHR_parallel_shader_compile') !== null;
   let compiled = 0;
   const vao = gl.createVertexArray();
 
@@ -286,6 +304,12 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
   function getProgram(defines: Defines): twgl.ProgramInfo {
     const key = variantKey(defines);
     let info = programs.get(key);
+    const inFlight = pending.get(key);
+    if (!info && inFlight) {
+      // Blocks until the driver is done; the caller asked to draw now.
+      collect(key, inFlight);
+      info = programs.get(key);
+    }
     if (!info) {
       const src = buildShaderSources(defines);
       let error = '';
@@ -300,9 +324,58 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
     return info;
   }
 
+  /** Hand the variant to the driver without waiting for it: a compile blocks the page for seconds on some drivers. */
+  function startCompile(key: string, defines: Defines): void {
+    const src = buildShaderSources(defines);
+    const program = gl.createProgram();
+    const shaders: WebGLShader[] = [];
+    for (const [type, source] of [
+      [gl.VERTEX_SHADER, src.vertex],
+      [gl.FRAGMENT_SHADER, src.fragment],
+    ] as const) {
+      const shader = gl.createShader(type)!;
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      gl.attachShader(program, shader);
+      shaders.push(shader);
+    }
+    gl.linkProgram(program);
+    pending.set(key, { program, shaders });
+  }
+
+  function collect(key: string, { program, shaders }: { program: WebGLProgram; shaders: WebGLShader[] }): void {
+    pending.delete(key);
+    const failed = !gl.getProgramParameter(program, gl.LINK_STATUS);
+    const log = failed
+      ? [...shaders.map((sh) => gl.getShaderInfoLog(sh)), gl.getProgramInfoLog(program)].join('\n')
+      : '';
+    for (const sh of shaders) gl.deleteShader(sh);
+    if (failed) {
+      gl.deleteProgram(program);
+      throw new Error(`Shader compile failed (${key || 'default'}):\n${log}`);
+    }
+    programs.set(key, twgl.createProgramInfoFromProgram(gl, program));
+    compiled++;
+  }
+
   return {
     get compiled() {
       return compiled;
+    },
+    ready(design: Design) {
+      const defines = variantDefines(
+        design.base,
+        prepareWarp(design.warp),
+        prepareRelief(design.finish),
+        halftoneContrast(design.finish),
+      );
+      const key = variantKey(defines);
+      if (programs.has(key) || !parallelCompile) return true;
+      if (!pending.has(key)) startCompile(key, defines);
+      const job = pending.get(key)!;
+      if (!gl.getProgramParameter(job.program, COMPLETION_STATUS_KHR)) return false;
+      collect(key, job);
+      return true;
     },
     render(design: Design, output: OutputSize, tile: Tile, opts: RenderOptions = {}) {
       const base = design.base;
@@ -311,14 +384,7 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
       const finish = prepareFinish(design.finish, output);
       const relief = prepareRelief(design.finish);
       const halftone = halftoneContrast(design.finish);
-      const info = getProgram({
-        BLUE_NOISE_SIZE,
-        VIGNETTE_INNER: VIGNETTE_INNER.toFixed(4),
-        ...baseDefines(base),
-        ...warpDefines(warp),
-        ...reliefDefines(relief),
-        ...(halftone > 0 ? { ...HALFTONE_SHADER_CONSTANTS, GAMUT_CLIP_STEPS } : {}),
-      });
+      const info = getProgram(variantDefines(base, warp, relief, halftone));
       let baseUniforms: object;
       if (base.kind === 'mesh') {
         baseUniforms = meshUniforms(base);
@@ -373,7 +439,12 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
         u_printSpeckle: finish.printSpeckle,
         u_printEdge: finish.printEdge,
         ...(relief.depth > 0
-          ? { u_reliefDepth: relief.depth, u_reliefLight: relief.light, u_reliefHalf: relief.half }
+          ? {
+              u_reliefDepth: relief.depth,
+              u_reliefLight: relief.light,
+              u_reliefHalf: relief.half,
+              u_reliefTaps: RELIEF_TAPS,
+            }
           : {}),
         ...(halftone > 0 ? { u_halftoneContrast: halftone, u_halftoneTable: new Float32Array(HALFTONE_TABLE) } : {}),
         u_blueNoise: blueNoiseTexture,
@@ -405,6 +476,11 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
     dispose() {
       for (const info of programs.values()) gl.deleteProgram(info.program);
       programs.clear();
+      for (const { program, shaders } of pending.values()) {
+        for (const sh of shaders) gl.deleteShader(sh);
+        gl.deleteProgram(program);
+      }
+      pending.clear();
       gl.deleteTexture(rampTexture);
       gl.deleteTexture(blueNoiseTexture);
       rampKey = undefined;

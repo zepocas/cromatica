@@ -83,25 +83,25 @@
     <span class="group locks">
       <span title="Parts that shuffling leaves alone; you can still edit them by hand">shuffle lock</span>
       <LockToggle
-        locked={editor.colorsLocked}
-        label="colors"
-        ariaLabel="Lock colors"
-        title="Keep the colors when shuffling (1)"
-        onchange={(on) => (editor.colorsLocked = on)}
-      />
-      <LockToggle
         locked={editor.patternLocked}
         label="pattern"
         ariaLabel="Lock pattern"
-        title="Keep the pattern kind, layout, warp shape and variation when shuffling (2)"
+        title="Keep the pattern kind, layout, warp shape and variation when shuffling (1)"
         onchange={(on) => (editor.patternLocked = on)}
       />
       <LockToggle
         locked={editor.adjustLocked}
         label="adjust"
         ariaLabel="Lock adjust"
-        title="Keep the warp amount and size, bands, noise, vignette and lighting when shuffling (3)"
+        title="Keep the warp amount and size, bands, noise, vignette and lighting when shuffling (2)"
         onchange={(on) => (editor.adjustLocked = on)}
+      />
+      <LockToggle
+        locked={editor.colorsLocked}
+        label="colors"
+        ariaLabel="Lock colors"
+        title="Keep the colors when shuffling (3)"
+        onchange={(on) => (editor.colorsLocked = on)}
       />
     </span>
     <span class="sep" role="separator" aria-orientation="vertical"></span>

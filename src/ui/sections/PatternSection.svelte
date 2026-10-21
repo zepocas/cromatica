@@ -69,6 +69,7 @@
       icon={patternIcon}
       onactive={(k) => editor.previewChange(k && k !== editor.kind ? (t) => (t.kind = k) : null)}
     />
+    <span class="slot"></span>
   </div>
   <div class="row">
     <label for="warp-shape">warp shape</label>
@@ -83,7 +84,7 @@
       onactive={(s) => editor.previewChange(s && s !== editor.warp.shape ? (t) => (t.warp.shape = s) : null)}
     />
     <button
-      class="icon"
+      class="icon slot"
       aria-label="New variation"
       title="New variation of this shape"
       disabled={editor.warp.shape === 'none'}
@@ -100,6 +101,7 @@
       onchange={(id) => exportSettings.choosePreset(id)}
       onactive={(id) => (exportSettings.presetPreview = id)}
     />
+    <span class="slot"></span>
   </div>
   {#if exportSettings.presetId === CUSTOM_PRESET_ID}
     <div class="row">
@@ -128,5 +130,13 @@
 <style>
   .dim {
     color: var(--dim);
+  }
+  /* The variation button's place, kept empty in the other rows so every dropdown here ends at the same x.
+     A fixed width: the glyph comes from whichever font has it, and its own width differs by OS. */
+  .slot {
+    box-sizing: border-box;
+    flex: none;
+    width: 22px;
+    padding: 0;
   }
 </style>

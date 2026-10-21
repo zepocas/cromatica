@@ -46,6 +46,12 @@ export interface Renderer {
    * (already flipped from GL's bottom-up order). Length = w*h*4.
    */
   readPixels(width: number, height: number): Uint8Array;
+  /**
+   * Start compiling the shader this design needs and say whether it can be drawn without a stall. Call it
+   * again later while it returns false. Always true where the browser can't compile in parallel.
+   * render() works either way, but blocks on a shader that is not ready.
+   */
+  ready(design: Design): boolean;
   /** How many shader programs have been compiled so far; a frame that raises it paid for a compile. */
   readonly compiled: number;
   dispose(): void;

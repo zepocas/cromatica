@@ -42,6 +42,8 @@ export interface ShuffleOptions {
   finish?: boolean;
   /** Re-roll the warp's amount and size, whatever else is rolled; default: with `layout`. The shape and seed follow `layout` (D64). */
   levels?: boolean;
+  /** With the pattern kept (`layout` off): planes, aurora and blobs get a new seed, so the same count and look land elsewhere. */
+  arrange?: boolean;
   seed: number;
 }
 
@@ -59,6 +61,8 @@ interface ShuffleContext {
   extent: [number, number];
   colorRng: Rng;
   layoutRng: Rng;
+  /** The seed of a kept seeded pattern, on a stream of its own so the draws of a locked shuffle stay as they were. */
+  arrangeSeed: number;
   /** A palette for n colors, from the color stream and the palette options. */
   makePalette: (n: number) => GeneratedPalette;
   /** The surprise slot (D76): this shuffle draws from the pre-tuning tables. */
@@ -175,7 +179,7 @@ export const BLOBS_SHUFFLE = {
 export const STYLE_SHUFFLE = {
   kinds: {
     mesh: 0.12,
-    grid: 0.14,
+    grid: 0.03,
     linear: 0.05,
     radial: 0.03,
     conic: 0.08,
@@ -187,7 +191,7 @@ export const STYLE_SHUFFLE = {
   } as Record<BasePattern['kind'], number>,
   kindsFlat: {
     mesh: 0.22,
-    grid: 0.14,
+    grid: 0.05,
     linear: 0.09,
     radial: 0.07,
     conic: 0.07,
@@ -222,6 +226,7 @@ const LAYOUT_STREAM = 0x85ebca6b;
 const STYLE_STREAM = 0xc2b2ae35;
 const ROTATE_STREAM = 0x27d4eb2f;
 const SURPRISE_STREAM = 0x165667b1;
+const ARRANGE_STREAM = 0x3c6ef372;
 
 /** Share of shuffles that ignore the tuned tables and use the flat ones (D76). */
 export const SURPRISE_CHANCE = 1 / 6;
@@ -339,6 +344,9 @@ function kindWarpWeights(kind: BasePattern['kind']): Record<WarpShape, number> {
   >;
 }
 
+/** A kept seeded pattern keeps its seed, unless the shuffle asks to arrange it again. */
+const keptSeed = (base: { seed: number }, ctx: ShuffleContext) => (ctx.opts.arrange ? ctx.arrangeSeed : base.seed);
+
 const round4 = (x: number) => Math.round(x * 1e4) / 1e4;
 const copyColor = (c: Oklch): Oklch => [c[0], c[1], c[2]];
 
@@ -376,6 +384,7 @@ export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 
     extent: frameExtent(safeAspect, transform),
     colorRng,
     layoutRng: createRng((seed ^ LAYOUT_STREAM) >>> 0),
+    arrangeSeed: createRng((seed ^ ARRANGE_STREAM) >>> 0).uint32(),
     makePalette: (n) => generatePalette(colorRng, n, { ...opts.palette, flat: surprise }),
     surprise,
   };
@@ -729,7 +738,7 @@ function shufflePlanes(
   const count = opts.layout
     ? round4(layoutRng.range(...(ctx.surprise ? PLANES_SHUFFLE.countFlat : PLANES_SHUFFLE.count)))
     : base.count;
-  const seed = opts.layout ? layoutRng.uint32() : base.seed;
+  const seed = opts.layout ? layoutRng.uint32() : keptSeed(base, ctx);
   const n = Math.min(base.colors.length, MAX_STOPS);
   const palette = opts.colors ? ctx.makePalette(n) : null;
   const colors = palette ? palette.colors : base.colors.slice(0, n).map(copyColor);
@@ -742,7 +751,7 @@ function shufflePlanes(
       blend: base.blend,
       seed,
       // Hand edits belong to the layout they were made on (D88).
-      ...(base.edits && !opts.layout ? { edits: base.edits } : {}),
+      ...(base.edits && !opts.layout && !opts.arrange ? { edits: base.edits } : {}),
     },
     palette: palette && paletteInfo(palette),
   };
@@ -829,7 +838,7 @@ function shuffleAurora(
   const { opts, layoutRng } = ctx;
   const count = opts.layout ? round4(layoutRng.range(...AURORA_SHUFFLE.count)) : base.count;
   const glow = opts.layout ? round4(layoutRng.range(...AURORA_SHUFFLE.glow)) : base.glow;
-  const seed = opts.layout ? layoutRng.uint32() : base.seed;
+  const seed = opts.layout ? layoutRng.uint32() : keptSeed(base, ctx);
   // Drawn after the seed, so the other layout values match earlier shuffles.
   const blend = opts.layout ? round4(layoutRng.range(...AURORA_SHUFFLE.blend)) : base.blend;
   const n = Math.min(base.colors.length, MAX_STOPS);
@@ -846,7 +855,7 @@ function shuffleBlobs(base: BlobsPattern, ctx: ShuffleContext): { pattern: Blobs
   const wobble = opts.layout ? round4(layoutRng.range(...BLOBS_SHUFFLE.wobble)) : base.wobble;
   const grainRoll = opts.layout ? round4(layoutRng.range(...BLOBS_SHUFFLE.grain)) : base.grain;
   const grain = opts.layout && layoutRng.next() < BLOBS_SHUFFLE.smooth ? 0 : grainRoll;
-  const seed = opts.layout ? layoutRng.uint32() : base.seed;
+  const seed = opts.layout ? layoutRng.uint32() : keptSeed(base, ctx);
   // Drawn after the seed, so the other layout values match the shuffles from before the base existed.
   const body = opts.layout ? (layoutRng.next() < BLOBS_SHUFFLE.palette ? 'palette' : 'black') : (base.base ?? 'black');
   // A background and at least three inks: fewer reads as one blob color.
@@ -864,7 +873,7 @@ function shuffleBlobs(base: BlobsPattern, ctx: ShuffleContext): { pattern: Blobs
       base: body,
       seed,
       // Hand edits belong to the layout they were made on (D88).
-      ...(base.edits && !opts.layout ? { edits: base.edits } : {}),
+      ...(base.edits && !opts.layout && !opts.arrange ? { edits: base.edits } : {}),
     },
     palette: palette && paletteInfo(palette),
   };

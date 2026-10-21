@@ -197,12 +197,7 @@
     box-shadow:
       0 0 0 1px #494842,
       0 8px 28px rgba(0, 0, 0, 0.55);
-    font:
-      12px ui-monospace,
-      'SF Mono',
-      Menlo,
-      Consolas,
-      monospace;
+    font: 12px var(--font-mono);
     color: #96938b;
   }
   .title {

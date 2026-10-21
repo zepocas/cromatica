@@ -8,6 +8,6 @@ uniform float u_rampSize;
 
 vec3 rampColor(float t) {
   float s = (t * (u_rampSize - 1.0) + 0.5) / u_rampSize;
-  return texture(u_ramp, vec2(s, 0.5)).rgb;
+  return textureLod(u_ramp, vec2(s, 0.5), 0.0).rgb;
 }
 #endif

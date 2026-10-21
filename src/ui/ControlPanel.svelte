@@ -75,9 +75,9 @@
       ui.collapsed = !ui.collapsed;
     } else if (e.key === '1' || e.key === '2' || e.key === '3') {
       e.preventDefault();
-      if (e.key === '1') editor.colorsLocked = !editor.colorsLocked;
-      else if (e.key === '2') editor.patternLocked = !editor.patternLocked;
-      else editor.adjustLocked = !editor.adjustLocked;
+      if (e.key === '1') editor.patternLocked = !editor.patternLocked;
+      else if (e.key === '2') editor.adjustLocked = !editor.adjustLocked;
+      else editor.colorsLocked = !editor.colorsLocked;
     } else if (e.key === '?') {
       e.preventDefault();
       ui.shortcuts = !ui.shortcuts;
