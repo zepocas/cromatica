@@ -8,7 +8,6 @@ uniform vec2 u_gridRest;                      // rest half width, half height
 uniform vec2 u_gridOffset[MAX_GRID_NODES];    // node offset from its rest spot
 uniform vec3 u_gridColor[MAX_GRID_NODES];     // Oklab, gamut-mapped on the CPU
 uniform float u_gridLines;                  // lines along the bent grid, [0, 1]; 0 = none (D62)
-uniform int u_gridSteps;                      // Newton steps; a uniform bound keeps the loop rolled
 
 void gridWeights(float f, out vec4 w, out vec4 d) {
   float f2 = f * f;
@@ -54,11 +53,10 @@ vec2 gridOffset(vec2 q, out vec2 jx, out vec2 jy) {
   return o;
 }
 
-// Rest-grid point q with F(q) = p, by Newton steps. The bound is a uniform so the driver compiles
-// gridOffset once instead of once per step (D3D compilers unroll constant loops).
+// Rest-grid point q with F(q) = p, by Newton steps.
 vec2 gridPull(vec2 p) {
   vec2 q = p;
-  for (int k = 0; k < u_gridSteps; k++) {
+  for (int k = 0; k < GRID_STEPS; k++) {
     vec2 jx, jy;
     vec2 e = q + gridOffset(q, jx, jy) - p;
     float a = 1.0 + jx.x;

@@ -171,7 +171,6 @@ function gridUniforms(grid: GridMesh) {
     u_gridOffset: offsets,
     u_gridColor: colors,
     u_gridLines: g.lines,
-    u_gridSteps: GRID_STEPS,
   };
 }
 
@@ -193,6 +192,7 @@ function baseDefines(base: Design['base']): Defines {
       MAX_GRID_NODES,
       GAMUT_CLIP_STEPS,
       ...GRID_LINE_SHADER_CONSTANTS,
+      GRID_STEPS,
       GRID_MIN_DET: GRID_MIN_DET.toExponential(),
       GRID_MAX_STEP: String(GRID_MAX_STEP),
     };
