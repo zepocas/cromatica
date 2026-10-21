@@ -179,7 +179,7 @@ export const BLOBS_SHUFFLE = {
 export const STYLE_SHUFFLE = {
   kinds: {
     mesh: 0.12,
-    grid: 0.14,
+    grid: 0.03,
     linear: 0.05,
     radial: 0.03,
     conic: 0.08,
@@ -191,7 +191,7 @@ export const STYLE_SHUFFLE = {
   } as Record<BasePattern['kind'], number>,
   kindsFlat: {
     mesh: 0.22,
-    grid: 0.14,
+    grid: 0.05,
     linear: 0.09,
     radial: 0.07,
     conic: 0.07,

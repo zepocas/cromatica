@@ -578,6 +578,32 @@ const harness = {
     return diffImages(render(a, output, true), render(b, output, true), width);
   },
 
+  /** A frame drawn after polling ready() equals the same frame drawn with a blocking compile. */
+  async compareAsyncCompile(design: Design, width: number, height: number) {
+    const output = { width, height };
+    const blocking = render(design, output, true);
+    const canvas = newCanvas();
+    const gl = canvas.getContext('webgl2', CONTEXT_ATTRIBUTES) as WebGL2RenderingContext;
+    const renderer = createRenderer(gl);
+    try {
+      let polls = 0;
+      const deadline = performance.now() + 60_000;
+      while (!renderer.ready(design)) {
+        if (performance.now() > deadline) throw new Error('shader never became ready');
+        polls++;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+      canvas.width = width;
+      canvas.height = height;
+      renderer.render(design, output, { x: 0, y: 0, width, height }, { dither: true });
+      const polled = renderer.readPixels(width, height);
+      return { ...diffImages(blocking, polled, width), polls, compiled: renderer.compiled };
+    } finally {
+      renderer.dispose();
+      gl.getExtension('WEBGL_lose_context')?.loseContext();
+    }
+  },
+
   // ---- M3: warp and grain ----------------------------------------------------
 
   /**

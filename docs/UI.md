@@ -43,7 +43,8 @@ App.svelte                      owns the state and wires everything together
   → editor.warp.amount ($state)                  in state/editor.svelte.ts
   → editor.design (getter: a plain Design)
   → renderDesign ($derived)                      in App.svelte
-  → <Preview design={...}>  →  controller.setDesign   src/preview/preview.ts
+  → <Preview design={...}>  →  controller.setDesign   src/preview/preview-worker.ts (D93)
+  → worker message  →  createPreviewCore            src/preview/preview.worker.ts, core.ts
   → renderer.render(design, ...)                 src/engine/renderer.ts
 ```
 

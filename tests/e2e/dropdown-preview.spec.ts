@@ -6,6 +6,8 @@ test('size preset: arrowing previews the frame shape, Escape puts it back', asyn
   await openApp(page);
   const canvas = page.getByTestId('preview-canvas');
   const ratio = async () => canvas.evaluate((c: HTMLCanvasElement) => c.width / c.height);
+  // The buffer's size reaches the canvas element once the first frame is drawn.
+  await expect(canvas).toHaveAttribute('data-settled', 'true');
   const before = await ratio();
   const size = page.getByRole('combobox', { name: 'Size preset' });
   await size.focus();
