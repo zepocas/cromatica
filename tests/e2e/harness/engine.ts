@@ -14,7 +14,7 @@ import { evaluatePlanes, preparePlanes } from '../../../src/engine/planes';
 import { evaluateAurora, prepareAurora } from '../../../src/engine/aurora';
 import { evaluateGrid, GRID_LINE_WARP, prepareGrid } from '../../../src/engine/grid';
 import { createRenderer } from '../../../src/engine/renderer';
-import { evaluateBlobs, evaluateBlobsHeight, prepareBlobs } from '../../../src/engine/blobs';
+import { evaluateBlobs, evaluateBlobsHeight, evaluateBlobsRoom, prepareBlobs } from '../../../src/engine/blobs';
 import { applyRelief, prepareRelief } from '../../../src/engine/relief';
 import { applyHalftone, halftoneContrast } from '../../../src/engine/halftone';
 import { createWarp } from '../../../src/engine/warp';
@@ -131,10 +131,11 @@ function createReference(design: Design, output: OutputSize, halfFloat = false) 
   const halftone = halftoneContrast(design.finish);
   const pattern = createPatternReference(design, output, halfFloat);
   const height = createHeightReference(design, output);
+  const room = createRoomReference(design, output);
   return (px: number, py: number): Triple => {
     const [u, v] = compositionCoord(px, py, w, h);
     let rgb = pattern(u, v);
-    if (relief.depth > 0) rgb = applyRelief(relief, pattern, u, v, rgb, height);
+    if (relief.depth > 0) rgb = applyRelief(relief, pattern, u, v, rgb, height, room);
     const dim = vignetteFactor(finish, u, v);
     rgb = rgb.map((c) => c * dim) as Rgb;
     if (halftone > 0) rgb = applyHalftone(halftone, rgb, u, v, 1 / h);
@@ -149,6 +150,15 @@ function createHeightReference(design: Design, output: OutputSize): ((u: number,
   const m = transformMatrix(design.transform);
   const blobs = prepareBlobs(design.base, output);
   return (u, v) => evaluateBlobsHeight(blobs, ...warp(...applyMat2(m, u, v)));
+}
+
+/** How much room the glass has to refract before a blob's outline; undefined for other patterns. */
+function createRoomReference(design: Design, output: OutputSize): ((u: number, v: number) => number) | undefined {
+  if (design.base.kind !== 'blobs') return undefined;
+  const warp = createWarp(design.warp ?? noWarp);
+  const m = transformMatrix(design.transform);
+  const blobs = prepareBlobs(design.base, output);
+  return (u, v) => evaluateBlobsRoom(blobs, ...warp(...applyMat2(m, u, v)));
 }
 
 /** The pattern's linear RGB at composition coords (u, v). */

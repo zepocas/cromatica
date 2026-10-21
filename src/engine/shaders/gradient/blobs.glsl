@@ -133,4 +133,21 @@ vec3 blobsHeight(vec2 p) {
   }
   return vec3(height * height * height);
 }
+
+// How deep p is inside the blobs, the visible ones weighted by how much of p they cover: the room the lighting's refraction has before an outline.
+float blobsRoom(vec2 p) {
+  float room = 0.0;
+  float remaining = 1.0;
+  for (int k = 0; k < MAX_BLOBS; k++) {
+    int i = u_blobCount - 1 - k;
+    if (i < 0 || remaining <= 0.001) break;
+    if (!blobReaches(i, p)) continue;
+    float d = blobDist(i, p);
+    float cover = 1.0 - smoothstep(-u_blobSoft, u_blobSoft, d);
+    if (cover <= 0.0) continue;
+    room += remaining * cover * max(blobDepth(i, p), 0.0);
+    remaining *= 1.0 - cover;
+  }
+  return room;
+}
 #endif

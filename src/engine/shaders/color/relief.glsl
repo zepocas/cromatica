@@ -34,7 +34,13 @@ vec3 relief(vec2 comp) {
     }
 #if RELIEF_GLASS
     else {
+#if BASE_BLOBS
+      vec2 shift = n.xy * GLASS_REFRACT_BLOBS;
+      shift *= min(1.0, GLASS_ROOM * refractRoom(comp) / max(length(shift), 1e-6));
+      p += shift;
+#else
       p += n.xy * GLASS_REFRACT;
+#endif
     }
 #endif
     vec3 c = reliefTap(i, p);

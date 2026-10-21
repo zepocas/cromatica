@@ -24,11 +24,15 @@ const SATIN_SHEEN: readonly (readonly [exponent: number, weight: number])[] = [
 const SATIN_TINT = 0.6;
 /** Glass: how far the surface tilt shifts the pattern underneath, composition units. */
 const GLASS_REFRACT = 0.05;
+/** Blobs bend the pattern further: the cap below keeps that off their outlines. */
+const GLASS_REFRACT_BLOBS = 0.075;
 const GLASS_SHADE = 0.35;
 const GLASS_RIM = 0.2;
 const GLASS_GLINT: readonly [exponent: number, weight: number] = [160, 0.45];
 /** How much of the glass rims and glints take the pattern's color rather than white. */
 const GLASS_TINT = 0.5;
+/** Refraction may move a sample at most this share of the way to the nearest outline, so it never reads across a blob's edge. */
+const GLASS_ROOM = 0.2;
 
 type Vec3 = [number, number, number];
 
@@ -67,11 +71,13 @@ export const RELIEF_SHADER_CONSTANTS = {
   SATIN_TINT: SATIN_TINT.toFixed(4),
   MAX_TILT: MAX_TILT.toFixed(4),
   GLASS_REFRACT: GLASS_REFRACT.toFixed(4),
+  GLASS_REFRACT_BLOBS: GLASS_REFRACT_BLOBS.toFixed(4),
   GLASS_SHADE: GLASS_SHADE.toFixed(4),
   GLASS_RIM: GLASS_RIM.toFixed(4),
   GLASS_GLINT_EXP: GLASS_GLINT[0].toFixed(1),
   GLASS_GLINT_WEIGHT: GLASS_GLINT[1].toFixed(4),
   GLASS_TINT: GLASS_TINT.toFixed(4),
+  GLASS_ROOM: GLASS_ROOM.toFixed(4),
 };
 
 const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -88,6 +94,8 @@ export function applyRelief(
   rgb: Rgb,
   /** What is read as the height where that isn't the color itself (a stippled pattern reads a smooth stand-in). */
   heightAt: (u: number, v: number) => Rgb = colorAt,
+  /** How far the pattern keeps one surface before an edge (blobs), composition units; the glass refracts no further. */
+  roomAt?: (u: number, v: number) => number,
 ): Rgb {
   const [sx, sy] = heightSlope(heightAt, u, v);
   const ease = 1 / Math.sqrt(1 + (Math.hypot(sx, sy) * r.depth) ** 2 / MAX_TILT ** 2);
@@ -103,7 +111,15 @@ export function applyRelief(
     const shade = 1 + SATIN_SHADE * tilt;
     return rgb.map((c) => c * shade + sheen * (1 - SATIN_TINT + SATIN_TINT * c)) as Rgb;
   }
-  const under = colorAt(u + n[0] * GLASS_REFRACT, v + n[1] * GLASS_REFRACT);
+  let refract = GLASS_REFRACT;
+  if (roomAt) {
+    const shift = Math.hypot(n[0], n[1]) * GLASS_REFRACT_BLOBS;
+    refract =
+      shift > 0
+        ? Math.min(GLASS_REFRACT_BLOBS, (GLASS_ROOM * roomAt(u, v) * GLASS_REFRACT_BLOBS) / shift)
+        : GLASS_REFRACT_BLOBS;
+  }
+  const under = colorAt(u + n[0] * refract, v + n[1] * refract);
   const rim = GLASS_RIM * (1 - n[2]) ** 2;
   const glint = GLASS_GLINT[1] * extraHighlight(nh, r.half[2], GLASS_GLINT[0]);
   const shade = 1 + GLASS_SHADE * tilt;
