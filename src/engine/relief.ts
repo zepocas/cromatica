@@ -6,6 +6,8 @@ import type { Finish } from '../design/design';
 import { clamp01 } from '../math';
 import { heightSlope } from './neighbours';
 
+/** Pattern reads per pixel: four for the height slope, one for the lit colour (the shader loops over them). */
+export const RELIEF_TAPS = 5;
 /** Height-to-tilt factor at relief 1; the slider is squared so it starts gently. */
 const RELIEF_DEPTH = 3;
 /** Tilt (slope × depth) is eased toward this so steep, detailed patterns don't crumple. */

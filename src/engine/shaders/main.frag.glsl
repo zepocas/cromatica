@@ -5,9 +5,10 @@ out vec4 fragColor;
 void main() {
   ivec2 px = outputPixel();
   vec2 comp = compositionCoord(px);
-  vec3 rgb = patternColor(comp);
 #ifdef RELIEF
-  rgb = relief(rgb, comp);
+  vec3 rgb = relief(comp);
+#else
+  vec3 rgb = patternColor(comp);
 #endif
   rgb *= vignetteFactor(comp);
 #ifdef HALFTONE

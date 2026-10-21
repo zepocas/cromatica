@@ -41,7 +41,7 @@ import { BLUE_NOISE_SIZE, DITHER_CHANNEL_OFFSETS, blueNoiseRanks } from './blue-
 import { prepareFinish, VIGNETTE_INNER } from './finish';
 import { buildShaderSources, variantKey, type Defines } from './shaders';
 import { NEIGHBOUR_SHADER_CONSTANTS } from './neighbours';
-import { prepareRelief, RELIEF_SHADER_CONSTANTS, type PreparedRelief } from './relief';
+import { prepareRelief, RELIEF_SHADER_CONSTANTS, RELIEF_TAPS, type PreparedRelief } from './relief';
 import { GRAIN_CHROMA, prepareGrain } from './grain';
 import { HALFTONE_SHADER_CONSTANTS, HALFTONE_TABLE, halftoneContrast } from './halftone';
 import { prepareWarp, WARP_SHADER_CONSTANTS, type PreparedWarp } from './warp';
@@ -373,7 +373,12 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
         u_printSpeckle: finish.printSpeckle,
         u_printEdge: finish.printEdge,
         ...(relief.depth > 0
-          ? { u_reliefDepth: relief.depth, u_reliefLight: relief.light, u_reliefHalf: relief.half }
+          ? {
+              u_reliefDepth: relief.depth,
+              u_reliefLight: relief.light,
+              u_reliefHalf: relief.half,
+              u_reliefTaps: RELIEF_TAPS,
+            }
           : {}),
         ...(halftone > 0 ? { u_halftoneContrast: halftone, u_halftoneTable: new Float32Array(HALFTONE_TABLE) } : {}),
         u_blueNoise: blueNoiseTexture,

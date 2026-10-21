@@ -11,12 +11,10 @@ float oklabLightness(vec3 rgb) {
   return dot(vec3(0.210454268309314, 0.7936177747023054, -0.0040720430116193), lms);
 }
 
-// Height slope (dL/du, dL/dv) at comp by central differences, NEIGHBOUR_STEP
-// apart in composition units so the look doesn't depend on the output size.
-vec2 heightSlope(vec2 comp) {
-  vec2 e = vec2(NEIGHBOUR_STEP, 0.0);
-  float dx = oklabLightness(heightColor(comp + e.xy)) - oklabLightness(heightColor(comp - e.xy));
-  float dy = oklabLightness(heightColor(comp + e.yx)) - oklabLightness(heightColor(comp - e.yx));
-  return vec2(dx, dy) / (2.0 * NEIGHBOUR_STEP);
+// Offset of height tap i (0..3) from the centre: +u, -u, +v, -v, NEIGHBOUR_STEP apart in composition
+// units so the look doesn't depend on the output size. The slope is the central difference of each pair.
+vec2 neighbourOffset(int i) {
+  float e = NEIGHBOUR_STEP;
+  return i == 0 ? vec2(e, 0.0) : i == 1 ? vec2(-e, 0.0) : i == 2 ? vec2(0.0, e) : vec2(0.0, -e);
 }
 #endif
