@@ -112,18 +112,34 @@ export function createPreview(
     if (canvas.height !== h) canvas.height = h;
   }
 
-  function draw(): void {
-    if (!renderer || gl.isContextLost()) return;
+  /** The design whose shader the driver is still compiling, and since when; only kept for ?perf. */
+  let compiling: { design: Design; since: number } | null = null;
+
+  /**
+   * Draws the design, or returns false when its shader is still compiling: the last frame stays on screen
+   * and the caller tries again. `wait` draws regardless, blocking on the compile.
+   */
+  function draw(wait = false): boolean {
+    if (!renderer || gl.isContextLost()) return true;
+    const compiledBefore = renderer.compiled;
+    if (!wait && !renderer.ready(design)) {
+      canvas.dataset.compiling = 'true';
+      if (perf && compiling?.design !== design) compiling = { design, since: performance.now() };
+      return false;
+    }
+    canvas.dataset.compiling = 'false';
+    const waited = perf && compiling?.design === design ? performance.now() - compiling.since : null;
+    if (waited !== null) perf?.record({ label: describeDesign(design), ms: waited, compiled: true });
+    compiling = null;
     applyLayout();
     const output = { width: canvas.width, height: canvas.height };
     const t0 = performance.now();
-    const compiledBefore = renderer.compiled;
     renderer.render(design, output, { x: 0, y: 0, ...output }, { dither: true });
     // A 1-pixel read waits for the GPU, so the time covers the whole frame. Cost follows the pixel
     // count, so a reduced frame still says what a full one would cost.
     gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, syncPixel);
     const compiled = renderer.compiled !== compiledBefore;
-    perf?.record({ label: describeDesign(design), ms: performance.now() - t0, compiled });
+    perf?.record({ label: describeDesign(design), ms: performance.now() - t0, compiled: compiled && waited === null });
     // A frame that compiled a shader says nothing about the cost of drawing.
     if (!compiled) {
       const full = (performance.now() - t0) / (scale * scale);
@@ -131,6 +147,7 @@ export function createPreview(
     }
     dirty = false;
     setSettled(scale === 1 && !sharpenPending);
+    return true;
   }
 
   /**
@@ -147,7 +164,7 @@ export function createPreview(
     if (rafId || paused || disposed) return;
     rafId = requestAnimationFrame(() => {
       rafId = 0;
-      if (dirty && !paused) draw();
+      if (dirty && !paused && !draw()) schedule();
     });
   }
 
@@ -214,11 +231,11 @@ export function createPreview(
       if (!paused && dirty) schedule();
     },
     renderNow() {
-      draw();
+      draw(true);
     },
     readPixels() {
       if (!renderer) throw new Error('WebGL context lost');
-      draw();
+      draw(true);
       return renderer.readPixels(canvas.width, canvas.height);
     },
     get size() {

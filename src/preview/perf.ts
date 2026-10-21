@@ -41,7 +41,7 @@ export function describeRenderer(gl: WebGL2RenderingContext): string {
 
 export interface PerfLog {
   record(sample: PerfSample): void;
-  /** Median draw time per label (compile frames kept apart), slowest first, as text for a bug report. */
+  /** Page stalls, then the median draw time per label (compile waits kept apart), slowest first, as text for a bug report. */
   report(): string;
 }
 
@@ -54,6 +54,18 @@ export function createPerfLog(gl: WebGL2RenderingContext): PerfLog {
     'font:11px/1.35 monospace;color:#eee;background:rgba(0,0,0,.8);border-radius:4px;white-space:pre-wrap;';
   document.body.append(box);
   let queued = false;
+  // The freeze a shuffle causes shows as a long gap between animation frames; a hidden tab pauses them, so keep it in view.
+  let lastFrame = performance.now();
+  let worstGap = 0;
+  let stalls = 0;
+  const watchFrames = (now: number) => {
+    const gap = now - lastFrame;
+    lastFrame = now;
+    worstGap = Math.max(worstGap, gap);
+    if (gap > 100) stalls++;
+    requestAnimationFrame(watchFrames);
+  };
+  requestAnimationFrame(watchFrames);
 
   const log: PerfLog = {
     record(sample) {
@@ -84,6 +96,7 @@ export function createPerfLog(gl: WebGL2RenderingContext): PerfLog {
       return [
         describeRenderer(gl),
         last ? `${gl.drawingBufferWidth}x${gl.drawingBufferHeight}` : '',
+        `page stalls: worst frame gap ${worstGap.toFixed(0)} ms, ${stalls} gaps over 100 ms`,
         'draw ms (median, n) | compile ms (worst) | variant',
         ...rows
           .slice(0, 15)

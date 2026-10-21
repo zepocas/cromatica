@@ -96,3 +96,10 @@ test('relief render time at 1920×1080 (timing only)', async ({ page }) => {
   }
   logBench(`relief timings 1920×1080 (SwiftShader): ${lines.join(', ')}`);
 });
+
+test('a shader drawn after polling ready() equals one compiled on demand', async ({ page }) => {
+  const d = withRelief(withLook(mesh16, warp('domain', 0.4, 0.4)), 0.8, 'glass');
+  const r = await engineHarness(page, 'compareAsyncCompile', d, 320, 180);
+  expect(r.identical).toBe(true);
+  expect(r.compiled).toBe(1);
+});
