@@ -750,3 +750,9 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Why (#84, D93):** the grid is the slowest pattern to compile on D3D (0.6 s alone, 1.4 to 2.3 s with a warp or lighting on an Intel iGPU) and its shuffles are the least interesting, so a shuffle that lands on it costs the most and gives the least.
 - **Grid weight:** 0.14 to 0.03 in the tuned kinds table (about 3% of shuffles instead of 12%) and to 0.05 in the flat, surprise-slot table (about 5%). Other kinds' odds rise in proportion, so seeded shuffles that used to land on other kinds change. A grid is still one dropdown pick away. A full rework of the grid's shader is tracked separately.
 - **Blob grain is a texture:** the editing resolution drops on a slow GPU while a design changes (D69), but a texture drawn per output pixel looks different at a lower resolution and snaps back when it sharpens. That rule covered only the finish noise; the blobs' stipple works the same way, so a blobs pattern with grain above 0, and any edit to its grain, now stays at full resolution (`keepsFullResolution` in `src/preview/core.ts`).
+
+## D95. Share links are built; a JSON file export and import is dropped
+
+- **Decision (2026-10-22, #66):** share links (PR #55) and the design in exported images (D45, D72) are how a design is kept or sent outside the browser. A separate JSON file export and import is not built, closing the D59 investigation.
+- **Why:** the JSON file was meant as the cheaper option if grid designs made long links. Links measured about 410 characters typically and under 650 in the worst of 300 shuffles, and a dropped PNG or JPEG already reopens the design, so a file would be a third copy of the same envelope.
+- **What survives sharing:** a link carries the design only. An image keeps it until something re-encodes the file, which strips it (D45, D72); which services do so was not tested.
