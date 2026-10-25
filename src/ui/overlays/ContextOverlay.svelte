@@ -1,7 +1,7 @@
 <script lang="ts">
   import { iconFor, labelFor } from '../../context/icons';
   import { assessZone, luminanceMap, type Legibility, type ZoneRect } from '../../context/legibility';
-  import { placeZone, type ContextScreen } from '../../context/zones';
+  import { placeZone, type ContextScreen, type Zone } from '../../context/zones';
   import { noFinish, type Design } from '../../design/design';
   import { thumbnails } from '../../preview/thumbnails';
   import ContextIcon from './ContextIcon.svelte';
@@ -64,6 +64,12 @@
   });
 
   const pct = (v: number) => `${(v * 100).toFixed(3)}%`;
+
+  function cornerRadius({ radius, flare, w, h }: Zone): string | null {
+    if (!radius) return null;
+    const corner = `${pct(radius / w)} / ${pct(radius / h)}`;
+    return flare ? `0 0 ${pct(radius / w)} ${pct(radius / w)} / 0 0 ${pct(radius / h)} ${pct(radius / h)}` : corner;
+  }
 </script>
 
 <canvas class="analysis" bind:this={analysis}></canvas>
@@ -83,7 +89,9 @@
       style:top={pct(rect.y)}
       style:width={pct(rect.w)}
       style:height={pct(rect.h)}
-      style:border-radius={zone.radius ? `${pct(zone.radius / zone.w)} / ${pct(zone.radius / zone.h)}` : null}
+      class:flared={zone.flare}
+      style:--flare={zone.flare ? `${(100 * zone.flare) / zone.h}cqh` : null}
+      style:border-radius={cornerRadius(zone)}
     >
       {#if zone.grid}
         {@const g = zone.grid}
@@ -161,6 +169,23 @@
   }
   .cutout {
     background: #000;
+  }
+  /* The notch meets the bar through concave fillets, not square corners. */
+  .flared::before,
+  .flared::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    width: var(--flare);
+    height: var(--flare);
+  }
+  .flared::before {
+    right: 100%;
+    background: radial-gradient(circle at 0 100%, transparent calc(var(--flare) - 0.5px), #000 var(--flare));
+  }
+  .flared::after {
+    left: 100%;
+    background: radial-gradient(circle at 100% 100%, transparent calc(var(--flare) - 0.5px), #000 var(--flare));
   }
   .indicator {
     background: rgb(255 255 255 / 0.85);

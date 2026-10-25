@@ -761,3 +761,8 @@ Decisions made during the architecture review. Reopen one only if new informatio
 
 - **Decision (2026-10-25):** the legibility check still warns from the worst 10% of pixels (M9), but the text color it reports (and the preview's menu text and clock) is whichever of white and black reads better on the zone's median pixel. This supersedes the color rule in D71.
 - **Why:** the worst-case rule compared white against the lightest pixels and black against the darkest, so a pale bar with a few dark blobs failed both and fell to white, on a light bar. A Mac most likely goes by what most of the bar looks like. Still unmeasured on a real Mac (D71).
+
+## D97. The macOS notch flares into the menu bar
+
+- **Decision (2026-10-25):** the notch has square top corners flush with the screen edge, rounded bottom corners, and concave fillets flaring into the bar on each side (`flare` on a cutout zone, 10 pt). Before, all four corners were rounded, which left wallpaper showing in the top corners where a real notch meets the bar.
+- **Flare size:** a visual estimate, not measured on the device (D71).
