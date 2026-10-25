@@ -18,6 +18,7 @@ export interface ZoneRect {
 export interface Legibility {
   /** WCAG contrast of the zone's worst pixels against the better of white and black text. */
   contrast: number;
+  /** The color the OS would most likely pick: the one that reads best on the median pixel. */
   text: 'white' | 'black';
   /** Neither white nor black text reads over the whole zone. */
   midtone: boolean;
@@ -62,9 +63,12 @@ export function assessZone(map: LuminanceMap, zone: ZoneRect, large = false): Le
   const onWhite = contrastRatio(1, quantile(ys, 1 - WORST_SHARE));
   const onBlack = contrastRatio(0, quantile(ys, WORST_SHARE));
   const contrast = Math.max(onWhite, onBlack);
+  // The text color follows the typical pixel, not the extremes: a pale bar with a few dark blobs
+  // still gets dark text, and the warning above says it will not read everywhere.
+  const median = quantile(ys, 0.5);
   return {
     contrast,
-    text: onWhite >= onBlack ? 'white' : 'black',
+    text: contrastRatio(1, median) >= contrastRatio(0, median) ? 'white' : 'black',
     midtone: contrast < MIN_CONTRAST[large ? 'large' : 'normal'],
   };
 }

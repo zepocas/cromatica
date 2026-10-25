@@ -756,3 +756,8 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Decision (2026-10-22, #66):** share links (PR #55) and the design in exported images (D45, D72) are how a design is kept or sent outside the browser. A separate JSON file export and import is not built, closing the D59 investigation.
 - **Why:** the JSON file was meant as the cheaper option if grid designs made long links. Links measured about 410 characters typically and under 650 in the worst of 300 shuffles, and a dropped PNG or JPEG already reopens the design, so a file would be a third copy of the same envelope.
 - **What survives sharing:** a link carries the design only. An image keeps it until something re-encodes the file, which strips it (D45, D72); which services do so was not tested.
+
+## D96. The menu bar text color follows the median pixel
+
+- **Decision (2026-10-25):** the legibility check still warns from the worst 10% of pixels (M9), but the text color it reports (and the preview's menu text and clock) is whichever of white and black reads better on the zone's median pixel. This supersedes the color rule in D71.
+- **Why:** the worst-case rule compared white against the lightest pixels and black against the darkest, so a pale bar with a few dark blobs failed both and fell to white, on a light bar. A Mac most likely goes by what most of the bar looks like. Still unmeasured on a real Mac (D71).
