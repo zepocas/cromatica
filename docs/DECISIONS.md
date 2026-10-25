@@ -757,6 +757,12 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Why:** the JSON file was meant as the cheaper option if grid designs made long links. Links measured about 410 characters typically and under 650 in the worst of 300 shuffles, and a dropped PNG or JPEG already reopens the design, so a file would be a third copy of the same envelope.
 - **What survives sharing:** a link carries the design only. An image keeps it until something re-encodes the file, which strips it (D45, D72); which services do so was not tested.
 
+## D96. Images keep the plain JSON; the share-link hash in files is parked
+
+- **Decision (2026-10-25, user):** PNG (D45) and JPEG (D72) exports keep the readable save envelope. Writing the share-link hash (`src/design/share.ts`) into the file instead is not built, but stays an option.
+- **Why:** the hash saves about 300 bytes (envelope 0.6 to 2 KB, median 0.7 KB; links about 410 characters), under 0.1% of an image. Size is no constraint either: the PNG iTXt limit is 4 GB, and the JPEG's one XMP segment holds about 64 KB against a measured 2 KB at most, with the schema capping every array. The JSON can be read by any metadata tool and carries its own `version`; a hash needs our decoder and a version prefix.
+- **Revisit if:** the envelope or the link format grows enough that keeping two serialisations costs more than it gives. One codec for both would then be the gain, not the bytes.
+
 ## D97. Taste builder: a local taste profile, kept by a file; no backend yet
 
 - **Decision (2026-10-25):** a "taste builder" will tune the shuffle per user: a few intro questions, then rounds of sheets where the user picks what they like. The result is a taste profile, a small versioned object that overrides the shuffle's odds (pattern kind, mood, key, finishes, warp shape) and never its seed-to-design mapping. Nothing is built yet; the first step is a throwaway prototype that derives a profile from the favourites and biases the shuffle with it.
