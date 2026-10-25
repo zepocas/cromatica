@@ -756,3 +756,21 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Decision (2026-10-22, #66):** share links (PR #55) and the design in exported images (D45, D72) are how a design is kept or sent outside the browser. A separate JSON file export and import is not built, closing the D59 investigation.
 - **Why:** the JSON file was meant as the cheaper option if grid designs made long links. Links measured about 410 characters typically and under 650 in the worst of 300 shuffles, and a dropped PNG or JPEG already reopens the design, so a file would be a third copy of the same envelope.
 - **What survives sharing:** a link carries the design only. An image keeps it until something re-encodes the file, which strips it (D45, D72); which services do so was not tested.
+
+## D96. First-time experience: easy mode is the collapsed panel and its keys; a forced walkthrough teaches them
+
+- **Status (2026-10-25, #60):** proposed, design only; nothing is built.
+- **Easy mode** is the collapsed panel (`p`) plus a short set of keys, with the shuffle nudge (D73) pointing at the first one. It is a state of the existing app, not a second panel. The in-depth panel stays one key away, and which controls are core or `advanced` is settled with #59.
+- **Keys:** `space` curated shuffle of everything not locked and `m` more like this (both exist); new: `q` shuffles pattern and adjust, `w` shuffles only the colors (the same shuffle the colors section's ⟳ button already runs), `l` the monitor layout preview, `e` export on every OS (`⌘S` / `Ctrl+S` stays as well). `1 2 3` still lock the sections and `p` still collapses the panel. `q`, `w`, `l` and `e` are free today. Like `space`, `q` and `w` leave locked sections alone.
+- **First visit:** the panel starts collapsed and the output size comes from the device (screen size and pixel ratio, snapped to a preset, else custom). `?default` skips all of it.
+- **Walkthrough, not a tour:** the user dislikes skippable tours, so it is a forced sequence where each step names a key or action and waits until the user does it and sees the result. No highlights, no "next" or skip button; Esc leaves it, and it never returns once done or left. Written in full first, then cut where it drags.
+- **Steps, first draft:**
+  1. `space`: shuffle. 2. `m`: more like this, pick one. 3. `q` and `w`: shuffle the look without the colors, and the colors without the look. 4. The canvas size, image format and resolution (preselected from the device), with the OS context shown to match, and `l` to lay monitors over it. 5. `p` opens the panel, then one step per section: pattern (and how a pattern plus a warp makes the image), adjust, colors, with `1 2 3` locks. 6. `e` exports; the step ends with dropping the file back to show that the settings come back (D45, D72). Palette from a picture is a mention in the export step or the `?` card, not a step.
+- **OS context follows the ratio (new):** today `ui.contextId` starts empty and is never derived from the size, so nothing matches the format yet. On first visit the context is picked from the canvas: wider than tall gets a desktop one (macOS or Windows from the device's platform), taller than wide gets a mobile one. Changing the size in the walkthrough updates it while the user has not picked one by hand. The monitors view already drops a mobile context (`StatusBar.svelte`).
+- **Why a walkthrough can force:** the steps are the app's own actions, so it advances on the real event (shuffle happened, panel opened), not on a button.
+- **Open:**
+  - Where to cut: the full draft is about ten steps; the likely cuts are the per-section explanations, which would move to the `?` card.
+  - How to explain pattern plus warp in a sentence or two, or by letting the user flip the warp on and off.
+  - Whether the context should keep following the ratio after the walkthrough, or only until the user picks one.
+  - Narrow windows before M15 (mobile layout).
+  - Mechanics: an in-house overlay (the default to try) or a library.
