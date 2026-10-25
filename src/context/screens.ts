@@ -51,7 +51,7 @@ export const CONTEXT_SCREENS: ContextScreen[] = [
         align: 'right',
         follows: 'menu bar',
       },
-      center({ kind: 'cutout', label: 'notch', x: 0, y: 0, w: 220, h: 38, radius: 10 }),
+      center({ kind: 'cutout', label: 'notch', x: 0, y: 0, w: 220, h: 38, radius: 10, flare: 10 }),
       {
         kind: 'icons',
         label: 'desktop icons',

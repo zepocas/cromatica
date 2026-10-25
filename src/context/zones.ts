@@ -16,6 +16,8 @@ export interface Zone {
   anchorX?: 'left' | 'center' | 'right' | 'stretch';
   anchorY?: 'top' | 'bottom';
   radius?: number;
+  /** A cutout hanging from the top edge: square top corners, rounded bottom ones, and concave fillets of this size flaring into the bar, like the MacBook notch. */
+  flare?: number;
   /** An icon grid: `icon`-point squares on an even cols × rows layout filling the rect. With a `set`, they are stand-in folders or apps instead of plain boxes. */
   grid?: { cols: number; rows: number; icon: number; set?: IconSet };
   /** Sample text filling the zone's height, one line per `\n`, e.g. a clock. */

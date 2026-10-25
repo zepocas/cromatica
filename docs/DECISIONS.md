@@ -771,3 +771,13 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Keeping it:** the profile lives in localStorage with its own zod schema and version, like the design save (D44). The app asks the browser for persistent storage (`navigator.storage.persist()`), since localStorage has no expiry but can be cleared by the user, by private windows, by storage pressure and, on Safari, by tracking prevention after about 7 days without a visit (from memory; to be checked against MDN and WebKit before relying on it). After a taste is built, a gentle line suggests downloading a taste file, a JSON file that can be loaded back at any time and also carries the favourites.
 - **Not a reversal of D95:** that decision dropped a JSON export of a design because links and images already carry it. A taste profile is not a design and nothing else carries it.
 - **Backend deferred:** accounts and sync are not built. They would supersede the rule that stored data needs no account, and add auth, privacy, hosting and email work. Revisit when people show they want their taste on several devices. Because the profile is a plain versioned object, a backend would only be another place to store it, and the app must keep working without one.
+
+## D98. The menu bar text color follows the median pixel
+
+- **Decision (2026-10-25):** the legibility check still warns from the worst 10% of pixels (M9), but the text color it reports (and the preview's menu text and clock) is whichever of white and black reads better on the zone's median pixel. This supersedes the color rule in D71.
+- **Why:** the worst-case rule compared white against the lightest pixels and black against the darkest, so a pale bar with a few dark blobs failed both and fell to white, on a light bar. A Mac most likely goes by what most of the bar looks like. Still unmeasured on a real Mac (D71).
+
+## D99. The macOS notch flares into the menu bar
+
+- **Decision (2026-10-25):** the notch has square top corners flush with the screen edge, rounded bottom corners, and concave fillets flaring into the bar on each side (`flare` on a cutout zone, 10 pt). Before, all four corners were rounded, which left wallpaper showing in the top corners where a real notch meets the bar.
+- **Flare size:** a visual estimate, not measured on the device (D71).
