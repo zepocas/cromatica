@@ -16,16 +16,13 @@ export interface Signals {
   /** Hand edits to planes and blobs, serialized. */
   arrange: string;
   shortcuts: boolean;
-  /** Exports finished and designs reopened from an exported image, counted. */
-  exports: number;
-  reopened: number;
+  /** Designs kept as favourites. */
+  favourites: number;
 }
 
 export interface Step {
   title: string;
   text: string;
-  /** The step shows something only some designs have; the app switches to one that does. */
-  needs?: 'arrangeable';
   /** What the user does with `keys`, shown before it; default "press". */
   verb?: string;
   /** Shown as the key to press; a step with none is done by what the user does to the app. */
@@ -39,35 +36,16 @@ export interface Step {
 export const STEPS: Step[] = [
   {
     title: 'shuffle',
-    text: 'Shuffle to find a starting point: every press makes a new design from a curated set. Try a few.',
+    text: 'Shuffle to find a starting point: every press makes a new design from a curated set. Try a few; ← → step back and forward through the ones that went by.',
     keys: 'space',
     need: 3,
     done: (prev, now) => now.reel > prev.reel,
-  },
-  {
-    title: 'go back',
-    text: 'Liked one that went by? Step back and forward through your shuffles, and stop on the one you like.',
-    keys: '← →',
-    need: 2,
-    done: (_prev, _now, key) => key === 'arrowleft' || key === 'arrowright',
   },
   {
     title: 'more like this',
     text: 'Variations of the design on screen. Click one to take it.',
     keys: 'm',
     done: (prev, now) => prev.exploring && !now.exploring,
-  },
-  {
-    title: 'new look, same colors',
-    text: 'Shuffles the pattern and its adjustments and keeps your palette.',
-    keys: 'q',
-    done: (_prev, _now, key) => key === 'q',
-  },
-  {
-    title: 'new colors, same look',
-    text: 'Shuffles only the palette.',
-    keys: 'w',
-    done: (_prev, _now, key) => key === 'w',
   },
   {
     title: 'see it on your screen',
@@ -80,6 +58,13 @@ export const STEPS: Step[] = [
     text: 'Everything so far works with the panel folded. Open it for the rest.',
     keys: 'p',
     done: (prev, now) => prev.collapsed && !now.collapsed,
+  },
+  {
+    title: 'look and colors',
+    text: 'q shuffles the pattern and its adjustments and keeps your palette. w shuffles only the palette, built on a harmony rule (analogous, complementary, triadic…): hues in a fixed relation on the color wheel, which is why they sit well together.',
+    keys: 'q w',
+    need: 2,
+    done: (_prev, _now, key) => key === 'q' || key === 'w',
   },
   {
     title: 'pattern',
@@ -102,10 +87,9 @@ export const STEPS: Step[] = [
   },
   {
     title: 'arrange by hand',
-    text: 'Planes and blobs can be moved piece by piece. Drag one on the canvas.',
+    text: 'Planes and blobs can be moved piece by piece. Switch the pattern to planes or blobs (l ;), then drag one on the canvas.',
     verb: 'drag',
     keys: 'a blob or plane',
-    needs: 'arrangeable',
     done: (prev, now) => prev.arrange !== now.arrange,
   },
   {
@@ -116,28 +100,9 @@ export const STEPS: Step[] = [
   },
   {
     title: 'keep what you like',
-    text: 'The locks keep a part safe from shuffles: 1 pattern, 2 adjust, 3 colors. Lock one, then shuffle.',
-    keys: '1 2 3',
-    done: (_prev, _now, key) => key === '1' || key === '2' || key === '3',
-  },
-  {
-    title: 'export',
-    text: 'Export the image at the canvas size.',
-    keys: 'e',
-    done: (prev, now) => now.exports > prev.exports,
-  },
-  {
-    title: 'move on',
-    text: 'Make something different, so you can see the next step work.',
-    keys: 'space',
-    done: (prev, now) => now.reel > prev.reel,
-  },
-  {
-    title: 'and back in',
-    text: 'The exported file carries its settings. Drop it on the window and the design you exported is back, ready to keep editing.',
-    verb: 'drop',
-    keys: 'the exported file',
-    done: (prev, now) => now.reopened > prev.reopened,
+    text: 'Keep the design on screen as a favourite, so a later shuffle cannot lose it: k, or the ♡ at the bottom of the panel. Favourites are listed there and stay in this browser.',
+    keys: 'k',
+    done: (prev, now) => now.favourites > prev.favourites,
   },
   {
     title: 'make it yours',
@@ -154,7 +119,7 @@ export const STEPS: Step[] = [
   },
   {
     title: 'there is more',
-    text: 'That is the core. The shortcut list has the rest, and the panel is full of settings worth exploring.',
+    text: 'That is the core. The shortcut list has the rest, and its tricks page has more on color harmony, share links and reopening an export. The panel is full of settings worth exploring.',
     keys: '?',
     done: (prev, now) => !prev.shortcuts && now.shortcuts,
   },

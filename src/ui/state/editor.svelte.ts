@@ -131,10 +131,6 @@ export class EditorState {
   warp = $state<Warp>({ ...defaultWarp });
   finish = $state<Finish>(structuredClone(noFinish));
   transform = $state<Transform>({ ...identityTransform });
-  colorsLocked = $state(false);
-  patternLocked = $state(false);
-  /** Adjust: the finishes (noise, vignette, bands, lighting). The transform is never shuffled. */
-  adjustLocked = $state(false);
   selectedPoint = $state(0);
   /** Index into grid.nodes. */
   selectedNode = $state(0);
@@ -212,44 +208,17 @@ export class EditorState {
 
   // ---- Shuffle --------------------------------------------------------------
 
-  get canShuffle(): boolean {
-    return !(this.colorsLocked && this.patternLocked && this.adjustLocked);
-  }
-
-  /** Shuffle everything except the locked parts: the pattern shuffle also picks the pattern kind. */
+  /** Shuffle everything: the pattern shuffle also picks the pattern kind. */
   shuffle(): void {
-    if (this.canShuffle) {
-      this.reeled(() =>
-        this.applyShuffle(
-          !this.colorsLocked,
-          !this.patternLocked,
-          !this.patternLocked,
-          !this.adjustLocked,
-          undefined,
-          undefined,
-          this.patternLocked && !this.colorsLocked,
-        ),
-      );
-    }
+    this.reeled(() => this.applyShuffle(true, true, true, true));
   }
 
-  /** Pattern and adjust only, leaving the palette and any locked part alone. */
+  /** Pattern and adjust only, leaving the palette alone. */
   shuffleLook(): void {
-    if (this.patternLocked && this.adjustLocked) return;
-    this.reeled(() =>
-      this.applyShuffle(
-        false,
-        !this.patternLocked,
-        !this.patternLocked,
-        !this.adjustLocked,
-        undefined,
-        undefined,
-        this.patternLocked,
-      ),
-    );
+    this.reeled(() => this.applyShuffle(false, true, true, true));
   }
 
-  /** New palette only, whatever the locks say. */
+  /** New palette only. */
   shuffleColors(): void {
     this.reeled(() => this.applyShuffle(true, false, false, false));
   }
@@ -275,12 +244,10 @@ export class EditorState {
     adjust: boolean | undefined,
     palette = this.palette.shuffleOptions(),
     seed = randomSeed(),
-    /** Keep the pattern but deal planes, aurora and blobs a new arrangement. */
-    arrange = false,
   ): void {
     const next = shuffleDesign(
       this.design,
-      { colors, layout, style, finish: adjust, levels: adjust, palette, seed, arrange },
+      { colors, layout, style, finish: adjust, levels: adjust, palette, seed },
       this.aspect,
     );
     this.setDesign(next.design);

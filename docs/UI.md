@@ -15,7 +15,7 @@ App.svelte                      owns the state and wires everything together
 │   ├── sections/ColorsSection       color rows, shuffle colors, palette from image
 │   ├── sections/FavouritesSection   saved designs
 │   └── ExportBar.svelte             shuffle, more like this, share link, download
-├── StatusBar.svelte            bottom bar: format, locks, OS context, monitors, zoom
+├── StatusBar.svelte            bottom bar: format, OS context, monitors, zoom
 └── Shortcuts / Tips            help cards
 ```
 
@@ -71,7 +71,7 @@ App.svelte                      owns the state and wires everything together
 
 | Class            | File                              | Holds                                                                      |
 | ---------------- | --------------------------------- | -------------------------------------------------------------------------- |
-| `EditorState`    | `state/editor.svelte.ts`          | the design, selection, locks, pins; `snapshot` and `restore` for undo      |
+| `EditorState`    | `state/editor.svelte.ts`          | the design, selection, pins; `snapshot` and `restore` for undo      |
 | `PaletteEditor`  | `state/palette.svelte.ts`         | harmony, mood, key, base hue, linked edits, grade sliders                  |
 | `PinsEditor`     | `state/pins.svelte.ts`            | picking colors on the imported image (`editor.pins`); session only         |
 | `History`        | `state/history.svelte.ts`         | undo and redo steps                                                        |

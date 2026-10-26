@@ -1,25 +1,12 @@
-// Keyboard shortcuts beyond shuffle: K, 1 2 3, P, ? and ⌘S; and the labeled more-like-this button.
+// Keyboard shortcuts beyond shuffle: K, P, ? and ⌘S; and the labeled more-like-this button.
 import { expect, openApp, test } from './support/app';
 
-test('K keeps or releases the favourite; 1 2 3 toggle the keep locks', async ({ page }) => {
+test('K keeps or releases the favourite', async ({ page }) => {
   await openApp(page);
   await page.keyboard.press('k');
   await expect(page.getByRole('button', { name: 'Remove from favourites' })).toBeVisible();
   await page.keyboard.press('k');
   await expect(page.getByRole('button', { name: 'Add to favourites' })).toBeVisible();
-
-  for (const [key, name] of [
-    ['1', 'Lock pattern'],
-    ['2', 'Lock adjust'],
-    ['3', 'Lock colors'],
-  ]) {
-    const toggle = page.getByRole('button', { name });
-    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
-    await page.keyboard.press(key);
-    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
-    await page.keyboard.press(key);
-    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
-  }
 });
 
 test('P folds and unfolds the panel; ? opens the shortcut list and Esc closes it', async ({ page }) => {
@@ -40,6 +27,19 @@ test('P folds and unfolds the panel; ? opens the shortcut list and Esc closes it
   await page.getByRole('button', { name: 'Tips' }).click();
   await expect(card).toHaveCount(0);
   await expect(page.getByRole('complementary', { name: 'Tips' })).toBeVisible();
+});
+
+test('the shortcut list and the tips and tricks card link to each other', async ({ page }) => {
+  await openApp(page);
+  await page.keyboard.press('?');
+  const keys = page.getByRole('complementary', { name: 'Shortcuts' });
+  const tricks = page.getByRole('complementary', { name: 'Tips' });
+  await keys.getByRole('button', { name: 'tricks' }).click();
+  await expect(tricks).toContainText('harmony');
+  await expect(keys).toHaveCount(0);
+  await tricks.getByRole('button', { name: 'all keys' }).click();
+  await expect(keys).toBeVisible();
+  await expect(tricks).toHaveCount(0);
 });
 
 test('shortcuts leave text fields alone', async ({ page }) => {

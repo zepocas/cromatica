@@ -4,53 +4,35 @@ import { expect, openApp, test } from './support/app';
 test('walkthrough: steps advance on their keys, Esc leaves for good', async ({ page }) => {
   await openApp(page, { shuffled: true, tips: true });
   const card = page.getByRole('complementary', { name: 'Walkthrough' });
-  await expect(card).toContainText('1/18');
+  await expect(card).toContainText('1/13');
 
   await page.keyboard.press(' ');
   await page.keyboard.press(' ');
-  await expect(card).toContainText('1/18');
+  await expect(card).toContainText('1/13');
   await page.keyboard.press(' ');
-  await expect(card).toContainText('2/18');
-
-  await page.keyboard.press('ArrowLeft');
-  await expect(card).toContainText('2/18');
-  await page.keyboard.press('ArrowRight');
-  await expect(card).toContainText('3/18');
+  await expect(card).toContainText('2/13');
 
   await page.keyboard.press('m');
   await expect(page.getByTestId('more-like-this')).toBeVisible();
-  await expect(card).toContainText('3/18');
+  await expect(card).toContainText('2/13');
   await page.getByRole('button', { name: 'Variation 1' }).click();
-  await expect(card).toContainText('4/18');
-
-  await page.keyboard.press('q');
-  await expect(card).toContainText('5/18');
-  await page.keyboard.press('w');
-  await expect(card).toContainText('6/18');
+  await expect(card).toContainText('3/13');
 
   await page.keyboard.press('o');
-  await expect(card).toContainText('7/18');
+  await expect(card).toContainText('4/13');
   await page.keyboard.press('p');
-  await expect(card).toContainText('8/18');
+  await expect(card).toContainText('5/13');
+  await page.keyboard.press('q');
+  await expect(card).toContainText('5/13');
+  await page.keyboard.press('w');
+  await expect(card).toContainText('6/13');
   await page.keyboard.press('l');
-  await expect(card).toContainText('9/18');
+  await expect(card).toContainText('7/13');
   await page.keyboard.press(',');
-  await expect(card).toContainText('10/18');
+  await expect(card).toContainText('8/13');
   await page.getByLabel('Noise amount').fill('0.5');
-  await expect(card).toContainText('11/18');
-
-  // The arrange step starts on planes or blobs, but the user can still step away and change the warp.
-  const gradient = page.getByLabel('Gradient', { exact: true });
-  await expect(gradient).toHaveAttribute('data-value', /^(planes|blobs)$/);
-  const kind = await gradient.getAttribute('data-value');
-  await page.keyboard.press(';');
-  await expect(gradient).not.toHaveAttribute('data-value', kind!);
-  const warp = page.getByLabel('Warp shape');
-  const shape = await warp.getAttribute('data-value');
-  await page.keyboard.press(',');
-  await expect(warp).not.toHaveAttribute('data-value', shape!);
-  await expect(gradient).not.toHaveAttribute('data-value', kind!);
-  await expect(card).toContainText('11/18');
+  // The arrange step asks for planes or blobs and waits; the pattern is never switched for the user.
+  await expect(card).toContainText('9/13');
 
   await page.keyboard.press('Escape');
   await expect(card).toBeHidden();
@@ -111,18 +93,4 @@ test('?walkthrough starts it again after it was left', async ({ page }) => {
   await page.keyboard.press('Escape');
   await page.goto('/?walkthrough');
   await expect(page.getByRole('complementary', { name: 'Walkthrough' })).toBeVisible();
-});
-
-test('?debug logs each key with the design fields it changed', async ({ page }) => {
-  await page.goto('/?default&debug');
-  await page.waitForFunction(() => '__cromaticaLog' in window);
-  await page.keyboard.press('.');
-  const log = (await page.evaluate(() =>
-    (window as unknown as { __cromaticaLog: () => unknown }).__cromaticaLog(),
-  )) as {
-    entries: { action: string; changes: string[] }[];
-  };
-  const entry = log.entries.at(-1)!;
-  expect(entry.action).toBe('key .');
-  expect(entry.changes.join()).toContain('warp.shape');
 });

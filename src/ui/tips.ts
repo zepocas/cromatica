@@ -54,3 +54,24 @@ export function markWalkthroughDone(storage: Storage = localStorage): void {
     // Runs again next visit; nothing else is lost.
   }
 }
+
+// Whether the panel was last left folded: a first visit starts folded, later ones start as the user left it (best-effort, D13).
+export const PANEL_FOLDED_KEY = 'cromatica.panel-folded';
+
+/** null when nothing was stored yet. */
+export function panelFolded(storage: Storage = localStorage): boolean | null {
+  try {
+    const v = storage.getItem(PANEL_FOLDED_KEY);
+    return v === null ? null : v === 'yes';
+  } catch {
+    return null;
+  }
+}
+
+export function rememberPanelFolded(folded: boolean, storage: Storage = localStorage): void {
+  try {
+    storage.setItem(PANEL_FOLDED_KEY, folded ? 'yes' : 'no');
+  } catch {
+    // Starts as the default next visit; nothing else is lost.
+  }
+}

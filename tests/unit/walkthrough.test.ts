@@ -12,8 +12,7 @@ const idle: Signals = {
   colors: 'c',
   arrange: 'x',
   shortcuts: false,
-  exports: 0,
-  reopened: 0,
+  favourites: 0,
 };
 
 function started(onend = () => {}) {
@@ -23,18 +22,16 @@ function started(onend = () => {}) {
   return w;
 }
 
-/** Past the shuffle and arrows steps, on more like this. */
+/** Past the shuffle step, on more like this. */
 function atMoreLikeThis() {
   const w = started();
   for (const reel of [1, 2, 3]) w.update({ ...idle, reel });
-  w.update({ ...idle, reel: 3 }, 'arrowleft');
-  w.update({ ...idle, reel: 3 }, 'arrowright');
   expect(STEPS[w.index].keys).toBe('m');
   return w;
 }
 
 describe('walkthrough', () => {
-  it('asks for three shuffles, then for the arrows', () => {
+  it('asks for three shuffles, then for more like this', () => {
     const w = started();
     w.update(idle);
     expect(w.index).toBe(0);
@@ -45,10 +42,8 @@ describe('walkthrough', () => {
     w.update({ ...idle, reel: 3 });
     expect(w.index).toBe(1);
     expect(w.progress).toBe(0);
-    w.update({ ...idle, reel: 3 }, 'arrowleft');
+    w.update({ ...idle, reel: 3 }, 'k');
     expect(w.index).toBe(1);
-    w.update({ ...idle, reel: 3 }, 'arrowright');
-    expect(w.index).toBe(2);
   });
 
   it('finishes more like this only once the grid has been opened and closed', () => {
@@ -60,11 +55,16 @@ describe('walkthrough', () => {
     expect(w.index).toBe(at + 1);
   });
 
-  it('takes q and w only as those keys', () => {
+  it('takes q and w once each, and no other key', () => {
     const w = atMoreLikeThis();
     w.update({ ...idle, reel: 3, exploring: true });
     w.update({ ...idle, reel: 3 });
+    w.update({ ...idle, reel: 3, context: true });
+    w.update({ ...idle, reel: 3, context: true, collapsed: false });
     const at = w.index;
+    expect(STEPS[at].keys).toBe('q w');
+    w.update(idle, 'x');
+    expect(w.index).toBe(at);
     w.update(idle, 'w');
     expect(w.index).toBe(at);
     w.update(idle, 'q');
@@ -90,17 +90,16 @@ describe('walkthrough', () => {
       w.update(now, key);
     };
     for (const reel of [1, 2, 3]) doIt({ reel });
-    doIt({}, 'arrowleft');
-    doIt({}, 'arrowright');
     doIt({ exploring: true });
     doIt({ exploring: false });
-    doIt({}, 'q');
-    doIt({}, 'w');
     const at = (keys: string) => expect(STEPS[w.index].keys).toBe(keys);
     at('o');
     doIt({ context: true });
     at('p');
     doIt({ collapsed: false });
+    at('q w');
+    doIt({}, 'q');
+    doIt({}, 'w');
     at('l ;');
     doIt({ kind: 'blobs' });
     at(', .');
@@ -111,14 +110,8 @@ describe('walkthrough', () => {
     doIt({ arrange: 'y' });
     at('r');
     doIt({ colors: 'd' });
-    at('1 2 3');
-    doIt({}, '3');
-    at('e');
-    doIt({ exports: 1 });
-    at('space');
-    doIt({ reel: 4 });
-    at('the exported file');
-    doIt({ reopened: 1 });
+    at('k');
+    doIt({ favourites: 1 });
     at('settings in the panel');
     doIt({ adjust: 'e' });
     doIt({ colors: 'f' });

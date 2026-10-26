@@ -1,7 +1,6 @@
 <script lang="ts">
   import { CONTEXT_SCREENS } from '../context/screens';
   import Dropdown from './controls/Dropdown.svelte';
-  import LockToggle from './controls/LockToggle.svelte';
   import type { EditorState } from './state/editor.svelte';
   import type { ExportSettings } from './state/export-settings.svelte';
   import type { PanelUi } from './state/panel-ui.svelte';
@@ -72,31 +71,6 @@
         value={exportSettings.format}
         options={[{ value: 'png' }, { value: 'jpeg' }]}
         onchange={(f) => (exportSettings.format = f)}
-      />
-    </span>
-    <span class="sep" role="separator" aria-orientation="vertical"></span>
-    <span class="group locks">
-      <span title="Parts that shuffling leaves alone; you can still edit them by hand">shuffle lock</span>
-      <LockToggle
-        locked={editor.patternLocked}
-        label="pattern"
-        ariaLabel="Lock pattern"
-        title="Keep the pattern kind, layout, warp shape and variation when shuffling (1)"
-        onchange={(on) => (editor.patternLocked = on)}
-      />
-      <LockToggle
-        locked={editor.adjustLocked}
-        label="adjust"
-        ariaLabel="Lock adjust"
-        title="Keep the warp amount and size, bands, noise, vignette and lighting when shuffling (2)"
-        onchange={(on) => (editor.adjustLocked = on)}
-      />
-      <LockToggle
-        locked={editor.colorsLocked}
-        label="colors"
-        ariaLabel="Lock colors"
-        title="Keep the colors when shuffling (3)"
-        onchange={(on) => (editor.colorsLocked = on)}
       />
     </span>
     <span class="sep" role="separator" aria-orientation="vertical"></span>
@@ -242,9 +216,6 @@
     display: flex;
     align-items: center;
     gap: 4px;
-  }
-  .locks {
-    gap: 12px;
   }
   .count {
     color: var(--dim);

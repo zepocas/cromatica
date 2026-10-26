@@ -1,9 +1,11 @@
 <script lang="ts">
   interface Props {
     onclose: () => void;
+    /** Swap this card for the tips and tricks one. */
+    ontricks: () => void;
   }
 
-  let { onclose }: Props = $props();
+  let { onclose, ontricks }: Props = $props();
 
   const mac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
   const mod = mac ? '⌘' : 'Ctrl+';
@@ -20,7 +22,6 @@
         ['m', 'more like this: variations of the current design'],
         ['l ;', 'previous and next pattern'],
         [', .', 'previous and next warp shape'],
-        ['1 2 3', 'keep pattern, adjust, colors (toggle)'],
       ],
     ],
     [
@@ -68,7 +69,10 @@
       {/each}
     </dl>
   {/each}
-  <button class="btn strong" onclick={onclose}>close</button>
+  <div class="foot">
+    <button class="btn" onclick={ontricks}>tricks</button>
+    <button class="btn strong" onclick={onclose}>close</button>
+  </div>
 </aside>
 
 <style>
@@ -119,8 +123,11 @@
     font: inherit;
     color: var(--ink);
   }
+  .foot {
+    display: flex;
+    justify-content: space-between;
+  }
   .strong {
-    align-self: flex-end;
     color: var(--ink);
   }
 </style>

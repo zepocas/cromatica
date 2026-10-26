@@ -31,12 +31,6 @@ test('planes: shares the ramp colors, has count, torn and new layout, no bands o
   await expect(layout).not.toHaveAttribute('data-seed', seed!);
   await expectPreviewChanged(before);
 
-  // With the pattern kept, shuffle stays on planes.
-  await page.getByRole('button', { name: 'Lock pattern' }).click();
-  before = await settled();
-  await page.getByRole('button', { name: /^Shuffle( Space)?$/ }).click();
-  await expectPreviewChanged(before);
-  await expect(gradient).toHaveAttribute('data-value', 'planes');
 });
 
 test('aurora: shares the ramp colors, has ribbons, glow and new layout', async ({ page }) => {

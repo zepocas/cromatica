@@ -30,8 +30,7 @@
       class="primary box"
       class:nudge={nudgeShuffle}
       aria-label="Shuffle"
-      disabled={!editor.canShuffle}
-      title={editor.canShuffle ? 'Shuffle (Space)' : 'Unlock colors, pattern or adjust to shuffle'}
+      title="Shuffle (Space)"
       onclick={() => editor.shuffle()}>shuffle</button
     >
     <button
