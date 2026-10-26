@@ -19,6 +19,16 @@ const aurora = (over: Partial<AuroraPattern> = {}): AuroraPattern => ({
 });
 
 describe('aurora', () => {
+  it('takes the first color as the sky and deals the others to the ribbons in palette order', () => {
+    const [sky, a, b, c] = [[0.15, 0.03, 260], [0.8, 0.17, 150], [0.6, 0.2, 320], [0.7, 0.1, 60]] as Oklch[];
+    const one = prepareAurora(aurora({ colors: [sky, a, b, c] }));
+    const swapped = prepareAurora(aurora({ colors: [sky, c, b, a] }));
+    const moved = prepareAurora(aurora({ colors: [a, sky, b, c] }));
+    expect(swapped.sky).toEqual(one.sky);
+    expect(Array.from(swapped.colors)).not.toEqual(Array.from(one.colors));
+    expect(moved.sky).not.toEqual(one.sky);
+  });
+
   it('maps the ribbons slider to 2..6 ribbons', () => {
     expect(ribbonCount(0)).toBe(2);
     expect(ribbonCount(1)).toBe(MAX_RIBBONS);
@@ -37,8 +47,8 @@ describe('aurora', () => {
     expect(soft.rays).toBeLessThan(legacy.rays);
   });
 
-  it('uses the darkest color, dimmed, as the sky', () => {
-    const p = prepareAurora(aurora());
+  it('uses the first color, dimmed, as the sky', () => {
+    const p = prepareAurora(aurora({ colors: [colors[1], colors[0], colors[2]] }));
     expect(Math.max(...p.sky)).toBeLessThan(0.02);
     // Far below every ribbon only the sky shows.
     const below = evaluateAurora(p, 0, -5);

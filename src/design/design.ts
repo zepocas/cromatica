@@ -102,8 +102,8 @@ export interface PlanesPattern {
 
 /**
  * Aurora (D42): glowing ribbons flowing across a dark sky
- * (src/engine/aurora.ts). The darkest color, dimmed, is the sky; the others
- * are the ribbons. Colors are the ramp's stop colors.
+ * (src/engine/aurora.ts). The first color, dimmed, is the sky; the others
+ * are the ribbons, in palette order. Colors are the ramp's stop colors.
  */
 export interface AuroraPattern {
   kind: 'aurora';
@@ -126,8 +126,8 @@ export type BlobBase = 'black' | 'palette';
 /**
  * Blobs: grainy lava-lamp bubbles (src/engine/blobs.ts). Seeded, lumpy and independent of each
  * other, stacked back to front like planes over a light background; each has a flat ink stippled
- * over a black base, thin toward its edge and full in its middle. The lightest palette color is
- * the background, the others are the inks.
+ * over a black base, thin toward its edge and full in its middle. The first palette color is
+ * the background, the others are the inks, in palette order.
  */
 export interface BlobsPattern {
   kind: 'blobs';
