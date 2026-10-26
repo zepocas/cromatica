@@ -119,15 +119,6 @@
     value={editor.planes.count}
     oninput={(v) => editor.setPlanesCount(v)}
     display={(v) => String(planeCount(v))}
-  />
-  <SliderRow
-    label="torn"
-    title="Clean cut ↔ torn paper edges"
-    min={0}
-    max={1}
-    step={0.01}
-    bind:value={editor.planes.roughness}
-    display={fixed2}
   >
     {#snippet trailing()}
       <button
@@ -139,6 +130,15 @@
       >
     {/snippet}
   </SliderRow>
+  <SliderRow
+    label="torn"
+    title="Clean cut ↔ torn paper edges"
+    min={0}
+    max={1}
+    step={0.01}
+    bind:value={editor.planes.roughness}
+    display={fixed2}
+  />
   <SliderRow
     label="blend"
     title="Crisp ↔ slightly blurred edges"
