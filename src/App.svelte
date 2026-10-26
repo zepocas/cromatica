@@ -116,6 +116,7 @@
     kind: editor.kind,
     warpShape: editor.warp.shape,
     adjust: JSON.stringify([editor.finish, editor.warp, editor.transform]),
+    pattern: JSON.stringify([editor.ramp, editor.mesh, editor.planes, editor.aurora, editor.blobs, editor.grid]),
     colors: JSON.stringify(editor.palette.colors),
     arrange: JSON.stringify([editor.planes.edits, editor.blobs.edits]),
     shortcuts: ui.shortcuts,

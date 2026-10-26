@@ -11,6 +11,8 @@ export interface Signals {
   warpShape: string;
   /** The warp, finishes and transform serialized: any slider of the adjust section changes it. */
   adjust: string;
+  /** Every pattern's own settings (planes count and torn edges, aurora glow, mesh points…), serialized. */
+  pattern: string;
   /** The colors in their order, serialized. */
   colors: string;
   /** Hand edits to planes and blobs, serialized. */
@@ -31,6 +33,31 @@ export interface Step {
   need?: number;
   /** `key` is the lowercased key just pressed outside a text field, if any. */
   done: (prev: Signals, now: Signals, key: string | null) => boolean;
+  /** The settings a change touched. With it, `need` counts different settings: a slider drag fires a change per tick, and one setting counts once. */
+  settings?: (prev: Signals, now: Signals) => string[];
+}
+
+/** The leaf settings that differ between two serialized values, as paths under `name`; a plain string that is not JSON counts as one setting. */
+export function changedSettings(name: string, before: string, after: string): string[] {
+  if (before === after) return [];
+  let a: unknown;
+  let b: unknown;
+  try {
+    a = JSON.parse(before);
+    b = JSON.parse(after);
+  } catch {
+    return [name];
+  }
+  const out: string[] = [];
+  const walk = (x: unknown, y: unknown, path: string) => {
+    if (x && y && typeof x === 'object' && typeof y === 'object') {
+      for (const k of new Set([...Object.keys(x), ...Object.keys(y)])) {
+        walk((x as Record<string, unknown>)[k], (y as Record<string, unknown>)[k], `${path}.${k}`);
+      }
+    } else if (JSON.stringify(x) !== JSON.stringify(y)) out.push(path);
+  };
+  walk(a, b, name);
+  return out;
 }
 
 export const STEPS: Step[] = [
@@ -110,10 +137,19 @@ export const STEPS: Step[] = [
     verb: 'change',
     keys: 'settings in the panel',
     need: 3,
+    settings: (prev, now) => [
+      ...changedSettings('kind', prev.kind, now.kind),
+      ...changedSettings('warpShape', prev.warpShape, now.warpShape),
+      ...changedSettings('adjust', prev.adjust, now.adjust),
+      ...changedSettings('pattern', prev.pattern, now.pattern),
+      ...changedSettings('colors', prev.colors, now.colors),
+      ...changedSettings('arrange', prev.arrange, now.arrange),
+    ],
     done: (prev, now) =>
       prev.kind !== now.kind ||
       prev.warpShape !== now.warpShape ||
       prev.adjust !== now.adjust ||
+      prev.pattern !== now.pattern ||
       prev.colors !== now.colors ||
       prev.arrange !== now.arrange,
   },
@@ -132,6 +168,7 @@ export class Walkthrough {
   progress = $state(0);
   active = $state(false);
   #prev: Signals | null = null;
+  #seen = new Set<string>();
 
   constructor(
     private readonly steps: Step[] = STEPS,
@@ -151,6 +188,7 @@ export class Walkthrough {
     this.progress = 0;
     this.active = true;
     this.#prev = null;
+    this.#seen.clear();
   }
 
   /** Esc: it does not come back. */
@@ -165,9 +203,16 @@ export class Walkthrough {
     this.#prev = { ...now };
     if (!step || !prev) return;
     if (!step.done(prev, now, key)) return;
+    if (step.settings) {
+      // One new setting per change, so a shuffle that moves many counts once.
+      const fresh = step.settings(prev, now).find((id) => !this.#seen.has(id));
+      if (!fresh) return;
+      this.#seen.add(fresh);
+    }
     this.progress += 1;
     if (this.progress >= (step.need ?? 1)) {
       this.progress = 0;
+      this.#seen.clear();
       this.index += 1;
       if (this.index >= this.steps.length) this.#finish();
     }
