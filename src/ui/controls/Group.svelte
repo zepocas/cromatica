@@ -6,10 +6,12 @@
     collapsed?: boolean;
     /** The button's accessible name, when "Expand x" and "Collapse x" are not it. */
     ariaLabel?: string;
+    /** Dim text after the title, so a folded group still says what is set (e.g. "off"). */
+    note?: string;
     children: Snippet;
   }
 
-  let { title, collapsed = $bindable(false), ariaLabel, children }: Props = $props();
+  let { title, collapsed = $bindable(false), ariaLabel, note, children }: Props = $props();
 
   const verb = $derived(collapsed ? 'Expand' : 'Collapse');
 </script>
@@ -23,7 +25,9 @@
       title={verb}
       onclick={() => (collapsed = !collapsed)}
     >
-      <span class="arrow" aria-hidden="true">{collapsed ? '▸' : '▾'}</span>{title}</button
+      <span class="arrow" aria-hidden="true">{collapsed ? '▸' : '▾'}</span>{title}{#if note}<span class="note"
+          >{note}</span
+        >{/if}</button
     >
     <button class="line" aria-hidden="true" tabindex="-1" title={verb} onclick={() => (collapsed = !collapsed)}
     ></button>
@@ -62,6 +66,10 @@
     font-size: 15px;
     line-height: 1;
     vertical-align: -2px;
+  }
+  .note {
+    margin-left: 1ch;
+    opacity: 0.6;
   }
   .line {
     flex: 1;

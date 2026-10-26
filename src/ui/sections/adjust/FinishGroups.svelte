@@ -29,8 +29,16 @@
   // Mesh band styles show as A, B and C in the panel (D60).
   const LETTERS = ['A', 'B', 'C'];
   const BAND_TITLES = ['Terraces around each point', 'Flat facets between points', 'Lightness layers'];
-  let noiseFolded = $state(false);
-  let lightingFolded = $state(false);
+  const readout = (v: number) => (v === 0 ? 'off' : v.toFixed(2));
+  // Folded while off; turning one on (a shuffle, undo or a loaded design) opens it, closing it stays the user's call.
+  let noiseFolded = $state(true);
+  let lightingFolded = $state(true);
+  $effect(() => {
+    if (editor.finish.noise.amount > 0) noiseFolded = false;
+  });
+  $effect(() => {
+    if (editor.finish.relief > 0) lightingFolded = false;
+  });
 </script>
 
 <!-- Bands and edge, then the noise and lighting groups. -->
@@ -80,7 +88,7 @@
     display={fixed2}
   />
 {/if}
-<Group title="noise" bind:collapsed={noiseFolded}>
+<Group title="noise" note={readout(editor.finish.noise.amount)} bind:collapsed={noiseFolded}>
   <div class="row">
     <span>type</span>
     <Dropdown
@@ -99,11 +107,11 @@
     max={1}
     step={0.01}
     bind:value={editor.finish.noise.amount}
-    display={(v) => (v === 0 ? 'off' : v.toFixed(2))}
+    display={readout}
   />
 </Group>
 
-<Group title="lighting" bind:collapsed={lightingFolded}>
+<Group title="lighting" note={readout(editor.finish.relief)} bind:collapsed={lightingFolded}>
   <SliderRow
     label="amount"
     title="Light the image as a raised surface: lighter parts stand higher"
@@ -111,7 +119,7 @@
     max={1}
     step={0.01}
     bind:value={editor.finish.relief}
-    display={(v) => (v === 0 ? 'off' : v.toFixed(2))}
+    display={readout}
   />
   <SliderRow
     label="direction"

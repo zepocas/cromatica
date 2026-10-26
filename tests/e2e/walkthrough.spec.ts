@@ -1,5 +1,5 @@
 // The first-visit walkthrough: each step waits for its own key, and it never comes back once left.
-import { expect, openApp, test } from './support/app';
+import { expect, openApp, openFinish, test } from './support/app';
 
 test('walkthrough: steps advance on their keys, Esc leaves for good', async ({ page }) => {
   await openApp(page, { shuffled: true, tips: true });
@@ -30,6 +30,7 @@ test('walkthrough: steps advance on their keys, Esc leaves for good', async ({ p
   await expect(card).toContainText('7/13');
   await page.keyboard.press(',');
   await expect(card).toContainText('8/13');
+  await openFinish(page, 'noise');
   await page.getByLabel('Noise amount').fill('0.5');
   // The arrange step asks for planes or blobs and waits; the pattern is never switched for the user.
   await expect(card).toContainText('9/13');

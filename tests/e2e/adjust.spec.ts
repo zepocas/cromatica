@@ -6,6 +6,7 @@ import {
   choose,
   expect,
   openApp,
+  openFinish,
   openMore,
   previewProbe,
   readPoints,
@@ -64,6 +65,7 @@ test('warp controls: shape, amount, size, new variation and , . cycling', async 
 
 test('noise slider changes the preview', async ({ page }) => {
   await openApp(page);
+  await openFinish(page, 'noise');
   const { settled, expectPreviewChanged } = previewProbe(page);
   let before = await settled();
   await page.getByLabel('Noise amount').fill('1');

@@ -808,3 +808,9 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Decision (2026-10-26, user, #60):** `q` (new pattern and adjust, same palette) and `w` (new palette only) replace the shuffle locks of D64 and D73. Two ways to scope a shuffle were a repetition: the locks are the same thing made sticky, and their hidden state made Space look broken (a button disabled with all three locked).
 - **Removed:** the lock toggles in the status bar, the `1 2 3` keys, `patternLocked`, `adjustLocked`, `colorsLocked` and `canShuffle` in the editor, and the `arrange` shuffle option (a locked pattern dealt planes, aurora and blobs a new arrangement, #96); with no locks, the only shuffles that keep the pattern are `w` and more like this, and they leave the arrangement alone.
 - **Consequence:** a shuffle always changes the pattern unless it is `w`. To keep a look while changing it, use more like this.
+
+## D103. Finish groups fold while they are off
+
+- **Decision (2026-10-26, user, #59):** the noise and lighting groups of the adjust section start folded and show their value ("off" or the amount) beside the title. They open by themselves when a shuffle, undo or loaded design turns them on; folding one is the user's call.
+- **Why:** both sat open at "off" in most designs and took about 170px of a panel that was already crowded. The warp and pattern sliders stay visible because every design uses them.
+- **Consequence:** a test that reaches for a finish slider unfolds its group first (`openFinish`).
