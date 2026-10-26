@@ -21,13 +21,24 @@
   import { MonitorsState } from './ui/state/monitors.svelte';
   import { CONTEXT_SCREENS } from './context/screens';
   import Preview from './ui/Preview.svelte';
-  import { dismissTips, markShuffleTried, shuffleTried, tipsDismissed } from './ui/tips';
+  import {
+    dismissTips,
+    markShuffleTried,
+    markWalkthroughDone,
+    shuffleTried,
+    tipsDismissed,
+    walkthroughDone,
+  } from './ui/tips';
+  import { contextForSize, isTouchDevice, startSize } from './ui/state/device';
+  import Walkthrough from './ui/Walkthrough.svelte';
+  import { Walkthrough as WalkthroughState, type Signals } from './ui/state/walkthrough.svelte';
   import Shortcuts from './ui/Shortcuts.svelte';
   import StatusBar from './ui/StatusBar.svelte';
   import Tips from './ui/Tips.svelte';
   import { CanvasView } from './ui/state/view.svelte';
   import { clearShareHash, LONG_LINK, readShareHash, shareUrl } from './ui/state/share-link';
 
+  import { DebugLog, formatEntry } from './ui/state/debug-log';
   import { untrack } from 'svelte';
   import type { Design } from './design/design';
 
@@ -61,8 +72,25 @@
   // Class instance (not proxied); $state only so it can be bound down the panel tree.
   let editor = $state(initial);
   const exportSettings = new ExportSettings();
-  // Tips show on a first visit only; `?default` (tests) never shows them.
-  const ui = new PanelUi({ tips: !builtIn && !tipsDismissed() });
+  // A first visit gets the walkthrough in place of the tips card; `?default` (tests) gets neither.
+  // `?walkthrough` runs it on demand, whatever was stored.
+  const firstVisit =
+    new URLSearchParams(location.search).has('walkthrough') || (!builtIn && !tipsDismissed() && !walkthroughDone());
+  const ui = new PanelUi({ tips: false });
+  const walkthrough = new WalkthroughState(undefined, () => {
+    markWalkthroughDone();
+    dismissTips();
+  });
+  if (firstVisit) {
+    walkthrough.start();
+    // Starts from the device: the panel folded away and the size of its screen (the OS screen waits for `o`).
+    ui.collapsed = true;
+    const touch = isTouchDevice(navigator.platform, navigator.userAgent, navigator.maxTouchPoints);
+    exportSettings.open(startSize({ width: screen.width, height: screen.height }, devicePixelRatio, touch));
+  }
+  $effect(() => {
+    if (ui.contextAuto) ui.contextId = contextForSize(exportSettings.size, navigator.platform);
+  });
   const contextScreen = $derived(CONTEXT_SCREENS.find((s) => s.id === (ui.contextPreview ?? ui.contextId)) ?? null);
   const monitors = new MonitorsState();
   // A first-time visitor is nudged toward shuffle until it has been used once (`?default` never nudges).
@@ -73,6 +101,47 @@
   $effect(() => {
     if (nudgeOnLoad && shuffled) markShuffleTried();
   });
+  let exports = $state(0);
+  let reopened = $state(0);
+  const signals = (): Signals => ({
+    reel: editor.reel.pushes,
+    exploring: ui.exploring,
+    collapsed: ui.collapsed,
+    context: ui.contextId !== '',
+    kind: editor.kind,
+    warpShape: editor.warp.shape,
+    adjust: JSON.stringify([editor.finish, editor.warp, editor.transform]),
+    colors: JSON.stringify(editor.palette.colors),
+    arrange: JSON.stringify([editor.planes.edits, editor.blobs.edits]),
+    shortcuts: ui.shortcuts,
+    exports,
+    reopened,
+  });
+  $effect(() => {
+    const now = signals();
+    untrack(() => walkthrough.update(now));
+  });
+  // The arrange step needs planes or blobs on screen. Once, on entering it: the user may step away again.
+  let arrangeStepSeen = -1;
+  $effect(() => {
+    const index = walkthrough.index;
+    if (walkthrough.step?.needs !== 'arrangeable' || index === arrangeStepSeen) return;
+    arrangeStepSeen = index;
+    untrack(() => {
+      if (editor.kind !== 'planes' && editor.kind !== 'blobs') editor.kind = 'blobs';
+    });
+  });
+  /** After the app's own handlers, so a step sees the state its key produced. */
+  function onWalkthroughKey(e: KeyboardEvent) {
+    if (!walkthrough.active || e.repeat) return;
+    // Esc closes the more-like-this grid and the shortcut list first.
+    if (e.key === 'Escape') {
+      if (!ui.exploring && !ui.shortcuts) walkthrough.leave();
+    } else if (!e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target)) {
+      const key = e.key.toLowerCase();
+      queueMicrotask(() => untrack(() => walkthrough.update(signals(), key)));
+    }
+  }
   const pinning = $derived(editor.pins.pinning && editor.pins.canPin && !ui.exploring);
   /** The preview alone, in the browser's full screen; the panel, handles and overlays are hidden. */
   let fullscreen = $state(false);
@@ -108,6 +177,23 @@
   });
 
   $effect(() => history.record(step()));
+
+  // What was pressed and which design fields it moved: on in dev and with `?debug` (not under tests), printed to the
+  // console and, in dev, the server's terminal; `__cromaticaLog()` also returns it with the current design.
+  const debugOn = new URLSearchParams(location.search).has('debug') || (import.meta.env.DEV && !navigator.webdriver);
+  const debug = debugOn
+    ? new DebugLog((entry) => {
+        const line = formatEntry(entry);
+        console.log(line);
+        if (import.meta.env.DEV) void fetch('/__debug-log', { method: 'POST', body: line }).catch(() => {});
+      })
+    : null;
+  if (debug) {
+    (window as unknown as { __cromaticaLog: () => unknown }).__cromaticaLog = () => debug.dump();
+  }
+  $effect(() => {
+    debug?.record(renderDesign);
+  });
 
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
   $effect(() => {
@@ -174,12 +260,25 @@
     if (document.fullscreenElement) void document.exitFullscreen();
   }
 
+  /** The OS screen that fits the canvas, on or off; it then follows the canvas shape until one is picked by hand. */
+  function toggleContext() {
+    ui.contextAuto = !ui.contextId;
+    ui.contextId = ui.contextId ? '' : contextForSize(output, navigator.platform);
+  }
+
   /** ⌘Z undoes and ⇧⌘Z or Ctrl+Y redoes, except in text fields, which keep their own undo. */
   function onKeyDown(e: KeyboardEvent) {
+    if (!isTypingTarget(e.target)) debug?.note(`key ${e.key}`);
+    onWalkthroughKey(e);
     if (e.key.toLowerCase() === 'f' && !e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target)) {
       if (fullscreen) exitFullscreen();
       else enterFullscreen();
       return;
+    }
+    if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.repeat && !isTypingTarget(e.target)) {
+      const key = e.key.toLowerCase();
+      if (key === 'e') void startExport();
+      else if (key === 'o') toggleContext();
     }
     // The browser's own save-page dialog is no use here, so ⌘S downloads, even from a text field.
     if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 's') {
@@ -225,9 +324,11 @@
         { signal: ac.signal, onProgress: (p) => (progress = p) },
       );
       download(blob, `cromatica-${size.width}x${size.height}.${fmt === 'png' ? 'png' : 'jpg'}`);
+      exports += 1;
     } catch (err) {
       if (!(err instanceof DOMException && err.name === 'AbortError')) {
         error = err instanceof Error ? err.message : String(err);
+        debug?.error(err);
       }
     } finally {
       exporting = false;
@@ -246,6 +347,7 @@
     exportSettings.open(size);
     editor.setDesign(design);
     view.reset();
+    reopened += 1;
   }
 
   /** A PNG or JPEG exported from here reopens its design; any other image dropped on the window becomes the palette. */
@@ -271,6 +373,12 @@
   ondrop={onDrop}
   onpointerdowncapture={onPress}
   onkeydowncapture={onPress}
+  onclickcapture={(e) => {
+    const button = e.target instanceof Element ? e.target.closest('button') : null;
+    if (button) debug?.note(`click ${button.getAttribute('aria-label') ?? button.textContent?.trim() ?? ''}`);
+  }}
+  onerror={(e) => debug?.error((e as unknown as ErrorEvent).error ?? e.type)}
+  onunhandledrejection={(e) => debug?.error(e.reason)}
   onkeydown={onKeyDown}
   onhashchange={onHashChange}
   onpagehide={() => !builtIn && linked === null && writeAutosave(renderDesign)}
@@ -353,6 +461,9 @@
 {/if}
 {#if pinning && !fullscreen}
   <ImagePins {editor} />
+{/if}
+{#if walkthrough.active && !fullscreen}
+  <Walkthrough {walkthrough} />
 {/if}
 {#if ui.shortcuts && !fullscreen}
   <Shortcuts onclose={() => (ui.shortcuts = false)} />

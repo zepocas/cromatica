@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Design } from '../../design/design';
-  import { mutateDesign } from '../../design/mutate';
+  import { mutateDesign, reorderColors } from '../../design/mutate';
   import { createRng, randomSeed } from '../../design/random';
   import Thumbnail from './Thumbnail.svelte';
 
@@ -15,6 +15,8 @@
 
   // Gentle at the top, bolder further down; the middle cell is the design itself.
   const STRENGTHS = [0.35, 0.45, 0.55, 0.65, null, 0.75, 0.85, 0.95, 1];
+  /** Cells that also deal the colors to other places, like `r`: about a third, spread over the strengths. */
+  const REORDERED = new Set([1, 5, 7]);
   const GAP = 6;
   const BAR = 24;
 
@@ -22,7 +24,13 @@
   let width = $state(0);
   let height = $state(0);
 
-  const cells = $derived(STRENGTHS.map((s, i) => (s === null ? null : mutateDesign(design, createRng(seed + i), s))));
+  const cells = $derived(
+    STRENGTHS.map((s, i) => {
+      if (s === null) return null;
+      const varied = mutateDesign(design, createRng(seed + i), s);
+      return REORDERED.has(i) ? reorderColors(varied, createRng(seed + 100 + i)) : varied;
+    }),
+  );
   const cellWidth = $derived(Math.max(0, Math.min((width - 4 * GAP) / 3, ((height - 4 * GAP - BAR) / 3) * aspect)));
 
   function onKeyDown(e: KeyboardEvent) {

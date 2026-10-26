@@ -305,3 +305,47 @@ describe('pins on the image', () => {
     expect(e.pins.add(0.5, 0.5)).toBeNull();
   });
 });
+
+describe('swapping the color order', () => {
+  it('changes the colors the walkthrough watches, though not the palette snapshot', () => {
+    const e = fresh();
+    const colors = JSON.stringify(colorsOf(e));
+    const snapshot = JSON.stringify(e.palette.snapshot());
+    e.palette.shuffleOrder();
+    expect(JSON.stringify(colorsOf(e))).not.toBe(colors);
+    expect(JSON.stringify(e.palette.snapshot())).toBe(snapshot);
+  });
+});
+
+describe('the design handed to the export worker', () => {
+  it('survives structuredClone after planes are arranged by hand', () => {
+    const e = fresh();
+    e.kind = 'planes';
+    e.setPlaneShift(0, 0.1, 0.1);
+    e.setPlaneScale(0, 1.2);
+    expect(() => structuredClone(e.design)).not.toThrow();
+  });
+});
+
+describe('switching the pattern', () => {
+  it('carries a shuffled palette across mesh, net and the other patterns', () => {
+    const e = fresh();
+    e.shuffleColors();
+    const shown = JSON.stringify(e.palette.colors.slice(0, 1));
+    for (const kind of ['linear', 'grid', 'planes', 'mesh'] as const) {
+      e.switchKind(kind);
+      expect(JSON.stringify(e.palette.colors.slice(0, 1))).toBe(shown);
+    }
+  });
+});
+
+describe('stepping the warp shape', () => {
+  it('gives a shape a visible amount when the warp was off', () => {
+    const e = fresh();
+    e.warp.shape = 'none';
+    e.warp.amount = 0;
+    e.cycleWarpShape(1);
+    expect(e.warp.shape).not.toBe('none');
+    expect(e.warp.amount).toBeGreaterThan(0);
+  });
+});

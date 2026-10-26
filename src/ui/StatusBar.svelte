@@ -46,11 +46,6 @@
     ];
   });
 
-  function toggleMonitors() {
-    monitors.on = !monitors.on;
-    if (monitors.on && CONTEXT_SCREENS.find((s) => s.id === ui.contextId)?.group === 'mobile') ui.contextId = '';
-  }
-
   /** A mouse wheel only turns vertically; let it scroll the bar when the bar overflows. */
   function wheelSideways(e: WheelEvent) {
     const el = e.currentTarget as HTMLElement;
@@ -132,7 +127,10 @@
         ariaLabel="OS context"
         value={ui.contextId || OFF}
         {options}
-        onchange={(id) => (ui.contextId = id === OFF ? '' : id)}
+        onchange={(id) => {
+          ui.contextAuto = false;
+          ui.contextId = id === OFF ? '' : id;
+        }}
         onactive={(id) => (ui.contextPreview = id === null ? null : id === OFF ? '' : id)}
         title="Show the OS on top of the image, and warn where its text would be hard to read"
       />
@@ -142,7 +140,7 @@
           aria-label="Monitors"
           aria-pressed={monitors.on}
           title="Lay monitors over the image to see what each would show"
-          onclick={toggleMonitors}>▭▭<span class="name">monitors</span></button
+          onclick={() => monitors.toggle(ui)}>▭▭<span class="name">monitors</span></button
         >
       </span>
     </span>

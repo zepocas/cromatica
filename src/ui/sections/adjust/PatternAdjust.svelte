@@ -17,6 +17,10 @@
   let { editor = $bindable() }: Props = $props();
 
   let arrangeFolded = $state(true);
+  // Picking a plane or blob on the canvas (by click or drag) opens the group that edits it.
+  $effect(() => {
+    if (editor.selectedPlane >= 0) arrangeFolded = false;
+  });
   const stack = $derived(editor.planeStack);
   const place = $derived(stack.indexOf(editor.selectedPlane));
   const picked = $derived(place >= 0);
@@ -29,7 +33,7 @@
 
 {#snippet arrange(noun: 'plane' | 'blob')}
   {@const Noun = noun === 'blob' ? 'Blob' : 'Plane'}
-  <Group title="arrange" ariaLabel="Arrange layout" bind:collapsed={arrangeFolded}>
+  <Group title="arrange each {noun}" ariaLabel="Arrange each {noun}" bind:collapsed={arrangeFolded}>
     <div class="row">
       <span>{noun}</span>
       <button class="icon" aria-label="{Noun} behind" disabled={picked && place === 0} onclick={() => stepPick(-1)}

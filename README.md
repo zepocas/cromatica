@@ -52,7 +52,7 @@ Phase 1 is in progress; see the roadmap for where things stand.
 
 ## Development
 
-- **Run:** `npm run dev`. The app opens on the autosaved design (localStorage), or a shuffle on a first visit. `?default` in the URL opens the built-in design and leaves the save alone (the UI tests rely on it).
+- **Run:** `npm run dev`. The app opens on the autosaved design (localStorage), or a shuffle on a first visit. `?default` in the URL opens the built-in design and leaves the save alone (the UI tests rely on it). `?walkthrough` starts the first-time walkthrough again, and `?debug` logs each key and the design fields it changed (always on under `npm run dev`).
 - **Checks:** `npm run lint` (ESLint), `npm run format:check` (Prettier; `npm run format` to fix), `npm test` (vitest), `npm run check` (svelte-check plus tsc), `npx playwright test` (about 2 min, SwiftShader; `PORT=<port>` to test a worktree's own dev server). `BENCH=1` adds timing logs and the render-time benchmarks; `SHEETS=1 npx playwright test sheets` writes visual sheets (warp contact sheets, six shuffles) to `$SHEETS_DIR` (default /tmp). The 5K warp benchmark can stall under load; rerun it alone before treating a timeout as a regression. `?perf` on the app URL shows the GPU name and, per pattern/finish variant, the median draw time and the worst shader compile time (`window.__perf.report()` returns the same text); use it to compare machines.
 - **Test selectors:**
   - Many controls are behind "+ more", so tests click `More adjust settings` or `More colors settings` first.

@@ -70,7 +70,7 @@ test('planes: drag a plane on the image, reorder the stack, undo and reset', asy
   await openApp(page);
   const { settled, expectPreviewChanged } = previewProbe(page);
   await choose(page.getByLabel('Gradient', { exact: true }), 'planes');
-  await page.getByRole('button', { name: 'Arrange layout' }).click();
+  await page.getByRole('button', { name: 'Arrange each' }).click();
   await expect(page.getByRole('button', { name: 'Reset all' })).toBeDisabled();
 
   // The topmost plane whose center is in the frame: its outline polygon is where the pointer lands.
@@ -153,7 +153,7 @@ test('planes and blobs: stay pickable when the mesh points toggle is off', async
 test('planes: size one plane from the arrange group', async ({ page }) => {
   await openApp(page);
   await choose(page.getByLabel('Gradient', { exact: true }), 'planes');
-  await page.getByRole('button', { name: 'Arrange layout' }).click();
+  await page.getByRole('button', { name: 'Arrange each' }).click();
   const size = page.getByLabel('Plane size', { exact: true });
   // Nothing is picked yet: the slider waits for a plane.
   await expect(size).toBeDisabled();

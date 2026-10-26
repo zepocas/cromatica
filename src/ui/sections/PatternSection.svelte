@@ -1,7 +1,7 @@
 <script lang="ts">
   import { WARP_SHAPES, type WarpShape } from '../../design/design';
   import Dropdown from '../controls/Dropdown.svelte';
-  import type { EditorState } from '../state/editor.svelte';
+  import { PATTERN_KINDS, type EditorState } from '../state/editor.svelte';
   import { MAX_SIZE, type ExportSettings } from '../state/export-settings.svelte';
   import { CUSTOM_PRESET_ID, PRESET_GROUPS, presetLabel, SIZE_PRESETS } from '../state/presets';
   import Section from '../controls/Section.svelte';
@@ -23,18 +23,7 @@
     { value: CUSTOM_PRESET_ID, label: 'custom' },
   ];
 
-  const PATTERNS = [
-    { kind: 'mesh', label: 'mesh' },
-    { kind: 'grid', label: 'net' },
-    { kind: 'linear', label: 'linear' },
-    { kind: 'radial', label: 'radial' },
-    { kind: 'conic', label: 'conic' },
-    { kind: 'noise', label: 'noise' },
-    { kind: 'cells', label: 'cells' },
-    { kind: 'planes', label: 'planes' },
-    { kind: 'aurora', label: 'aurora' },
-    { kind: 'blobs', label: 'blobs' },
-  ] as const;
+  const PATTERNS = PATTERN_KINDS.map((kind) => ({ kind, label: kind === 'grid' ? 'net' : kind }));
 
   const WARP_LABELS: Record<WarpShape, string> = {
     none: 'none',
@@ -63,6 +52,7 @@
     <span>gradient</span>
     <Dropdown
       ariaLabel="Gradient"
+      title="L and ; step through the gradients"
       value={editor.kind}
       options={PATTERNS.map((p) => ({ value: p.kind, label: p.label }))}
       onchange={(k) => (editor.kind = k)}
@@ -76,7 +66,7 @@
     <Dropdown
       id="warp-shape"
       ariaLabel="Warp shape"
-      title="[ and ] to step through"
+      title="Comma and period step through the shapes"
       value={editor.warp.shape}
       options={WARP_SHAPES.map((s) => ({ value: s, label: WARP_LABELS[s] }))}
       onchange={(s) => (editor.warp.shape = s)}

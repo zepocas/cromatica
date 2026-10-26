@@ -7,6 +7,8 @@ export const REEL_LIMIT = 20;
 export class Reel<T> {
   position = $state(0);
   length = $state(0);
+  /** Shuffles pushed so far: unlike `length`, it keeps rising once the reel is full. */
+  pushes = $state(0);
   private slots: T[] = [];
 
   constructor(private readonly limit = REEL_LIMIT) {}
@@ -23,6 +25,7 @@ export class Reel<T> {
     if (this.slots.length === 0) this.slots.push(before);
     else this.slots[this.position] = before;
     this.slots.push(after);
+    this.pushes += 1;
     if (this.slots.length > this.limit) this.slots.splice(0, this.slots.length - this.limit);
     this.sync(this.slots.length - 1);
   }

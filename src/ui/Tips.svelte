@@ -7,11 +7,13 @@
 
   const TIPS: [key: string, text: string][] = [
     ['space', 'start with shuffles; ♡ keeps the ones you like'],
+    ['q w r', 'shuffle only the pattern and adjust (q), only the colors (w), or swap the colors around (r)'],
     ['m', 'more like this: variations of the current design'],
     ['← →', 'step back through recent shuffles'],
     ['?', 'every keyboard shortcut'],
     ['↑↓ hover', "preview a list's options on the canvas, click to choose"],
     ['+ advanced', 'plenty more settings at the end of each section'],
+    ['e', 'export the image (l lays monitors over it)'],
     ['png', 'exports keep the design: drop one back here to keep editing (any other image gives its colors)'],
   ];
 </script>

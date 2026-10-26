@@ -41,4 +41,11 @@ describe('Reel', () => {
     expect(reel.step(-1, 4)).toBe(3);
     expect(reel.step(-1, 3)).toBeNull();
   });
+
+  it('counts every push, even once the reel is full and its length stops growing', () => {
+    const reel = new Reel<number>(3);
+    for (let i = 0; i < 6; i++) reel.push(i, i + 1);
+    expect(reel.length).toBe(3);
+    expect(reel.pushes).toBe(6);
+  });
 });

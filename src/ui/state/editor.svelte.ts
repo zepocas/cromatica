@@ -30,9 +30,10 @@ import {
   type PointMesh,
   type Transform,
   type Warp,
+  type WarpShape,
 } from '../../design/design';
 import { randomSeed } from '../../design/random';
-import { gridLayout, shuffleDesign } from '../../design/shuffle';
+import { gridLayout, shuffleDesign, WARP_SHUFFLE_TABLE } from '../../design/shuffle';
 import { evaluateGrid, forwardMap, prepareGrid, restPoint } from '../../engine/grid';
 import { blobCount, blobDistance, blobOutline, blobReach, prepareBlobs } from '../../engine/blobs';
 import { contourPath } from './contour';
@@ -48,6 +49,20 @@ import { emptiestSpot, median, widestGapCenter } from './placement';
 import { Reel } from './reel.svelte';
 
 export type PatternKind = BasePattern['kind'];
+
+/** The order of the pattern list, and of `l` and `;` through it. */
+export const PATTERN_KINDS = [
+  'mesh',
+  'grid',
+  'linear',
+  'radial',
+  'conic',
+  'noise',
+  'cells',
+  'planes',
+  'aurora',
+  'blobs',
+] as const satisfies readonly PatternKind[];
 export type PlanesLayout = Omit<PlanesPattern, 'kind' | 'colors'>;
 export type AuroraLayout = Omit<AuroraPattern, 'kind' | 'colors'>;
 export type BlobsLayout = Omit<BlobsPattern, 'kind' | 'colors'>;
@@ -177,7 +192,7 @@ export class EditorState {
       const colors = stops.map((s) => s.color);
       base =
         this.kind === 'planes'
-          ? { kind: 'planes', colors, ...this.planes }
+          ? { kind: 'planes', colors, ...$state.snapshot(this.planes) }
           : this.kind === 'blobs'
             ? { kind: 'blobs', colors, ...$state.snapshot(this.blobs) }
             : { kind: 'aurora', colors, ...$state.snapshot(this.aurora) };
@@ -216,6 +231,22 @@ export class EditorState {
         ),
       );
     }
+  }
+
+  /** Pattern and adjust only, leaving the palette and any locked part alone. */
+  shuffleLook(): void {
+    if (this.patternLocked && this.adjustLocked) return;
+    this.reeled(() =>
+      this.applyShuffle(
+        false,
+        !this.patternLocked,
+        !this.patternLocked,
+        !this.adjustLocked,
+        undefined,
+        undefined,
+        this.patternLocked,
+      ),
+    );
   }
 
   /** New palette only, whatever the locks say. */
@@ -357,10 +388,45 @@ export class EditorState {
 
   // ---- Warp -----------------------------------------------------------------
 
+  cycleKind(step: 1 | -1): void {
+    const n = PATTERN_KINDS.length;
+    const i = PATTERN_KINDS.indexOf(this.kind as (typeof PATTERN_KINDS)[number]);
+    this.switchKind(PATTERN_KINDS[(i + step + n) % n]);
+  }
+
+  /**
+   * Mesh points, grid nodes and ramp stops each keep their own colors, so a palette shuffled in one would leave the
+   * others on an older one. Switching between them carries the colors on screen across, spread over the new items.
+   */
+  switchKind(kind: PatternKind): void {
+    const owner = (k: PatternKind) => (k === 'mesh' || k === 'grid' ? k : 'ramp');
+    if (owner(kind) === owner(this.kind)) {
+      this.kind = kind;
+      return;
+    }
+    const colors = this.palette.colors;
+    this.kind = kind;
+    const items = this.colorItems;
+    const last = Math.max(1, items.length - 1);
+    items.forEach((item, i) => {
+      item.color = colors[Math.round((i * (colors.length - 1)) / last)];
+    });
+    this.palette.adopt(null);
+  }
+
   cycleWarpShape(step: 1 | -1): void {
     const n = WARP_SHAPES.length;
     const i = WARP_SHAPES.indexOf(this.warp.shape);
-    this.warp.shape = WARP_SHAPES[(i + step + n) % n];
+    this.setWarpShape(WARP_SHAPES[(i + step + n) % n]);
+  }
+
+  /** From no warp (amount 0) a new shape would change nothing on screen, so it starts at its usual middle strength. */
+  setWarpShape(shape: WarpShape): void {
+    if (shape !== 'none' && this.warp.amount === 0) {
+      const [lo, hi] = WARP_SHUFFLE_TABLE[shape].amount;
+      this.warp.amount = (lo + hi) / 2;
+    }
+    this.warp.shape = shape;
   }
 
   newWarpVariation(): void {

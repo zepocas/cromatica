@@ -35,3 +35,22 @@ export function markShuffleTried(storage: Storage = localStorage): void {
     // Pulses again next visit; nothing else is lost.
   }
 }
+
+// The first-visit walkthrough runs once, finished or left (best-effort, D13).
+export const WALKTHROUGH_KEY = 'cromatica.walkthrough';
+
+export function walkthroughDone(storage: Storage = localStorage): boolean {
+  try {
+    return storage.getItem(WALKTHROUGH_KEY) === 'done';
+  } catch {
+    return false;
+  }
+}
+
+export function markWalkthroughDone(storage: Storage = localStorage): void {
+  try {
+    storage.setItem(WALKTHROUGH_KEY, 'done');
+  } catch {
+    // Runs again next visit; nothing else is lost.
+  }
+}
