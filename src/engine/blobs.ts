@@ -3,7 +3,7 @@
 // reads a separate smooth height (evaluateBlobsHeight) instead of the dots.
 import { gamutMapToLinearSrgb } from '../color/gamut';
 import { srgbDecode } from '../color/oklab';
-import type { Rgb } from '../color/types';
+import type { Oklch, Rgb } from '../color/types';
 import { BLOB_SCALE, type BlobEdits, type BlobsPattern, MAX_BLOBS, MAX_STOPS } from '../design/design';
 import { createRng } from '../design/random';
 import { clamp01 } from '../math';
@@ -122,6 +122,18 @@ export function blobCount(count: number): number {
 const lerp = (range: readonly [number, number], t: number) =>
   range[0] + (range[1] - range[0]) * clamp01(Number.isFinite(t) ? t : 0.5);
 
+/**
+ * Trial (#60): the background is the palette's first color, whatever its lightness, so it can be judged on dark
+ * ones. Set to true to go back to the lightest color, the paper the blobs were designed on (D83).
+ */
+export const BACKGROUND_IS_LIGHTEST = false;
+
+/** The palette color the blobs sit on. */
+export function backgroundIndex(colors: readonly Oklch[]): number {
+  if (!BACKGROUND_IS_LIGHTEST) return 0;
+  return colors.reduce((best, c, i) => (c[0] > colors[best][0] ? i : best), 0);
+}
+
 export function prepareBlobs(blobs: BlobsPattern, output: { height: number }): PreparedBlobs {
   const k = blobs.colors.length;
   if (k < 1 || k > MAX_STOPS) throw new RangeError(`Blobs need 1 to ${MAX_STOPS} colors, got ${k}.`);
@@ -129,10 +141,11 @@ export function prepareBlobs(blobs: BlobsPattern, output: { height: number }): P
   const n = blobCount(blobs.count);
   const radius = lerp(RADIUS, blobs.size);
   const wobble = clamp01(Number.isFinite(blobs.wobble) ? blobs.wobble : 0.5);
-  // The lightest color is the background; one color alone is an ink on paper.
-  const order = blobs.colors.map((_, i) => i).sort((a, b) => blobs.colors[b][0] - blobs.colors[a][0]);
-  const inkColors = k > 1 ? order.slice(1) : order;
-  const background = k > 1 ? gamutMapToLinearSrgb(blobs.colors[order[0]]) : PAPER;
+  // One color alone is an ink on paper. The inks keep the palette's order, so swapping the colors around deals them
+  // to other blobs.
+  const back = backgroundIndex(blobs.colors);
+  const inkColors = k > 1 ? blobs.colors.map((_, i) => i).filter((i) => i !== back) : [0];
+  const background = k > 1 ? gamutMapToLinearSrgb(blobs.colors[back]) : PAPER;
   const inks = new Float64Array(inkColors.length * 3);
   inkColors.forEach((c, i) => inks.set(gamutMapToLinearSrgb(blobs.colors[c]), i * 3));
   const inkDots = new Float64Array(inkColors.length * 4);

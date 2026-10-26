@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { Oklch } from '../../src/color/types';
 import type { BlobsPattern } from '../../src/design/design';
 import {
+  BACKGROUND_IS_LIGHTEST,
+  backgroundIndex,
   blobCount,
   blobDistance,
   blobReach,
@@ -361,5 +363,29 @@ describe('blobs base', () => {
         }
       }
     }
+  });
+});
+
+describe('ink order', () => {
+  const inkOf = (p: Prepared) =>
+    Array.from({ length: p.count }, (_, i) =>
+      key(p.inks.subarray(p.shape2[i * 4 + 3] * 3, p.shape2[i * 4 + 3] * 3 + 3)),
+    );
+
+  it('takes the background from the palette by its rule, wherever the color sits', () => {
+    const shuffled = [colors[2], colors[0], colors[3], colors[1]];
+    const want = BACKGROUND_IS_LIGHTEST ? colors[0] : shuffled[0];
+    expect(shuffled[backgroundIndex(shuffled)]).toBe(want);
+    expect(key(prepareBlobs(blobs({ colors: shuffled }), output).background)).toBe(
+      key(prepareBlobs(blobs({ colors: [want, ...shuffled.filter((c) => c !== want)] }), output).background),
+    );
+  });
+
+  it('deals the inks to other blobs when the palette is swapped around, with the same layout', () => {
+    const swapped = [colors[0], colors[3], colors[1], colors[2]];
+    const a = prepareBlobs(blobs(), output);
+    const b = prepareBlobs(blobs({ colors: swapped }), output);
+    expect(Array.from(b.shape0)).toEqual(Array.from(a.shape0));
+    expect(inkOf(b)).not.toEqual(inkOf(a));
   });
 });
