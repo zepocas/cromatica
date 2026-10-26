@@ -20,7 +20,12 @@ const aurora = (over: Partial<AuroraPattern> = {}): AuroraPattern => ({
 
 describe('aurora', () => {
   it('takes the first color as the sky and deals the others to the ribbons in palette order', () => {
-    const [sky, a, b, c] = [[0.15, 0.03, 260], [0.8, 0.17, 150], [0.6, 0.2, 320], [0.7, 0.1, 60]] as Oklch[];
+    const [sky, a, b, c] = [
+      [0.15, 0.03, 260],
+      [0.8, 0.17, 150],
+      [0.6, 0.2, 320],
+      [0.7, 0.1, 60],
+    ] as Oklch[];
     const one = prepareAurora(aurora({ colors: [sky, a, b, c] }));
     const swapped = prepareAurora(aurora({ colors: [sky, c, b, a] }));
     const moved = prepareAurora(aurora({ colors: [a, sky, b, c] }));

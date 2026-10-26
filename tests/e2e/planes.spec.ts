@@ -30,7 +30,6 @@ test('planes: shares the ramp colors, has count, torn and new layout, no bands o
   await layout.click();
   await expect(layout).not.toHaveAttribute('data-seed', seed!);
   await expectPreviewChanged(before);
-
 });
 
 test('aurora: shares the ramp colors, has ribbons, glow and new layout', async ({ page }) => {
