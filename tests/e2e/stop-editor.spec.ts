@@ -81,9 +81,4 @@ test('radial and conic share the stops with linear; radial has no angle', async 
     expect(await handles.evaluateAll((els) => els.map((el) => el.getAttribute('aria-valuenow')))).toEqual(stops);
     await expect(page.getByLabel('Angle')).toHaveCount(kind === 'radial' ? 0 : 1);
   }
-
-  // Shuffling with the pattern kept keeps the shape.
-  await page.getByRole('button', { name: 'Lock pattern' }).click();
-  await page.getByRole('button', { name: /^Shuffle( Space)?$/ }).click();
-  await expect(gradient).toHaveAttribute('data-value', 'conic');
 });

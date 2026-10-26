@@ -119,9 +119,6 @@
           style:text-align={zone.align ?? 'center'}>{zone.text}</span
         >
       {/if}
-      {#if verdict?.midtone}
-        <span class="tag" role="status">{zone.label}: mid-tone</span>
-      {/if}
     </div>
   {/each}
 </div>
@@ -244,16 +241,5 @@
   }
   .warn {
     outline: 1.5px dashed #ffb020;
-  }
-  .tag {
-    position: absolute;
-    left: 50%;
-    top: calc(100% + 4px);
-    transform: translateX(-50%);
-    padding: 1px 5px;
-    white-space: nowrap;
-    font: calc(11px / var(--zoom, 1)) / 1.4 var(--font-mono);
-    color: #000;
-    background: #ffb020;
   }
 </style>

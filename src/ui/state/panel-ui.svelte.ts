@@ -8,6 +8,8 @@ export class PanelUi {
   shortcuts = $state(false);
   /** The OS screen drawn over the preview; '' = none. */
   contextId = $state('');
+  /** The OS screen follows the canvas shape until one is picked by hand. */
+  contextAuto = $state(false);
   /** The screen highlighted in the open list, shown until it closes; null = none. */
   contextPreview = $state<string | null>(null);
 

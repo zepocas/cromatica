@@ -9,6 +9,8 @@ import {
   type Monitor,
   type Size,
 } from './monitor-layout';
+import { CONTEXT_SCREENS } from '../../context/screens';
+import type { PanelUi } from './panel-ui.svelte';
 import { coverNear, coverRect, stretchRect, type Fit, type WallpaperRect } from './monitor-view';
 
 export const ASPECTS = [
@@ -64,6 +66,12 @@ export class MonitorsState {
 
   get fit(): Fit {
     return this.#fit;
+  }
+
+  /** A phone's screen has no place beside monitors, so turning them on drops a mobile OS context. */
+  toggle(ui: PanelUi): void {
+    this.on = !this.on;
+    if (this.on && CONTEXT_SCREENS.find((s) => s.id === ui.contextId)?.group === 'mobile') ui.contextId = '';
   }
 
   set fit(fit: Fit) {

@@ -43,7 +43,7 @@ export const RAY_OCTAVES = 2;
 /** Curtains fade in and out along their length: mask noise frequency and its threshold range. */
 export const MASK_FREQ = 0.9;
 export const MASK_EDGE: [from: number, to: number] = [-0.25, 0.35];
-/** The sky is the darkest palette color, dimmed by this factor (linear RGB). */
+/** The sky is the first palette color, dimmed by this factor (linear RGB). */
 const SKY_DIM = 0.35;
 const AURORA_SALT = 0x91;
 export const RIBBON_KEY_STEP = 0x27d4eb2f;
@@ -78,10 +78,10 @@ export function prepareAurora(aurora: AuroraPattern): PreparedAurora {
   const seed = aurora.seed >>> 0;
   const rng = createRng(seed);
   const n = ribbonCount(aurora.count);
-  // The darkest color is the sky; the others take turns as ribbons.
-  const order = aurora.colors.map((_, i) => i).sort((a, b) => aurora.colors[a][0] - aurora.colors[b][0]);
-  const skyIndex = order[0];
-  const ribbonColors = k > 1 ? order.slice(1) : order;
+  // The first color is the sky, whatever its lightness (as the blobs' background, D101); the others take turns as
+  // ribbons in the palette's order, so swapping the colors around changes both.
+  const skyIndex = 0;
+  const ribbonColors = k > 1 ? aurora.colors.map((_, i) => i).slice(1) : [0];
   const sky = gamutMapToLinearSrgb(aurora.colors[skyIndex]).map((c) => c * SKY_DIM) as Rgb;
   const colors = new Float64Array(n * 3);
   const lines = new Float64Array(n * 3);

@@ -51,7 +51,7 @@
     oncancel,
   }: Props = $props();
 
-  /** App shortcuts: Space shuffles, ← and → step through recent shuffles, [ and ] through warp shapes, M opens more like this, K keeps a favourite, 1 2 3 lock, P folds the panel, ? lists them all. */
+  /** App shortcuts: Space shuffles, ← and → step through recent shuffles, L and ; through patterns, comma and period through warp shapes, Q shuffles pattern and adjust, W the colors, R swaps their order, M opens more like this, K keeps a favourite, P folds the panel, ? lists them all. */
   function onWindowKeyDown(e: KeyboardEvent) {
     if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
     if (e.key === ' ') {
@@ -61,23 +61,30 @@
     } else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !isFormControl(e.target) && !isHandle(e.target)) {
       e.preventDefault();
       editor.stepReel(e.key === 'ArrowRight' ? 1 : -1);
+    } else if (e.key === 'q' || e.key === 'Q') {
+      e.preventDefault();
+      if (!e.repeat) editor.shuffleLook();
+    } else if (e.key === 'w' || e.key === 'W') {
+      e.preventDefault();
+      if (!e.repeat) editor.shuffleColors();
+    } else if (e.key === 'r' || e.key === 'R') {
+      e.preventDefault();
+      if (!e.repeat) editor.palette.shuffleOrder();
     } else if (e.key === 'm' || e.key === 'M') {
       e.preventDefault();
       ui.exploring = !ui.exploring;
-    } else if (e.key === '[' || e.key === ']') {
+    } else if (e.key === 'l' || e.key === 'L' || e.key === ';' || e.key === ':') {
       e.preventDefault();
-      editor.cycleWarpShape(e.key === ']' ? 1 : -1);
+      editor.cycleKind(e.key === ';' || e.key === ':' ? 1 : -1);
+    } else if (e.key === ',' || e.key === '.' || e.key === '<' || e.key === '>') {
+      e.preventDefault();
+      editor.cycleWarpShape(e.key === '.' || e.key === '>' ? 1 : -1);
     } else if (e.key === 'k' || e.key === 'K') {
       e.preventDefault();
       if (!e.repeat) favourites.toggle(editor.design);
     } else if (e.key === 'p' || e.key === 'P') {
       e.preventDefault();
       ui.collapsed = !ui.collapsed;
-    } else if (e.key === '1' || e.key === '2' || e.key === '3') {
-      e.preventDefault();
-      if (e.key === '1') editor.patternLocked = !editor.patternLocked;
-      else if (e.key === '2') editor.adjustLocked = !editor.adjustLocked;
-      else editor.colorsLocked = !editor.colorsLocked;
     } else if (e.key === '?') {
       e.preventDefault();
       ui.shortcuts = !ui.shortcuts;

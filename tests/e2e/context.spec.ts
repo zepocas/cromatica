@@ -31,7 +31,6 @@ test('the warning flags a zone no text color reads over and stays quiet on a cal
   await choose(page.getByLabel('OS context'), 'macos');
   const menuBar = page.locator('[data-zone="menu bar"]');
   await expect(menuBar).toHaveAttribute('data-warn', 'mid-tone');
-  await expect(menuBar.getByRole('status')).toContainText('mid-tone');
 });
 
 test('phone outputs list the phone contexts first', async ({ page }) => {

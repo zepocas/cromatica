@@ -17,7 +17,7 @@ test('blobs: pick and drag a blob on the image, reorder the stack, undo and rese
   await openApp(page);
   const { settled, expectPreviewChanged } = previewProbe(page);
   await choose(page.getByLabel('Gradient', { exact: true }), 'blobs');
-  await page.getByRole('button', { name: 'Arrange layout' }).click();
+  await page.getByRole('button', { name: 'Arrange each' }).click();
   await expect(page.getByRole('button', { name: 'Reset all' })).toBeDisabled();
 
   // Blobs are picked by what is drawn under the pointer: click around until one is.
@@ -77,7 +77,7 @@ test('blobs: pick and drag a blob on the image, reorder the stack, undo and rese
 test('blobs: under a warp the picked blob is outlined where it is drawn', async ({ page }) => {
   await openApp(page);
   await choose(page.getByLabel('Gradient', { exact: true }), 'blobs');
-  await page.getByRole('button', { name: 'Arrange layout' }).click();
+  await page.getByRole('button', { name: 'Arrange each' }).click();
   const canvas = (await page.getByTestId('preview-canvas').boundingBox())!;
   const readout = page.getByLabel('Picked blob');
   for (const [fx, fy] of [
@@ -141,7 +141,7 @@ test('blobs: hovering a blob outlines it faintly, and leaving it clears the outl
 test('blobs: size one blob from the arrange group, and the size slider still sizes them all', async ({ page }) => {
   await openApp(page);
   await choose(page.getByLabel('Gradient', { exact: true }), 'blobs');
-  await page.getByRole('button', { name: 'Arrange layout' }).click();
+  await page.getByRole('button', { name: 'Arrange each' }).click();
   const size = page.getByLabel('Blob size', { exact: true });
   // Nothing is picked yet: the slider waits for a blob.
   await expect(size).toBeDisabled();
@@ -185,7 +185,7 @@ test('blobs: size one blob from the arrange group, and the size slider still siz
 test('blobs: a new layout drops the hand edits', async ({ page }) => {
   await openApp(page);
   await choose(page.getByLabel('Gradient', { exact: true }), 'blobs');
-  await page.getByRole('button', { name: 'Arrange layout' }).click();
+  await page.getByRole('button', { name: 'Arrange each' }).click();
   const canvas = (await page.getByTestId('preview-canvas').boundingBox())!;
   const readout = page.getByLabel('Picked blob');
   for (const [fx, fy] of [
@@ -201,4 +201,26 @@ test('blobs: a new layout drops the hand edits', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Reset all' })).toBeEnabled();
   await page.getByRole('button', { name: 'New blobs layout' }).click();
   await expect(page.getByRole('button', { name: 'Reset all' })).toBeDisabled();
+});
+
+test('blobs: picking one on the image opens the group that edits it', async ({ page }) => {
+  await openApp(page);
+  await choose(page.getByLabel('Gradient', { exact: true }), 'blobs');
+  const group = page.getByRole('button', { name: 'Arrange each' });
+  await expect(group).toHaveAttribute('aria-expanded', 'false');
+
+  const canvas = (await page.getByTestId('preview-canvas').boundingBox())!;
+  for (const [fx, fy] of [
+    [0.5, 0.5],
+    [0.3, 0.4],
+    [0.7, 0.4],
+    [0.5, 0.75],
+    [0.2, 0.7],
+    [0.8, 0.7],
+  ]) {
+    await page.mouse.click(canvas.x + canvas.width * fx, canvas.y + canvas.height * fy);
+    if ((await group.getAttribute('aria-expanded')) === 'true') break;
+  }
+  await expect(group).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByLabel('Picked blob')).not.toHaveText('none');
 });

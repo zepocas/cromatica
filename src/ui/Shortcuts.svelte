@@ -1,9 +1,11 @@
 <script lang="ts">
   interface Props {
     onclose: () => void;
+    /** Swap this card for the tips and tricks one. */
+    ontricks: () => void;
   }
 
-  let { onclose }: Props = $props();
+  let { onclose, ontricks }: Props = $props();
 
   const mac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
   const mod = mac ? '⌘' : 'Ctrl+';
@@ -14,9 +16,12 @@
       [
         ['space', 'shuffle'],
         ['← →', 'step back and forward through recent shuffles'],
+        ['q', 'shuffle pattern and adjust, keeping the colors'],
+        ['w', 'shuffle the colors, keeping the pattern and adjust'],
+        ['r', 'swap the same colors around (the ⇄ button)'],
         ['m', 'more like this: variations of the current design'],
-        ['[ ]', 'previous and next warp shape'],
-        ['1 2 3', 'keep pattern, adjust, colors (toggle)'],
+        ['l ;', 'previous and next pattern'],
+        [', .', 'previous and next warp shape'],
       ],
     ],
     [
@@ -25,6 +30,7 @@
         ['k', 'add or remove the current design in favourites (♡)'],
         [`${mod}Z`, 'undo'],
         [`${mod}${mac ? '⇧Z' : 'Y'}`, 'redo'],
+        ['e', 'export the image'],
         [`${mod}S`, 'download'],
       ],
     ],
@@ -33,6 +39,7 @@
       [
         ['f', 'full screen (Esc leaves)'],
         ['p', 'collapse or expand the panel'],
+        ['o', 'show or hide the OS screen that fits the canvas'],
         ['h', 'show or hide points and nodes'],
         ['0', 'fit the view after zooming'],
         ['?', 'this list'],
@@ -62,7 +69,10 @@
       {/each}
     </dl>
   {/each}
-  <button class="btn strong" onclick={onclose}>close</button>
+  <div class="foot">
+    <button class="btn" onclick={ontricks}>tricks</button>
+    <button class="btn strong" onclick={onclose}>close</button>
+  </div>
 </aside>
 
 <style>
@@ -113,8 +123,11 @@
     font: inherit;
     color: var(--ink);
   }
+  .foot {
+    display: flex;
+    justify-content: space-between;
+  }
   .strong {
-    align-self: flex-end;
     color: var(--ink);
   }
 </style>

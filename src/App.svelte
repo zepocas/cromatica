@@ -21,7 +21,19 @@
   import { MonitorsState } from './ui/state/monitors.svelte';
   import { CONTEXT_SCREENS } from './context/screens';
   import Preview from './ui/Preview.svelte';
-  import { dismissTips, markShuffleTried, shuffleTried, tipsDismissed } from './ui/tips';
+  import {
+    dismissTips,
+    markShuffleTried,
+    markWalkthroughDone,
+    panelFolded,
+    rememberPanelFolded,
+    shuffleTried,
+    tipsDismissed,
+    walkthroughDone,
+  } from './ui/tips';
+  import { contextForSize, isTouchDevice, startSize } from './ui/state/device';
+  import Walkthrough from './ui/Walkthrough.svelte';
+  import { Walkthrough as WalkthroughState, type Signals } from './ui/state/walkthrough.svelte';
   import Shortcuts from './ui/Shortcuts.svelte';
   import StatusBar from './ui/StatusBar.svelte';
   import Tips from './ui/Tips.svelte';
@@ -61,8 +73,31 @@
   // Class instance (not proxied); $state only so it can be bound down the panel tree.
   let editor = $state(initial);
   const exportSettings = new ExportSettings();
-  // Tips show on a first visit only; `?default` (tests) never shows them.
-  const ui = new PanelUi({ tips: !builtIn && !tipsDismissed() });
+  // A first visit gets the walkthrough in place of the tips card; `?default` (tests) gets neither.
+  // `?walkthrough` runs it on demand, whatever was stored.
+  const firstVisit =
+    new URLSearchParams(location.search).has('walkthrough') || (!builtIn && !tipsDismissed() && !walkthroughDone());
+  const ui = new PanelUi({ tips: false });
+  const walkthrough = new WalkthroughState(undefined, () => {
+    markWalkthroughDone();
+    dismissTips();
+  });
+  if (firstVisit) {
+    walkthrough.start();
+    // Starts from the device: the panel folded away and the size of its screen (the OS screen waits for `o`).
+    ui.collapsed = true;
+    const touch = isTouchDevice(navigator.platform, navigator.userAgent, navigator.maxTouchPoints);
+    exportSettings.open(startSize({ width: screen.width, height: screen.height }, devicePixelRatio, touch));
+  }
+  if (!firstVisit && !builtIn) ui.collapsed = panelFolded() ?? false;
+  // Not while the walkthrough runs: it folds and opens the panel itself, and a first visit should not pin that.
+  $effect(() => {
+    const folded = ui.collapsed;
+    if (!builtIn && !walkthrough.active) rememberPanelFolded(folded);
+  });
+  $effect(() => {
+    if (ui.contextAuto) ui.contextId = contextForSize(exportSettings.size, navigator.platform);
+  });
   const contextScreen = $derived(CONTEXT_SCREENS.find((s) => s.id === (ui.contextPreview ?? ui.contextId)) ?? null);
   const monitors = new MonitorsState();
   // A first-time visitor is nudged toward shuffle until it has been used once (`?default` never nudges).
@@ -73,6 +108,34 @@
   $effect(() => {
     if (nudgeOnLoad && shuffled) markShuffleTried();
   });
+  const signals = (): Signals => ({
+    reel: editor.reel.pushes,
+    exploring: ui.exploring,
+    collapsed: ui.collapsed,
+    context: ui.contextId !== '',
+    kind: editor.kind,
+    warpShape: editor.warp.shape,
+    adjust: JSON.stringify([editor.finish, editor.warp, editor.transform]),
+    colors: JSON.stringify(editor.palette.colors),
+    arrange: JSON.stringify([editor.planes.edits, editor.blobs.edits]),
+    shortcuts: ui.shortcuts,
+    favourites: favourites.items.length,
+  });
+  $effect(() => {
+    const now = signals();
+    untrack(() => walkthrough.update(now));
+  });
+  /** After the app's own handlers, so a step sees the state its key produced. */
+  function onWalkthroughKey(e: KeyboardEvent) {
+    if (!walkthrough.active || e.repeat) return;
+    // Esc closes the more-like-this grid and the shortcut list first.
+    if (e.key === 'Escape') {
+      if (!ui.exploring && !ui.shortcuts) walkthrough.leave();
+    } else if (!e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target)) {
+      const key = e.key.toLowerCase();
+      queueMicrotask(() => untrack(() => walkthrough.update(signals(), key)));
+    }
+  }
   const pinning = $derived(editor.pins.pinning && editor.pins.canPin && !ui.exploring);
   /** The preview alone, in the browser's full screen; the panel, handles and overlays are hidden. */
   let fullscreen = $state(false);
@@ -174,12 +237,24 @@
     if (document.fullscreenElement) void document.exitFullscreen();
   }
 
+  /** The OS screen that fits the canvas, on or off; it then follows the canvas shape until one is picked by hand. */
+  function toggleContext() {
+    ui.contextAuto = !ui.contextId;
+    ui.contextId = ui.contextId ? '' : contextForSize(output, navigator.platform);
+  }
+
   /** ⌘Z undoes and ⇧⌘Z or Ctrl+Y redoes, except in text fields, which keep their own undo. */
   function onKeyDown(e: KeyboardEvent) {
+    onWalkthroughKey(e);
     if (e.key.toLowerCase() === 'f' && !e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target)) {
       if (fullscreen) exitFullscreen();
       else enterFullscreen();
       return;
+    }
+    if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.repeat && !isTypingTarget(e.target)) {
+      const key = e.key.toLowerCase();
+      if (key === 'e') void startExport();
+      else if (key === 'o') toggleContext();
     }
     // The browser's own save-page dialog is no use here, so ⌘S downloads, even from a text field.
     if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 's') {
@@ -354,10 +429,23 @@
 {#if pinning && !fullscreen}
   <ImagePins {editor} />
 {/if}
+{#if walkthrough.active && !fullscreen}
+  <Walkthrough {walkthrough} />
+{/if}
 {#if ui.shortcuts && !fullscreen}
-  <Shortcuts onclose={() => (ui.shortcuts = false)} />
+  <Shortcuts
+    onclose={() => (ui.shortcuts = false)}
+    ontricks={() => {
+      ui.shortcuts = false;
+      ui.tips = true;
+    }}
+  />
 {:else if ui.tips && !fullscreen}
   <Tips
+    onkeys={() => {
+      ui.tips = false;
+      ui.shortcuts = true;
+    }}
     onclose={() => {
       ui.tips = false;
       dismissTips();

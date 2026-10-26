@@ -13,7 +13,7 @@ import {
   toComposition,
 } from './support/app';
 
-test('warp controls: shape, amount, size, new variation and [ ] cycling', async ({ page }) => {
+test('warp controls: shape, amount, size, new variation and , . cycling', async ({ page }) => {
   await openApp(page);
   const { settled, expectPreviewChanged } = previewProbe(page);
   const shape = page.getByLabel('Warp shape');
@@ -48,17 +48,17 @@ test('warp controls: shape, amount, size, new variation and [ ] cycling', async 
   // ] and [ step through the shapes (wrapping), each rendering differently.
   await blur(page);
   before = await settled();
-  await page.keyboard.press(']');
+  await page.keyboard.press('.');
   await expect(shape).toHaveAttribute('data-value', 'simplex');
   await expectPreviewChanged(before);
-  await page.keyboard.press('[');
-  await page.keyboard.press('[');
-  await page.keyboard.press('[');
+  await page.keyboard.press(',');
+  await page.keyboard.press(',');
+  await page.keyboard.press(',');
   await expect(shape).toHaveAttribute('data-value', 'none');
   await expect(page.getByLabel('Warp size')).toBeDisabled();
-  await page.keyboard.press('[');
+  await page.keyboard.press(',');
   await expect(shape).toHaveAttribute('data-value', WARP_SHAPES[WARP_SHAPES.length - 1]);
-  await page.keyboard.press(']');
+  await page.keyboard.press('.');
   await expect(shape).toHaveAttribute('data-value', 'none');
 });
 

@@ -27,9 +27,6 @@ test('← and → step through recent shuffles', async ({ page }) => {
 
 test('arrows nudge a focused handle instead of stepping', async ({ page }) => {
   await openApp(page);
-  // Pattern locked, so the shuffle keeps the pattern and its handles.
-  await page.getByLabel('Lock pattern').click();
-  await page.getByRole('button', { name: /^Shuffle( Space)?$/ }).click();
   const hexes = await readHexes(page);
   const handle = page.locator('[data-point], [data-node]').first();
   await handle.focus();
@@ -175,8 +172,9 @@ test('pickers: hovering or arrowing through options previews them without an und
   await expect(page.getByLabel('Gradient', { exact: true })).toHaveAttribute('data-value', 'mesh');
 });
 
-test('tips: shown on a first visit, gone for good once dismissed, back from the ? button', async ({ page }) => {
-  await openApp(page, { shuffled: true, tips: true });
+test('tips: gone for good once dismissed, back from the ? button', async ({ page }) => {
+  await openApp(page, { shuffled: true });
+  await page.getByRole('button', { name: 'Tips' }).click();
   const tips = page.getByRole('complementary', { name: 'Tips' });
   await expect(tips).toBeVisible();
   await expect(tips).toContainText('exports keep the design');

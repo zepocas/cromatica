@@ -25,7 +25,7 @@ test('context loss: the preview redraws after the context is restored', async ({
   // Edits while the context is lost don't throw (the fixture fails on page errors), can't be drawn yet,
   // and show once it is back.
   await lose('loseContext');
-  await page.keyboard.press(']');
+  await page.keyboard.press('.');
   await expect(canvas).toHaveAttribute('data-settled', 'false');
   await lose('restoreContext');
   await expect.poll(async () => (await canvas.screenshot()).equals(before)).toBe(false);

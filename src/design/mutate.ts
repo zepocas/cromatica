@@ -1,6 +1,7 @@
 // "More like this": small variations of a design. The palette, pattern kind,
-// finishes and transform stay; the layout, warp and seeds move by an amount
+// finishes and transform stay (a few variations deal the colors to other places); the layout, warp and seeds move by an amount
 // set by `strength`, and bold variations may take another warp shape.
+import type { Oklch } from '../color/types';
 import { clamp } from '../math';
 import { type BasePattern, type Design, MAX_RADIUS, MIN_RADIUS, type Warp, type WarpShape } from './design';
 import { pickWeighted, type Rng } from './random';
@@ -113,6 +114,39 @@ function mutateBase(base: BasePattern, rng: Rng, s: number, zoom: number): BaseP
       };
     }
   }
+}
+
+/**
+ * The same colors dealt to other points, nodes or stops, as the color-order key does (`r`). Stop positions and
+ * every other setting stay.
+ */
+export function reorderColors(design: Design, rng: Rng): Design {
+  const out = structuredClone(design);
+  const base = out.base;
+  const slots: Oklch[] =
+    base.kind === 'mesh'
+      ? base.points.map((p) => p.color)
+      : base.kind === 'grid'
+        ? base.nodes.map((n) => n.color)
+        : 'stops' in base
+          ? base.stops.map((st) => st.color)
+          : base.colors.slice();
+  const key = (cs: Oklch[]) => cs.map((c) => c.join(',')).join('|');
+  if (slots.every((c) => c.join(',') === slots[0].join(','))) return out;
+  const start = key(slots);
+  let order = slots;
+  for (let attempt = 0; attempt < 20 && key(order) === start; attempt++) {
+    order = slots.slice();
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = rng.int(i + 1);
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+  }
+  if (base.kind === 'mesh') base.points.forEach((p, i) => (p.color = order[i]));
+  else if (base.kind === 'grid') base.nodes.forEach((n, i) => (n.color = order[i]));
+  else if ('stops' in base) base.stops.forEach((st, i) => (st.color = order[i]));
+  else base.colors = order;
+  return out;
 }
 
 /** A variation of `design`; strength in (0, 1] scales every nudge. */

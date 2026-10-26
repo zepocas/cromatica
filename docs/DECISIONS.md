@@ -781,3 +781,30 @@ Decisions made during the architecture review. Reopen one only if new informatio
 
 - **Decision (2026-10-25):** the notch has square top corners flush with the screen edge, rounded bottom corners, and concave fillets flaring into the bar on each side (`flare` on a cutout zone, 10 pt). Before, all four corners were rounded, which left wallpaper showing in the top corners where a real notch meets the bar.
 - **Flare size:** a visual estimate, not measured on the device (D71).
+
+## D100. First-time experience: easy mode is the collapsed panel and its keys; a forced walkthrough teaches them
+
+- **Status (2026-10-26, #60):** built on `feat/first-time-walkthrough`.
+- **Easy mode** is the collapsed panel (`p`) plus a short set of keys, with the shuffle nudge (D73) on the shuffle button in both panel states. It is a state of the existing app, not a second panel.
+- **Keys:** `space` shuffle, `m` more like this (a third of its variations also deal the colors to other places), `q` shuffles pattern and adjust, `w` only the colors, `r` the same colors dealt to other places, `o` the OS context, `e` export (⌘S stays), `l ;` previous and next pattern, `, .` (and `< >`) previous and next warp shape, `1 2 3` locks, `p` panel. `l` no longer toggles the monitors view (the status bar button still does), and it has no key now. Switching pattern with `l ;` carries the colors on screen across mesh, net and the ramp patterns, which keep separate palettes; the pattern dropdown still keeps each one's own. A warp shape picked with `, .` from an amount of 0 starts at its usual middle strength, since it would draw nothing otherwise.
+- **First visit:** the panel starts collapsed and the canvas size comes from the device: a PC gets the smallest desktop preset that covers its screen in both dimensions, else the largest; a phone or tablet gets its own pixels. The OS context is off; `o` turns it on matched to the canvas shape (wide gets desktop, tall gets mobile) and it follows the canvas until one is picked by hand. `?default` skips all of it.
+- **Walkthrough, not a tour:** a forced sequence, no next or skip button. Each step names what to do and advances on the app's real event (a shuffle, the panel opening, an export). Esc leaves it and it never returns once done or left; `?walkthrough` starts it on demand. The card is light, draggable, starts at the top right and pulses the key to press. Steps: shuffle (3), go back and forward, more like this, `q`, `w`, `o`, open the panel, pattern, warp, adjust, arrange by hand (planes and blobs only; the app switches to one), colors, locks, export, shuffle again, drop the exported file back in, change a few settings, and a closing `?`. The monitors layout and palette from a picture are left to the `?` card.
+- **Arrange by hand:** the group in the adjust section is named "arrange each {blob or plane}" and opens when one is picked.
+- **Revised (2026-10-26, user, #60):** thirteen steps: shuffle (with the arrows in its text), more like this, `o`, panel, `q` and `w` together (the harmony rules are named here), pattern, warp, adjust, arrange, colors, keep a favourite (`k`, once the panel's favourites are in view), make it yours, `?`. Export and reopening an exported file are left to the tips card (the ? button, `src/ui/Tips.svelte`), which also covers color harmony and share links; the locks are gone (D102). The arrange step asks the user to switch to planes or blobs and never switches the pattern itself. After the first visit the panel opens as it was left (`cromatica.panel-folded`).
+- **Debug log:** an early version logged each key and the design fields it changed (`?debug`); removed before merge, as it was only a development aid.
+- **Open:**
+  - Whether thirteen steps is short enough, once judged on real people.
+  - Whether the pattern dropdown should carry colors like `l ;` does (an e2e test asserts the current rule).
+  - Narrow windows before M15 (mobile layout).
+
+## D101. Blob inks follow the palette order
+
+- **Decision (2026-10-25, user, #60):** the other colors are dealt to the blobs in the palette's order, not sorted by lightness. Swapping the colors around (the ⇄ button, `r`) then changes the blobs. The background is the palette's first color, whatever its lightness (a trial, `BACKGROUND_IS_LIGHTEST` in `src/engine/blobs.ts` goes back to the lightest, the paper of D83).
+- **Aurora, the same fix (2026-10-26, user, #60):** the sky is the palette's first color, whatever its lightness, and the ribbons take the others in the palette's order, not sorted by lightness, so `r` changes the picture even with two colors. A saved or shared aurora design renders with another sky and its ribbons dealt differently.
+- **Consequence:** a saved or shared blobs design renders with another background and its inks dealt differently (same layout, same colors, other blobs). New shuffles are unaffected as a kind. On a dark first color the blobs' dark bodies may read weakly; judge it before keeping the trial.
+
+## D102. The shuffle locks go; q and w are the only way to shuffle part of a design
+
+- **Decision (2026-10-26, user, #60):** `q` (new pattern and adjust, same palette) and `w` (new palette only) replace the shuffle locks of D64 and D73. Two ways to scope a shuffle were a repetition: the locks are the same thing made sticky, and their hidden state made Space look broken (a button disabled with all three locked).
+- **Removed:** the lock toggles in the status bar, the `1 2 3` keys, `patternLocked`, `adjustLocked`, `colorsLocked` and `canShuffle` in the editor, and the `arrange` shuffle option (a locked pattern dealt planes, aurora and blobs a new arrangement, #96); with no locks, the only shuffles that keep the pattern are `w` and more like this, and they leave the arrangement alone.
+- **Consequence:** a shuffle always changes the pattern unless it is `w`. To keep a look while changing it, use more like this.

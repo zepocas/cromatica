@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultDesign, defaultMesh, type Design } from '../../src/design/design';
-import { mutateDesign } from '../../src/design/mutate';
+import { mutateDesign, reorderColors } from '../../src/design/mutate';
 import { createRng } from '../../src/design/random';
 import { saveDesign } from '../../src/design/schema';
 import { shuffleDesign } from '../../src/design/shuffle';
@@ -61,5 +61,29 @@ describe('mutateDesign', () => {
       return total;
     };
     expect(spread(1)).toBeGreaterThan(2 * spread(0.3));
+  });
+});
+
+describe('reorderColors', () => {
+  it('deals the same colors to other places, for every pattern kind', () => {
+    const kinds = new Set<string>();
+    for (const d of shuffled(200)) {
+      const out = reorderColors(d, createRng(7));
+      kinds.add(d.base.kind);
+      const key = (x: Design) =>
+        swatchesOf(x)
+          .map((c) => c.join(','))
+          .sort()
+          .join('|');
+      expect(key(out)).toBe(key(d));
+      expect(out.warp).toEqual(d.warp);
+    }
+    expect(kinds.size).toBeGreaterThan(5);
+  });
+
+  it('changes the arrangement of a mesh', () => {
+    const d: Design = { ...defaultDesign, base: defaultMesh };
+    const first = (x: Design) => (x.base.kind === 'mesh' ? x.base.points.map((p) => p.color.join(',')) : []);
+    expect(first(reorderColors(d, createRng(3)))).not.toEqual(first(d));
   });
 });

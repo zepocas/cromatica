@@ -28,21 +28,18 @@
   <div class="row actions">
     <button
       class="primary box"
-      class:nudge={nudgeShuffle && !compact}
+      class:nudge={nudgeShuffle}
       aria-label="Shuffle"
-      disabled={!editor.canShuffle}
-      title={editor.canShuffle ? 'Shuffle (Space)' : 'Unlock colors, pattern or adjust to shuffle'}
+      title="Shuffle (Space)"
       onclick={() => editor.shuffle()}>shuffle</button
     >
-    {#if !compact}
-      <button
-        class="secondary box"
-        aria-label="More like this"
-        aria-pressed={ui.exploring}
-        title="More like this: variations of this design (M)"
-        onclick={() => (ui.exploring = !ui.exploring)}>more like this</button
-      >
-    {/if}
+    <button
+      class="secondary box"
+      aria-label="More like this"
+      aria-pressed={ui.exploring}
+      title="More like this: variations of this design (M)"
+      onclick={() => (ui.exploring = !ui.exploring)}>more like this</button
+    >
   </div>
   <div class="row actions">
     {#if exporting}

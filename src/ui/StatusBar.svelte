@@ -1,7 +1,6 @@
 <script lang="ts">
   import { CONTEXT_SCREENS } from '../context/screens';
   import Dropdown from './controls/Dropdown.svelte';
-  import LockToggle from './controls/LockToggle.svelte';
   import type { EditorState } from './state/editor.svelte';
   import type { ExportSettings } from './state/export-settings.svelte';
   import type { PanelUi } from './state/panel-ui.svelte';
@@ -46,11 +45,6 @@
     ];
   });
 
-  function toggleMonitors() {
-    monitors.on = !monitors.on;
-    if (monitors.on && CONTEXT_SCREENS.find((s) => s.id === ui.contextId)?.group === 'mobile') ui.contextId = '';
-  }
-
   /** A mouse wheel only turns vertically; let it scroll the bar when the bar overflows. */
   function wheelSideways(e: WheelEvent) {
     const el = e.currentTarget as HTMLElement;
@@ -77,31 +71,6 @@
         value={exportSettings.format}
         options={[{ value: 'png' }, { value: 'jpeg' }]}
         onchange={(f) => (exportSettings.format = f)}
-      />
-    </span>
-    <span class="sep" role="separator" aria-orientation="vertical"></span>
-    <span class="group locks">
-      <span title="Parts that shuffling leaves alone; you can still edit them by hand">shuffle lock</span>
-      <LockToggle
-        locked={editor.patternLocked}
-        label="pattern"
-        ariaLabel="Lock pattern"
-        title="Keep the pattern kind, layout, warp shape and variation when shuffling (1)"
-        onchange={(on) => (editor.patternLocked = on)}
-      />
-      <LockToggle
-        locked={editor.adjustLocked}
-        label="adjust"
-        ariaLabel="Lock adjust"
-        title="Keep the warp amount and size, bands, noise, vignette and lighting when shuffling (2)"
-        onchange={(on) => (editor.adjustLocked = on)}
-      />
-      <LockToggle
-        locked={editor.colorsLocked}
-        label="colors"
-        ariaLabel="Lock colors"
-        title="Keep the colors when shuffling (3)"
-        onchange={(on) => (editor.colorsLocked = on)}
       />
     </span>
     <span class="sep" role="separator" aria-orientation="vertical"></span>
@@ -132,7 +101,10 @@
         ariaLabel="OS context"
         value={ui.contextId || OFF}
         {options}
-        onchange={(id) => (ui.contextId = id === OFF ? '' : id)}
+        onchange={(id) => {
+          ui.contextAuto = false;
+          ui.contextId = id === OFF ? '' : id;
+        }}
         onactive={(id) => (ui.contextPreview = id === null ? null : id === OFF ? '' : id)}
         title="Show the OS on top of the image, and warn where its text would be hard to read"
       />
@@ -142,7 +114,7 @@
           aria-label="Monitors"
           aria-pressed={monitors.on}
           title="Lay monitors over the image to see what each would show"
-          onclick={toggleMonitors}>▭▭<span class="name">monitors</span></button
+          onclick={() => monitors.toggle(ui)}>▭▭<span class="name">monitors</span></button
         >
       </span>
     </span>
@@ -244,9 +216,6 @@
     display: flex;
     align-items: center;
     gap: 4px;
-  }
-  .locks {
-    gap: 12px;
   }
   .count {
     color: var(--dim);
