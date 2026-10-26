@@ -1,3 +1,5 @@
+import { SvelteSet } from 'svelte/reactivity';
+
 /** What the walkthrough watches: the app events its steps wait for. */
 export interface Signals {
   /** Shuffles recorded so far; a shuffle by any route raises it. */
@@ -51,7 +53,7 @@ export function changedSettings(name: string, before: string, after: string): st
   const out: string[] = [];
   const walk = (x: unknown, y: unknown, path: string) => {
     if (x && y && typeof x === 'object' && typeof y === 'object') {
-      for (const k of new Set([...Object.keys(x), ...Object.keys(y)])) {
+      for (const k of new SvelteSet([...Object.keys(x), ...Object.keys(y)])) {
         walk((x as Record<string, unknown>)[k], (y as Record<string, unknown>)[k], `${path}.${k}`);
       }
     } else if (JSON.stringify(x) !== JSON.stringify(y)) out.push(path);
@@ -168,7 +170,7 @@ export class Walkthrough {
   progress = $state(0);
   active = $state(false);
   #prev: Signals | null = null;
-  #seen = new Set<string>();
+  #seen = new SvelteSet<string>();
 
   constructor(
     private readonly steps: Step[] = STEPS,
