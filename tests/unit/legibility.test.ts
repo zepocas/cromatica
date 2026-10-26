@@ -33,6 +33,15 @@ describe('legibility', () => {
     expect(assessZone(mix, WHOLE)!.midtone).toBe(true);
   });
 
+  it('picks the text color from the typical pixel, not the extremes', () => {
+    const paleWithBlobs = image((x) => (x < 0.15 ? 0.02 : 0.85));
+    const z = assessZone(paleWithBlobs, WHOLE)!;
+    expect(z.midtone).toBe(true);
+    expect(z.text).toBe('black');
+    const darkWithHighlights = image((x) => (x < 0.15 ? 0.95 : 0.1));
+    expect(assessZone(darkWithHighlights, WHOLE)!.text).toBe('white');
+  });
+
   it('holds large text to a lower bar', () => {
     const mix = image((x) => (x < 0.5 ? 0.3 : 0.5));
     expect(assessZone(mix, WHOLE)!.midtone).toBe(true);
