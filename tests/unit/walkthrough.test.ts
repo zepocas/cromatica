@@ -9,6 +9,7 @@ const idle: Signals = {
   kind: 'mesh',
   warpShape: 'circular',
   adjust: 'a',
+  pattern: 'p',
   colors: 'c',
   arrange: 'x',
   shortcuts: false,
@@ -71,6 +72,21 @@ describe('walkthrough', () => {
     expect(w.index).toBe(at + 1);
   });
 
+  it('counts different settings on the make-it-yours step, not the ticks of one slider', () => {
+    const w = new Walkthrough(STEPS, () => {});
+    w.start();
+    const pattern = (roughness: number, blend = 0) => JSON.stringify({ planes: { roughness, blend } });
+    w.update({ ...idle, pattern: pattern(0) });
+    w.index = STEPS.findIndex((s) => s.keys === 'settings in the panel');
+    for (const r of [0.1, 0.2, 0.3, 0.4]) w.update({ ...idle, pattern: pattern(r) });
+    expect(STEPS[w.index].keys).toBe('settings in the panel');
+    expect(w.progress).toBe(1);
+    w.update({ ...idle, pattern: pattern(0.4, 0.5) });
+    expect(w.progress).toBe(2);
+    w.update({ ...idle, pattern: pattern(0.4, 0.5), adjust: 'z' });
+    expect(STEPS[w.index].keys).toBe('?');
+  });
+
   it('ends once, on the last step or when left', () => {
     const onend = vi.fn();
     const w = started(onend);
@@ -115,7 +131,7 @@ describe('walkthrough', () => {
     at('settings in the panel');
     doIt({ adjust: 'e' });
     doIt({ colors: 'f' });
-    doIt({ kind: 'cells' });
+    doIt({ pattern: 'q' });
     at('?');
     doIt({ shortcuts: true });
     expect(w.active).toBe(false);
