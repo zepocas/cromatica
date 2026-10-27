@@ -26,6 +26,7 @@
   let { editor, view, docked, exportSettings, ui, monitors, portrait, onzoom, onfullscreen }: Props = $props();
 
   const OFF = 'off';
+  const ZOOM_STEP = 1.25;
   const options = $derived.by(() => {
     const first = portrait ? 'mobile' : 'desktop';
     const screens = [...CONTEXT_SCREENS].sort((a, b) => Number(a.group !== first) - Number(b.group !== first));
@@ -138,7 +139,7 @@
         aria-label="Zoom out"
         title="Zoom out"
         disabled={!view.zoomed}
-        onclick={() => onzoom(1 / 1.5)}>−</button
+        onclick={() => onzoom(1 / ZOOM_STEP)}>−</button
       >
       <button
         class="fit"
@@ -147,7 +148,7 @@
         disabled={!view.zoomed}
         onclick={() => view.reset()}>{Math.round(view.zoom * 100)}%</button
       >
-      <button class="icon" aria-label="Zoom in" title="Zoom in" onclick={() => onzoom(1.5)}>+</button>
+      <button class="icon" aria-label="Zoom in" title="Zoom in" onclick={() => onzoom(ZOOM_STEP)}>+</button>
     </span>
     {#if onfullscreen}
       <span class="sep" role="separator" aria-orientation="vertical"></span>

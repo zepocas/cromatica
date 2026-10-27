@@ -41,6 +41,8 @@
 
   /** Wheel pixels per e-fold of zoom; a trackpad pinch arrives as ctrl + wheel. */
   const PINCH_SENSITIVITY = 100;
+  /** A mouse notch reports about 100 px at once, a pinch a few; capping keeps a notch to a fine step, as a trackpad feels. */
+  const MAX_WHEEL_DELTA = 20;
 
   let container: HTMLDivElement;
   let frame: HTMLDivElement;
@@ -104,7 +106,8 @@
       e.preventDefault();
       if (e.ctrlKey) {
         const [cx, cy] = fromCentre(e);
-        view.zoomAt(Math.exp(-e.deltaY / PINCH_SENSITIVITY), cx, cy, frame.offsetWidth, frame.offsetHeight);
+        const delta = Math.max(-MAX_WHEEL_DELTA, Math.min(MAX_WHEEL_DELTA, e.deltaY));
+        view.zoomAt(Math.exp(-delta / PINCH_SENSITIVITY), cx, cy, frame.offsetWidth, frame.offsetHeight);
       } else {
         view.panBy(-e.deltaX, -e.deltaY, frame.offsetWidth, frame.offsetHeight);
       }
