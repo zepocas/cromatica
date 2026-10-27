@@ -817,6 +817,6 @@ Decisions made during the architecture review. Reopen one only if new informatio
 
 ## D104. Every mini shuffle has a key, and every key is in its tooltip
 
-- **Decision (2026-10-27, user):** `d` is the pattern's own dice, one key for whatever that pattern rerolls: the layout of planes, aurora and blobs, the seed of noise and cells, the next band style on a mesh with bands on (nothing for the rest). `v` is a new variation of the warp shape. `w` and `r` already covered the colors; their buttons now say so.
+- **Decision (2026-10-27, user):** `d` is the pattern's own dice, one key for whatever that pattern rerolls: the layout of planes, aurora and blobs, the seed of noise and cells, the next band style on a mesh (nothing for the rest). `v` is a new variation of the warp shape. `w` and `r` already covered the colors; their buttons now say so.
 - **Why:** the dice sat next to different sliders, so one global key per dice would have used up the keyboard; one contextual key keeps them learnable. Any control that has a key shows it in its tooltip, as `(D)`, `(V)`, `(W)`, `(R)`, `(K)`, `(P)`, `(O)`.
 - **Consequence:** a new dice goes behind `editor.rollPattern`, so `d` follows it.

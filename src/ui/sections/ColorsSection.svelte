@@ -106,7 +106,7 @@
     <button
       class="icon"
       aria-label="Shuffle color order"
-      title="Same colors, swapped between {noun}s (R)"
+      title="Same colors, in a different order (R)"
       onclick={() => palette.shuffleOrder()}>⇄</button
     >
     <button

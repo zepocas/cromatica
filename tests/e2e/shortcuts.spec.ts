@@ -70,16 +70,15 @@ test('D rolls the pattern dice of the current pattern and V the warp dice', asyn
   await expect(warp).not.toHaveAttribute('data-seed', seed ?? '');
 });
 
-test('D steps the band style of a banded mesh and does nothing while bands are off', async ({ page }) => {
+test('D steps the band style of a mesh, A to B to C and round', async ({ page }) => {
   await openApp(page);
   await choose(page.getByLabel('Gradient', { exact: true }), 'mesh');
   const style = page.getByRole('group', { name: 'Band style' }).locator('[aria-pressed="true"]');
   await expect(style).toHaveText('A');
-  await page.keyboard.press('d');
-  await expect(style).toHaveText('A');
-  await page.getByLabel('Bands').fill('0.5');
-  await page.keyboard.press('d');
-  await expect(style).toHaveText('B');
+  for (const next of ['B', 'C', 'A']) {
+    await page.keyboard.press('d');
+    await expect(style).toHaveText(next);
+  }
 });
 
 test('shortcuts leave text fields alone', async ({ page }) => {
