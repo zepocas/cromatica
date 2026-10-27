@@ -341,8 +341,41 @@ body,
   outline: 1px dashed var(--ink);
   outline-offset: 2px;
 }
+/* A click or the button's shortcut: a short glow, so the key press has something to show for itself (glow.ts). */
+@keyframes glow {
+  from {
+    color: var(--ink);
+    text-shadow:
+      0 0 6px var(--ink),
+      0 0 14px var(--ink);
+  }
+  to {
+    text-shadow: 0 0 0 transparent;
+  }
+}
+/* The filled shuffle button has no text to light up, so its halo goes around the box. */
+@keyframes glow-fill {
+  from {
+    background: #fff;
+    box-shadow:
+      0 0 6px var(--ink),
+      0 0 16px var(--ink);
+  }
+  to {
+    box-shadow: 0 0 0 transparent;
+  }
+}
+.panel button.glow {
+  animation: glow 0.6s ease-out;
+}
+.panel button.primary.glow {
+  animation-name: glow-fill;
+}
 @media (prefers-reduced-motion: reduce) {
   .panel * {
     transition: none !important;
+  }
+  .panel button.glow {
+    animation: none;
   }
 }

@@ -2,6 +2,7 @@
   import { oklchToHex } from '../../color/hex';
   import type { Design } from '../../design/design';
   import { FAVOURITES_LIMIT, swatchesOf, type Favourites } from '../state/favourites.svelte';
+  import { glow } from '../controls/glow';
   import Section from '../controls/Section.svelte';
 
   interface Props {
@@ -63,6 +64,7 @@
         aria-label={current ? 'Remove from favourites' : 'Add to favourites'}
         aria-pressed={!!current}
         title={current ? 'Remove from favourites (K)' : 'Keep in favourites (K)'}
+        {@attach glow('favourite')}
         onclick={() => favourites.toggle(design)}>{current ? '♥' : '♡'}</button
       >
       <span class="count" title="{favourites.items.length} favourites">{favourites.items.length}</span>

@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { maxChroma } from '../../src/color/gamut';
 import type { Oklch } from '../../src/color/types';
-import { createRng } from '../../src/design/random';
-import { relinkPalette, remixShift, shiftPalette } from '../../src/color/linked';
+import { relinkPalette, shiftPalette } from '../../src/color/linked';
 
 // A muted triadic: hues 250 / 10 / 130, moderate chroma so caps don't interfere.
 const palette: Oklch[] = [
@@ -75,10 +74,15 @@ describe('relinkPalette', () => {
   });
 });
 
-describe('remix', () => {
+describe('shiftPalette', () => {
   it('moves the palette but keeps its hue gaps and lightness order', () => {
-    for (let seed = 0; seed < 50; seed++) {
-      const out = shiftPalette(palette, remixShift(createRng(seed)));
+    const shifts = [
+      { hue: 25, lightness: -0.5, chroma: 0.7 },
+      { hue: -90, lightness: 0.3, chroma: 1.4 },
+      { hue: 180, lightness: 0.5, chroma: 1 },
+    ];
+    for (const shift of shifts) {
+      const out = shiftPalette(palette, shift);
       expect(out).not.toEqual(palette);
       expect(gap(out[0][2], out[1][2])).toBeCloseTo(gap(palette[0][2], palette[1][2]), 9);
       const ls = out.map((c) => c[0]);

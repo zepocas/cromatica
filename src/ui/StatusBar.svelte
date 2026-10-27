@@ -1,6 +1,8 @@
 <script lang="ts">
   import { CONTEXT_SCREENS } from '../context/screens';
+  import type { ExportProgress } from '../export/types';
   import Dropdown from './controls/Dropdown.svelte';
+  import { glow } from './controls/glow';
   import type { EditorState } from './state/editor.svelte';
   import type { ExportSettings } from './state/export-settings.svelte';
   import type { PanelUi } from './state/panel-ui.svelte';
@@ -18,12 +20,39 @@
     docked: boolean;
     monitors: MonitorsState;
     exportSettings: ExportSettings;
+    exporting: boolean;
+    progress: ExportProgress | null;
+    error: string;
+    /** A status line that isn't an error ("link copied"). */
+    notice: string;
+    onshare: () => void;
+    onexport: () => void;
+    oncancel: () => void;
     onzoom: (factor: number) => void;
     /** Absent where the browser can't. */
     onfullscreen?: () => void;
   }
 
-  let { editor, view, docked, exportSettings, ui, monitors, portrait, onzoom, onfullscreen }: Props = $props();
+  let {
+    editor,
+    view,
+    docked,
+    exportSettings,
+    exporting,
+    progress,
+    error,
+    notice,
+    onshare,
+    onexport,
+    oncancel,
+    ui,
+    monitors,
+    portrait,
+    onzoom,
+    onfullscreen,
+  }: Props = $props();
+
+  const percent = $derived(progress && progress.tilesTotal > 0 ? (progress.tilesDone / progress.tilesTotal) * 100 : 0);
 
   const OFF = 'off';
   const options = $derived.by(() => {
@@ -45,10 +74,10 @@
     ];
   });
 
-  /** A mouse wheel only turns vertically; let it scroll the bar when the bar overflows. */
+  /** A mouse wheel only turns vertically; let it scroll the groups when they overflow, from anywhere on the bar. */
   function wheelSideways(e: WheelEvent) {
-    const el = e.currentTarget as HTMLElement;
-    if (e.deltaX || el.scrollWidth <= el.clientWidth) return;
+    const el = (e.currentTarget as HTMLElement).querySelector('.scroll');
+    if (!el || e.deltaX || el.scrollWidth <= el.clientWidth) return;
     el.scrollLeft += e.deltaY;
   }
 
@@ -61,19 +90,45 @@
   );
 </script>
 
-<footer class="panel statusbar" class:docked aria-label="Status bar">
-  <div class="scroll" onwheel={wheelSideways}>
-    <span class="group">
-      <span>format</span>
-      <Dropdown
-        ariaLabel="Format"
-        title="File type of the download"
-        value={exportSettings.format}
-        options={[{ value: 'png' }, { value: 'jpeg' }]}
-        onchange={(f) => (exportSettings.format = f)}
-      />
-    </span>
-    <span class="sep" role="separator" aria-orientation="vertical"></span>
+<footer class="panel statusbar" class:docked aria-label="Status bar" onwheel={wheelSideways}>
+  <div class="output">
+    {#if exporting}
+      <progress max="100" value={percent} aria-label="Export progress"></progress>
+      <button class="btn" onclick={oncancel}>cancel</button>
+    {:else}
+      <span class="format">
+        <span class="label">format</span>
+        <Dropdown
+          ariaLabel="Format"
+          title="File type of the download"
+          value={exportSettings.format}
+          options={[{ value: 'png' }, { value: 'jpeg' }]}
+          onchange={(f) => (exportSettings.format = f)}
+        />
+        <button
+          class="btn strong"
+          aria-label="Download"
+          title="Download (⌘S)"
+          onclick={onexport}
+          {@attach glow('download')}>download</button
+        >
+      </span>
+      <button
+        class="btn"
+        aria-label="Copy share link"
+        title="Copy a link to this design"
+        onclick={onshare}
+        {@attach glow('share')}>share link</button
+      >
+    {/if}
+    {#if error}
+      <span class="msg error" role="alert" title={error}>{error}</span>
+    {:else if notice}
+      <span class="msg" role="status" title={notice}>{notice}</span>
+    {/if}
+  </div>
+  <div class="scroll">
+    <span class="spacer"></span>
     <span class="group">
       <span>recent</span>
       <button
@@ -81,6 +136,7 @@
         aria-label="Previous shuffle"
         title="Previous shuffle (←)"
         disabled={!editor.reel.canBack}
+        {@attach glow('reel-back')}
         onclick={() => editor.stepReel(-1)}>←</button
       >
       <span class="count" aria-label="Shuffle {editor.reel.position + 1} of {editor.reel.length}"
@@ -91,6 +147,7 @@
         aria-label="Next shuffle"
         title="Next shuffle (→)"
         disabled={!editor.reel.canForward}
+        {@attach glow('reel-forward')}
         onclick={() => editor.stepReel(1)}>→</button
       >
     </span>
@@ -127,11 +184,10 @@
           value={editor[handles.key] ? 'on' : 'off'}
           options={[{ value: 'on' }, { value: 'off' }]}
           onchange={(v) => (editor[handles.key] = v === 'on')}
-          title={`Show or hide the ${handles.label} on the image (H)`}
+          title={`Show or hide the ${handles.label} on the image (N)`}
         />
       </span>
     {/if}
-    <span class="spacer"></span>
     <span class="zoom">
       <button
         class="icon"
@@ -145,13 +201,20 @@
         aria-label="Fit to window"
         title="Fit to window (0)"
         disabled={!view.zoomed}
+        {@attach glow('fit')}
         onclick={() => view.reset()}>{Math.round(view.zoom * 100)}%</button
       >
       <button class="icon" aria-label="Zoom in" title="Zoom in" onclick={() => onzoom(1.5)}>+</button>
     </span>
     {#if onfullscreen}
       <span class="sep" role="separator" aria-orientation="vertical"></span>
-      <button class="icon" aria-label="Full screen" title="Full screen (F)" onclick={onfullscreen}>⛶</button>
+      <button
+        class="icon"
+        aria-label="Full screen"
+        title="Full screen (F)"
+        onclick={onfullscreen}
+        {@attach glow('fullscreen')}>⛶</button
+      >
     {/if}
   </div>
   {#if monitors.on}
@@ -161,7 +224,7 @@
 
 <style>
   .statusbar {
-    container: statusbar / inline-size;
+    display: flex;
     position: fixed;
     left: 0;
     right: 0;
@@ -177,6 +240,9 @@
   }
   /* Scrolls sideways when the groups don't fit; the frame stays put so the monitors popover isn't clipped. */
   .scroll {
+    container: statusbar / inline-size;
+    flex: 1;
+    min-width: 0;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -187,6 +253,41 @@
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: none;
+  }
+  /* Pinned at the left, outside the scrolling groups, so share and download are always in reach. */
+  .output {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 12px;
+    border-right: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+  .format {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .label {
+    margin-right: 2px;
+  }
+  .strong {
+    color: var(--ink);
+    border-color: var(--ink);
+  }
+  progress {
+    width: 140px;
+    accent-color: var(--ink);
+  }
+  .msg {
+    max-width: 22ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--dim);
+  }
+  .msg.error {
+    color: var(--warn);
   }
   /* A bordered button, so it reads as something to press; the name shows where the bar has the room. */
   .tool {
@@ -202,8 +303,8 @@
   .tool .name {
     display: none;
   }
-  /* The bar's width at which every tool label fits; measured by hand, so re-measure when adding or renaming items. */
-  @container statusbar (min-width: 1130px) {
+  /* The width of the scrolling groups at which every tool label fits (the output group is not part of it); measured by hand, so re-measure when adding or renaming items. */
+  @container statusbar (min-width: 680px) {
     .tool {
       padding: 1px 8px;
     }

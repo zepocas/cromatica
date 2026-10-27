@@ -3,6 +3,7 @@
   import { ribbonCount } from '../../../engine/aurora';
   import { blobCount } from '../../../engine/blobs';
   import { planeCount } from '../../../engine/planes';
+  import { glow } from '../../controls/glow';
   import Choice from '../../controls/Choice.svelte';
   import { degrees, fixed2 } from '../../controls/format';
   import Group from '../../controls/Group.svelte';
@@ -126,6 +127,7 @@
         aria-label="New layout"
         title="New arrangement of the planes (D)"
         data-seed={editor.planes.seed}
+        {@attach glow('pattern-dice')}
         onclick={() => editor.newPlanesLayout()}>⚄</button
       >
     {/snippet}
@@ -203,6 +205,7 @@
         aria-label="New aurora layout"
         title="New arrangement of the ribbons (D)"
         data-seed={editor.aurora.seed}
+        {@attach glow('pattern-dice')}
         onclick={() => editor.newAuroraLayout()}>⚄</button
       >
     {/snippet}
@@ -233,6 +236,7 @@
         aria-label="New blobs layout"
         title="New arrangement of the blobs (D)"
         data-seed={editor.blobs.seed}
+        {@attach glow('pattern-dice')}
         onclick={() => editor.newBlobsLayout()}>⚄</button
       >
     {/snippet}
@@ -304,6 +308,7 @@
         aria-label="New pattern variation"
         title="New arrangement of the {editor.kind} (D)"
         data-seed={editor.ramp.seed}
+        {@attach glow('pattern-dice')}
         onclick={() => editor.newRampVariation()}>⚄</button
       >
     {/snippet}

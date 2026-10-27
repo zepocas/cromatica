@@ -1,13 +1,5 @@
 import type { HarmonyRule, PaletteInfo, PaletteMood, PaletteOptions, ValueKey } from '../../color/harmony';
-import {
-  gradePalette,
-  isNoGrade,
-  NO_GRADE,
-  relinkPalette,
-  remixShift,
-  shiftPalette,
-  type Grade,
-} from '../../color/linked';
+import { gradePalette, isNoGrade, NO_GRADE, relinkPalette, type Grade } from '../../color/linked';
 import type { Oklch } from '../../color/types';
 import { createRng, randomSeed } from '../../design/random';
 import { normalizeDegrees } from '../../math';
@@ -51,8 +43,10 @@ export interface PaletteSnapshot {
  * adjustments. State is kept per pattern kind.
  */
 export class PaletteEditor {
-  /** Keep the current palette's rule, mood and key for ⟳ and shuffle; off = all random. */
-  keep = $state(false);
+  /** Keep the current palette's rule, mood or key for ⟳ and shuffle, each on its own; off = random. */
+  keepRule = $state(false);
+  keepMood = $state(false);
+  keepKey = $state(false);
   /** Linked: editing one color moves the whole palette with it (keeps the harmony). */
   linked = $state(false);
   /** Hue new palettes are built around; null = random. Moving it turns the current palette. */
@@ -96,8 +90,19 @@ export class PaletteEditor {
   // ---- New palettes ---------------------------------------------------------
 
   shuffleOptions(): PaletteOptions {
-    const kept = this.keep ? this.info : null;
-    return { rule: kept?.rule, mood: kept?.mood ?? 'any', key: kept?.key ?? 'any', baseHue: this.baseHue ?? undefined };
+    const info = this.info;
+    return {
+      rule: this.keepRule ? info?.rule : undefined,
+      mood: (this.keepMood && info?.mood) || 'any',
+      key: (this.keepKey && info?.key) || 'any',
+      baseHue: this.baseHue ?? undefined,
+    };
+  }
+
+  /** ⇧H: all three together, or all three off when they already are. */
+  toggleKeepAll(): void {
+    const on = !(this.keepRule && this.keepMood && this.keepKey);
+    this.keepRule = this.keepMood = this.keepKey = on;
   }
 
   setRule(rule: HarmonyRule): void {
@@ -145,10 +150,6 @@ export class PaletteEditor {
     if (!items[i]) return;
     if (this.linked) this.setAll(relinkPalette(this.colors, i, next, this.info?.rule === 'monochrome'));
     else items[i].color = next;
-  }
-
-  remix(): void {
-    this.setAll(shiftPalette(this.colors, remixShift(createRng(randomSeed()))));
   }
 
   /** Same colors, reassigned to different points or stops (always a different arrangement when there is one). */

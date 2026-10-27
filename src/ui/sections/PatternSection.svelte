@@ -1,5 +1,6 @@
 <script lang="ts">
   import { WARP_SHAPES, type WarpShape } from '../../design/design';
+  import { glow } from '../controls/glow';
   import Dropdown from '../controls/Dropdown.svelte';
   import { PATTERN_KINDS, type EditorState } from '../state/editor.svelte';
   import { MAX_SIZE, type ExportSettings } from '../state/export-settings.svelte';
@@ -79,6 +80,7 @@
       title="New variation of this shape (V)"
       disabled={editor.warp.shape === 'none'}
       data-seed={editor.warp.seed}
+      {@attach glow('warp-dice')}
       onclick={() => editor.newWarpVariation()}>⚄</button
     >
   </div>

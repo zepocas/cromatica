@@ -4,9 +4,10 @@
   import { shortestTurn } from '../../math';
   import ColorRow from './ColorRow.svelte';
   import Dropdown from '../controls/Dropdown.svelte';
-  import Toggle from '../controls/Toggle.svelte';
+  import Lock from '../controls/Lock.svelte';
   import type { EditorState } from '../state/editor.svelte';
   import PaletteSettings from './PaletteSettings.svelte';
+  import { glow } from '../controls/glow';
   import Section from '../controls/Section.svelte';
   import SelectedColorSettings from './SelectedColorSettings.svelte';
   import StopStrip from './StopStrip.svelte';
@@ -101,12 +102,14 @@
       class="icon"
       aria-label="Shuffle colors"
       title="New colors, same layout (W)"
+      {@attach glow('colors-new')}
       onclick={() => editor.shuffleColors()}>⟳</button
     >
     <button
       class="icon"
       aria-label="Shuffle color order"
       title="Same colors, in a different order (R)"
+      {@attach glow('colors-order')}
       onclick={() => palette.shuffleOrder()}>⇄</button
     >
     <button
@@ -139,31 +142,13 @@
       onchange={(r) => palette.setRule(r)}
       onactive={(r) => editor.previewChange(r && r !== palette.info?.rule ? (t) => t.palette.setRule(r) : null)}
     />
-    <Toggle
-      checked={palette.keep}
-      label="keep"
+    <Lock
+      checked={palette.keepRule}
       ariaLabel="Keep harmony"
-      title="Keep this rule, mood and key when shuffling (off: all random)"
-      onchange={(on) => (palette.keep = on)}
+      title="Keep this harmony rule when shuffling colors (off: any rule) (H; ⇧H also mood and key)"
+      glowId="keep-harmony"
+      onchange={(on) => (palette.keepRule = on)}
     />
-  </div>
-
-  <div class="row">
-    <span>edit</span>
-    <Toggle
-      checked={palette.linked}
-      label="linked"
-      ariaLabel="Link colors"
-      title="Linked: changing one color moves the whole palette with it, keeping the harmony"
-      onchange={(on) => (palette.linked = on)}
-    />
-    <span class="spacer"></span>
-    <button
-      class="btn"
-      aria-label="Remix colors"
-      title="Shift the whole palette at random, keeping how the colors relate"
-      onclick={() => palette.remix()}>remix</button
-    >
   </div>
 
   {#if editor.imageStatus}
@@ -245,9 +230,6 @@
   }
   li.add button:hover:not(:disabled) {
     color: var(--ink);
-  }
-  .spacer {
-    flex: 1;
   }
   .status {
     margin: 0;

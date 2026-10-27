@@ -1,4 +1,4 @@
-// Linked palette edits and remix: move every color together so the
+// Linked palette edits and grading: move every color together so the
 // relationships between them survive. Each part of the shift is a group
 // operation, so dragging a slider away and back restores the palette (except
 // where a color hit the sRGB gamut edge and had its chroma capped):
@@ -6,7 +6,6 @@
 // - lightness: shift logit(L) by the same amount (keeps the order, never
 //   clips, and compresses gently toward black and white);
 // - chroma: scale by the same ratio (keeps relative intensity).
-import type { Rng } from '../design/random';
 import { normalizeDegrees, shortestTurn } from '../math';
 import { maxChroma } from './gamut';
 import type { Oklch } from './types';
@@ -105,14 +104,4 @@ export function relinkPalette(colors: readonly Oklch[], index: number, next: Okl
     if (!oneHue || next[1] < GRAY_CHROMA || chroma < GRAY_CHROMA) return [l, chroma, h] as Oklch;
     return [l, Math.min(chroma, maxChroma(l, next[2])), next[2]] as Oklch;
   });
-}
-
-/** A random linked shift: a new take on the palette with the same relationships. */
-export function remixShift(rng: Rng): PaletteShift {
-  const sign = rng.next() < 0.5 ? -1 : 1;
-  return {
-    hue: sign * rng.range(25, 180),
-    lightness: rng.range(-0.5, 0.5),
-    chroma: Math.exp(rng.range(-0.35, 0.35)),
-  };
 }

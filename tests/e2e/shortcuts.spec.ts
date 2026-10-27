@@ -81,6 +81,39 @@ test('D steps the band style of a mesh, A to B to C and round', async ({ page })
   }
 });
 
+test('a button glows when its key is pressed and when it is clicked', async ({ page }) => {
+  await openApp(page);
+  await choose(page.getByLabel('Gradient', { exact: true }), 'planes');
+  await choose(page.getByLabel('Warp shape', { exact: true }), 'waves');
+  // A focused dropdown would take Space for itself.
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  const keyed: [key: string, button: string | RegExp][] = [
+    ['w', 'Shuffle colors'],
+    ['r', 'Shuffle color order'],
+    ['d', 'New layout'],
+    ['v', 'New variation'],
+    ['k', /^(Add to|Remove from) favourites$/],
+    ['p', /^(Collapse|Expand) panel$/],
+  ];
+  for (const [key, name] of keyed) {
+    const button = page.getByRole('button', { name, exact: typeof name === 'string' });
+    await expect(button).not.toHaveClass(/glow/);
+    await page.keyboard.press(key);
+    await expect(button).toHaveClass(/glow/);
+    // The class goes when the animation ends, so the next press starts it again.
+    await expect(button).not.toHaveClass(/glow/);
+  }
+  // The panel is folded now, and the colors button with it.
+  await page.keyboard.press('p');
+  await page.getByRole('button', { name: 'Shuffle colors' }).click();
+  await expect(page.getByRole('button', { name: 'Shuffle colors' })).toHaveClass(/glow/);
+
+  // Last, since a shuffle can swap the pattern and its dice for another.
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.keyboard.press(' ');
+  await expect(page.getByRole('button', { name: 'Shuffle', exact: true })).toHaveClass(/glow/);
+});
+
 test('shortcuts leave text fields alone', async ({ page }) => {
   await openApp(page);
   await page.getByRole('textbox').first().focus();

@@ -242,7 +242,7 @@ test('six shuffles in a row', async ({ page }) => {
   await settled();
   await page.screenshot({ path: join(DIR, 'panel.png') });
   await page.getByRole('button', { name: 'Collapse panel' }).click();
-  await page.keyboard.press('h');
+  await page.keyboard.press('n');
   for (let i = 1; i <= 6; i++) {
     await page.getByRole('button', { name: /^Shuffle( Space)?$/ }).click();
     await settled();
