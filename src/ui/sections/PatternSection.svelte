@@ -1,5 +1,6 @@
 <script lang="ts">
   import { WARP_SHAPES, type WarpShape } from '../../design/design';
+  import { glow } from '../controls/glow';
   import Dropdown from '../controls/Dropdown.svelte';
   import { PATTERN_KINDS, type EditorState } from '../state/editor.svelte';
   import { MAX_SIZE, type ExportSettings } from '../state/export-settings.svelte';
@@ -52,7 +53,7 @@
     <span>gradient</span>
     <Dropdown
       ariaLabel="Gradient"
-      title="L and ; step through the gradients"
+      title="Previous and next gradient (L ;)"
       value={editor.kind}
       options={PATTERNS.map((p) => ({ value: p.kind, label: p.label }))}
       onchange={(k) => (editor.kind = k)}
@@ -66,7 +67,7 @@
     <Dropdown
       id="warp-shape"
       ariaLabel="Warp shape"
-      title="Comma and period step through the shapes"
+      title="Previous and next shape (, .)"
       value={editor.warp.shape}
       options={WARP_SHAPES.map((s) => ({ value: s, label: WARP_LABELS[s] }))}
       onchange={(s) => (editor.warp.shape = s)}
@@ -76,9 +77,10 @@
     <button
       class="icon slot"
       aria-label="New variation"
-      title="New variation of this shape"
+      title="New variation of this shape (V)"
       disabled={editor.warp.shape === 'none'}
       data-seed={editor.warp.seed}
+      {@attach glow('warp-dice')}
       onclick={() => editor.newWarpVariation()}>⚄</button
     >
   </div>

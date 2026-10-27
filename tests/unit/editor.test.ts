@@ -151,12 +151,28 @@ describe('palette steering and edits', () => {
     expect(colorsOf(e)).toEqual(original);
   });
 
-  it('keep pins rule, mood and key for shuffles', () => {
+  it('the rule, mood and key are kept for shuffles one by one', () => {
     const e = fresh();
     e.palette.setRule('complementary');
+    const info = e.palette.info!;
+    expect(e.palette.shuffleOptions()).toMatchObject({ rule: undefined, mood: 'any', key: 'any' });
+    e.palette.keepRule = true;
+    expect(e.palette.shuffleOptions()).toMatchObject({ rule: 'complementary', mood: 'any', key: 'any' });
+    e.palette.keepMood = true;
+    expect(e.palette.shuffleOptions()).toMatchObject({ rule: 'complementary', mood: info.mood, key: 'any' });
+    e.palette.keepKey = true;
+    expect(e.palette.shuffleOptions()).toMatchObject({ rule: 'complementary', mood: info.mood, key: info.key });
+    e.palette.keepRule = false;
     expect(e.palette.shuffleOptions().rule).toBeUndefined();
-    e.palette.keep = true;
-    expect(e.palette.shuffleOptions()).toMatchObject({ rule: 'complementary', ...e.palette.info });
+  });
+
+  it('toggleKeepAll locks all three, or releases all three when they are', () => {
+    const e = fresh();
+    e.palette.keepMood = true;
+    e.palette.toggleKeepAll();
+    expect([e.palette.keepRule, e.palette.keepMood, e.palette.keepKey]).toEqual([true, true, true]);
+    e.palette.toggleKeepAll();
+    expect([e.palette.keepRule, e.palette.keepMood, e.palette.keepKey]).toEqual([false, false, false]);
   });
 
   it('linked editing moves every color; free editing moves one', () => {

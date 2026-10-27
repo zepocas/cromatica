@@ -3,6 +3,7 @@
   import { ribbonCount } from '../../../engine/aurora';
   import { blobCount } from '../../../engine/blobs';
   import { planeCount } from '../../../engine/planes';
+  import { glow } from '../../controls/glow';
   import Choice from '../../controls/Choice.svelte';
   import { degrees, fixed2 } from '../../controls/format';
   import Group from '../../controls/Group.svelte';
@@ -119,7 +120,18 @@
     value={editor.planes.count}
     oninput={(v) => editor.setPlanesCount(v)}
     display={(v) => String(planeCount(v))}
-  />
+  >
+    {#snippet trailing()}
+      <button
+        class="icon"
+        aria-label="New layout"
+        title="New arrangement of the planes (D)"
+        data-seed={editor.planes.seed}
+        {@attach glow('pattern-dice')}
+        onclick={() => editor.newPlanesLayout()}>⚄</button
+      >
+    {/snippet}
+  </SliderRow>
   <SliderRow
     label="torn"
     title="Clean cut ↔ torn paper edges"
@@ -128,17 +140,7 @@
     step={0.01}
     bind:value={editor.planes.roughness}
     display={fixed2}
-  >
-    {#snippet trailing()}
-      <button
-        class="icon"
-        aria-label="New layout"
-        title="New arrangement of the planes"
-        data-seed={editor.planes.seed}
-        onclick={() => editor.newPlanesLayout()}>⚄</button
-      >
-    {/snippet}
-  </SliderRow>
+  />
   <SliderRow
     label="blend"
     title="Crisp ↔ slightly blurred edges"
@@ -201,8 +203,9 @@
       <button
         class="icon"
         aria-label="New aurora layout"
-        title="New arrangement of the ribbons"
+        title="New arrangement of the ribbons (D)"
         data-seed={editor.aurora.seed}
+        {@attach glow('pattern-dice')}
         onclick={() => editor.newAuroraLayout()}>⚄</button
       >
     {/snippet}
@@ -231,8 +234,9 @@
       <button
         class="icon"
         aria-label="New blobs layout"
-        title="New arrangement of the blobs"
+        title="New arrangement of the blobs (D)"
         data-seed={editor.blobs.seed}
+        {@attach glow('pattern-dice')}
         onclick={() => editor.newBlobsLayout()}>⚄</button
       >
     {/snippet}
@@ -302,8 +306,9 @@
       <button
         class="icon"
         aria-label="New pattern variation"
-        title="New arrangement of the {editor.kind}"
+        title="New arrangement of the {editor.kind} (D)"
         data-seed={editor.ramp.seed}
+        {@attach glow('pattern-dice')}
         onclick={() => editor.newRampVariation()}>⚄</button
       >
     {/snippet}

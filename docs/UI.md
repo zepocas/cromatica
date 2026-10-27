@@ -26,7 +26,7 @@ App.svelte                      owns the state and wires everything together
 | `sections/` | Blocks of the left panel, and the pieces inside them (a color row, the stop strip).                                                         |
 | `overlays/` | Things drawn over the preview image: point and node handles, image pins, OS and monitor mockups, the "more like this" grid.                 |
 | `state/`    | Data and logic, no markup: `editor.svelte.ts` is the design being edited; the rest are undo, favourites, autosave, share links and helpers. |
-| `controls/` | Small reusable parts: `SliderRow`, `Choice`, `Dropdown`, `Toggle`, `LockToggle`, `Section`, `Group`, `ShapeIcon`.                           |
+| `controls/` | Small reusable parts: `SliderRow`, `Choice`, `Dropdown`, `Toggle`, `Lock`, `Section`, `Group`, `ShapeIcon`.                                 |
 | (top level) | The app shell: `ControlPanel`, `Preview`, `StatusBar`, `ExportBar`, `Shortcuts`, `Tips`.                                                    |
 
 ## Styles

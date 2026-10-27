@@ -31,3 +31,24 @@ test('the monitors popover is not clipped by the scrolling bar', async ({ page }
   await bar(page).getByRole('button', { name: 'Monitors', exact: true }).click();
   await expect(page.getByTestId('monitors-panel')).toBeInViewport({ ratio: 1 });
 });
+
+test('share link, format and download sit in the status bar, not in the panel', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 800 });
+  await openApp(page);
+  const status = bar(page);
+  const panel = page.locator('aside.panel');
+  for (const name of ['Copy share link', 'Download', 'Format']) {
+    await expect(status.getByRole(name === 'Format' ? 'combobox' : 'button', { name })).toBeVisible();
+    await expect(panel.getByRole(name === 'Format' ? 'combobox' : 'button', { name })).toHaveCount(0);
+  }
+  await expect(panel.getByRole('button', { name: 'Shuffle', exact: true })).toBeVisible();
+  await expect(panel.getByRole('button', { name: 'More like this' })).toBeVisible();
+
+  // Format and download are neighbors; share link follows them.
+  const x = async (l: ReturnType<Page['locator']>) => (await l.boundingBox())!.x;
+  const share = await x(status.getByRole('button', { name: 'Copy share link' }));
+  const format = await x(status.getByRole('combobox', { name: 'Format' }));
+  const download = await x(status.getByRole('button', { name: 'Download' }));
+  expect(format).toBeLessThan(download);
+  expect(download).toBeLessThan(share);
+});

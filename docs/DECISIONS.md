@@ -808,3 +808,28 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Decision (2026-10-26, user, #60):** `q` (new pattern and adjust, same palette) and `w` (new palette only) replace the shuffle locks of D64 and D73. Two ways to scope a shuffle were a repetition: the locks are the same thing made sticky, and their hidden state made Space look broken (a button disabled with all three locked).
 - **Removed:** the lock toggles in the status bar, the `1 2 3` keys, `patternLocked`, `adjustLocked`, `colorsLocked` and `canShuffle` in the editor, and the `arrange` shuffle option (a locked pattern dealt planes, aurora and blobs a new arrangement, #96); with no locks, the only shuffles that keep the pattern are `w` and more like this, and they leave the arrangement alone.
 - **Consequence:** a shuffle always changes the pattern unless it is `w`. To keep a look while changing it, use more like this.
+
+## D103. Finish groups fold while they are off
+
+- **Decision (2026-10-26, user, #59):** the noise and lighting groups of the adjust section start folded and show their value ("off" or the amount) beside the title. They open by themselves when a shuffle, undo or loaded design turns them on; folding one is the user's call.
+- **Why:** both sat open at "off" in most designs and took about 170px of a panel that was already crowded. The warp and pattern sliders stay visible because every design uses them.
+- **Consequence:** a test that reaches for a finish slider unfolds its group first (`openFinish`).
+
+## D104. Every mini shuffle has a key, and every key is in its tooltip
+
+- **Decision (2026-10-27, user):** `d` is the pattern's own dice, one key for whatever that pattern rerolls: the layout of planes, aurora and blobs, the seed of noise and cells, the next band style on a mesh (nothing for the rest). `v` is a new variation of the warp shape. `w` and `r` already covered the colors; their buttons now say so.
+- **Why:** the dice sat next to different sliders, so one global key per dice would have used up the keyboard; one contextual key keeps them learnable. Any control that has a key shows it in its tooltip, as `(D)`, `(V)`, `(W)`, `(R)`, `(K)`, `(P)`, `(O)`.
+- **Consequence:** a new dice goes behind `editor.rollPattern`, so `d` follows it.
+
+## D105. Share link and download move to the status bar, next to the format
+
+- **Decision (2026-10-27, user):** the status bar holds `format png ▾ [download] [share link]` pinned at its left, outside the scrolling groups; recent, os context, monitors, the handles toggle, zoom and full screen follow on the right. The panel footer keeps shuffle and more like this, the explore pair. The format sits beside download because it changes the download and not the link.
+- **Why:** the four bottom buttons had three looks and four behaviors; the output pair now shares one look and one place, and the status bar had room since the locks went (D102).
+- **Export feedback:** the progress bar and cancel take the place of the pair while an export runs, and errors and "link copied" show as a short line after it, the full text in its tooltip.
+- **Consequence:** on very narrow windows the pinned group leaves little room for the view groups, which scroll (the wheel works from anywhere on the bar); M15 decides what the phone layout does. The label threshold of the tool buttons (`@container`) now measures the scrolling groups only, 680px.
+
+## D106. The edit row goes: keep becomes padlocks beside what they lock, linked moves to advanced, remix is removed
+
+- **Decision (2026-10-27, user, #59):** the `edit` row of the colors section (`[ ] linked`, `[ remix ]`) is gone from the main view. `keep` was one toggle for three settings, two of them hidden in "advanced"; it is now three padlocks, each beside the dropdown it locks: the harmony rule in the main view, mood and value key in advanced. Each keeps only its own setting when shuffling the colors (`w`, ⟳); the others stay random. `h` toggles the harmony padlock and `⇧H` all three together (all off if all were on); mood and key have no key of their own. The shackle swings shut when a lock is on. `linked` moves to the colors "advanced" group, with base hue and the grade sliders it overlaps with. `remix` is removed: base hue and the brightness, contrast and saturation sliders do the same re-tint by hand.
+- **Why:** `linked` was a hidden mode that changed what editing a color did, and the row held two controls most sessions never touch. A single `keep` on the harmony row also pinned mood and key the user could not see; one lock per dropdown says what it locks, and a mood or key set in advanced is not silently reset by the next shuffle.
+- **Consequence:** the shift math in `src/color/linked.ts` stays, used by linked edits and the grade sliders. Re-tinting a hand-made palette in one click is no longer there; the grade sliders are the way. **The handles toggle moves from `h` to `n`** (nodes), to free `h` for harmony. `PaletteEditor.keep` is now `keepRule`, `keepMood` and `keepKey`; none of them is saved.

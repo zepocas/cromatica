@@ -11,6 +11,7 @@
   import { PanelUi } from './ui/state/panel-ui.svelte';
   import { History } from './ui/state/history.svelte';
   import { isTypingTarget } from './ui/state/keys';
+  import { glowKey } from './ui/controls/glow';
   import ImagePins from './ui/overlays/ImagePins.svelte';
   import MeshOverlay from './ui/overlays/MeshOverlay.svelte';
   import MoreLikeThis from './ui/overlays/MoreLikeThis.svelte';
@@ -250,25 +251,34 @@
     if (e.key.toLowerCase() === 'f' && !e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target)) {
       if (fullscreen) exitFullscreen();
       else enterFullscreen();
+      glowKey('fullscreen');
       return;
     }
     if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.repeat && !isTypingTarget(e.target)) {
       const key = e.key.toLowerCase();
-      if (key === 'e') void startExport();
-      else if (key === 'o') toggleContext();
+      if (key === 'e') {
+        void startExport();
+        glowKey('download');
+      } else if (key === 'o') toggleContext();
     }
     // The browser's own save-page dialog is no use here, so ⌘S downloads, even from a text field.
     if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 's') {
       e.preventDefault();
       void startExport();
+      glowKey('download');
       return;
     }
     if (!(e.metaKey || e.ctrlKey) || e.altKey || isTypingTarget(e.target)) return;
     const key = e.key.toLowerCase();
     if (key === 'z' || key === 'y') {
       e.preventDefault();
-      if (key === 'z' && !e.shiftKey) undo();
-      else redo();
+      if (key === 'z' && !e.shiftKey) {
+        undo();
+        glowKey('undo');
+      } else {
+        redo();
+        glowKey('redo');
+      }
     }
   }
 
@@ -405,13 +415,6 @@
     onundo={undo}
     onredo={redo}
     {nudgeShuffle}
-    {exporting}
-    {progress}
-    {error}
-    {notice}
-    onshare={share}
-    onexport={startExport}
-    oncancel={cancelExport}
   />
 {/if}
 {#if !fullscreen}
@@ -419,6 +422,13 @@
     {editor}
     docked={!ui.collapsed}
     {exportSettings}
+    {exporting}
+    {progress}
+    {error}
+    {notice}
+    onshare={share}
+    onexport={startExport}
+    oncancel={cancelExport}
     {ui}
     {monitors}
     portrait={output.height > output.width}

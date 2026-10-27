@@ -1,4 +1,4 @@
-// Palette steering and edits: harmony rule, keep, value key, linked, remix, order.
+// Palette steering and edits: harmony rule, keep, value key, linked, order.
 import { hexToOklch, oklchToHex } from '../../src/color/hex';
 import { KEY_BANDS } from '../../src/color/harmony';
 import { shortestTurn } from '../../src/math';
@@ -29,17 +29,18 @@ test('harmony: picking a rule regenerates, keep pins it, unpinned is fully rando
   let before = await read();
   await choose(harmony, 'monochrome');
   await expect.poll(read).not.toEqual(before);
-  await choose(page.getByLabel('Mood'), 'vivid');
+  await choose(page.getByLabel('Mood', { exact: true }), 'vivid');
   await expect(harmony).toHaveAttribute('data-value', 'monochrome');
 
   // Kept: ⟳ stays monochrome vivid around 250° (every colorful swatch is a blue).
   await page.getByRole('button', { name: 'Keep harmony' }).click();
+  await page.getByRole('button', { name: 'Keep mood' }).click();
   for (let i = 0; i < 3; i++) {
     before = await read();
     await shuffleColors.click();
     await expect.poll(read).not.toEqual(before);
     await expect(harmony).toHaveAttribute('data-value', 'monochrome');
-    await expect(page.getByLabel('Mood')).toHaveAttribute('data-value', 'vivid');
+    await expect(page.getByLabel('Mood', { exact: true })).toHaveAttribute('data-value', 'vivid');
     const colorful = (await read()).map(hexToOklch).filter(([, c]) => c > 0.045);
     expect(colorful.length).toBeGreaterThan(0);
     for (const [, , h] of colorful) expect(Math.abs(shortestTurn(250, h))).toBeLessThanOrEqual(30);
@@ -55,6 +56,32 @@ test('harmony: picking a rule regenerates, keep pins it, unpinned is fully rando
   expect(rules.size).toBeGreaterThan(1);
 });
 
+test('H locks and unlocks the harmony rule, and the padlock shows it', async ({ page }) => {
+  await openApp(page);
+  const lock = page.getByRole('button', { name: 'Keep harmony' });
+  await expect(lock).toHaveAttribute('aria-pressed', 'false');
+  await expect(lock).toHaveAttribute('title', /\(H; ⇧H/);
+  await page.keyboard.press('h');
+  await expect(lock).toHaveAttribute('aria-pressed', 'true');
+  await expect(lock).toHaveClass(/glow/);
+  await page.keyboard.press('h');
+  await expect(lock).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('Shift+H locks the rule, mood and key together, and again lets them all go', async ({ page }) => {
+  await openApp(page);
+  await openMore(page, 'colors');
+  const locks = ['Keep harmony', 'Keep mood', 'Keep key'].map((name) => page.getByRole('button', { name }));
+  await page.keyboard.press('Shift+H');
+  for (const lock of locks) await expect(lock).toHaveAttribute('aria-pressed', 'true');
+  await page.keyboard.press('Shift+H');
+  for (const lock of locks) await expect(lock).toHaveAttribute('aria-pressed', 'false');
+  // Plain H is the harmony lock alone.
+  await page.keyboard.press('h');
+  await expect(locks[0]).toHaveAttribute('aria-pressed', 'true');
+  await expect(locks[1]).toHaveAttribute('aria-pressed', 'false');
+});
+
 test('value key: picking one regenerates in that key, keep pins it', async ({ page }) => {
   await openApp(page);
   await openMore(page, 'colors');
@@ -66,7 +93,7 @@ test('value key: picking one regenerates in that key, keep pins it', async ({ pa
   await expect(key).toHaveAttribute('data-value', 'low');
   for (const l of await readLightness(page)) expect(l).toBeLessThan(low);
 
-  await page.getByRole('button', { name: 'Keep harmony' }).click();
+  await page.getByRole('button', { name: 'Keep key' }).click();
   for (let i = 0; i < 4; i++) {
     await page.getByRole('button', { name: 'Shuffle colors' }).click();
     await expect(key).toHaveAttribute('data-value', 'low');
@@ -78,7 +105,7 @@ test('value key: picking one regenerates in that key, keep pins it', async ({ pa
   for (const l of await readLightness(page)) expect(l).toBeGreaterThan(high);
 });
 
-test('linked editing moves the whole palette; free edits one color; remix shifts all', async ({ page }) => {
+test('linked editing moves the whole palette; free edits one color', async ({ page }) => {
   await openApp(page);
   const read = () => readHexes(page);
   await openMore(page, 'colors');
@@ -111,13 +138,6 @@ test('linked editing moves the whole palette; free edits one color; remix shifts
   const gap = (a: number, b: number) => (((b - a) % 360) + 360) % 360;
   // Hex rounding moves hues a few degrees, so compare to the nearest 10°.
   expect(gap(h(after[0]), h(after[1]))).toBeCloseTo(gap(h(before[0]), h(before[1])), -1);
-
-  // Remix changes all of them.
-  before = await read();
-  await page.getByRole('button', { name: 'Remix colors' }).click();
-  await expect.poll(read).not.toEqual(before);
-  after = await read();
-  expect(after.every((x, i) => x !== before[i])).toBe(true);
 });
 
 test('shuffle color order keeps the colors and swaps where they go', async ({ page }) => {
@@ -149,7 +169,7 @@ test('switching mood or key away and back restores the colors', async ({ page })
   await openApp(page);
   await page.getByRole('button', { name: 'Shuffle colors' }).click();
   await openMore(page, 'colors');
-  const mood = page.getByLabel('Mood');
+  const mood = page.getByLabel('Mood', { exact: true });
   const key = page.getByLabel('Value key');
   const original = await readHexes(page);
   const startMood = await valueOf(mood);
@@ -169,7 +189,7 @@ test('switching mood or key away and back restores the colors', async ({ page })
 test('every mood can be picked and regenerates the palette in it', async ({ page }) => {
   await openApp(page);
   await openMore(page, 'colors');
-  const mood = page.getByLabel('Mood');
+  const mood = page.getByLabel('Mood', { exact: true });
   for (const m of ['muted', 'earthy', 'pastel', 'neon', 'vivid', 'natural']) {
     const before = await readHexes(page);
     await choose(mood, m);

@@ -75,7 +75,7 @@
   function onWindowKeyDown(e: KeyboardEvent) {
     if (editor.kind !== 'mesh' || e.metaKey || e.ctrlKey || e.altKey) return;
     if (isFormControl(e.target)) return;
-    if (e.key === 'h' || e.key === 'H') {
+    if (e.key === 'n' || e.key === 'N') {
       editor.showMeshPoints = !editor.showMeshPoints;
       e.preventDefault();
       return;

@@ -59,6 +59,12 @@ export async function openMore(page: Page, section: 'adjust' | 'colors'): Promis
   await page.getByRole('button', { name: `Advanced ${section} settings` }).click();
 }
 
+/** Unfolds a finish group of the adjust section: noise and lighting start folded while they are off. */
+export async function openFinish(page: Page, group: 'noise' | 'lighting'): Promise<void> {
+  const fold = page.getByRole('button', { name: `Expand ${group}` });
+  if (await fold.isVisible()) await fold.click();
+}
+
 /** Hex values in the colors list, in list order. */
 export function readHexes(page: Page): Promise<string[]> {
   return page.locator('li input.hex').evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));

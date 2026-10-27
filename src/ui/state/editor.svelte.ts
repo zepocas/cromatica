@@ -4,6 +4,7 @@ import { oklabToOklch } from '../../color/oklab';
 import { evaluateRamp } from '../../color/ramp';
 import type { Oklch } from '../../color/types';
 import {
+  BAND_STYLES,
   AURORA_BLEND,
   MAX_RADIUS,
   MIN_RADIUS,
@@ -646,6 +647,18 @@ export class EditorState {
   /** Noise and cells: a new arrangement of the same field. */
   newRampVariation(): void {
     this.ramp.seed = randomSeed();
+  }
+
+  /** The pattern's own dice (D): its layout or seed, or the next band style on a mesh. Nothing for the rest. */
+  rollPattern(): void {
+    if (this.kind === 'planes') this.newPlanesLayout();
+    else if (this.kind === 'aurora') this.newAuroraLayout();
+    else if (this.kind === 'blobs') this.newBlobsLayout();
+    else if (this.kind === 'noise' || this.kind === 'cells') this.newRampVariation();
+    else if (this.kind === 'mesh') {
+      const next = BAND_STYLES[(BAND_STYLES.indexOf(this.finish.bandStyle) + 1) % BAND_STYLES.length];
+      this.finish.bandStyle = next;
+    }
   }
 
   // ---- Transform ------------------------------------------------------------

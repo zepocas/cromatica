@@ -4,6 +4,7 @@
   import type { PreviewHandle } from '../preview/preview';
   import { createAutoPreview } from '../preview/preview-worker';
   import { isTypingTarget } from './state/keys';
+  import { glowKey } from './controls/glow';
   import type { CanvasView } from './state/view.svelte';
 
   interface Props {
@@ -161,6 +162,7 @@
   function onKeyDown(e: KeyboardEvent) {
     if (e.key !== '0' || e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
     view.reset();
+    glowKey('fit');
   }
 
   /** The × fades out after the pointer rests, so it never sits on the wallpaper. */

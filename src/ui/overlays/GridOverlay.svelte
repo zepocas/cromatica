@@ -88,7 +88,7 @@
   function onWindowKeyDown(e: KeyboardEvent) {
     if (editor.kind !== 'grid' || e.metaKey || e.ctrlKey || e.altKey) return;
     if (isFormControl(e.target)) return;
-    if (e.key === 'h' || e.key === 'H') {
+    if (e.key === 'n' || e.key === 'N') {
       editor.showGridNodes = !editor.showGridNodes;
       e.preventDefault();
       return;

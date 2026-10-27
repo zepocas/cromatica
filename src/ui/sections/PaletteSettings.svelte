@@ -2,6 +2,7 @@
   import { PALETTE_MOODS, type ValueKey } from '../../color/harmony';
   import SliderRow from '../controls/SliderRow.svelte';
   import Dropdown from '../controls/Dropdown.svelte';
+  import Lock from '../controls/Lock.svelte';
   import Toggle from '../controls/Toggle.svelte';
   import type { EditorState } from '../state/editor.svelte';
 
@@ -33,6 +34,13 @@
     onchange={(m) => palette.setMood(m)}
     onactive={(m) => editor.previewChange(m && m !== palette.info?.mood ? (t) => t.palette.setMood(m) : null)}
   />
+  <Lock
+    checked={palette.keepMood}
+    ariaLabel="Keep mood"
+    title="Keep this mood when shuffling colors (off: any mood) (⇧H: all three locks)"
+    glowId="keep-mood"
+    onchange={(on) => (palette.keepMood = on)}
+  />
 </div>
 <div class="row">
   <span>key</span>
@@ -44,6 +52,13 @@
     options={KEY_OPTIONS}
     onchange={(k) => palette.setKey(k)}
     onactive={(k) => editor.previewChange(k && k !== palette.info?.key ? (t) => t.palette.setKey(k) : null)}
+  />
+  <Lock
+    checked={palette.keepKey}
+    ariaLabel="Keep key"
+    title="Keep this value key when shuffling colors (off: any key) (⇧H: all three locks)"
+    glowId="keep-key"
+    onchange={(on) => (palette.keepKey = on)}
   />
 </div>
 <div class="row">
@@ -71,6 +86,16 @@
     title="Use the selected color's hue"
     onclick={() => palette.setBaseHueEnabled(true, selectedHue)}>⌖</button
   >
+</div>
+<div class="row">
+  <span>edit</span>
+  <Toggle
+    checked={palette.linked}
+    label="linked"
+    ariaLabel="Link colors"
+    title="Linked: changing one color moves the whole palette with it, keeping the harmony"
+    onchange={(on) => (palette.linked = on)}
+  />
 </div>
 <SliderRow
   label="brightness"

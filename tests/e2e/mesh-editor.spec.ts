@@ -85,12 +85,12 @@ test('mesh editor: drag, add, delete, switch pattern and hide handles', async ({
   await expect(points).toHaveCount(5);
   expect(await stored(1)).toEqual(edited);
 
-  // H hides the handles without changing the image; H again shows them.
+  // N hides the handles without changing the image; N again shows them.
   before = await settled();
-  await page.keyboard.press('h');
+  await page.keyboard.press('n');
   await expect(points).toHaveCount(0);
   expect((await settled()).equals(before)).toBe(true);
-  await page.keyboard.press('h');
+  await page.keyboard.press('n');
   await expect(points).toHaveCount(5);
   // The bottom bar toggle, without opening "+ more".
   await choose(page.getByLabel('Mesh points'), 'off');

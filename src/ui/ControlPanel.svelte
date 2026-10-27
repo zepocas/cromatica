@@ -1,9 +1,9 @@
 <script lang="ts">
-  import type { ExportProgress } from '../export/types';
   import AdjustSection from './sections/AdjustSection.svelte';
   import ColorsSection from './sections/ColorsSection.svelte';
   import type { EditorState } from './state/editor.svelte';
   import ExportBar from './ExportBar.svelte';
+  import { glow, glowKey } from './controls/glow';
   import type { ExportSettings } from './state/export-settings.svelte';
   import type { Favourites } from './state/favourites.svelte';
   import type { PanelUi } from './state/panel-ui.svelte';
@@ -22,14 +22,6 @@
     onredo: () => void;
     /** Pulse the shuffle button: the visitor hasn't used it yet. */
     nudgeShuffle: boolean;
-    exporting: boolean;
-    progress: ExportProgress | null;
-    error: string;
-    /** A status line that isn't an error ("link copied"). */
-    notice: string;
-    onshare: () => void;
-    onexport: () => void;
-    oncancel: () => void;
   }
 
   let {
@@ -42,34 +34,37 @@
     onundo,
     onredo,
     nudgeShuffle,
-    exporting,
-    progress,
-    error,
-    notice,
-    onshare,
-    onexport,
-    oncancel,
   }: Props = $props();
 
-  /** App shortcuts: Space shuffles, ← and → step through recent shuffles, L and ; through patterns, comma and period through warp shapes, Q shuffles pattern and adjust, W the colors, R swaps their order, M opens more like this, K keeps a favourite, P folds the panel, ? lists them all. */
+  /** App shortcuts: Space shuffles, ← and → step through recent shuffles, L and ; through patterns, comma and period through warp shapes, Q shuffles pattern and adjust, W the colors, R swaps their order, D rolls the pattern's own dice, V a new warp variation, H locks the harmony rule (⇧H all three), M opens more like this, K keeps a favourite, P folds the panel, ? lists them all. */
   function onWindowKeyDown(e: KeyboardEvent) {
     if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
     if (e.key === ' ') {
       // Also stops a focused button from being clicked by the same key.
       e.preventDefault();
-      if (!e.repeat) editor.shuffle();
+      if (!e.repeat) {
+        editor.shuffle();
+        glowKey('shuffle');
+      }
     } else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !isFormControl(e.target) && !isHandle(e.target)) {
       e.preventDefault();
       editor.stepReel(e.key === 'ArrowRight' ? 1 : -1);
+      glowKey(e.key === 'ArrowRight' ? 'reel-forward' : 'reel-back');
     } else if (e.key === 'q' || e.key === 'Q') {
       e.preventDefault();
       if (!e.repeat) editor.shuffleLook();
     } else if (e.key === 'w' || e.key === 'W') {
       e.preventDefault();
-      if (!e.repeat) editor.shuffleColors();
+      if (!e.repeat) {
+        editor.shuffleColors();
+        glowKey('colors-new');
+      }
     } else if (e.key === 'r' || e.key === 'R') {
       e.preventDefault();
-      if (!e.repeat) editor.palette.shuffleOrder();
+      if (!e.repeat) {
+        editor.palette.shuffleOrder();
+        glowKey('colors-order');
+      }
     } else if (e.key === 'm' || e.key === 'M') {
       e.preventDefault();
       ui.exploring = !ui.exploring;
@@ -79,15 +74,43 @@
     } else if (e.key === ',' || e.key === '.' || e.key === '<' || e.key === '>') {
       e.preventDefault();
       editor.cycleWarpShape(e.key === '.' || e.key === '>' ? 1 : -1);
+    } else if (e.key === 'd' || e.key === 'D') {
+      e.preventDefault();
+      if (!e.repeat) {
+        editor.rollPattern();
+        glowKey('pattern-dice');
+      }
+    } else if (e.key === 'v' || e.key === 'V') {
+      e.preventDefault();
+      if (!e.repeat && editor.warp.shape !== 'none') {
+        editor.newWarpVariation();
+        glowKey('warp-dice');
+      }
+    } else if (e.key === 'h' || e.key === 'H') {
+      e.preventDefault();
+      if (!e.repeat) {
+        if (e.shiftKey) editor.palette.toggleKeepAll();
+        else editor.palette.keepRule = !editor.palette.keepRule;
+        glowKey('keep-harmony');
+        if (e.shiftKey) {
+          glowKey('keep-mood');
+          glowKey('keep-key');
+        }
+      }
     } else if (e.key === 'k' || e.key === 'K') {
       e.preventDefault();
-      if (!e.repeat) favourites.toggle(editor.design);
+      if (!e.repeat) {
+        favourites.toggle(editor.design);
+        glowKey('favourite');
+      }
     } else if (e.key === 'p' || e.key === 'P') {
       e.preventDefault();
       ui.collapsed = !ui.collapsed;
+      glowKey('panel-fold');
     } else if (e.key === '?') {
       e.preventDefault();
       ui.shortcuts = !ui.shortcuts;
+      glowKey('shortcuts');
     }
   }
 </script>
@@ -116,15 +139,26 @@
       onclick={() => {
         ui.shortcuts = !ui.shortcuts;
         if (ui.shortcuts) ui.tips = false;
-      }}>⌨</button
+      }}
+      {@attach glow('shortcuts')}>⌨</button
     >
-    <button class="icon" aria-label="Undo" title="Undo (⌘Z)" disabled={!canUndo} onclick={onundo}>↶</button>
-    <button class="icon" aria-label="Redo" title="Redo (⇧⌘Z)" disabled={!canRedo} onclick={onredo}>↷</button>
+    <button class="icon" aria-label="Undo" title="Undo (⌘Z)" disabled={!canUndo} onclick={onundo} {@attach glow('undo')}
+      >↶</button
+    >
+    <button
+      class="icon"
+      aria-label="Redo"
+      title="Redo (⇧⌘Z)"
+      disabled={!canRedo}
+      onclick={onredo}
+      {@attach glow('redo')}>↷</button
+    >
     <button
       class="icon"
       aria-expanded={!ui.collapsed}
       aria-label={ui.collapsed ? 'Expand panel' : 'Collapse panel'}
-      title={ui.collapsed ? 'Expand panel' : 'Collapse panel'}
+      title={ui.collapsed ? 'Expand panel (P)' : 'Collapse panel (P)'}
+      {@attach glow('panel-fold')}
       onclick={() => (ui.collapsed = !ui.collapsed)}>{ui.collapsed ? '□' : '_'}</button
     >
   </header>
@@ -139,19 +173,7 @@
     </div>
   {/if}
 
-  <ExportBar
-    {editor}
-    {ui}
-    compact={ui.collapsed}
-    {nudgeShuffle}
-    {exporting}
-    {progress}
-    {error}
-    {notice}
-    {onshare}
-    {onexport}
-    {oncancel}
-  />
+  <ExportBar {editor} {ui} compact={ui.collapsed} {nudgeShuffle} />
 </aside>
 
 <style>
