@@ -62,7 +62,7 @@
         class="heart"
         aria-label={current ? 'Remove from favourites' : 'Add to favourites'}
         aria-pressed={!!current}
-        title={current ? 'Remove from favourites' : 'Keep in favourites'}
+        title={current ? 'Remove from favourites (K)' : 'Keep in favourites (K)'}
         onclick={() => favourites.toggle(design)}>{current ? '♥' : '♡'}</button
       >
       <span class="count" title="{favourites.items.length} favourites">{favourites.items.length}</span>

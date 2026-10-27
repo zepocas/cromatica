@@ -100,13 +100,13 @@
     <button
       class="icon"
       aria-label="Shuffle colors"
-      title="New colors, same layout"
+      title="New colors, same layout (W)"
       onclick={() => editor.shuffleColors()}>⟳</button
     >
     <button
       class="icon"
       aria-label="Shuffle color order"
-      title="Same colors, swapped between {noun}s"
+      title="Same colors, swapped between {noun}s (R)"
       onclick={() => palette.shuffleOrder()}>⇄</button
     >
     <button

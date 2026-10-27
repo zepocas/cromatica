@@ -124,7 +124,7 @@
       <button
         class="icon"
         aria-label="New layout"
-        title="New arrangement of the planes"
+        title="New arrangement of the planes (D)"
         data-seed={editor.planes.seed}
         onclick={() => editor.newPlanesLayout()}>⚄</button
       >
@@ -201,7 +201,7 @@
       <button
         class="icon"
         aria-label="New aurora layout"
-        title="New arrangement of the ribbons"
+        title="New arrangement of the ribbons (D)"
         data-seed={editor.aurora.seed}
         onclick={() => editor.newAuroraLayout()}>⚄</button
       >
@@ -231,7 +231,7 @@
       <button
         class="icon"
         aria-label="New blobs layout"
-        title="New arrangement of the blobs"
+        title="New arrangement of the blobs (D)"
         data-seed={editor.blobs.seed}
         onclick={() => editor.newBlobsLayout()}>⚄</button
       >
@@ -302,7 +302,7 @@
       <button
         class="icon"
         aria-label="New pattern variation"
-        title="New arrangement of the {editor.kind}"
+        title="New arrangement of the {editor.kind} (D)"
         data-seed={editor.ramp.seed}
         onclick={() => editor.newRampVariation()}>⚄</button
       >

@@ -106,7 +106,7 @@
           ui.contextId = id === OFF ? '' : id;
         }}
         onactive={(id) => (ui.contextPreview = id === null ? null : id === OFF ? '' : id)}
-        title="Show the OS on top of the image, and warn where its text would be hard to read"
+        title="Show the OS on top of the image, and warn where its text would be hard to read (O)"
       />
       <span class="monitors">
         <button

@@ -19,6 +19,8 @@
         ['q', 'shuffle pattern and adjust, keeping the colors'],
         ['w', 'shuffle the colors, keeping the pattern and adjust'],
         ['r', 'swap the same colors around (the ⇄ button)'],
+        ['d', "the pattern's own dice: new layout or seed, next band style on a banded mesh"],
+        ['v', 'new variation of the warp shape (the ⚄ next to it)'],
         ['m', 'more like this: variations of the current design'],
         ['l ;', 'previous and next pattern'],
         [', .', 'previous and next warp shape'],

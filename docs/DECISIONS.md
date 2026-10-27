@@ -814,3 +814,9 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Decision (2026-10-26, user, #59):** the noise and lighting groups of the adjust section start folded and show their value ("off" or the amount) beside the title. They open by themselves when a shuffle, undo or loaded design turns them on; folding one is the user's call.
 - **Why:** both sat open at "off" in most designs and took about 170px of a panel that was already crowded. The warp and pattern sliders stay visible because every design uses them.
 - **Consequence:** a test that reaches for a finish slider unfolds its group first (`openFinish`).
+
+## D104. Every mini shuffle has a key, and every key is in its tooltip
+
+- **Decision (2026-10-27, user):** `d` is the pattern's own dice, one key for whatever that pattern rerolls: the layout of planes, aurora and blobs, the seed of noise and cells, the next band style on a mesh with bands on (nothing for the rest). `v` is a new variation of the warp shape. `w` and `r` already covered the colors; their buttons now say so.
+- **Why:** the dice sat next to different sliders, so one global key per dice would have used up the keyboard; one contextual key keeps them learnable. Any control that has a key shows it in its tooltip, as `(D)`, `(V)`, `(W)`, `(R)`, `(K)`, `(P)`, `(O)`.
+- **Consequence:** a new dice goes behind `editor.rollPattern`, so `d` follows it.

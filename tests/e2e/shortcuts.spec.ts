@@ -1,5 +1,5 @@
 // Keyboard shortcuts beyond shuffle: K, P, ? and ⌘S; and the labeled more-like-this button.
-import { expect, openApp, test } from './support/app';
+import { choose, expect, openApp, test } from './support/app';
 
 test('K keeps or releases the favourite', async ({ page }) => {
   await openApp(page);
@@ -40,6 +40,46 @@ test('the shortcut list and the tips and tricks card link to each other', async 
   await tricks.getByRole('button', { name: 'all keys' }).click();
   await expect(keys).toBeVisible();
   await expect(tricks).toHaveCount(0);
+});
+
+test('D rolls the pattern dice of the current pattern and V the warp dice', async ({ page }) => {
+  await openApp(page);
+  const gradient = page.getByLabel('Gradient', { exact: true });
+
+  // The dice buttons carry their seed, so a roll shows as a new value.
+  for (const [kind, dice] of [
+    ['planes', 'New layout'],
+    ['aurora', 'New aurora layout'],
+    ['blobs', 'New blobs layout'],
+    ['noise', 'New pattern variation'],
+    ['cells', 'New pattern variation'],
+  ]) {
+    await choose(gradient, kind);
+    const button = page.getByRole('button', { name: dice });
+    await expect(button).toHaveAttribute('title', /\(D\)$/);
+    const seed = await button.getAttribute('data-seed');
+    await page.keyboard.press('d');
+    await expect(button).not.toHaveAttribute('data-seed', seed ?? '');
+  }
+
+  await choose(page.getByLabel('Warp shape', { exact: true }), 'waves');
+  const warp = page.getByRole('button', { name: 'New variation' });
+  await expect(warp).toHaveAttribute('title', /\(V\)$/);
+  const seed = await warp.getAttribute('data-seed');
+  await page.keyboard.press('v');
+  await expect(warp).not.toHaveAttribute('data-seed', seed ?? '');
+});
+
+test('D steps the band style of a banded mesh and does nothing while bands are off', async ({ page }) => {
+  await openApp(page);
+  await choose(page.getByLabel('Gradient', { exact: true }), 'mesh');
+  const style = page.getByRole('group', { name: 'Band style' }).locator('[aria-pressed="true"]');
+  await expect(style).toHaveText('A');
+  await page.keyboard.press('d');
+  await expect(style).toHaveText('A');
+  await page.getByLabel('Bands').fill('0.5');
+  await page.keyboard.press('d');
+  await expect(style).toHaveText('B');
 });
 
 test('shortcuts leave text fields alone', async ({ page }) => {

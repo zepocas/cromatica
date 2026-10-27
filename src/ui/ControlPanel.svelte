@@ -51,7 +51,7 @@
     oncancel,
   }: Props = $props();
 
-  /** App shortcuts: Space shuffles, ← and → step through recent shuffles, L and ; through patterns, comma and period through warp shapes, Q shuffles pattern and adjust, W the colors, R swaps their order, M opens more like this, K keeps a favourite, P folds the panel, ? lists them all. */
+  /** App shortcuts: Space shuffles, ← and → step through recent shuffles, L and ; through patterns, comma and period through warp shapes, Q shuffles pattern and adjust, W the colors, R swaps their order, D rolls the pattern's own dice, V a new warp variation, M opens more like this, K keeps a favourite, P folds the panel, ? lists them all. */
   function onWindowKeyDown(e: KeyboardEvent) {
     if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
     if (e.key === ' ') {
@@ -79,6 +79,12 @@
     } else if (e.key === ',' || e.key === '.' || e.key === '<' || e.key === '>') {
       e.preventDefault();
       editor.cycleWarpShape(e.key === '.' || e.key === '>' ? 1 : -1);
+    } else if (e.key === 'd' || e.key === 'D') {
+      e.preventDefault();
+      if (!e.repeat) editor.rollPattern();
+    } else if (e.key === 'v' || e.key === 'V') {
+      e.preventDefault();
+      if (!e.repeat && editor.warp.shape !== 'none') editor.newWarpVariation();
     } else if (e.key === 'k' || e.key === 'K') {
       e.preventDefault();
       if (!e.repeat) favourites.toggle(editor.design);
@@ -124,7 +130,7 @@
       class="icon"
       aria-expanded={!ui.collapsed}
       aria-label={ui.collapsed ? 'Expand panel' : 'Collapse panel'}
-      title={ui.collapsed ? 'Expand panel' : 'Collapse panel'}
+      title={ui.collapsed ? 'Expand panel (P)' : 'Collapse panel (P)'}
       onclick={() => (ui.collapsed = !ui.collapsed)}>{ui.collapsed ? '□' : '_'}</button
     >
   </header>
