@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Glyph from '../controls/Glyph.svelte';
   import { PALETTE_MOODS, type ValueKey } from '../../color/harmony';
   import SliderRow from '../controls/SliderRow.svelte';
   import Dropdown from '../controls/Dropdown.svelte';
@@ -84,7 +85,7 @@
     class="icon"
     aria-label="Base hue from selected color"
     title="Use the selected color's hue"
-    onclick={() => palette.setBaseHueEnabled(true, selectedHue)}>⌖</button
+    onclick={() => palette.setBaseHueEnabled(true, selectedHue)}><Glyph name="crosshair" /></button
   >
 </div>
 <div class="row">

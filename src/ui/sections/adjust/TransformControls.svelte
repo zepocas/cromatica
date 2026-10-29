@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Glyph from '../../controls/Glyph.svelte';
   import { degrees } from '../../controls/format';
   import SliderRow from '../../controls/SliderRow.svelte';
   import type { EditorState } from '../../state/editor.svelte';
@@ -31,19 +32,21 @@
   display={degrees}
 >
   {#snippet trailing()}
-    <button class="icon" aria-label="Rotate left" title="Rotate 90° left" onclick={() => editor.rotateBy(90)}>↺</button>
+    <button class="icon" aria-label="Rotate left" title="Rotate 90° left" onclick={() => editor.rotateBy(90)}
+      ><Glyph name="turn-left" /></button
+    >
     <button class="icon" aria-label="Rotate right" title="Rotate 90° right" onclick={() => editor.rotateBy(-90)}
-      >↻</button
+      ><Glyph name="turn-right" /></button
     >
   {/snippet}
 </SliderRow>
 <div class="row">
   <span>flip</span>
   <button class="icon" aria-label="Flip horizontally" title="Mirror left ↔ right" onclick={() => editor.flip('x')}
-    >⇋</button
+    ><Glyph name="flip-x" /></button
   >
   <button class="icon" aria-label="Flip vertically" title="Mirror top ↔ bottom" onclick={() => editor.flip('y')}
-    >⇵</button
+    ><Glyph name="flip-y" /></button
   >
   <span class="spacer"></span>
   <button

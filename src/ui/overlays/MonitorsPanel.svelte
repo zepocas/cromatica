@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Glyph from '../controls/Glyph.svelte';
   import Dropdown from '../controls/Dropdown.svelte';
   import { ASPECTS, MAX_DIAGONAL, MIN_DIAGONAL, type Aspect, type MonitorsState } from '../state/monitors.svelte';
 
@@ -54,7 +55,7 @@
         class="icon"
         aria-label="Turn monitor {s.id}"
         title={s.portrait ? 'Portrait: turn to landscape' : 'Landscape: turn to portrait'}
-        onclick={() => monitors.change(s.id, { portrait: !s.portrait })}>⟳</button
+        onclick={() => monitors.change(s.id, { portrait: !s.portrait })}><Glyph name="turn-right" /></button
       >
       <button
         class="icon"

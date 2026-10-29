@@ -88,6 +88,8 @@
   }
   li.selected::before {
     content: '›';
+    color: var(--ink);
+    font-weight: 800;
   }
   /* The swatch is a ██ block: the only real color in the panel. */
   input[type='color'] {

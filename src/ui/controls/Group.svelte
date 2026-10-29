@@ -69,7 +69,6 @@
   }
   .note {
     margin-left: 1ch;
-    opacity: 0.6;
   }
   .line {
     flex: 1;
@@ -77,11 +76,17 @@
     padding: 0;
     border: 0;
     cursor: pointer;
-    background: linear-gradient(var(--rule), var(--rule)) center / 100% 1px no-repeat;
+    position: relative;
   }
-  .head:has(.title:hover) .line,
-  .line:hover {
-    background-image: linear-gradient(var(--ink), var(--ink));
+  .line::before {
+    content: '';
+    position: absolute;
+    inset: 50% 0 auto;
+    border-top: 1px solid var(--rule);
+  }
+  .head:has(.title:hover) .line::before,
+  .line:hover::before {
+    border-top-color: var(--ink);
   }
   .head:has(.line:hover) .title,
   .title:hover {
