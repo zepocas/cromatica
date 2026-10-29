@@ -24,6 +24,8 @@
     /** Alone on the screen: the × shows on pointer movement and calls onexitfullscreen. */
     fullscreen?: boolean;
     onexitfullscreen?: () => void;
+    /** Changes when a shuffle or a step through them swaps the picture; the old frame then fades out. */
+    fadeKey?: string;
   }
 
   let {
@@ -38,16 +40,20 @@
     zoomable = true,
     fullscreen = false,
     onexitfullscreen,
+    fadeKey = '',
   }: Props = $props();
 
   /** Wheel pixels per e-fold of zoom; a trackpad pinch arrives as ctrl + wheel. */
   const PINCH_SENSITIVITY = 100;
   /** A mouse notch reports about 100 px at once, a pinch a few; capping keeps a notch to a fine step, as a trackpad feels. */
   const MAX_WHEEL_DELTA = 20;
+  /** The fade after a shuffle: short enough that it reads as a softer cut, not an animation. */
+  const FADE_MS = 140;
 
   let container: HTMLDivElement;
   let frame: HTMLDivElement;
   let canvas: HTMLCanvasElement;
+  let ghost: HTMLCanvasElement;
   let controller: PreviewHandle | null = null;
   let error = $state('');
 
@@ -75,6 +81,21 @@
   $effect(() => controller?.setAspect(aspect));
   $effect(() => controller?.setDisplayAspect(stretchTo));
   $effect(() => controller?.setPaused(paused));
+
+  // Softens the cut when a shuffle swaps the picture: the last frame is copied over the canvas and fades out.
+  // Screen only. The worker draws the next frame after this runs, so the copy is still the old one.
+  let lastFadeKey = untrack(() => fadeKey);
+  $effect(() => {
+    const key = fadeKey;
+    if (key === lastFadeKey) return;
+    lastFadeKey = key;
+    if (!canvas.width || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    ghost.width = canvas.width;
+    ghost.height = canvas.height;
+    ghost.getContext('2d')?.drawImage(canvas, 0, 0);
+    ghost.getAnimations().forEach((a) => a.cancel());
+    ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: FADE_MS, easing: 'ease-out' });
+  });
 
   // A new shape is a new composition: start fitted.
   $effect(() => {
@@ -215,6 +236,7 @@
     style:transform={shown ? `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` : undefined}
   >
     <canvas bind:this={canvas} data-testid="preview-canvas"></canvas>
+    <canvas class="ghost" bind:this={ghost} aria-hidden="true"></canvas>
     {@render overlay?.()}
   </div>
   {#if fullscreen}
@@ -291,6 +313,14 @@
   }
   canvas {
     display: block;
+  }
+  .ghost {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    pointer-events: none;
   }
   .error {
     position: absolute;
