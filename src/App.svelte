@@ -374,7 +374,6 @@
   zoomable={!ui.exploring && !fullscreen}
   {fullscreen}
   onexitfullscreen={exitFullscreen}
-  fadeKey={`${editor.reel.pushes}:${editor.reel.position}`}
 >
   {#snippet overlay()}
     {#if !ui.exploring && contextScreen && !previewPreset && !showMonitors}
