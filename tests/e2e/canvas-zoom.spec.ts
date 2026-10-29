@@ -1,5 +1,15 @@
 // Pinch/zoom, pan and reset of the preview frame; the design and export are untouched.
+import type { Locator } from '@playwright/test';
 import { expect, openApp, test } from './support/app';
+
+// The app caps the wheel delta per event (MAX_WHEEL_DELTA), so a big pinch arrives as several events.
+const MAX_WHEEL_DELTA = 20;
+async function pinchWheel(viewport: Locator, deltaY: number, at: { clientX: number; clientY: number }) {
+  for (let left = Math.abs(deltaY); left > 0; left -= MAX_WHEEL_DELTA) {
+    const step = Math.sign(deltaY) * Math.min(left, MAX_WHEEL_DELTA);
+    await viewport.dispatchEvent('wheel', { deltaY: step, ctrlKey: true, cancelable: true, ...at });
+  }
+}
 
 test('canvas zoom: pinch zooms the frame only, drag pans, 0 and the status bar fit reset', async ({ page }) => {
   await openApp(page);
@@ -12,8 +22,7 @@ test('canvas zoom: pinch zooms the frame only, drag pans, 0 and the status bar f
   // A trackpad pinch is a ctrl + wheel; it must not zoom the page.
   const viewport = page.locator('.viewport');
   const centre = { clientX: home.x + home.width / 2, clientY: home.y + home.height / 2 };
-  const pinch = (deltaY: number) =>
-    viewport.dispatchEvent('wheel', { deltaY, ctrlKey: true, cancelable: true, ...centre });
+  const pinch = (deltaY: number) => pinchWheel(viewport, deltaY, centre);
   await pinch(-69.3); // e^0.693 = 2
   await expect(fit).toHaveText('200%');
   const zoomed = await rect();
@@ -64,13 +73,7 @@ test('canvas zoom: handles keep their size and still drag to the right place', a
       break;
     }
   }
-  await page.locator('.viewport').dispatchEvent('wheel', {
-    deltaY: -69.3,
-    ctrlKey: true,
-    cancelable: true,
-    clientX: centre.x,
-    clientY: centre.y,
-  });
+  await pinchWheel(page.locator('.viewport'), -69.3, { clientX: centre.x, clientY: centre.y });
   const box = (await handle.boundingBox())!;
   expect([18, 22]).toContain(Math.round(box.width)); // 14px + border, or 18px selected: not 2x
   const before = [Number(await handle.getAttribute('data-x')), Number(await handle.getAttribute('data-y'))];
