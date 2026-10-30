@@ -4,6 +4,7 @@
   import { FAVOURITES_LIMIT, swatchesOf, type Favourites } from '../state/favourites.svelte';
   import { glow } from '../controls/glow';
   import Section from '../controls/Section.svelte';
+  import { currentScale } from '../state/ui-scale';
 
   interface Props {
     favourites: Favourites;
@@ -30,8 +31,9 @@
 
   function place() {
     const r = anchor.getBoundingClientRect();
-    anchorY = r.top + r.height / 2;
-    viewHeight = window.innerHeight;
+    const k = currentScale();
+    anchorY = (r.top + r.height / 2) / k;
+    viewHeight = window.innerHeight / k;
   }
 
   $effect(() => {
@@ -142,8 +144,8 @@
     left: var(--sidebar);
     z-index: var(--z-tray);
     box-sizing: border-box;
-    max-width: min(640px, calc(100vw - var(--sidebar) - var(--gap-page)));
-    max-height: 50vh;
+    max-width: min(640px, calc(100vw / var(--ui-scale) - var(--sidebar) - var(--gap-page)));
+    max-height: calc(50vh / var(--ui-scale));
     overflow-y: auto;
     padding: 10px;
     background: var(--panel-float);

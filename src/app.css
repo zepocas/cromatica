@@ -17,6 +17,8 @@
   --font-mono: 'Cromatica Mono', Menlo, Consolas, monospace;
   --sidebar: 300px;
   --statusbar: 28px;
+  /* Set by applyScale (src/ui/state/ui-scale.ts). `zoom` scales vw and vh too, so divide a viewport length by it. */
+  --ui-scale: 1;
   /* Space between the preview and the window edge, and between floating cards and it. */
   --gap-page: 24px;
   /* Layer order, lowest first. A bare `z-index: 1` in a component only orders things inside it. */

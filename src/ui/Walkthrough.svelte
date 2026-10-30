@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { currentScale } from './state/ui-scale';
   import type { Walkthrough } from './state/walkthrough.svelte';
 
   interface Props {
@@ -15,13 +16,15 @@
 
   function onDown(e: PointerEvent) {
     if (e.button !== 0) return;
-    drag = { x: e.clientX - dx, y: e.clientY - dy };
+    const k = currentScale();
+    drag = { x: e.clientX / k - dx, y: e.clientY / k - dy };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   }
   function onMove(e: PointerEvent) {
     if (!drag) return;
-    dx = e.clientX - drag.x;
-    dy = e.clientY - drag.y;
+    const k = currentScale();
+    dx = e.clientX / k - drag.x;
+    dy = e.clientY / k - drag.y;
   }
   function onUp() {
     drag = null;
@@ -54,11 +57,11 @@
   /* Light on the dark panel and high up, so it is the first thing the eye lands on. */
   .walkthrough {
     position: fixed;
-    top: 6vh;
-    right: 8vw;
+    top: calc(6vh / var(--ui-scale));
+    right: calc(8vw / var(--ui-scale));
     z-index: var(--z-card);
     width: 440px;
-    max-width: calc(100vw - 48px);
+    max-width: calc(100vw / var(--ui-scale) - 48px);
     box-sizing: border-box;
     padding: 12px 16px 14px;
     border: 1px solid var(--ink);

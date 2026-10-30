@@ -50,7 +50,7 @@
     bottom: var(--gap-page);
     z-index: var(--z-card);
     width: 460px;
-    max-width: calc(100vw - 48px);
+    max-width: calc(100vw / var(--ui-scale) - 48px);
     box-sizing: border-box;
     padding: 8px 13px 10px;
     display: flex;

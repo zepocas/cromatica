@@ -19,6 +19,7 @@
 
 <script lang="ts" generics="T extends string">
   import { untrack, type Snippet } from 'svelte';
+  import { currentScale } from '../state/ui-scale';
 
   // An in-page replacement for <select>: native popups can't be sized, and
   // Firefox-based browsers scroll lists that would fit.
@@ -63,16 +64,17 @@
   const labelOf = (o: DropdownOption<T>) => o.label ?? o.value;
 
   function placeList() {
+    const k = currentScale();
     const r = button.getBoundingClientRect();
-    const margin = 8;
+    const margin = 8 * k;
     const below = window.innerHeight - r.bottom - margin;
     const aboveSpace = r.top - margin;
     const above = below < options.length * 20 && aboveSpace > below;
     place = {
-      left: r.left,
-      top: above ? r.top : r.bottom,
-      minWidth: r.width,
-      maxHeight: above ? aboveSpace : below,
+      left: r.left / k,
+      top: (above ? r.top : r.bottom) / k,
+      minWidth: r.width / k,
+      maxHeight: (above ? aboveSpace : below) / k,
       above,
     };
   }
