@@ -18,9 +18,9 @@ interface BandSink {
 }
 
 /** The design's text entries, or none if it doesn't validate: the image is still worth having. */
-function embeddedDesign(design: ExportRequest['design']): Record<string, string> {
+async function embeddedDesign(design: ExportRequest['design']): Promise<Record<string, string>> {
   try {
-    return designText(design);
+    return await designText(design);
   } catch (err) {
     console.warn('export: the design could not be embedded', err);
     return {};
@@ -100,7 +100,7 @@ async function runExport(req: ExportRequest): Promise<Blob> {
   let sink: BandSink | undefined;
   try {
     renderer = createRenderer(gl);
-    const text = embeddedDesign(req.design);
+    const text = await embeddedDesign(req.design);
     sink = req.format === 'png' ? pngSink(output, text) : jpegSink(output, req.quality ?? DEFAULT_JPEG_QUALITY, text);
     let tilesDone = 0;
     for (const band of bands) {

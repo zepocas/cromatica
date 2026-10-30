@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { defaultDesign, defaultMesh, type Design } from '../../src/design/design';
 import { saveDesign } from '../../src/design/schema';
 import { shuffleDesign } from '../../src/design/shuffle';
+import { decodeShare, encodeShare } from '../../src/design/share';
 import { readExportedDesign } from '../../src/export/design-image';
 import { DESIGN_KEYWORD, designText } from '../../src/export/design-png';
 import { embedJpegDesign, readJpegInfo } from '../../src/export/jpeg';
@@ -88,13 +89,22 @@ describe('design in the JPEG', () => {
       design = shuffleDesign(design, { colors: true, layout: true, style: true, seed }).design;
       if (kinds.has(design.base.kind)) continue;
       kinds.add(design.base.kind);
-      const file = await embedJpegDesign(jpeg(7, 4), designText(design)[DESIGN_KEYWORD]);
+      const file = await embedJpegDesign(jpeg(7, 4), (await designText(design))[DESIGN_KEYWORD]);
       expect(await readExportedDesign(file)).toEqual({
-        design: saveDesign(design).design,
+        design: await decodeShare(await encodeShare(design)),
         size: { width: 7, height: 4 },
       });
     }
     expect(kinds.size).toBe(9);
+  });
+
+  it('still reads a JPEG exported before D110, with the save envelope as JSON', async () => {
+    const design = shuffleDesign(defaultDesign, { colors: true, layout: true, style: true, seed: 5 }).design;
+    const file = await embedJpegDesign(jpeg(7, 4), JSON.stringify(saveDesign(design)));
+    expect(await readExportedDesign(file)).toEqual({
+      design: saveDesign(design).design,
+      size: { width: 7, height: 4 },
+    });
   });
 
   it('is null for a JPEG without a design and throws for a broken one', async () => {

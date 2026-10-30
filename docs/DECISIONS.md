@@ -860,3 +860,12 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Measuring on that GPU:** Chromium and the driver cache compiled shaders across runs, so the benchmark adds a never-true test against a random number to each shader (a comment is not enough, the translators strip it). Draw times of one shader varied by up to 40% between runs until an untimed draw came first; even then grid with lines and a warp drew in about 40 or about 140 ms depending on the run, in whole runs, so that variant has no settled number.
 - **Found, not fixed:** the editor's 8% neighbour margin (D43) does not stop folds: nodes pushed to the margin fold the grid through diagonal neighbours and the Catmull-Rom overshoot (36 of 36 such grids in the test), where the pull-back has no single answer.
 - **Not done:** a baked inverse in a lookup texture (#98) is not needed now that 6 steps converge on every grid that does not fold.
+
+## D110. Exports carry the share payload, not the save-envelope JSON
+
+- **Decision (2026-10-30, user, #120):** the PNG iTXt entry and the JPEG XMP property hold the `v1.…` payload of `src/design/share.ts` instead of the save envelope. Supersedes the envelope part of D45 and D72.
+- **Measured (3000 shuffled designs, #120):** the JSON is 573 to 1943 B (median 707), the payload 233 to 482 B (median 326), about 385 B less per file. Small against the image, so this is for one codec, not for size.
+- **Lossy:** a payload rounds non-integers to 3 decimals (at most 0.0005 off), so a reopened export is no longer the exact design, and its preview is within 2 per channel of the exported colors, not byte-identical. A link already behaved so.
+- **Readers:** a text starting with `v1.` goes through `decodeShare`, anything else is parsed as the envelope JSON, so exports from before this change still reopen (`readDesignText` in `design-png.ts`). A new payload prefix would be added there.
+- **Worker:** `designText` is async now; the export worker awaits it before the first tile. Tiled, worker and single-pass pixels are untouched.
+

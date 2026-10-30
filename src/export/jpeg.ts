@@ -80,7 +80,7 @@ async function isJpeg(file: Blob): Promise<boolean> {
 }
 
 /**
- * `jpeg` with `design` (the save envelope as JSON) embedded, or `jpeg`
+ * `jpeg` with `design` (a share payload) embedded, or `jpeg`
  * itself if it isn't a JPEG or the design doesn't fit one segment.
  */
 export async function embedJpegDesign(jpeg: Blob, design: string): Promise<Blob> {

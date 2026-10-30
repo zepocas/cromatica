@@ -2,7 +2,7 @@
 // single-pass renders, plus the app's download.
 import { readFile } from 'node:fs/promises';
 import { WARP_SHAPES } from '../../src/design/design';
-import { choose, expect, openApp, previewProbe, readHexes, test } from './support/app';
+import { choose, expect, expectSameColors, openApp, previewProbe, readHexes, test } from './support/app';
 import { exportHarness, logBench, openExportHarness } from './support/harness';
 
 test.describe('export pipeline', () => {
@@ -118,10 +118,14 @@ for (const format of ['png', 'jpeg'] as const) {
     const downloadPromise = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Download' }).click();
     const file = await readFile(await (await downloadPromise).path());
+    // The share payload, not the save-envelope JSON (D110).
+    expect(file.toString('latin1')).toMatch(/cromatica[.:]design>?\0*v1\.[\w-]+/);
+    expect(file.toString('latin1')).not.toContain('"version"');
 
     await choose(page.getByLabel('Size preset'), '1920x1080');
     await page.getByRole('button', { name: /^Shuffle( Space)?$/ }).click();
     await expectPreviewChanged(before);
+    const shuffled = await settled();
 
     const dataTransfer = await page.evaluateHandle(
       ([bytes, format]) => {
@@ -135,8 +139,8 @@ for (const format of ['png', 'jpeg'] as const) {
     await expect(page.getByLabel('Size preset')).toHaveAttribute('data-value', 'custom');
     await expect(page.getByLabel('Width')).toHaveValue('320');
     await expect(page.getByLabel('Height')).toHaveValue('200');
-    await expect.poll(async () => (await settled()).equals(before)).toBe(true);
-    expect(await readHexes(page)).toEqual(hexes);
+    expectSameColors(await readHexes(page), hexes);
+    await expectPreviewChanged(shuffled);
 
     // One undo step back to the shuffle before the drop.
     await page.getByRole('button', { name: 'Undo' }).click();
