@@ -1,12 +1,13 @@
 #if BASE_GRID
 // Grid mesh (D43): pull the pixel back onto the rest grid by Newton steps on
 // F(q) = q + D(q), then blend the node colors there. Same math as
-// src/engine/grid.ts (Catmull-Rom in both directions, clamped indices).
+// src/engine/grid.ts (Catmull-Rom in both directions, clamped indices). Nodes are in the
+// padded layout of padNodes, so the clamps are already in the data.
 
-uniform ivec2 u_gridSize;                     // cols, rows
-uniform vec2 u_gridRest;                      // rest half width, half height
-uniform vec2 u_gridOffset[MAX_GRID_NODES];    // node offset from its rest spot
-uniform vec3 u_gridColor[MAX_GRID_NODES];     // Oklab, gamut-mapped on the CPU
+uniform ivec2 u_gridSize;                       // cols, rows
+uniform vec2 u_gridRest;                        // rest half width, half height
+uniform vec2 u_gridOffset[PADDED_GRID_NODES];   // node offset from its rest spot
+uniform vec3 u_gridColor[PADDED_GRID_NODES];    // Oklab, gamut-mapped on the CPU
 uniform float u_gridLines;                  // lines along the bent grid, [0, 1]; 0 = none (D62)
 
 void gridWeights(float f, out vec4 w, out vec4 d) {
@@ -26,8 +27,9 @@ void gridAxis(float q, float halfSize, int n, out int cell, out float f, out flo
   scale = raw == s ? k / (2.0 * halfSize) : 0.0;
 }
 
-int gridNode(int r, int c) {
-  return clamp(r, 0, u_gridSize.y - 1) * u_gridSize.x + clamp(c, 0, u_gridSize.x - 1);
+// Padded index of node (cell - 1) in each axis, the first of the cell's 4x4 neighbourhood.
+int gridCorner(int cx, int cy) {
+  return cy * GRID_STRIDE + cx;
 }
 
 // Offset D(q) in .xy; Jacobian columns in jx (d/dx) and jy (d/dy).
@@ -42,9 +44,10 @@ vec2 gridOffset(vec2 q, out vec2 jx, out vec2 jy) {
   vec2 o = vec2(0.0);
   jx = vec2(0.0);
   jy = vec2(0.0);
+  int base = gridCorner(cx, cy);
   for (int b = 0; b < 4; b++) {
     for (int a = 0; a < 4; a++) {
-      vec2 off = u_gridOffset[gridNode(cy - 1 + b, cx - 1 + a)];
+      vec2 off = u_gridOffset[base + b * GRID_STRIDE + a];
       o += wx[a] * wy[b] * off;
       jx += dx[a] * wy[b] * sx * off;
       jy += wx[a] * dy[b] * sy * off;
@@ -84,9 +87,10 @@ vec3 gridColor(vec2 p, vec2 pl) {
   gridWeights(fx, wx, dx);
   gridWeights(fy, wy, dy);
   vec3 lab = vec3(0.0);
+  int base = gridCorner(cx, cy);
   for (int b = 0; b < 4; b++) {
     for (int a = 0; a < 4; a++) {
-      lab += wx[a] * wy[b] * u_gridColor[gridNode(cy - 1 + b, cx - 1 + a)];
+      lab += wx[a] * wy[b] * u_gridColor[base + b * GRID_STRIDE + a];
     }
   }
   if (u_gridLines > 0.0) {

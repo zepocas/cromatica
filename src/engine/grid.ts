@@ -8,7 +8,12 @@ import { oklchToOklab } from '../color/oklab';
 import type { Oklab } from '../color/types';
 import { type GridMesh, MAX_GRID, MIN_GRID } from '../design/design';
 
-export const MAX_GRID_NODES = MAX_GRID * MAX_GRID;
+/**
+ * The shader reads nodes from a fixed (MAX_GRID + 2)² layout with a one-node border of edge copies, so a 4x4
+ * neighbourhood is one base index plus constant offsets: no clamps and no runtime row stride (#98).
+ */
+export const GRID_STRIDE = MAX_GRID + 2;
+export const PADDED_GRID_NODES = GRID_STRIDE * GRID_STRIDE;
 /** Grid lines: opacity reaches 1 at lines 0.5; width in composition units (frame height 1) from min to max. */
 export const GRID_LINE_OPACITY_AT = 0.5;
 export const GRID_LINE_WIDTH: [min: number, max: number] = [0.002, 0.008];
@@ -75,6 +80,18 @@ export function prepareGrid(g: GridMesh): PreparedGrid {
     colors.set(oklchToOklab(gamutMapSrgb(n.color)), i * 3);
   });
   return { rows, cols, hw: g.rest[0], hh: g.rest[1], offsets, colors, lines: Math.min(1, Math.max(0, g.lines ?? 0)) };
+}
+
+/** Per-node values (`size` floats each) in the shader's padded layout: padded (r, c) holds node (r - 1, c - 1), clamped. */
+export function padNodes(g: PreparedGrid, values: Float64Array, size: number): Float32Array {
+  const out = new Float32Array(PADDED_GRID_NODES * size);
+  for (let r = 0; r < GRID_STRIDE; r++) {
+    for (let c = 0; c < GRID_STRIDE; c++) {
+      const i = clampInt(r - 1, 0, g.rows - 1) * g.cols + clampInt(c - 1, 0, g.cols - 1);
+      out.set(values.subarray(i * size, (i + 1) * size), (r * GRID_STRIDE + c) * size);
+    }
+  }
+  return out;
 }
 
 /** Catmull-Rom weights and their derivatives at f in [0, 1], for nodes i-1..i+2. */
