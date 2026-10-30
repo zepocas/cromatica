@@ -26,7 +26,7 @@ interface Row {
 }
 
 /** One design per pattern kind, taken from shuffles, with no warp and no finish. */
-function barePatterns(): Design[] {
+export function barePatterns(): Design[] {
   const found = new Map<string, Design>();
   for (let seed = 1; seed < 400 && found.size < 10; seed++) {
     const { design } = shuffleDesign(defaultDesign, { colors: true, layout: true, style: true, seed });
@@ -56,26 +56,46 @@ function variants(): Design[] {
   ];
 }
 
-const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+export const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+export interface DrawTimer {
+  gl: WebGL2RenderingContext;
+  /** Draws the design at this size and waits for the GPU (a one-pixel read); wall time in ms. */
+  draw(design: Design, width: number, height: number): number;
+  dispose(): void;
+}
+
+/** A scratch canvas and renderer for timing draws, apart from the preview's own. */
+export function createDrawTimer(): DrawTimer | undefined {
+  const canvas = document.createElement('canvas');
+  const gl = canvas.getContext('webgl2', { ...CONTEXT_ATTRIBUTES, preserveDrawingBuffer: false });
+  if (!gl) return undefined;
+  const renderer = createRenderer(gl);
+  const pixel = new Uint8Array(4);
+  return {
+    gl,
+    draw(design, width, height) {
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      const t0 = performance.now();
+      renderer.render(design, { width, height }, { x: 0, y: 0, width, height }, { dither: true });
+      gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+      return performance.now() - t0;
+    },
+    dispose: () => renderer.dispose(),
+  };
+}
 
 /**
  * Compiles each variant on its own scratch canvas and times it: the first draw at 8x8 pixels is
  * nearly all compile and link; the draws at 1280x720 are the shader's running cost.
  */
 export async function runCompileBenchmark(onProgress: (text: string) => void): Promise<string> {
-  const canvas = document.createElement('canvas');
-  const gl = canvas.getContext('webgl2', { ...CONTEXT_ATTRIBUTES, preserveDrawingBuffer: false });
-  if (!gl) return 'WebGL2 is not available';
-  const renderer = createRenderer(gl);
-  const pixel = new Uint8Array(4);
-  const draw = (design: Design, width: number, height: number): number => {
-    canvas.width = width;
-    canvas.height = height;
-    const t0 = performance.now();
-    renderer.render(design, { width, height }, { x: 0, y: 0, width, height }, { dither: true });
-    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
-    return performance.now() - t0;
-  };
+  const timer = createDrawTimer();
+  if (!timer) return 'WebGL2 is not available';
+  const { gl, draw } = timer;
 
   const all = variants();
   const rows: Row[] = [];
@@ -87,7 +107,7 @@ export async function runCompileBenchmark(onProgress: (text: string) => void): P
     runs.sort((a, b) => a - b);
     rows.push({ label: describeDesign(design), compileMs, drawMs: runs[Math.floor(runs.length / 2)] });
   }
-  renderer.dispose();
+  timer.dispose();
 
   rows.sort((a, b) => b.compileMs - a.compileMs);
   const text = [

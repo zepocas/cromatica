@@ -112,5 +112,12 @@ export function createPerfLog(info: () => string): PerfLog {
       box.textContent = await runCompileBenchmark((text) => (box.textContent = text));
     }, 1500);
   }
+  // `?perf=lighting`: every kind with lighting off, satin and glass, and blobs by count (see perf-lighting.ts).
+  if (perfParam === 'lighting') {
+    setTimeout(async () => {
+      const { runLightingBenchmark } = await import('./perf-lighting');
+      box.textContent = await runLightingBenchmark((text) => (box.textContent = text));
+    }, 1500);
+  }
   return log;
 }
