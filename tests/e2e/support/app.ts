@@ -131,3 +131,14 @@ export function previewProbe(page: Page) {
   };
   return { canvas, settled, expectPreviewChanged };
 }
+
+/** A share payload (link or exported image) rounds to 3 decimals, which can move a channel by one 8-bit step: same colors means within 2 per channel. */
+export function expectSameColors(got: string[], want: string[]): void {
+  expect(got).toHaveLength(want.length);
+  got.forEach((hex, i) => {
+    for (const c of [1, 3, 5]) {
+      const diff = Math.abs(parseInt(hex.slice(c, c + 2), 16) - parseInt(want[i].slice(c, c + 2), 16));
+      expect(diff, `${hex} vs ${want[i]}`).toBeLessThanOrEqual(2);
+    }
+  });
+}

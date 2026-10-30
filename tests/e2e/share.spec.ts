@@ -1,23 +1,12 @@
 // Share links: copy a link to the design, open it, and leave it behind on the first edit.
 import type { Page } from '@playwright/test';
-import { expect, openApp, readHexes, test } from './support/app';
+import { expect, expectSameColors, openApp, readHexes, test } from './support/app';
 
 const AUTOSAVE_KEY = 'cromatica.design';
 const readSave = (page: Page) => page.evaluate((key) => localStorage.getItem(key), AUTOSAVE_KEY);
 const shuffle = (page: Page) => page.getByRole('button', { name: /^Shuffle( Space)?$/ }).click();
 
 test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
-
-/** A link rounds to 3 decimals, which can move a channel by one 8-bit step: same colors means within 2 per channel. */
-function expectSameColors(got: string[], want: string[]): void {
-  expect(got).toHaveLength(want.length);
-  got.forEach((hex, i) => {
-    for (const c of [1, 3, 5]) {
-      const diff = Math.abs(parseInt(hex.slice(c, c + 2), 16) - parseInt(want[i].slice(c, c + 2), 16));
-      expect(diff, `${hex} vs ${want[i]}`).toBeLessThanOrEqual(2);
-    }
-  });
-}
 
 async function copyLink(page: Page): Promise<string> {
   await page.getByRole('button', { name: 'Copy share link' }).click();

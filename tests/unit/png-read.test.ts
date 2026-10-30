@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { defaultDesign, defaultMesh, type Design } from '../../src/design/design';
 import { saveDesign } from '../../src/design/schema';
 import { shuffleDesign } from '../../src/design/shuffle';
+import { decodeShare, encodeShare, SHARE_PREFIX } from '../../src/design/share';
 import { DESIGN_KEYWORD, designText, readPngDesign } from '../../src/export/design-png';
 import { createPngEncoder } from '../../src/export/png';
 import { readPngInfo } from '../../src/export/png-read';
@@ -65,15 +66,30 @@ describe('design in the PNG', () => {
       design = shuffleDesign(design, { colors: true, layout: true, style: true, seed }).design;
       if (kinds.has(design.base.kind)) continue;
       kinds.add(design.base.kind);
-      const read = await readPngDesign(await encode(7, 4, designText(design)));
-      expect(read).toEqual({ design: saveDesign(design).design, size: { width: 7, height: 4 } });
+      const text = await designText(design);
+      expect(text[DESIGN_KEYWORD].startsWith(SHARE_PREFIX)).toBe(true);
+      const read = await readPngDesign(await encode(7, 4, text));
+      expect(read).toEqual({
+        design: await decodeShare(await encodeShare(design)),
+        size: { width: 7, height: 4 },
+      });
     }
     expect(kinds.size).toBe(9);
+  });
+
+  it('still reads a PNG exported before D110, with the save envelope as JSON', async () => {
+    const design = shuffleDesign(defaultDesign, { colors: true, layout: true, style: true, seed: 5 }).design;
+    const legacy = { [DESIGN_KEYWORD]: JSON.stringify(saveDesign(design)) };
+    expect(await readPngDesign(await encode(7, 4, legacy))).toEqual({
+      design: saveDesign(design).design,
+      size: { width: 7, height: 4 },
+    });
   });
 
   it('is null for a PNG without a design and throws for a broken one', async () => {
     expect(await readPngDesign(await encode(2, 2))).toBeNull();
     await expect(readPngDesign(await encode(2, 2, { [DESIGN_KEYWORD]: '{"version":99}' }))).rejects.toThrow();
     await expect(readPngDesign(await encode(2, 2, { [DESIGN_KEYWORD]: 'not json' }))).rejects.toThrow();
+    await expect(readPngDesign(await encode(2, 2, { [DESIGN_KEYWORD]: `${SHARE_PREFIX}!!` }))).rejects.toThrow();
   });
 });
