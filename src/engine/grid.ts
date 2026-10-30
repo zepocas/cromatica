@@ -8,7 +8,12 @@ import { oklchToOklab } from '../color/oklab';
 import type { Oklab } from '../color/types';
 import { type GridMesh, MAX_GRID, MIN_GRID } from '../design/design';
 
-export const MAX_GRID_NODES = MAX_GRID * MAX_GRID;
+/**
+ * The shader reads nodes from a fixed (MAX_GRID + 2)² layout with a one-node border of edge copies, so a 4x4
+ * neighbourhood is one base index plus constant offsets: no clamps and no runtime row stride (#98).
+ */
+export const GRID_STRIDE = MAX_GRID + 2;
+export const PADDED_GRID_NODES = GRID_STRIDE * GRID_STRIDE;
 /** Grid lines: opacity reaches 1 at lines 0.5; width in composition units (frame height 1) from min to max. */
 export const GRID_LINE_OPACITY_AT = 0.5;
 export const GRID_LINE_WIDTH: [min: number, max: number] = [0.002, 0.008];
@@ -19,7 +24,7 @@ export const GRID_LINE_PIVOT_SLOPE = 4;
 /** How much of the warp's displacement the lines follow (the colors follow all of it): 1 = same as the colors, 0 = lines ignore the warp. */
 export const GRID_LINE_WARP = 0.5;
 /** Newton steps of the pull-back, the Jacobian determinant below which a plain step is taken, and the step cap. */
-export const GRID_STEPS = 8;
+export const GRID_STEPS = 6;
 export const GRID_MIN_DET = 1e-3;
 export const GRID_MAX_STEP = 0.25;
 
@@ -77,6 +82,18 @@ export function prepareGrid(g: GridMesh): PreparedGrid {
   return { rows, cols, hw: g.rest[0], hh: g.rest[1], offsets, colors, lines: Math.min(1, Math.max(0, g.lines ?? 0)) };
 }
 
+/** Per-node values (`size` floats each) in the shader's padded layout: padded (r, c) holds node (r - 1, c - 1), clamped. */
+export function padNodes(g: PreparedGrid, values: Float64Array, size: number): Float32Array {
+  const out = new Float32Array(PADDED_GRID_NODES * size);
+  for (let r = 0; r < GRID_STRIDE; r++) {
+    for (let c = 0; c < GRID_STRIDE; c++) {
+      const i = clampInt(r - 1, 0, g.rows - 1) * g.cols + clampInt(c - 1, 0, g.cols - 1);
+      out.set(values.subarray(i * size, (i + 1) * size), (r * GRID_STRIDE + c) * size);
+    }
+  }
+  return out;
+}
+
 /** Catmull-Rom weights and their derivatives at f in [0, 1], for nodes i-1..i+2. */
 function weights(f: number, w: number[], d: number[]): void {
   const f2 = f * f;
@@ -112,31 +129,48 @@ function offsetAt(g: PreparedGrid, qx: number, qy: number, out: number[]): void 
   weights(fx, wx, dx);
   weights(fy, wy, dy);
   out.fill(0);
+  // Row by row, as the shader does: each row summed along x, then weighted along y.
   for (let b = 0; b < 4; b++) {
     const r = clampInt(cy - 1 + b, 0, g.rows - 1);
+    let rwx = 0;
+    let rwy = 0;
+    let rdx = 0;
+    let rdy = 0;
     for (let a = 0; a < 4; a++) {
       const i = (r * g.cols + clampInt(cx - 1 + a, 0, g.cols - 1)) * 2;
-      const ox = g.offsets[i];
-      const oy = g.offsets[i + 1];
-      const w = wx[a] * wy[b];
-      const wdx = dx[a] * wy[b] * sx;
-      const wdy = wx[a] * dy[b] * sy;
-      out[0] += w * ox;
-      out[1] += w * oy;
-      out[2] += wdx * ox;
-      out[3] += wdy * ox;
-      out[4] += wdx * oy;
-      out[5] += wdy * oy;
+      rwx += wx[a] * g.offsets[i];
+      rwy += wx[a] * g.offsets[i + 1];
+      rdx += dx[a] * g.offsets[i];
+      rdy += dx[a] * g.offsets[i + 1];
     }
+    out[0] += wy[b] * rwx;
+    out[1] += wy[b] * rwy;
+    out[2] += wy[b] * rdx;
+    out[3] += dy[b] * rwx;
+    out[4] += wy[b] * rdy;
+    out[5] += dy[b] * rwy;
   }
+  out[2] *= sx;
+  out[3] *= sy;
+  out[4] *= sx;
+  out[5] *= sy;
 }
 
-/** Rest-grid point q with F(q) = (x, y), by Newton steps. */
-export function pullBack(g: PreparedGrid, x: number, y: number): [number, number] {
+/**
+ * Rest-grid point q with F(q) = (x, y), by Newton steps. `jacobian`, if given, receives the offset's Jacobian
+ * [dDx/dx, dDx/dy, dDy/dx, dDy/dy] from the last step, which the lines use as the one at q (as the shader does).
+ */
+export function pullBack(
+  g: PreparedGrid,
+  x: number,
+  y: number,
+  steps = GRID_STEPS,
+  jacobian?: number[],
+): [number, number] {
   const o = [0, 0, 0, 0, 0, 0];
   let qx = x;
   let qy = y;
-  for (let k = 0; k < GRID_STEPS; k++) {
+  for (let k = 0; k < steps; k++) {
     offsetAt(g, qx, qy, o);
     const ex = qx + o[0] - x;
     const ey = qy + o[1] - y;
@@ -159,6 +193,7 @@ export function pullBack(g: PreparedGrid, x: number, y: number): [number, number
     qx -= sx;
     qy -= sy;
   }
+  if (jacobian) for (let i = 0; i < 4; i++) jacobian[i] = o[i + 2];
   return [qx, qy];
 }
 
@@ -169,13 +204,15 @@ export function colorAtRest(g: PreparedGrid, qx: number, qy: number): Oklab {
   weights(fx, wx, dx);
   weights(fy, wy, dy);
   const lab: Oklab = [0, 0, 0];
+  const row = [0, 0, 0];
   for (let b = 0; b < 4; b++) {
     const r = clampInt(cy - 1 + b, 0, g.rows - 1);
+    row.fill(0);
     for (let a = 0; a < 4; a++) {
       const i = (r * g.cols + clampInt(cx - 1 + a, 0, g.cols - 1)) * 3;
-      const w = wx[a] * wy[b];
-      for (let k = 0; k < 3; k++) lab[k] += w * g.colors[i + k];
+      for (let k = 0; k < 3; k++) row[k] += wx[a] * g.colors[i + k];
     }
+    for (let k = 0; k < 3; k++) lab[k] += wy[b] * row[k];
   }
   return lab;
 }
@@ -183,16 +220,21 @@ export function colorAtRest(g: PreparedGrid, qx: number, qy: number): Oklab {
 /**
  * Coverage [0, 1] of the grid lines at rest-grid point q. The distance to the nearest line is in
  * pattern units: its distance in grid parameters divided by the parameter's pixel gradient (from
- * the inverse Jacobian). `pixel` is one output pixel in the same units, for antialiasing.
+ * the inverse Jacobian). `pixel` is one output pixel in the same units, for antialiasing. `jacobian` is the
+ * offset's Jacobian as `pullBack` gives it; without it, it is evaluated at q.
  */
-export function lineCoverage(g: PreparedGrid, qx: number, qy: number, pixel: number): number {
+export function lineCoverage(g: PreparedGrid, qx: number, qy: number, pixel: number, jacobian?: number[]): number {
   if (g.lines <= 0) return 0;
-  const o = [0, 0, 0, 0, 0, 0];
-  offsetAt(g, qx, qy, o);
-  const a = 1 + o[2];
-  const b = o[3];
-  const c = o[4];
-  const d = 1 + o[5];
+  let j = jacobian;
+  if (!j) {
+    const o = [0, 0, 0, 0, 0, 0];
+    offsetAt(g, qx, qy, o);
+    j = o.slice(2);
+  }
+  const a = 1 + j[0];
+  const b = j[1];
+  const c = j[2];
+  const d = 1 + j[3];
   const det = a * d - b * c;
   if (Math.abs(det) < GRID_MIN_DET) return 0;
   const kx = g.cols - 1;
@@ -221,11 +263,13 @@ export function evaluateGrid(
   pixel = 0,
   lineAt: [number, number] = [x, y],
 ): Oklab {
-  const [qx, qy] = pullBack(g, x, y);
+  const jacobian = [0, 0, 0, 0];
+  const [qx, qy] = pullBack(g, x, y, GRID_STEPS, jacobian);
   const lab = colorAtRest(g, qx, qy);
   if (g.lines > 0 && pixel > 0) {
-    const [lx, ly] = lineAt[0] === x && lineAt[1] === y ? [qx, qy] : pullBack(g, lineAt[0], lineAt[1]);
-    const line = lineCoverage(g, lx, ly, pixel);
+    const [lx, ly] =
+      lineAt[0] === x && lineAt[1] === y ? [qx, qy] : pullBack(g, lineAt[0], lineAt[1], GRID_STEPS, jacobian);
+    const line = lineCoverage(g, lx, ly, pixel, jacobian);
     const dir = Math.min(1, Math.max(-1, (GRID_LINE_PIVOT - lab[0]) * GRID_LINE_PIVOT_SLOPE));
     const opacity = Math.min(1, g.lines / GRID_LINE_OPACITY_AT);
     lab[0] += GRID_LINE_PUSH * opacity * line * dir;

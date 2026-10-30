@@ -41,7 +41,9 @@ import {
   GRID_MAX_STEP,
   GRID_MIN_DET,
   GRID_STEPS,
-  MAX_GRID_NODES,
+  GRID_STRIDE,
+  padNodes,
+  PADDED_GRID_NODES,
   prepareGrid,
 } from './grid';
 import { GAMUT_CLIP_STEPS, prepareMesh } from '../color/mesh';
@@ -174,15 +176,11 @@ function blobsUniforms(blobs: BlobsPattern, output: OutputSize): { uniforms: obj
 
 function gridUniforms(grid: GridMesh) {
   const g = prepareGrid(grid);
-  const offsets = new Float32Array(MAX_GRID_NODES * 2);
-  const colors = new Float32Array(MAX_GRID_NODES * 3);
-  offsets.set(g.offsets);
-  colors.set(g.colors);
   return {
     u_gridSize: [g.cols, g.rows],
     u_gridRest: [g.hw, g.hh],
-    u_gridOffset: offsets,
-    u_gridColor: colors,
+    u_gridOffset: padNodes(g, g.offsets, 2),
+    u_gridColor: padNodes(g, g.colors, 3),
     u_gridLines: g.lines,
   };
 }
@@ -202,7 +200,8 @@ function baseDefines(base: Design['base']): Defines {
   if (kind === 'grid') {
     return {
       ...defines,
-      MAX_GRID_NODES,
+      GRID_STRIDE,
+      PADDED_GRID_NODES,
       GAMUT_CLIP_STEPS,
       ...GRID_LINE_SHADER_CONSTANTS,
       GRID_STEPS,

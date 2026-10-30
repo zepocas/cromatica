@@ -119,5 +119,9 @@ export function createPerfLog(info: () => string): PerfLog {
       box.textContent = await runLightingBenchmark((text) => (box.textContent = text));
     }, 1500);
   }
+  // `?perf=grid`: the grid's variants and their translated shaders (see perf-grid.ts).
+  if (perfParam === 'grid') {
+    setTimeout(async () => (await import('./perf-grid')).runGridBenchmark(box), 1500);
+  }
   return log;
 }
