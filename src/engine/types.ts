@@ -32,6 +32,11 @@ export interface RenderOptions {
    * against exact references. Default true. Indexed by OUTPUT pixel, so it is tile-independent.
    */
   dither?: boolean;
+  /**
+   * Lighting reads the pattern 5 times (central differences) instead of 3 (D108): exports turn it on, the
+   * preview keeps the faster reads. Default false.
+   */
+  preciseLighting?: boolean;
 }
 
 export interface Renderer {

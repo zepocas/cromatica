@@ -17,22 +17,3 @@ vec3 patternColor(vec2 comp) {
   return rampColor(bandLevel(rampT(uv)));
 #endif
 }
-
-// What the lighting reads as the surface height (its lightness): the pattern itself, except where that
-// is stippled and a smooth height stands in for it.
-vec3 heightColor(vec2 comp) {
-#if BASE_BLOBS
-  return blobsHeight(warpCoord(transformCoord(comp)));
-#else
-  return patternColor(comp);
-#endif
-}
-
-// How far the pattern keeps one surface before an edge, composition units: glass refracts no further than that.
-float refractRoom(vec2 comp) {
-#if BASE_BLOBS
-  return blobsRoom(warpCoord(transformCoord(comp)));
-#else
-  return 1e9;
-#endif
-}

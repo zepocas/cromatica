@@ -75,6 +75,37 @@ test.describe('relief vs CPU reference (dither off)', () => {
       // Hard plane edges: fp32 neighbour reads can land on the other side of an edge in a few pixels.
       expect(r.over).toBeLessThan(0.002 * 640 * 360);
     });
+
+    test(`${style}, precise (exports): smooth mesh and planes`, async ({ page }) => {
+      const mesh = await engineHarness(page, 'compareReference', withRelief(mesh16, 1, style, 60), 640, 360, true);
+      expect(mesh.maxDiff, JSON.stringify(mesh.worst)).toBeLessThanOrEqual(2);
+      const planes = await engineHarness(
+        page,
+        'compareReference',
+        withRelief(planesDesign(0.4, 0), 0.8, style),
+        640,
+        360,
+        true,
+      );
+      expect(planes.over).toBeLessThan(0.002 * 640 * 360);
+    });
+  }
+});
+
+test.describe('precise lighting (exports, D108)', () => {
+  for (const style of STYLES) {
+    test(`${style}: differs from the preview's lighting, slightly`, async ({ page }) => {
+      const r = await engineHarness(page, 'comparePrecise', withRelief(mesh16, 1, style, 60), 320, 180);
+      expect(r.identical).toBe(false);
+      expect(r.maxDiff).toBeLessThan(40);
+    });
+
+    test(`${style}: worker tiles equal main-thread single pass`, async ({ page }) => {
+      const d = withRelief(planesDesign(0.5, 0.7), 0.7, style, 40);
+      const r = await engineHarness(page, 'compareWorker', d, 1001, 777, 300, true, true);
+      expect(r.first).toBeNull();
+      expect(r.identical).toBe(true);
+    });
   }
 });
 

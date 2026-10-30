@@ -83,7 +83,7 @@ function renderReference(design: Design, size: OutputSize): Uint8Array {
   if (!gl) throw new Error('WebGL2 unavailable');
   const renderer = createRenderer(gl);
   try {
-    renderer.render(design, size, { x: 0, y: 0, ...size }, { dither: true });
+    renderer.render(design, size, { x: 0, y: 0, ...size }, { dither: true, preciseLighting: true });
     return renderer.readPixels(size.width, size.height);
   } finally {
     renderer.dispose();
