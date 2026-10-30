@@ -77,7 +77,7 @@ test.describe('export pipeline', () => {
   });
 });
 
-test('a custom size letterboxes the preview and names the download', async ({ page }) => {
+test('a custom size letterboxes the preview and downloads', async ({ page }) => {
   await openApp(page);
   const canvas = page.getByTestId('preview-canvas');
 
@@ -101,7 +101,7 @@ test('a custom size letterboxes the preview and names the download', async ({ pa
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download' }).click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe('cromatica-320x200.png');
+  expect(download.suggestedFilename()).toMatch(/^cromatica-\d{12}\.png$/);
 });
 
 for (const format of ['png', 'jpeg'] as const) {

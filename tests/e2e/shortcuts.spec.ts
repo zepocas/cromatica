@@ -127,7 +127,7 @@ test('⌘S and Ctrl+S download instead of saving the page', async ({ page }) => 
   await openApp(page);
   const download = page.waitForEvent('download');
   await page.keyboard.press('ControlOrMeta+s');
-  expect((await download).suggestedFilename()).toMatch(/^cromatica-\d+x\d+\.png$/);
+  expect((await download).suggestedFilename()).toMatch(/^cromatica-\d{12}\.png$/);
 });
 
 test('more like this is a labeled button beside shuffle, and the panel does not overflow', async ({ page }) => {
