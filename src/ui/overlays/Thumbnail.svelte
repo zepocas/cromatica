@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Design } from '../../design/design';
   import { thumbnails } from '../../preview/thumbnails';
+  import { currentScale } from '../state/ui-scale';
 
   interface Props {
     design: Design;
@@ -12,7 +13,7 @@
   let { design, aspect, width }: Props = $props();
 
   let canvas: HTMLCanvasElement;
-  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const dpr = Math.min((devicePixelRatio || 1) * currentScale(), 2);
   const pixels = $derived({
     width: Math.max(1, Math.round(width * dpr)),
     height: Math.max(1, Math.round((width / aspect) * dpr)),

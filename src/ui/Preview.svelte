@@ -5,6 +5,7 @@
   import { createAutoPreview } from '../preview/preview-worker';
   import { isTypingTarget } from './state/keys';
   import { glowKey } from './controls/glow';
+  import { currentScale } from './state/ui-scale';
   import type { CanvasView } from './state/view.svelte';
 
   interface Props {
@@ -89,7 +90,8 @@
   /** A pointer position from the frame's centre, which is the viewport's centre. */
   function fromCentre(e: { clientX: number; clientY: number }): [number, number] {
     const r = container.getBoundingClientRect();
-    return [e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2)];
+    const k = currentScale();
+    return [(e.clientX - (r.left + r.width / 2)) / k, (e.clientY - (r.top + r.height / 2)) / k];
   }
 
   // Safari sends a pinch as gesture events, not ctrl + wheel.
@@ -110,7 +112,8 @@
         const delta = Math.max(-MAX_WHEEL_DELTA, Math.min(MAX_WHEEL_DELTA, e.deltaY));
         view.zoomAt(Math.exp(-delta / PINCH_SENSITIVITY), cx, cy, frame.offsetWidth, frame.offsetHeight);
       } else {
-        view.panBy(-e.deltaX, -e.deltaY, frame.offsetWidth, frame.offsetHeight);
+        const k = currentScale();
+        view.panBy(-e.deltaX / k, -e.deltaY / k, frame.offsetWidth, frame.offsetHeight);
       }
     };
     const onGestureStart = (e: Event) => {
@@ -147,7 +150,8 @@
 
   function onPointerMove(e: PointerEvent) {
     if (!pan || e.pointerId !== pan.pointerId) return;
-    view.panBy(e.clientX - pan.x, e.clientY - pan.y, frame.offsetWidth, frame.offsetHeight);
+    const k = currentScale();
+    view.panBy((e.clientX - pan.x) / k, (e.clientY - pan.y) / k, frame.offsetWidth, frame.offsetHeight);
     pan.x = e.clientX;
     pan.y = e.clientY;
   }

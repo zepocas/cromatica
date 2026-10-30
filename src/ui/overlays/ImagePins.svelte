@@ -3,6 +3,7 @@
   import { MAX_GRID, MIN_GRID } from '../../design/design';
   import type { EditorState } from '../state/editor.svelte';
   import { isFormControl } from '../state/keys';
+  import { currentScale } from '../state/ui-scale';
 
   interface Props {
     editor: EditorState;
@@ -78,7 +79,8 @@
 
   function onTitlePointerMove(e: PointerEvent) {
     if (move && e.pointerId === move.pointerId) {
-      moved = { x: move.x0 + e.clientX - move.x, y: move.y0 + e.clientY - move.y };
+      const k = currentScale();
+      moved = { x: move.x0 + (e.clientX - move.x) / k, y: move.y0 + (e.clientY - move.y) / k };
     }
   }
 
@@ -136,7 +138,7 @@
       role="group"
       aria-label="Pins on the image"
       style:aspect-ratio={source.aspect}
-      style:--max-width="min(360px, calc(50vh * {source.aspect}))"
+      style:--max-width="min(360px, calc(50vh / var(--ui-scale) * {source.aspect}))"
       onpointerdown={onPicturePointerDown}
       oncontextmenu={onPictureContextMenu}
       onpointermove={onPicturePointerMove}

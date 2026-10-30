@@ -10,6 +10,7 @@
   import type { CanvasView } from './state/view.svelte';
   import MonitorsPanel from './overlays/MonitorsPanel.svelte';
   import type { MonitorsState } from './state/monitors.svelte';
+  import { chooseScale, UI_SCALES, type UiScaleChoice } from './state/ui-scale';
 
   interface Props {
     editor: EditorState;
@@ -54,6 +55,14 @@
   }: Props = $props();
 
   const percent = $derived(progress && progress.tilesTotal > 0 ? (progress.tilesDone / progress.tilesTotal) * 100 : 0);
+
+  const SCALE_OPTIONS = [{ value: 'auto' }, ...UI_SCALES.map((s) => ({ value: String(s), label: `${s * 100}%` }))];
+
+  function setScale(value: string) {
+    const choice: UiScaleChoice = UI_SCALES.find((s) => String(s) === value) ?? null;
+    ui.scale = choice;
+    chooseScale(choice);
+  }
 
   const OFF = 'off';
   const ZOOM_STEP = 1.25;
@@ -190,6 +199,18 @@
         />
       </span>
     {/if}
+    <span class="sep" role="separator" aria-orientation="vertical"></span>
+    <span class="group">
+      <span>ui size</span>
+      <Dropdown
+        ariaLabel="UI size"
+        value={ui.scale === null ? 'auto' : String(ui.scale)}
+        options={SCALE_OPTIONS}
+        onchange={setScale}
+        title="Size of the panel and bars; auto follows the window width"
+      />
+    </span>
+    <span class="sep" role="separator" aria-orientation="vertical"></span>
     <span class="zoom">
       <button
         class="icon"
