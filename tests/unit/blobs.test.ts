@@ -4,6 +4,8 @@ import type { BlobsPattern } from '../../src/design/design';
 import {
   BACKGROUND_IS_LIGHTEST,
   backgroundIndex,
+  BLOB_BINS,
+  blobBins,
   blobCount,
   blobDistance,
   blobReach,
@@ -273,6 +275,55 @@ describe('blob reach', () => {
     const [cx, cy] = p.shape0.subarray(0, 2);
     const farthest = Math.max(...blobOutline(p, 0).map(([x, y]) => Math.hypot(x - cx, y - cy)));
     expect(farthest).toBeGreaterThan(blobReach(p, 0) * 0.5);
+  });
+});
+
+describe('blob bins', () => {
+  // The cell the shader looks p up in, in float32 as it does.
+  const maskAt = (bins: ReturnType<typeof blobBins>, x: number, y: number) => {
+    const f = Math.fround;
+    const [left, bottom, sx, sy] = bins.box.map(f);
+    const gx = f(f(f(x) - left) * sx);
+    const gy = f(f(f(y) - bottom) * sy);
+    if (gx < 0 || gy < 0 || gx >= BLOB_BINS || gy >= BLOB_BINS) return 0;
+    return bins.masks[Math.floor(gy) * BLOB_BINS + Math.floor(gx)];
+  };
+
+  it('every blob that reaches a point is in its cell, moved and resized ones too', () => {
+    const edits = { order: [2, 0], shifts: [[0.4, -0.3] as [number, number]], scales: [2.5, 0.25] };
+    const missed: string[] = [];
+    for (const [seed, count] of [
+      [1, 0],
+      [2, 0.5],
+      [3, 1],
+      [4, 1],
+    ]) {
+      for (const p of [
+        prepareBlobs(blobs({ seed, count, size: 1, wobble: 1 }), output),
+        prepareBlobs(blobs({ seed, count, edits }), output),
+      ]) {
+        const bins = blobBins(p);
+        for (let j = 0; j <= 300; j++) {
+          for (let k = 0; k <= 300; k++) {
+            const x = (k / 300) * 4 - 2;
+            const y = (j / 300) * 3 - 1.5;
+            const mask = maskAt(bins, x, y);
+            for (let i = 0; i < p.count; i++) {
+              const inReach = Math.hypot(x - p.shape0[i * 4], y - p.shape0[i * 4 + 1]) <= blobReach(p, i);
+              if (inReach && !(mask & (1 << i))) missed.push(`seed ${seed} blob ${i} at ${x}, ${y}`);
+            }
+          }
+        }
+      }
+    }
+    expect(missed).toEqual([]);
+  });
+
+  it('leaves out blobs far from a cell', () => {
+    const p = prepareBlobs(blobs({ count: 1, size: 0 }), output);
+    const bins = blobBins(p);
+    const busiest = Math.max(...Array.from(bins.masks, (m) => m.toString(2).replace(/0/g, '').length));
+    expect(busiest).toBeLessThan(p.count);
   });
 });
 

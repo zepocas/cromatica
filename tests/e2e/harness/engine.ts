@@ -87,8 +87,8 @@ function renderCrop(design: Design, output: OutputSize, width: number, height: n
     gl.getExtension('WEBGL_lose_context')?.loseContext();
   }
 }
-const render = (design: Design, output: OutputSize, dither: boolean) =>
-  renderImage(newCanvas(), design, output, 0, { dither }).image;
+const render = (design: Design, output: OutputSize, dither: boolean, preciseLighting = false) =>
+  renderImage(newCanvas(), design, output, 0, { dither, preciseLighting }).image;
 
 function diffImages(a: Uint8Array, b: Uint8Array, width: number) {
   let mismatches = 0;
@@ -124,10 +124,10 @@ const f16round = (Math as unknown as { f16round?: (x: number) => number }).f16ro
  * linear filtering), relief, vignette, halftone, then the sRGB transfer. Returns ENCODED
  * values scaled to 0..255, unrounded. Grain and print are not modeled.
  */
-function createReference(design: Design, output: OutputSize, halfFloat = false) {
+function createReference(design: Design, output: OutputSize, halfFloat = false, preciseLighting = false) {
   const { width: w, height: h } = output;
   const finish = prepareFinish(design.finish, output);
-  const relief = prepareRelief(design.finish);
+  const relief = prepareRelief(design.finish, preciseLighting);
   const halftone = halftoneContrast(design.finish);
   const pattern = createPatternReference(design, output, halfFloat);
   const height = createHeightReference(design, output);
@@ -346,22 +346,46 @@ const harness = {
   },
 
   /** Single pass vs tiled render of the same output, compared byte-for-byte. */
-  compareTiled(design: Design, width: number, height: number, tileSize: number, dither: boolean) {
+  compareTiled(
+    design: Design,
+    width: number,
+    height: number,
+    tileSize: number,
+    dither: boolean,
+    preciseLighting = false,
+  ) {
     const output = { width, height };
     let t0 = performance.now();
-    const single = renderImage(newCanvas(), design, output, 0, { dither });
+    const single = renderImage(newCanvas(), design, output, 0, { dither, preciseLighting });
     const singleMs = performance.now() - t0;
     t0 = performance.now();
-    const tiled = renderImage(newCanvas(), design, output, tileSize, { dither });
+    const tiled = renderImage(newCanvas(), design, output, tileSize, { dither, preciseLighting });
     const tiledMs = performance.now() - t0;
     return { ...diffImages(single.image, tiled.image, width), tiles: tiled.tiles, singleMs, tiledMs };
   },
 
-  /** Main-thread single pass vs tiled render in a Worker on an OffscreenCanvas. */
-  async compareWorker(design: Design, width: number, height: number, tileSize: number, dither: boolean) {
+  /** The preview's lighting vs the precise one exports use (D108), dither off: whether and by how much they differ. */
+  comparePrecise(design: Design, width: number, height: number) {
     const output = { width, height };
-    const single = renderImage(newCanvas(), design, output, 0, { dither });
-    const worker = await renderInWorker(design, output, tileSize, { dither });
+    const fast = render(design, output, false);
+    const precise = render(design, output, false, true);
+    let maxDiff = 0;
+    for (let i = 0; i < fast.length; i++) maxDiff = Math.max(maxDiff, Math.abs(fast[i] - precise[i]));
+    return { ...diffImages(fast, precise, width), maxDiff };
+  },
+
+  /** Main-thread single pass vs tiled render in a Worker on an OffscreenCanvas. */
+  async compareWorker(
+    design: Design,
+    width: number,
+    height: number,
+    tileSize: number,
+    dither: boolean,
+    preciseLighting = false,
+  ) {
+    const output = { width, height };
+    const single = renderImage(newCanvas(), design, output, 0, { dither, preciseLighting });
+    const worker = await renderInWorker(design, output, tileSize, { dither, preciseLighting });
     return { ...diffImages(single.image, worker.image, width), tiles: worker.tiles };
   },
 
@@ -369,12 +393,12 @@ const harness = {
    * Dither-off render vs the CPU reference. `maxDiff` uses the float32 ramp;
    * `maxDiffHalf` models the RGBA16F rounding of the upload (if supported).
    */
-  compareReference(design: Design, width: number, height: number) {
+  compareReference(design: Design, width: number, height: number, preciseLighting = false) {
     const output = { width, height };
-    const image = render(design, output, false);
-    const full = compareToReference(image, createReference(design, output), width, height);
+    const image = render(design, output, false, preciseLighting);
+    const full = compareToReference(image, createReference(design, output, false, preciseLighting), width, height);
     const half = f16round
-      ? compareToReference(image, createReference(design, output, true), width, height).maxDiff
+      ? compareToReference(image, createReference(design, output, true, preciseLighting), width, height).maxDiff
       : null;
     return { ...full, maxDiffHalf: half };
   },

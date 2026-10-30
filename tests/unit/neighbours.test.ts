@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { srgbDecode } from '../../src/color/oklab';
 import type { Rgb } from '../../src/color/types';
-import { heightOf, heightSlope } from '../../src/engine/neighbours';
+import { heightOf, heightSlope, NEIGHBOUR_STEP } from '../../src/engine/neighbours';
 
 const gray = (l: number): Rgb => [l, l, l];
 
@@ -28,7 +28,18 @@ describe('heightSlope', () => {
 
   it('rises toward the lighter side of an edge', () => {
     const edge = (u: number): Rgb => (u < 0 ? gray(0.05) : gray(0.8));
-    expect(heightSlope(edge, 0, 0)[0]).toBeGreaterThan(0);
+    // The slope is taken half a step up from the centre, so the edge shows just before it.
+    expect(heightSlope(edge, -NEIGHBOUR_STEP / 2, 0)[0]).toBeGreaterThan(0);
     expect(heightSlope(edge, 0.5, 0)).toEqual([0, 0]);
+  });
+
+  it('precise: recovers the same linear slope, and sees an edge centred on the pixel', () => {
+    const field = (u: number, v: number) => gray((0.5 + 0.2 * u - 0.1 * v) ** 3);
+    const [dx, dy] = heightSlope(field, 0.1, 0.2, true);
+    expect(dx).toBeCloseTo(0.2, 6);
+    expect(dy).toBeCloseTo(-0.1, 6);
+    const edge = (u: number): Rgb => (u < 0 ? gray(0.05) : gray(0.8));
+    expect(heightSlope(edge, 0, 0, true)[0]).toBeGreaterThan(0);
+    expect(heightSlope(edge, -NEIGHBOUR_STEP / 2, 0, true)[0]).toBeGreaterThan(0);
   });
 });

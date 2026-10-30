@@ -62,6 +62,8 @@ const PAPER_SRGB: Rgb = [0.96, 0.95, 0.91];
 const TAP_X: [number, number] = [37, 11];
 const TAP_Y: [number, number] = [5, 53];
 const TAP_R: [number, number] = [23, 29];
+/** Cells per side of the grid of blob bins (blobBins). */
+export const BLOB_BINS = 32;
 
 const BASE: Rgb = [srgbDecode(BASE_SRGB[0]), srgbDecode(BASE_SRGB[1]), srgbDecode(BASE_SRGB[2])];
 const PAPER: Rgb = [srgbDecode(PAPER_SRGB[0]), srgbDecode(PAPER_SRGB[1]), srgbDecode(PAPER_SRGB[2])];
@@ -69,6 +71,7 @@ const PAPER: Rgb = [srgbDecode(PAPER_SRGB[0]), srgbDecode(PAPER_SRGB[1]), srgbDe
 export const BLOBS_SHADER_CONSTANTS = {
   MAX_BLOBS,
   MAX_INKS: MAX_STOPS,
+  BLOB_BINS,
   BLOB_RIM: glslFloat(RIM),
   BLOB_FADE: glslFloat(FADE),
   BLOB_LIGHT_SHIFT: glslFloat(LIGHT_SHIFT),
@@ -329,6 +332,45 @@ export function blobReach(p: PreparedBlobs, i: number): number {
   const [, , radius] = p.shape0.subarray(i * 4, i * 4 + 4);
   const [stretch, a2, a3, a4] = p.shape1.subarray(i * 4, i * 4 + 4);
   return (radius * (1 + a2 + a3 + a4) + p.soft) * Math.sqrt(stretch);
+}
+
+export interface BlobBins {
+  /** Per cell, row by row from the bottom: bit i is set when blob i (drawing order) can reach into it. */
+  masks: Uint16Array;
+  /** Pattern coords of the grid's lower-left corner, then cells per unit along x and y. */
+  box: [x: number, y: number, sx: number, sy: number];
+}
+
+/**
+ * Which blobs can reach each cell of a grid over all their reaches, so the shader loops only over those
+ * (a loop over every blob, culled one by one, cost most of a lit frame). Each reach is widened by a cell,
+ * so a point that float32 rounding puts in the next cell still finds every blob that reaches it, and a
+ * point off the grid reaches none. Drawing is unchanged: the CPU reference loops over every blob.
+ */
+export function blobBins(p: PreparedBlobs): BlobBins {
+  const masks = new Uint16Array(BLOB_BINS * BLOB_BINS);
+  if (p.count === 0) return { masks, box: [0, 0, 0, 0] };
+  const reach = Array.from({ length: p.count }, (_, i) => blobReach(p, i));
+  const xs = reach.flatMap((r, i) => [p.shape0[i * 4] - r, p.shape0[i * 4] + r]);
+  const ys = reach.flatMap((r, i) => [p.shape0[i * 4 + 1] - r, p.shape0[i * 4 + 1] + r]);
+  // One cell of margin on each side, so the grid covers the widened reaches too.
+  const w = (Math.max(...xs) - Math.min(...xs)) / (BLOB_BINS - 2);
+  const h = (Math.max(...ys) - Math.min(...ys)) / (BLOB_BINS - 2);
+  const left = Math.min(...xs) - w;
+  const bottom = Math.min(...ys) - h;
+  for (let i = 0; i < p.count; i++) {
+    const [cx, cy] = [p.shape0[i * 4], p.shape0[i * 4 + 1]];
+    const r = reach[i] + Math.hypot(w, h);
+    for (let row = 0; row < BLOB_BINS; row++) {
+      for (let col = 0; col < BLOB_BINS; col++) {
+        // The cell's nearest point to the centre.
+        const nx = Math.min(Math.max(cx, left + col * w), left + (col + 1) * w);
+        const ny = Math.min(Math.max(cy, bottom + row * h), bottom + (row + 1) * h);
+        if (Math.hypot(cx - nx, cy - ny) <= r) masks[row * BLOB_BINS + col] |= 1 << i;
+      }
+    }
+  }
+  return { masks, box: [left, bottom, 1 / w, 1 / h] };
 }
 
 function reaches(p: PreparedBlobs, i: number, x: number, y: number): boolean {

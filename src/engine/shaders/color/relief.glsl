@@ -5,57 +5,84 @@
 uniform float u_reliefDepth; // height-to-tilt factor
 uniform vec3 u_reliefLight;  // unit vector toward the light
 uniform vec3 u_reliefHalf;   // half vector between light and viewer
-uniform int u_reliefTaps;    // RELIEF_TAPS
+uniform int u_reliefTaps;    // reliefTaps: the loop bound
+uniform bool u_reliefPrecise; // central differences (exports, D108)
 
 float extraHighlight(float nh, float flatNh, float exponent) {
   return max(0.0, pow(max(nh, 0.0), exponent) - pow(flatNh, exponent));
 }
 
-// Tap i of the relief: 0..3 read the height (the lightness of the pattern), 4 reads the colour that is lit.
-vec3 reliefTap(int i, vec2 p) {
+// The pattern at comp, with what the lighting reads there: the height (a lightness) and how far the pattern keeps one
+// surface before an edge, which caps the glass's refraction. The height is the pattern's own lightness, except where
+// the pattern is stippled and a smooth height stands in for it.
+vec3 reliefSurface(vec2 comp, bool withColor, out float height, out float room) {
 #if BASE_BLOBS
-  return i < 4 ? heightColor(p) : patternColor(p);
+  BlobSurface s = blobsSurface(warpCoord(transformCoord(comp)), comp, withColor);
+  height = oklabLightness(vec3(s.height * s.height * s.height));
+  room = s.room;
+  return s.color;
 #else
-  return patternColor(p);
+  vec3 c = patternColor(comp);
+  height = oklabLightness(c);
+  room = 1e9;
+  return c;
 #endif
 }
 
 // The taps share one call site in a loop whose bound is a uniform, so the driver compiles the pattern once
 // instead of inlining a copy per tap (D3D compilers unroll constant loops, and a heavy pattern then takes seconds).
+// Tap 0 is the centre: its height, and the colour satin lights or the room glass refracts in; taps 1 and 2 the height
+// a step along +u and +v, and, precise, 3 and 4 along -u and -v; tap 5 (glass) the colour under the surface.
 vec3 relief(vec2 comp) {
-  float dx = 0.0;
-  float dy = 0.0;
+  float centre = 0.0;
+  vec2 ahead = vec2(0.0);
   vec3 n = vec3(0.0, 0.0, 1.0);
   vec3 lit = vec3(0.0);
+  float room = 0.0;
+  int last = u_reliefPrecise ? 4 : 2;
   for (int i = 0; i < u_reliefTaps; i++) {
-    vec2 p = comp;
-    if (i < 4) {
-      p += neighbourOffset(i);
-    }
+    if (i > last && i < 5) continue;
+#if RELIEF_GLASS && !BASE_BLOBS
+    // Precise glass reads neither the centre's height nor its colour.
+    if (i == 0 && u_reliefPrecise) continue;
+#endif
+    vec2 p = comp + neighbourOffset(i);
 #if RELIEF_GLASS
-    else {
+    if (i == 5) {
 #if BASE_BLOBS
       vec2 shift = n.xy * GLASS_REFRACT_BLOBS;
-      shift *= min(1.0, GLASS_ROOM * refractRoom(comp) / max(length(shift), 1e-6));
+      shift *= min(1.0, GLASS_ROOM * room / max(length(shift), 1e-6));
       p += shift;
 #else
       p += n.xy * GLASS_REFRACT;
 #endif
     }
+    bool withColor = i == 5;
+#else
+    bool withColor = i == 0;
 #endif
-    vec3 c = reliefTap(i, p);
-    if (i < 4) {
-      float l = oklabLightness(c);
-      float tap = (i == 0 || i == 2) ? l : -l;
-      if (i < 2) dx += tap; else dy += tap;
-      if (i == 3) {
-        vec2 tilt2 = -(vec2(dx, dy) / (2.0 * NEIGHBOUR_STEP)) * u_reliefDepth;
-        tilt2 *= inversesqrt(1.0 + dot(tilt2, tilt2) / (MAX_TILT * MAX_TILT));
-        n = normalize(vec3(tilt2, 1.0));
-      }
-    } else {
-      lit = c;
+    float height;
+    float r;
+    vec3 c = reliefSurface(p, withColor, height, r);
+    if (i == 0) {
+      centre = height;
+      room = r;
+    } else if (i == 1) {
+      ahead.x = height;
+    } else if (i == 2) {
+      ahead.y = height;
+    } else if (i == 3) {
+      ahead.x -= height;
+    } else if (i == 4) {
+      ahead.y -= height;
     }
+    if (i == last) {
+      vec2 slope = u_reliefPrecise ? ahead / (2.0 * NEIGHBOUR_STEP) : (ahead - centre) / NEIGHBOUR_STEP;
+      vec2 tilt2 = -slope * u_reliefDepth;
+      tilt2 *= inversesqrt(1.0 + dot(tilt2, tilt2) / (MAX_TILT * MAX_TILT));
+      n = normalize(vec3(tilt2, 1.0));
+    }
+    if (withColor) lit = c;
   }
   float tilt = dot(n, u_reliefLight) - u_reliefLight.z;
   float nh = dot(n, u_reliefHalf);

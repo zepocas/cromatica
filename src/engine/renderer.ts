@@ -26,7 +26,15 @@ import {
   RIDGE_OCTAVES,
 } from './ramp-shape';
 import { MAX_PLANES, PLANES_SHADER_CONSTANTS, preparePlanes } from './planes';
-import { BLOBS_SHADER_CONSTANTS, MAX_BLOBS, prepareBlobs } from './blobs';
+import {
+  BLOB_BINS,
+  blobBins,
+  BLOBS_SHADER_CONSTANTS,
+  blobReach,
+  MAX_BLOBS,
+  prepareBlobs,
+  type BlobBins,
+} from './blobs';
 import { AURORA_SHADER_CONSTANTS, MAX_RIBBONS, prepareAurora } from './aurora';
 import {
   GRID_LINE_SHADER_CONSTANTS,
@@ -41,7 +49,7 @@ import { BLUE_NOISE_SIZE, DITHER_CHANNEL_OFFSETS, blueNoiseRanks } from './blue-
 import { prepareFinish, VIGNETTE_INNER } from './finish';
 import { buildShaderSources, variantKey, type Defines } from './shaders';
 import { NEIGHBOUR_SHADER_CONSTANTS } from './neighbours';
-import { prepareRelief, RELIEF_SHADER_CONSTANTS, RELIEF_TAPS, type PreparedRelief } from './relief';
+import { prepareRelief, RELIEF_SHADER_CONSTANTS, reliefTaps, type PreparedRelief } from './relief';
 import { GRAIN_CHROMA, prepareGrain } from './grain';
 import { HALFTONE_SHADER_CONSTANTS, HALFTONE_TABLE, halftoneContrast } from './halftone';
 import { prepareWarp, WARP_SHADER_CONSTANTS, type PreparedWarp } from './warp';
@@ -132,21 +140,23 @@ function auroraUniforms(aurora: AuroraPattern) {
   };
 }
 
-/** Blobs uniforms, padded to MAX_BLOBS and MAX_STOPS inks. */
-function blobsUniforms(blobs: BlobsPattern, output: OutputSize) {
+/** Blobs uniforms, padded to MAX_BLOBS and MAX_STOPS inks, and the bins to upload as u_blobBins. */
+function blobsUniforms(blobs: BlobsPattern, output: OutputSize): { uniforms: object; bins: BlobBins } {
   const p = prepareBlobs(blobs, output);
+  const bins = blobBins(p);
   const shape0 = new Float32Array(MAX_BLOBS * 4);
   const shape1 = new Float32Array(MAX_BLOBS * 4);
   const shape2 = new Float32Array(MAX_BLOBS * 4);
   const inks = new Float32Array(MAX_STOPS * 3);
   const inkDots = new Float32Array(MAX_STOPS * 4);
+  const cull = new Float32Array(MAX_BLOBS * 3);
+  for (let i = 0; i < p.count; i++) cull.set([p.shape0[i * 4], p.shape0[i * 4 + 1], blobReach(p, i) ** 2], i * 3);
   shape0.set(p.shape0);
   shape1.set(p.shape1);
   shape2.set(p.shape2);
   inks.set(p.inks);
   inkDots.set(p.inkDots);
-  return {
-    u_blobCount: p.count,
+  const uniforms = {
     u_blobBackground: p.background,
     u_blobBase: p.base,
     u_blobInk: inks,
@@ -154,9 +164,12 @@ function blobsUniforms(blobs: BlobsPattern, output: OutputSize) {
     u_blobShape0: shape0,
     u_blobShape1: shape1,
     u_blobShape2: shape2,
+    u_blobCull: cull,
     u_blobDot: p.dot,
     u_blobSoft: p.soft,
+    u_blobBinBox: bins.box,
   };
+  return { uniforms, bins };
 }
 
 function gridUniforms(grid: GridMesh) {
@@ -301,6 +314,15 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.R16UI, bn, bn, 0, gl.RED_INTEGER, gl.UNSIGNED_SHORT, blueNoiseRanks());
   const ditherOffsets = new Int32Array(DITHER_CHANNEL_OFFSETS.flat());
 
+  const blobBinTexture = createTexture(gl, gl.NEAREST, gl.CLAMP_TO_EDGE);
+  gl.texStorage2D(gl.TEXTURE_2D, 1, gl.R16UI, BLOB_BINS, BLOB_BINS);
+
+  function updateBlobBins(bins: BlobBins) {
+    gl.bindTexture(gl.TEXTURE_2D, blobBinTexture);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 2);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, BLOB_BINS, BLOB_BINS, gl.RED_INTEGER, gl.UNSIGNED_SHORT, bins.masks);
+  }
+
   function getProgram(defines: Defines): twgl.ProgramInfo {
     const key = variantKey(defines);
     let info = programs.get(key);
@@ -382,7 +404,7 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
       const warp = prepareWarp(design.warp);
       const grain = prepareGrain(design.finish?.noise);
       const finish = prepareFinish(design.finish, output);
-      const relief = prepareRelief(design.finish);
+      const relief = prepareRelief(design.finish, opts.preciseLighting === true);
       const halftone = halftoneContrast(design.finish);
       const info = getProgram(variantDefines(base, warp, relief, halftone));
       let baseUniforms: object;
@@ -395,7 +417,9 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
       } else if (base.kind === 'grid') {
         baseUniforms = gridUniforms(base);
       } else if (base.kind === 'blobs') {
-        baseUniforms = blobsUniforms(base, output);
+        const { uniforms, bins } = blobsUniforms(base, output);
+        updateBlobBins(bins);
+        baseUniforms = { ...uniforms, u_blobBins: blobBinTexture };
       } else {
         updateRamp(base.stops);
         baseUniforms = {
@@ -443,7 +467,8 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
               u_reliefDepth: relief.depth,
               u_reliefLight: relief.light,
               u_reliefHalf: relief.half,
-              u_reliefTaps: RELIEF_TAPS,
+              u_reliefTaps: reliefTaps(relief),
+              u_reliefPrecise: relief.precise ? 1 : 0,
             }
           : {}),
         ...(halftone > 0 ? { u_halftoneContrast: halftone, u_halftoneTable: new Float32Array(HALFTONE_TABLE) } : {}),
@@ -483,6 +508,7 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
       pending.clear();
       gl.deleteTexture(rampTexture);
       gl.deleteTexture(blueNoiseTexture);
+      gl.deleteTexture(blobBinTexture);
       rampKey = undefined;
       gl.deleteVertexArray(vao);
     },

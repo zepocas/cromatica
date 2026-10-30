@@ -70,8 +70,9 @@ function renderTileInto(
 ): void {
   if (canvas.width !== tile.width) canvas.width = tile.width;
   if (canvas.height !== tile.height) canvas.height = tile.height;
-  // Dither is always on for exports (D7); it is indexed by output pixel, so tiles still match.
-  renderer.render(req.design, req.output, tile, { dither: true });
+  // Dither is always on for exports (D7); it is indexed by output pixel, so tiles still match. Exports light with
+  // the precise reads the preview skips for speed (D108).
+  renderer.render(req.design, req.output, tile, { dither: true, preciseLighting: true });
   // Synchronous readback doubles as the per-tile GPU sync.
   const pixels = renderer.readPixels(tile.width, tile.height);
   const tileRowBytes = tile.width * 4;

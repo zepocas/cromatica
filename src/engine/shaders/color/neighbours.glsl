@@ -11,10 +11,11 @@ float oklabLightness(vec3 rgb) {
   return dot(vec3(0.210454268309314, 0.7936177747023054, -0.0040720430116193), lms);
 }
 
-// Offset of height tap i (0..3) from the centre: +u, -u, +v, -v, NEIGHBOUR_STEP apart in composition
-// units so the look doesn't depend on the output size. The slope is the central difference of each pair.
+// Offset of tap i from the centre: 0 the centre itself, 1 to 4 one NEIGHBOUR_STEP along +u, +v, -u and -v, in
+// composition units so the look doesn't depend on the output size. The slope is the difference of +u and +v with the
+// centre, or, precise, with -u and -v.
 vec2 neighbourOffset(int i) {
   float e = NEIGHBOUR_STEP;
-  return i == 0 ? vec2(e, 0.0) : i == 1 ? vec2(-e, 0.0) : i == 2 ? vec2(0.0, e) : vec2(0.0, -e);
+  return i == 1 ? vec2(e, 0.0) : i == 2 ? vec2(0.0, e) : i == 3 ? vec2(-e, 0.0) : i == 4 ? vec2(0.0, -e) : vec2(0.0);
 }
 #endif

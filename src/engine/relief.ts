@@ -6,8 +6,12 @@ import type { Finish } from '../design/design';
 import { clamp01 } from '../math';
 import { heightSlope } from './neighbours';
 
-/** Pattern reads per pixel: four for the height slope, one for the lit colour (the shader loops over them). */
-export const RELIEF_TAPS = 5;
+/**
+ * Taps the shader loops over: the centre, whose colour satin lights, one step along +u and +v for the height slope,
+ * with `precise` one step along -u and -v as well, and for glass the colour under the surface. Precise glass skips
+ * the centre unless the pattern needs it for the room (blobs).
+ */
+export const reliefTaps = (r: PreparedRelief): number => (r.glass ? 6 : r.precise ? 5 : 3);
 /** Height-to-tilt factor at relief 1; the slider is squared so it starts gently. */
 const RELIEF_DEPTH = 3;
 /** Tilt (slope × depth) is eased toward this so steep, detailed patterns don't crumple. */
@@ -44,9 +48,11 @@ export interface PreparedRelief {
   light: Vec3;
   /** Half vector between the light and the viewer (straight above). */
   half: Vec3;
+  /** Central differences, 5 reads instead of 3 (exports, D108). */
+  precise: boolean;
 }
 
-export function prepareRelief(finish: Finish | undefined): PreparedRelief {
+export function prepareRelief(finish: Finish | undefined, precise = false): PreparedRelief {
   const strength = clamp01(finish?.relief ?? 0);
   const azimuth = ((finish?.reliefLight ?? 135) * Math.PI) / 180;
   const elevation = (LIGHT_ELEVATION_DEG * Math.PI) / 180;
@@ -61,6 +67,7 @@ export function prepareRelief(finish: Finish | undefined): PreparedRelief {
     glass: finish?.reliefStyle === 'glass',
     light,
     half: [light[0] / h, light[1] / h, (light[2] + 1) / h],
+    precise,
   };
 }
 
@@ -97,7 +104,7 @@ export function applyRelief(
   /** How far the pattern keeps one surface before an edge (blobs), composition units; the glass refracts no further. */
   roomAt?: (u: number, v: number) => number,
 ): Rgb {
-  const [sx, sy] = heightSlope(heightAt, u, v);
+  const [sx, sy] = heightSlope(heightAt, u, v, r.precise);
   const ease = 1 / Math.sqrt(1 + (Math.hypot(sx, sy) * r.depth) ** 2 / MAX_TILT ** 2);
   const nx = -sx * r.depth * ease;
   const ny = -sy * r.depth * ease;
