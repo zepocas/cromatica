@@ -2,6 +2,8 @@
 // single-pass renders, plus the app's download.
 import { readFile } from 'node:fs/promises';
 import { WARP_SHAPES } from '../../src/design/design';
+import { createPngEncoder } from '../../src/export/png';
+import { embedJpegDesign } from '../../src/export/jpeg';
 import { choose, expect, expectSameColors, openApp, previewProbe, readHexes, test } from './support/app';
 import { exportHarness, logBench, openExportHarness } from './support/harness';
 
@@ -145,5 +147,59 @@ for (const format of ['png', 'jpeg'] as const) {
     // One undo step back to the shuffle before the drop.
     await page.getByRole('button', { name: 'Undo' }).click();
     await expectPreviewChanged(before);
+  });
+}
+
+for (const format of ['png', 'jpeg'] as const) {
+  test(`a ${format.toUpperCase()} exported before D110, with the save envelope as JSON, still reopens exactly`, async ({
+    page,
+  }) => {
+    await openApp(page, { shuffled: true });
+    await choose(page.getByLabel('Size preset'), 'custom');
+    await page.getByLabel('Width').fill('320');
+    await page.getByLabel('Width').press('Tab');
+    await page.getByLabel('Height').fill('200');
+    await page.getByLabel('Height').press('Tab');
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('cromatica.design'))).not.toBeNull();
+    const envelope = (await page.evaluate(() => localStorage.getItem('cromatica.design')))!;
+    const hexes = await readHexes(page);
+    const { settled, expectPreviewChanged } = previewProbe(page);
+    const before = await settled();
+
+    const width = 320;
+    const height = 200;
+    let file: Buffer;
+    if (format === 'png') {
+      const encoder = createPngEncoder({ width, height }, { 'cromatica.design': envelope });
+      await encoder.writeRows(new Uint8Array(width * height * 4).fill(200), height);
+      file = Buffer.from(await (await encoder.finish()).arrayBuffer());
+    } else {
+      const plain = await page.evaluate(
+        async ([w, h]) => {
+          const canvas = new OffscreenCanvas(w, h);
+          canvas.getContext('2d')!.fillRect(0, 0, w, h);
+          return [...new Uint8Array(await (await canvas.convertToBlob({ type: 'image/jpeg' })).arrayBuffer())];
+        },
+        [width, height] as const,
+      );
+      file = Buffer.from(await (await embedJpegDesign(new Blob([new Uint8Array(plain)]), envelope)).arrayBuffer());
+    }
+
+    await page.getByRole('button', { name: /^Shuffle( Space)?$/ }).click();
+    await expectPreviewChanged(before);
+
+    const dataTransfer = await page.evaluateHandle(
+      ([bytes, format]) => {
+        const d = new DataTransfer();
+        d.items.add(new File([new Uint8Array(bytes)], `old.${format}`, { type: `image/${format}` }));
+        return d;
+      },
+      [[...file], format] as const,
+    );
+    await page.dispatchEvent('body', 'drop', { dataTransfer });
+    await expect(page.getByLabel('Width')).toHaveValue('320');
+    await expect(page.getByLabel('Height')).toHaveValue('200');
+    await expect.poll(async () => (await settled()).equals(before)).toBe(true);
+    expect(await readHexes(page)).toEqual(hexes);
   });
 }
