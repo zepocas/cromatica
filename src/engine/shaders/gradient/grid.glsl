@@ -45,14 +45,21 @@ vec2 gridOffset(vec2 q, out vec2 jx, out vec2 jy) {
   jx = vec2(0.0);
   jy = vec2(0.0);
   int base = gridCorner(cx, cy);
+  // Row by row: the weights are separable, so each row is summed once along x and then weighted along y.
   for (int b = 0; b < 4; b++) {
+    vec2 rw = vec2(0.0);
+    vec2 rd = vec2(0.0);
     for (int a = 0; a < 4; a++) {
       vec2 off = u_gridOffset[base + b * GRID_STRIDE + a];
-      o += wx[a] * wy[b] * off;
-      jx += dx[a] * wy[b] * sx * off;
-      jy += wx[a] * dy[b] * sy * off;
+      rw += wx[a] * off;
+      rd += dx[a] * off;
     }
+    o += wy[b] * rw;
+    jx += wy[b] * rd;
+    jy += dy[b] * rw;
   }
+  jx *= sx;
+  jy *= sy;
   return o;
 }
 
@@ -89,9 +96,11 @@ vec3 gridColor(vec2 p, vec2 pl) {
   vec3 lab = vec3(0.0);
   int base = gridCorner(cx, cy);
   for (int b = 0; b < 4; b++) {
+    vec3 row = vec3(0.0);
     for (int a = 0; a < 4; a++) {
-      lab += wx[a] * wy[b] * u_gridColor[base + b * GRID_STRIDE + a];
+      row += wx[a] * u_gridColor[base + b * GRID_STRIDE + a];
     }
+    lab += wy[b] * row;
   }
   if (u_gridLines > 0.0) {
     // Distance to the nearest grid line in pattern units: its distance in grid

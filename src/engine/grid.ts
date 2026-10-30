@@ -129,23 +129,31 @@ function offsetAt(g: PreparedGrid, qx: number, qy: number, out: number[]): void 
   weights(fx, wx, dx);
   weights(fy, wy, dy);
   out.fill(0);
+  // Row by row, as the shader does: each row summed along x, then weighted along y.
   for (let b = 0; b < 4; b++) {
     const r = clampInt(cy - 1 + b, 0, g.rows - 1);
+    let rwx = 0;
+    let rwy = 0;
+    let rdx = 0;
+    let rdy = 0;
     for (let a = 0; a < 4; a++) {
       const i = (r * g.cols + clampInt(cx - 1 + a, 0, g.cols - 1)) * 2;
-      const ox = g.offsets[i];
-      const oy = g.offsets[i + 1];
-      const w = wx[a] * wy[b];
-      const wdx = dx[a] * wy[b] * sx;
-      const wdy = wx[a] * dy[b] * sy;
-      out[0] += w * ox;
-      out[1] += w * oy;
-      out[2] += wdx * ox;
-      out[3] += wdy * ox;
-      out[4] += wdx * oy;
-      out[5] += wdy * oy;
+      rwx += wx[a] * g.offsets[i];
+      rwy += wx[a] * g.offsets[i + 1];
+      rdx += dx[a] * g.offsets[i];
+      rdy += dx[a] * g.offsets[i + 1];
     }
+    out[0] += wy[b] * rwx;
+    out[1] += wy[b] * rwy;
+    out[2] += wy[b] * rdx;
+    out[3] += dy[b] * rwx;
+    out[4] += wy[b] * rdy;
+    out[5] += dy[b] * rwy;
   }
+  out[2] *= sx;
+  out[3] *= sy;
+  out[4] *= sx;
+  out[5] *= sy;
 }
 
 /**
@@ -196,13 +204,15 @@ export function colorAtRest(g: PreparedGrid, qx: number, qy: number): Oklab {
   weights(fx, wx, dx);
   weights(fy, wy, dy);
   const lab: Oklab = [0, 0, 0];
+  const row = [0, 0, 0];
   for (let b = 0; b < 4; b++) {
     const r = clampInt(cy - 1 + b, 0, g.rows - 1);
+    row.fill(0);
     for (let a = 0; a < 4; a++) {
       const i = (r * g.cols + clampInt(cx - 1 + a, 0, g.cols - 1)) * 3;
-      const w = wx[a] * wy[b];
-      for (let k = 0; k < 3; k++) lab[k] += w * g.colors[i + k];
+      for (let k = 0; k < 3; k++) row[k] += wx[a] * g.colors[i + k];
     }
+    for (let k = 0; k < 3; k++) lab[k] += wy[b] * row[k];
   }
   return lab;
 }
