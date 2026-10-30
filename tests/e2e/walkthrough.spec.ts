@@ -58,7 +58,7 @@ test('q shuffles the look and w the colors, e exports, l and ; step through the 
   await page.keyboard.press('w');
   const download = page.waitForEvent('download');
   await page.keyboard.press('e');
-  expect((await download).suggestedFilename()).toMatch(/^cromatica-\d+x\d+\.png$/);
+  expect((await download).suggestedFilename()).toMatch(/^cromatica-\d{12}\.png$/);
 
   const gradient = page.getByLabel('Gradient', { exact: true });
   const before = await gradient.getAttribute('data-value');
@@ -86,7 +86,7 @@ test('a first visit starts from the device: panel folded, a desktop canvas, OS s
 
   const download = page.waitForEvent('download');
   await page.keyboard.press('e');
-  expect((await download).suggestedFilename()).toMatch(/^cromatica-\d+x\d+\.png$/);
+  expect((await download).suggestedFilename()).toMatch(/^cromatica-\d{12}\.png$/);
 });
 
 test('?walkthrough starts it again after it was left', async ({ page }) => {

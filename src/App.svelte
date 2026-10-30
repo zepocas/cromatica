@@ -1,6 +1,7 @@
 <script lang="ts">
   import { readExportedDesign, type ExportedDesign } from './export/design-image';
   import { exportImage } from './export/exporter';
+  import { exportFilename } from './export/filename';
   import type { ExportProgress } from './export/types';
   import { saveDesign, type SavedDesign } from './design/schema';
   import { readAutosave, writeAutosave } from './ui/state/autosave';
@@ -310,7 +311,7 @@
         { design: renderDesign, output: size, format: fmt },
         { signal: ac.signal, onProgress: (p) => (progress = p) },
       );
-      download(blob, `cromatica-${size.width}x${size.height}.${fmt === 'png' ? 'png' : 'jpg'}`);
+      download(blob, exportFilename(fmt));
     } catch (err) {
       if (!(err instanceof DOMException && err.name === 'AbortError')) {
         error = err instanceof Error ? err.message : String(err);
