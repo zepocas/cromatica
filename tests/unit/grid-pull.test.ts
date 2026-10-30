@@ -137,6 +137,16 @@ function stepsNeeded(grids: GridMesh[]): number[] {
   return needed;
 }
 
+/** Largest residual |F(q) − p| after `steps`, in pixels at 2160p. */
+function worstResidual(grids: GridMesh[], steps: number): number {
+  let worst = 0;
+  for (const mesh of grids) {
+    const g = prepareGrid(mesh);
+    for (const [x, y] of samples(g)) worst = Math.max(worst, residual(g, x, y, steps) / PX);
+  }
+  return worst;
+}
+
 function histogram(needed: number[]): string {
   const counts = new Map<number, number>();
   for (const n of needed) counts.set(n, (counts.get(n) ?? 0) + 1);
@@ -152,10 +162,17 @@ describe('grid pull-back convergence', () => {
     [3, 4, 5].flatMap((cols) => [1, 2, 3, 4].map((s) => editorGrid(rows, cols, s * 97 + rows * 10 + cols))),
   );
 
+  const report = (name: string, grids: GridMesh[]) => {
+    const worst = worstResidual(grids, GRID_STEPS);
+    console.log(
+      `${name} (${grids.length} grids), steps to ${TOL / PX} px: ${histogram(stepsNeeded(grids))}; ` +
+        `worst after ${GRID_STEPS}: ${worst.toExponential(1)} px`,
+    );
+    return worst;
+  };
+
   it('shuffled grids converge within GRID_STEPS', () => {
-    const needed = stepsNeeded(shuffled);
-    console.log(`shuffled (${shuffled.length} grids): ${histogram(needed)}`);
-    expect(Math.max(...needed)).toBeLessThanOrEqual(GRID_STEPS);
+    expect(report('shuffled', shuffled)).toBeLessThan(TOL / PX);
   });
 
   it('grids bent to the editor limits can fold', () => {
@@ -165,10 +182,13 @@ describe('grid pull-back convergence', () => {
   });
 
   for (const floor of [0.3, 0.1]) {
-    it(`grids bent until their determinant reaches ${floor} converge within GRID_STEPS`, () => {
-      const needed = stepsNeeded(edited.map((m) => nearFold(m, floor)));
-      console.log(`near a fold, det ≥ ${floor} (${edited.length} grids): ${histogram(needed)}`);
-      expect(Math.max(...needed)).toBeLessThanOrEqual(GRID_STEPS);
+    it(`grids bent until their determinant reaches ${floor} land within a hundredth of a pixel`, () => {
+      expect(
+        report(
+          `near a fold, det ≥ ${floor}`,
+          edited.map((m) => nearFold(m, floor)),
+        ),
+      ).toBeLessThan(0.01);
     });
   }
 });

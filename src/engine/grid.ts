@@ -24,7 +24,7 @@ export const GRID_LINE_PIVOT_SLOPE = 4;
 /** How much of the warp's displacement the lines follow (the colors follow all of it): 1 = same as the colors, 0 = lines ignore the warp. */
 export const GRID_LINE_WARP = 0.5;
 /** Newton steps of the pull-back, the Jacobian determinant below which a plain step is taken, and the step cap. */
-export const GRID_STEPS = 8;
+export const GRID_STEPS = 6;
 export const GRID_MIN_DET = 1e-3;
 export const GRID_MAX_STEP = 0.25;
 
