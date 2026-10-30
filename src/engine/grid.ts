@@ -131,8 +131,17 @@ function offsetAt(g: PreparedGrid, qx: number, qy: number, out: number[]): void 
   }
 }
 
-/** Rest-grid point q with F(q) = (x, y), by Newton steps. */
-export function pullBack(g: PreparedGrid, x: number, y: number, steps = GRID_STEPS): [number, number] {
+/**
+ * Rest-grid point q with F(q) = (x, y), by Newton steps. `jacobian`, if given, receives the offset's Jacobian
+ * [dDx/dx, dDx/dy, dDy/dx, dDy/dy] from the last step, which the lines use as the one at q (as the shader does).
+ */
+export function pullBack(
+  g: PreparedGrid,
+  x: number,
+  y: number,
+  steps = GRID_STEPS,
+  jacobian?: number[],
+): [number, number] {
   const o = [0, 0, 0, 0, 0, 0];
   let qx = x;
   let qy = y;
@@ -159,6 +168,7 @@ export function pullBack(g: PreparedGrid, x: number, y: number, steps = GRID_STE
     qx -= sx;
     qy -= sy;
   }
+  if (jacobian) for (let i = 0; i < 4; i++) jacobian[i] = o[i + 2];
   return [qx, qy];
 }
 
@@ -183,16 +193,21 @@ export function colorAtRest(g: PreparedGrid, qx: number, qy: number): Oklab {
 /**
  * Coverage [0, 1] of the grid lines at rest-grid point q. The distance to the nearest line is in
  * pattern units: its distance in grid parameters divided by the parameter's pixel gradient (from
- * the inverse Jacobian). `pixel` is one output pixel in the same units, for antialiasing.
+ * the inverse Jacobian). `pixel` is one output pixel in the same units, for antialiasing. `jacobian` is the
+ * offset's Jacobian as `pullBack` gives it; without it, it is evaluated at q.
  */
-export function lineCoverage(g: PreparedGrid, qx: number, qy: number, pixel: number): number {
+export function lineCoverage(g: PreparedGrid, qx: number, qy: number, pixel: number, jacobian?: number[]): number {
   if (g.lines <= 0) return 0;
-  const o = [0, 0, 0, 0, 0, 0];
-  offsetAt(g, qx, qy, o);
-  const a = 1 + o[2];
-  const b = o[3];
-  const c = o[4];
-  const d = 1 + o[5];
+  let j = jacobian;
+  if (!j) {
+    const o = [0, 0, 0, 0, 0, 0];
+    offsetAt(g, qx, qy, o);
+    j = o.slice(2);
+  }
+  const a = 1 + j[0];
+  const b = j[1];
+  const c = j[2];
+  const d = 1 + j[3];
   const det = a * d - b * c;
   if (Math.abs(det) < GRID_MIN_DET) return 0;
   const kx = g.cols - 1;
@@ -221,11 +236,13 @@ export function evaluateGrid(
   pixel = 0,
   lineAt: [number, number] = [x, y],
 ): Oklab {
-  const [qx, qy] = pullBack(g, x, y);
+  const jacobian = [0, 0, 0, 0];
+  const [qx, qy] = pullBack(g, x, y, GRID_STEPS, jacobian);
   const lab = colorAtRest(g, qx, qy);
   if (g.lines > 0 && pixel > 0) {
-    const [lx, ly] = lineAt[0] === x && lineAt[1] === y ? [qx, qy] : pullBack(g, lineAt[0], lineAt[1]);
-    const line = lineCoverage(g, lx, ly, pixel);
+    const [lx, ly] =
+      lineAt[0] === x && lineAt[1] === y ? [qx, qy] : pullBack(g, lineAt[0], lineAt[1], GRID_STEPS, jacobian);
+    const line = lineCoverage(g, lx, ly, pixel, jacobian);
     const dir = Math.min(1, Math.max(-1, (GRID_LINE_PIVOT - lab[0]) * GRID_LINE_PIVOT_SLOPE));
     const opacity = Math.min(1, g.lines / GRID_LINE_OPACITY_AT);
     lab[0] += GRID_LINE_PUSH * opacity * line * dir;

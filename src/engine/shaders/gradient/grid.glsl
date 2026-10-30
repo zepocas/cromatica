@@ -53,11 +53,11 @@ vec2 gridOffset(vec2 q, out vec2 jx, out vec2 jy) {
   return o;
 }
 
-// Rest-grid point q with F(q) = p, by Newton steps.
-vec2 gridPull(vec2 p) {
+// Rest-grid point q with F(q) = p, by Newton steps. jx, jy: the Jacobian of the last step, which the
+// lines use as the one at q (the last step moves q by far less than a pixel).
+vec2 gridPull(vec2 p, out vec2 jx, out vec2 jy) {
   vec2 q = p;
   for (int k = 0; k < GRID_STEPS; k++) {
-    vec2 jx, jy;
     vec2 e = q + gridOffset(q, jx, jy) - p;
     float a = 1.0 + jx.x;
     float b = jy.x;
@@ -74,7 +74,8 @@ vec2 gridPull(vec2 p) {
 
 // p: the warped point, for the colors; pl: where the lines are drawn (part-way back to the unwarped point).
 vec3 gridColor(vec2 p, vec2 pl) {
-  vec2 q = gridPull(p);
+  vec2 jx, jy;
+  vec2 q = gridPull(p, jx, jy);
   int cx, cy;
   float fx, fy, sx, sy;
   gridAxis(q.x, u_gridRest.x, u_gridSize.x, cx, fx, sx);
@@ -91,14 +92,11 @@ vec3 gridColor(vec2 p, vec2 pl) {
   if (u_gridLines > 0.0) {
     // Distance to the nearest grid line in pattern units: its distance in grid
     // parameters over the pixel gradient of that parameter (inverse Jacobian).
-#ifdef WARP_ANY
-    vec2 ql = pl == p ? q : gridPull(pl);
-#else
-    // pl == p without a warp, but only at run time: the compiler would keep a second, unused pull.
     vec2 ql = q;
+#ifdef WARP_ANY
+    // Without a warp pl == p, but only at run time: the compiler would keep a second, unused pull.
+    if (pl != p) ql = gridPull(pl, jx, jy);
 #endif
-    vec2 jx, jy;
-    gridOffset(ql, jx, jy);
     float a = 1.0 + jx.x;
     float b = jy.x;
     float c = jx.y;
