@@ -91,7 +91,12 @@ vec3 gridColor(vec2 p, vec2 pl) {
   if (u_gridLines > 0.0) {
     // Distance to the nearest grid line in pattern units: its distance in grid
     // parameters over the pixel gradient of that parameter (inverse Jacobian).
+#ifdef WARP_ANY
     vec2 ql = pl == p ? q : gridPull(pl);
+#else
+    // pl == p without a warp, but only at run time: the compiler would keep a second, unused pull.
+    vec2 ql = q;
+#endif
     vec2 jx, jy;
     gridOffset(ql, jx, jy);
     float a = 1.0 + jx.x;
