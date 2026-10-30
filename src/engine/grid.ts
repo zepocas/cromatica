@@ -132,11 +132,11 @@ function offsetAt(g: PreparedGrid, qx: number, qy: number, out: number[]): void 
 }
 
 /** Rest-grid point q with F(q) = (x, y), by Newton steps. */
-export function pullBack(g: PreparedGrid, x: number, y: number): [number, number] {
+export function pullBack(g: PreparedGrid, x: number, y: number, steps = GRID_STEPS): [number, number] {
   const o = [0, 0, 0, 0, 0, 0];
   let qx = x;
   let qy = y;
-  for (let k = 0; k < GRID_STEPS; k++) {
+  for (let k = 0; k < steps; k++) {
     offsetAt(g, qx, qy, o);
     const ex = qx + o[0] - x;
     const ey = qy + o[1] - y;

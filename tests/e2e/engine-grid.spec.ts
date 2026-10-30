@@ -1,5 +1,6 @@
 // Renderer: the grid mesh — CPU reference and tiling.
 import { expect, test } from '@playwright/test';
+import type { Design } from '../../src/design/design';
 import { gridColors, gridDesign } from './support/designs';
 import { engineHarness, logBench, openEngineHarness } from './support/harness';
 
@@ -40,6 +41,28 @@ test('a folded grid still renders the same in tiles, with no NaN specks', async 
   }
   const r = await engineHarness(page, 'imageStats', d, 800, 450, false);
   expect(r.alphaOk).toBe(true);
+});
+
+test('grid lines under a warp: CPU reference and tiles', async ({ page }) => {
+  // The lines follow half the warp, so the line point gets its own pull-back (D62).
+  const base = gridDesign(4, 5, 1, gridColors);
+  if (base.base.kind !== 'grid') throw new Error('not a grid');
+  const d: Design = {
+    ...base,
+    base: { ...base.base, lines: 0.6 },
+    warp: { shape: 'simplex', amount: 0.3, size: 0.35, seed: 1 },
+  };
+  for (const [w, h] of [
+    [640, 360],
+    [479, 777],
+  ]) {
+    const r = await engineHarness(page, 'compareReference', d, w, h);
+    logBench(`grid lines + warp ${w}×${h}: max ${r.maxDiff}`);
+    expect(r.alphaOk).toBe(true);
+    expect(r.maxDiff, JSON.stringify(r.worst)).toBeLessThanOrEqual(2);
+  }
+  const t = await engineHarness(page, 'compareTiled', d, 1531, 917, 256, true);
+  expect(t.identical).toBe(true);
 });
 
 for (const lines of [0.25, 1]) {
