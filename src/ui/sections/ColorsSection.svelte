@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Glyph from '../controls/Glyph.svelte';
   import { HARMONY_RULES, type HarmonyRule } from '../../color/harmony';
   import type { Oklch } from '../../color/types';
   import { shortestTurn } from '../../math';
@@ -103,20 +104,20 @@
       aria-label="Shuffle colors"
       title="New colors, same layout (W)"
       {@attach glow('colors-new')}
-      onclick={() => editor.shuffleColors()}>⟳</button
+      onclick={() => editor.shuffleColors()}><Glyph name="shuffle" /></button
     >
     <button
       class="icon"
       aria-label="Shuffle color order"
       title="Same colors, in a different order (R)"
       {@attach glow('colors-order')}
-      onclick={() => palette.shuffleOrder()}>⇄</button
+      onclick={() => palette.shuffleOrder()}><Glyph name="swap" /></button
     >
     <button
       class="icon"
       aria-label="Colors from image"
       title="Take the colors from an image (or drop one on the window); it never leaves your browser"
-      onclick={() => fileInput.click()}>◩</button
+      onclick={() => fileInput.click()}><Glyph name="image" /></button
     >
     {#if editor.pins.canPin}
       <button
@@ -124,7 +125,7 @@
         aria-label="Pick colors on the image"
         title="Drag pins over the image to choose each color"
         aria-pressed={editor.pins.pinning}
-        onclick={() => (editor.pins.pinning = !editor.pins.pinning)}>◉</button
+        onclick={() => (editor.pins.pinning = !editor.pins.pinning)}><Glyph name="pins" /></button
       >
     {/if}
     <input bind:this={fileInput} type="file" accept="image/*" hidden aria-label="Image file" onchange={onImagePicked} />

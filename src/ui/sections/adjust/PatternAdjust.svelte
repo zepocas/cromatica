@@ -1,4 +1,6 @@
 <script lang="ts">
+  import Glyph from '../../controls/Glyph.svelte';
+  import { DICE_SIZE } from '../../controls/glyphs';
   import { MAX_GRID, MIN_GRID, PLANE_SCALE } from '../../../design/design';
   import { ribbonCount } from '../../../engine/aurora';
   import { blobCount } from '../../../engine/blobs';
@@ -128,7 +130,7 @@
         title="New arrangement of the planes (D)"
         data-seed={editor.planes.seed}
         {@attach glow('pattern-dice')}
-        onclick={() => editor.newPlanesLayout()}>⚄</button
+        onclick={() => editor.newPlanesLayout()}><Glyph name="dice" size={DICE_SIZE} /></button
       >
     {/snippet}
   </SliderRow>
@@ -206,7 +208,7 @@
         title="New arrangement of the ribbons (D)"
         data-seed={editor.aurora.seed}
         {@attach glow('pattern-dice')}
-        onclick={() => editor.newAuroraLayout()}>⚄</button
+        onclick={() => editor.newAuroraLayout()}><Glyph name="dice" size={DICE_SIZE} /></button
       >
     {/snippet}
   </SliderRow>
@@ -237,7 +239,7 @@
         title="New arrangement of the blobs (D)"
         data-seed={editor.blobs.seed}
         {@attach glow('pattern-dice')}
-        onclick={() => editor.newBlobsLayout()}>⚄</button
+        onclick={() => editor.newBlobsLayout()}><Glyph name="dice" size={DICE_SIZE} /></button
       >
     {/snippet}
   </SliderRow>
@@ -309,7 +311,7 @@
         title="New arrangement of the {editor.kind} (D)"
         data-seed={editor.ramp.seed}
         {@attach glow('pattern-dice')}
-        onclick={() => editor.newRampVariation()}>⚄</button
+        onclick={() => editor.newRampVariation()}><Glyph name="dice" size={DICE_SIZE} /></button
       >
     {/snippet}
   </SliderRow>

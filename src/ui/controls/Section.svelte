@@ -21,7 +21,7 @@
 </script>
 
 <section class:detached class:open={detached && !collapsed}>
-  <div class="rule">
+  <div class="rule" class:tooled={tools && !detached}>
     <button
       class="title"
       aria-expanded={!collapsed}
@@ -78,9 +78,16 @@
     width: 8px;
     border-top: 1px solid var(--rule);
   }
+  /* The flex gap would leave the right stub floating; tools sit before it and keep their gap. */
+  .rule:not(.tooled)::after {
+    margin-left: -6px;
+  }
+  /* Larger and heavier than the 12px labels, so the sections scan at a glance. */
   .title {
     color: var(--ink);
     cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
   }
   .arrow {
     display: inline-block;
@@ -100,19 +107,27 @@
     color: var(--dim);
     cursor: pointer;
   }
+  /* The line is a 1px box centered like the stubs, so all three share one row; the ::after is its hit area. */
   .line {
     flex: 1;
-    align-self: stretch;
+    align-self: center;
+    height: 0;
     padding: 0;
     cursor: pointer;
     border: 0;
-    background: linear-gradient(var(--rule), var(--rule)) center / 100% 1px no-repeat;
+    border-top: 1px solid var(--rule);
+    position: relative;
+  }
+  .line::after {
+    content: '';
+    position: absolute;
+    inset: -10px 0;
   }
   /* Pointing at the title or the line lights the line up, and an open detached section keeps it lit. */
   .rule:has(.title:hover) .line,
   .line:hover,
   .open .line {
-    background-image: linear-gradient(var(--ink), var(--ink));
+    border-top-color: var(--ink);
   }
   .rule:has(.title:hover, .line:hover, .flap:hover) .flap,
   .open .flap {

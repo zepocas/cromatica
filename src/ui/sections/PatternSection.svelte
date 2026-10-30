@@ -1,4 +1,6 @@
 <script lang="ts">
+  import Glyph from '../controls/Glyph.svelte';
+  import { DICE_SIZE } from '../controls/glyphs';
   import { WARP_SHAPES, type WarpShape } from '../../design/design';
   import { glow } from '../controls/glow';
   import Dropdown from '../controls/Dropdown.svelte';
@@ -81,7 +83,7 @@
       disabled={editor.warp.shape === 'none'}
       data-seed={editor.warp.seed}
       {@attach glow('warp-dice')}
-      onclick={() => editor.newWarpVariation()}>⚄</button
+      onclick={() => editor.newWarpVariation()}><Glyph name="dice" size={DICE_SIZE} /></button
     >
   </div>
   <div class="row">

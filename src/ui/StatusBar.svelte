@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Glyph from './controls/Glyph.svelte';
   import { CONTEXT_SCREENS } from '../context/screens';
   import type { ExportProgress } from '../export/types';
   import Dropdown from './controls/Dropdown.svelte';
@@ -131,7 +132,7 @@
   <div class="scroll">
     <span class="spacer"></span>
     <span class="group">
-      <span>recent</span>
+      <span>history</span>
       <button
         class="icon"
         aria-label="Previous shuffle"
@@ -154,7 +155,7 @@
     </span>
     <span class="sep" role="separator" aria-orientation="vertical"></span>
     <span class="group">
-      <span>os context</span>
+      <span>device preview</span>
       <Dropdown
         ariaLabel="OS context"
         value={ui.contextId || OFF}
@@ -214,7 +215,7 @@
         aria-label="Full screen"
         title="Full screen (F)"
         onclick={onfullscreen}
-        {@attach glow('fullscreen')}>⛶</button
+        {@attach glow('fullscreen')}><Glyph name="fullscreen" /></button
       >
     {/if}
   </div>

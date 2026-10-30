@@ -4,6 +4,7 @@
   import type { EditorState } from './state/editor.svelte';
   import ExportBar from './ExportBar.svelte';
   import { glow, glowKey } from './controls/glow';
+  import Glyph from './controls/Glyph.svelte';
   import type { ExportSettings } from './state/export-settings.svelte';
   import type { Favourites } from './state/favourites.svelte';
   import type { PanelUi } from './state/panel-ui.svelte';
@@ -36,7 +37,7 @@
     nudgeShuffle,
   }: Props = $props();
 
-  /** App shortcuts: Space shuffles, ← and → step through recent shuffles, L and ; through patterns, comma and period through warp shapes, Q shuffles pattern and adjust, W the colors, R swaps their order, D rolls the pattern's own dice, V a new warp variation, H locks the harmony rule (⇧H all three), M opens more like this, K keeps a favourite, P folds the panel, ? lists them all. */
+  /** App shortcuts: Space shuffles, ← and → step through recent shuffles, L and ; through patterns, comma and period through warp shapes, Q shuffles pattern and adjust, W the colors, R swaps their order, D rolls the pattern's own dice, V a new warp variation, H locks the harmony rule (⇧H all three), M opens more like this, K keeps a favourite, P folds the panel, T opens the tips, ? lists them all. */
   function onWindowKeyDown(e: KeyboardEvent) {
     if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
     if (e.key === ' ') {
@@ -111,6 +112,11 @@
       e.preventDefault();
       ui.shortcuts = !ui.shortcuts;
       glowKey('shortcuts');
+    } else if (e.key === 't' || e.key === 'T') {
+      e.preventDefault();
+      ui.tips = !ui.tips;
+      if (ui.tips) ui.shortcuts = false;
+      glowKey('tips');
     }
   }
 </script>
@@ -125,11 +131,12 @@
       class="icon"
       aria-label="Tips"
       aria-pressed={ui.tips}
-      title="Tips"
+      title="Tips (T)"
       onclick={() => {
         ui.tips = !ui.tips;
         if (ui.tips) ui.shortcuts = false;
-      }}>?</button
+      }}
+      {@attach glow('tips')}><Glyph name="tips" /></button
     >
     <button
       class="icon"
@@ -140,10 +147,10 @@
         ui.shortcuts = !ui.shortcuts;
         if (ui.shortcuts) ui.tips = false;
       }}
-      {@attach glow('shortcuts')}>⌨</button
+      {@attach glow('shortcuts')}>?</button
     >
     <button class="icon" aria-label="Undo" title="Undo (⌘Z)" disabled={!canUndo} onclick={onundo} {@attach glow('undo')}
-      >↶</button
+      ><Glyph name="undo" /></button
     >
     <button
       class="icon"
@@ -151,7 +158,7 @@
       title="Redo (⇧⌘Z)"
       disabled={!canRedo}
       onclick={onredo}
-      {@attach glow('redo')}>↷</button
+      {@attach glow('redo')}><Glyph name="redo" /></button
     >
     <button
       class="icon"
@@ -159,7 +166,7 @@
       aria-label={ui.collapsed ? 'Expand panel' : 'Collapse panel'}
       title={ui.collapsed ? 'Expand panel (P)' : 'Collapse panel (P)'}
       {@attach glow('panel-fold')}
-      onclick={() => (ui.collapsed = !ui.collapsed)}>{ui.collapsed ? '□' : '_'}</button
+      onclick={() => (ui.collapsed = !ui.collapsed)}><Glyph name={ui.collapsed ? 'unfold' : 'fold'} /></button
     >
   </header>
 
