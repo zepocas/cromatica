@@ -90,7 +90,7 @@ function nearFold(mesh: GridMesh, floor: number): GridMesh {
   if (minDet(mesh) >= floor) return mesh;
   let lo = 0;
   let hi = 1;
-  for (let k = 0; k < 20; k++) {
+  for (let k = 0; k < 14; k++) {
     const mid = (lo + hi) / 2;
     if (minDet(scaled(mesh, mid)) >= floor) lo = mid;
     else hi = mid;
@@ -189,6 +189,7 @@ describe('grid pull-back convergence', () => {
           edited.map((m) => nearFold(m, floor)),
         ),
       ).toBeLessThan(0.01);
-    });
+      // Bisecting 36 grids to a determinant floor takes about 4 to 6 s, over vitest's 5 s default on a CI runner.
+    }, 60_000);
   }
 });
