@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { fly } from 'svelte/transition';
   import Glyph from './controls/Glyph.svelte';
   import { CONTEXT_SCREENS } from '../context/screens';
   import type { ExportProgress } from '../export/types';
@@ -25,7 +26,7 @@
     exporting: boolean;
     progress: ExportProgress | null;
     error: string;
-    /** A status line that isn't an error ("link copied"). */
+    /** A toast above the share button that isn't an error ("link copied"); the app clears it. */
     notice: string;
     onshare: () => void;
     onexport: () => void;
@@ -124,18 +125,23 @@
           {@attach glow('download')}>download</button
         >
       </span>
-      <button
-        class="btn"
-        aria-label="Copy share link"
-        title="Copy a link to this design"
-        onclick={onshare}
-        {@attach glow('share')}>share link</button
-      >
+      <span class="share">
+        <button
+          class="btn"
+          aria-label="Copy share link"
+          title="Copy a link to this design"
+          onclick={onshare}
+          {@attach glow('share')}>share link</button
+        >
+        {#if notice}
+          <span class="toast panel" role="status" transition:fly={{ y: 4, duration: 160 }}
+            ><span class="tick" aria-hidden="true">✓</span> {notice}</span
+          >
+        {/if}
+      </span>
     {/if}
     {#if error}
       <span class="msg error" role="alert" title={error}>{error}</span>
-    {:else if notice}
-      <span class="msg" role="status" title={notice}>{notice}</span>
     {/if}
   </div>
   <div class="scroll">
@@ -286,6 +292,33 @@
     padding: 0 12px;
     border-right: 1px solid var(--rule);
     white-space: nowrap;
+  }
+  .share {
+    position: relative;
+    display: flex;
+  }
+  /* Above the button, on the bar's fixed frame (the scrolling groups would clip it); it takes no pointer. */
+  .toast {
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 8px);
+    z-index: var(--z-popover);
+    box-sizing: border-box;
+    width: max-content;
+    max-width: 30ch;
+    padding: 5px 10px;
+    /* Frosted: the wallpaper's colours show through, so it reads as light, not as another box. */
+    background: rgba(27, 27, 26, 0.5);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    backdrop-filter: blur(16px) saturate(1.4);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+    color: var(--ink);
+    white-space: normal;
+    pointer-events: none;
+  }
+  .tick {
+    color: var(--dim);
   }
   .format {
     display: flex;
