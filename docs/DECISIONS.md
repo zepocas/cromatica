@@ -868,3 +868,9 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Lossy:** a payload rounds non-integers to 3 decimals (at most 0.0005 off), so a reopened export is no longer the exact design, and its preview is within 2 per channel of the exported colors, not byte-identical. A link already behaved so.
 - **Readers:** a text starting with `v1.` goes through `decodeShare`, anything else is parsed as the envelope JSON, so exports from before this change still reopen (`readDesignText` in `design-png.ts`). A new payload prefix would be added there.
 - **Worker:** `designText` is async now; the export worker awaits it before the first tile. Tiled, worker and single-pass pixels are untouched.
+
+## D111. M14 and Phase 2 are closed
+
+- **Decision (2026-10-31, user):** M14 (lean panel) and Phase 2 (multi-monitor preview) are done as built (D73, D74, D84). The status bar stays; the multi-monitor open questions (presets, portrait monitors, a preset size for a spanned setup) are dropped unless real use brings them back.
+- **Moved to M15:** the crowded panel and the status bar on narrow windows (#61), since the mobile layout reworks both.
+- **Product name:** settled by the user; the placeholder question is removed from M13.
