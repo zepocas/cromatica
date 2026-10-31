@@ -77,10 +77,6 @@
     font: inherit;
     font-weight: 600;
   }
-  h2::before {
-    content: '~/';
-    opacity: 0.55;
-  }
   p {
     margin: 0;
   }
