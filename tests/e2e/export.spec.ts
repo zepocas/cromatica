@@ -75,6 +75,14 @@ test.describe('export pipeline', () => {
     expect(r.type).toBe('image/jpeg');
     expect([r.width, r.height]).toEqual([3440, 1440]);
   });
+
+  test('JPEG export is mozjpeg: progressive and 4:4:4, which the browser encoder only gives at quality 1 (D115)', async ({
+    page,
+  }) => {
+    const r = await exportHarness(page, 'exportJpeg', 1920, 1080);
+    expect(r.marker).toBe('c2');
+    expect(r.sampling).toBe('11,11,11');
+  });
 });
 
 test('a custom size letterboxes the preview and downloads', async ({ page }) => {

@@ -67,4 +67,4 @@ If cromatica is useful to you, you can [buy me a coffee on Ko-fi](https://ko-fi.
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE). JPEG export bundles [mozjpeg](https://github.com/mozilla/mozjpeg) through [`@jsquash/jpeg`](https://github.com/jamsinclair/jSquash) (Apache-2.0).

@@ -3,13 +3,12 @@ import { CONTEXT_ATTRIBUTES, type OutputSize, type Renderer, type Tile } from '.
 import type { StartMessage, WorkerMessage } from './exporter';
 import { designText, DESIGN_KEYWORD } from './design-png';
 import { embedJpegDesign } from './jpeg';
+import { DEFAULT_MOZJPEG_QUALITY, encodeMozjpeg, MOZJPEG_MAX_PIXELS } from './mozjpeg';
 import { createPngEncoder } from './png';
 import { assertOutputSize, planTiles } from './tiles';
 import { DEFAULT_TILE_SIZE, type ExportRequest } from './types';
 
-const DEFAULT_JPEG_QUALITY = 0.95;
-
-/** Where finished bands of rows go: a streaming PNG encoder or a JPEG canvas. */
+/** Where finished bands of rows go: a streaming PNG encoder, or the whole image held for a JPEG encoder. */
 interface BandSink {
   /** `rows` full-width RGBA8 rows starting at output row `y`, top-down. */
   writeBand(rgba: Uint8Array<ArrayBuffer>, y: number, rows: number): Promise<void>;
@@ -36,7 +35,38 @@ function pngSink(output: OutputSize, text: Record<string, string>): BandSink {
   };
 }
 
-function jpegSink(output: OutputSize, quality: number, text: Record<string, string>): BandSink {
+/** `quality` is 0 to 1 from the caller; mozjpeg takes 0 to 100. */
+function jpegSink(output: OutputSize, quality: number | undefined, text: Record<string, string>): BandSink {
+  return output.width * output.height <= MOZJPEG_MAX_PIXELS
+    ? mozjpegSink(output, quality === undefined ? DEFAULT_MOZJPEG_QUALITY : Math.round(quality * 100), text)
+    : canvasJpegSink(output, quality ?? 0.95, text);
+}
+
+function withDesign(jpeg: Blob, text: Record<string, string>): Promise<Blob> | Blob {
+  const design = text[DESIGN_KEYWORD];
+  return design === undefined ? jpeg : embedJpegDesign(jpeg, design);
+}
+
+function mozjpegSink(output: OutputSize, quality: number, text: Record<string, string>): BandSink {
+  let pixels: Uint8ClampedArray<ArrayBuffer> | null = new Uint8ClampedArray(output.width * output.height * 4);
+  return {
+    writeBand: async (rgba, y) => {
+      pixels?.set(rgba, y * output.width * 4);
+    },
+    finish: async () => {
+      const image = pixels;
+      pixels = null;
+      if (!image) throw new Error('The export was already finished or aborted');
+      return withDesign(await encodeMozjpeg(image, output.width, output.height, quality), text);
+    },
+    abort: () => {
+      pixels = null;
+    },
+  };
+}
+
+/** For outputs too big to hold twice: the browser's encoder takes the canvas the bands were drawn into. */
+function canvasJpegSink(output: OutputSize, quality: number, text: Record<string, string>): BandSink {
   const canvas = new OffscreenCanvas(output.width, output.height);
   const ctx = canvas.getContext('2d', { alpha: false });
   if (!ctx) throw new Error('Could not create a 2D OffscreenCanvas for JPEG encoding');
@@ -45,11 +75,7 @@ function jpegSink(output: OutputSize, quality: number, text: Record<string, stri
       const pixels = new Uint8ClampedArray(rgba.buffer, rgba.byteOffset, output.width * rows * 4);
       ctx.putImageData(new ImageData(pixels, output.width, rows), 0, y);
     },
-    finish: async () => {
-      const jpeg = await canvas.convertToBlob({ type: 'image/jpeg', quality });
-      const design = text[DESIGN_KEYWORD];
-      return design === undefined ? jpeg : embedJpegDesign(jpeg, design);
-    },
+    finish: async () => withDesign(await canvas.convertToBlob({ type: 'image/jpeg', quality }), text),
     abort: () => {},
   };
 }
@@ -101,7 +127,7 @@ async function runExport(req: ExportRequest): Promise<Blob> {
   try {
     renderer = createRenderer(gl);
     const text = await embeddedDesign(req.design);
-    sink = req.format === 'png' ? pngSink(output, text) : jpegSink(output, req.quality ?? DEFAULT_JPEG_QUALITY, text);
+    sink = req.format === 'png' ? pngSink(output, text) : jpegSink(output, req.quality, text);
     let tilesDone = 0;
     for (const band of bands) {
       for (const tile of band) {

@@ -10,6 +10,8 @@ export default defineConfig(({ command }) => ({
   // $state.snapshot calls; unit tests need the client build's copies.
   plugins: [svelte({ dynamicCompileOptions: () => (process.env.VITEST ? { generate: 'client' } : undefined) })],
   worker: { format: 'es' },
+  // Pre-bundling would move the encoder away from its .wasm file, which it finds next to itself.
+  optimizeDeps: { exclude: ['@jsquash/jpeg'] },
   // Unit tests run Svelte's browser build, so rune-based classes behave as in the app.
   resolve: process.env.VITEST ? { conditions: ['browser'] } : undefined,
   test: {
