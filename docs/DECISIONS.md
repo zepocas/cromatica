@@ -882,3 +882,11 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Decision (2026-10-31, user):** M14 (lean panel) and Phase 2 (multi-monitor preview) are done as built (D73, D74, D84). The status bar stays; the multi-monitor open questions (presets, portrait monitors, a preset size for a spanned setup) are dropped unless real use brings them back.
 - **Moved to M15:** the crowded panel and the status bar on narrow windows (#61), since the mobile layout reworks both.
 - **Product name:** settled by the user; the placeholder question is removed from M13.
+
+## D115. JPEG exports are encoded with mozjpeg, 4:4:4, quality 95
+
+- **Decision (2026-10-31, user):** a JPEG export goes through mozjpeg (`@jsquash/jpeg`, a WASM build, Apache-2.0) in the export worker: quality 95, 4:4:4 chroma, progressive, optimised tables. Replaces the browser's `convertToBlob` for JPEG (D3's consequence). Only for outputs up to 64 megapixels (the whole image is held twice); a bigger one still goes through `convertToBlob`.
+- **Why:** Chromium's encoder halves the color detail (4:2:0) at every quality below 1.0, and at 1.0 the file is 4 to 11 MB, sometimes larger than the PNG. Measured on four exports at 3840 × 2400 (PSNR against the PNG, one machine): mozjpeg at the same quality is about 10 to 45% smaller than Chromium and always 4:4:4. For example a smooth design is 263 KB at q95 against 347 KB for Chromium's 0.95 (both 50.0 dB), a grainy one 2.0 MB against 2.5 MB. q98 costs 3 to 5 times q95 on smooth designs for under half a dB; q95 is the default, and a higher one is an option if banding shows.
+- **4:4:4 is pinned:** mozjpeg's `auto_subsample` only picks it at high quality, so the call sets `auto_subsample: false, chroma_subsample: 1`. An e2e test reads the frame header of an export (progressive marker, `11,11,11`).
+- **Cost:** the encoder is a 246 KB wasm file (58 KB gzipped) loaded by the export worker only when a JPEG is exported. Vite must not pre-bundle it (`optimizeDeps.exclude`), because the glue finds the .wasm next to itself. Encoding is slower than the browser's.
+- **Unchanged:** the design still travels in the file (D72, D110): the XMP segment is spliced after the JFIF header, which mozjpeg writes too.

@@ -277,10 +277,35 @@ async function cancelThenExport() {
   };
 }
 
+/** The frame header of a JPEG: its marker (c0 baseline, c2 progressive) and each component's sampling factors, 11,11,11 being 4:4:4. */
+function frameOf(bytes: Uint8Array): { marker: string; sampling: string } {
+  for (let i = 2; i < bytes.length - 10;) {
+    if (bytes[i] !== 0xff) {
+      i++;
+      continue;
+    }
+    const marker = bytes[i + 1];
+    if (marker >= 0xc0 && marker <= 0xc2) {
+      return {
+        marker: marker.toString(16),
+        sampling: [0, 1, 2].map((k) => bytes[i + 11 + 3 * k].toString(16)).join(','),
+      };
+    }
+    i += 2 + ((bytes[i + 2] << 8) | bytes[i + 3]);
+  }
+  return { marker: '', sampling: '' };
+}
+
 async function exportJpeg(width: number, height: number) {
   const blob = await exportImage({ design: defaultDesign, output: { width, height }, format: 'jpeg', quality: 0.9 });
   const bmp = await createImageBitmap(blob);
-  const result = { type: blob.type, bytes: blob.size, width: bmp.width, height: bmp.height };
+  const result = {
+    type: blob.type,
+    bytes: blob.size,
+    width: bmp.width,
+    height: bmp.height,
+    ...frameOf(new Uint8Array(await blob.arrayBuffer())),
+  };
   bmp.close();
   return result;
 }
