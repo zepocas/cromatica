@@ -876,3 +876,9 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **What `zoom` changes (checked in Chromium at 1.5 and 2):** pointer events and `getBoundingClientRect` stay in screen px, while layout, `left`/`top` and `vw`/`vh` scale (`100vw` measures 1.5 viewports). Ratios of two screen values (mesh, planes, grid, stops, pins) need nothing. A screen position applied as a length (`Dropdown`, the favourites tray), a pointer delta that moves something (preview pan, walkthrough and pins windows) and a viewport unit are divided by the scale (`currentScale()`, `--ui-scale`). New code that does either has to do the same.
 - **Preview:** its buffer size is the canvas box times `devicePixelRatio` times the scale (still capped at `MAX_DPR`), so the canvas stays sharp. The render resolution and exports are untouched.
 - **Mobile (#58):** the auto rule only scales up on wide windows, so phones and tablets stay at 1.
+
+## D112. M14 and Phase 2 are closed
+
+- **Decision (2026-10-31, user):** M14 (lean panel) and Phase 2 (multi-monitor preview) are done as built (D73, D74, D84). The status bar stays; the multi-monitor open questions (presets, portrait monitors, a preset size for a spanned setup) are dropped unless real use brings them back.
+- **Moved to M15:** the crowded panel and the status bar on narrow windows (#61), since the mobile layout reworks both.
+- **Product name:** settled by the user; the placeholder question is removed from M13.
