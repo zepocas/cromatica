@@ -188,9 +188,15 @@
     if (!builtIn && linked === null) saveTimer = setTimeout(() => writeAutosave(design), 300);
   });
 
+  /** How long the "link copied" toast stays. A long-link warning has more to read. */
+  const TOAST_MS = 2500;
+  const LONG_TOAST_MS = 6000;
+  let toastTimer: ReturnType<typeof setTimeout> | undefined;
+
   async function share() {
     error = '';
     notice = '';
+    clearTimeout(toastTimer);
     try {
       const url = await shareUrl(renderDesign);
       await navigator.clipboard.writeText(url);
@@ -198,6 +204,7 @@
         url.length > LONG_LINK
           ? 'link copied; long, so chat apps may cut it (download keeps the design)'
           : 'link copied';
+      toastTimer = setTimeout(() => (notice = ''), url.length > LONG_LINK ? LONG_TOAST_MS : TOAST_MS);
     } catch (err) {
       error = err instanceof Error ? err.message : String(err);
     }
