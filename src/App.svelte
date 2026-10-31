@@ -10,6 +10,7 @@
   import { ExportSettings } from './ui/state/export-settings.svelte';
   import { Favourites, type Favourite } from './ui/state/favourites.svelte';
   import { PanelUi } from './ui/state/panel-ui.svelte';
+  import { readScaleChoice } from './ui/state/ui-scale';
   import { History } from './ui/state/history.svelte';
   import { isTypingTarget } from './ui/state/keys';
   import { glowKey } from './ui/controls/glow';
@@ -79,7 +80,7 @@
   // `?walkthrough` runs it on demand, whatever was stored.
   const firstVisit =
     new URLSearchParams(location.search).has('walkthrough') || (!builtIn && !tipsDismissed() && !walkthroughDone());
-  const ui = new PanelUi({ tips: false });
+  const ui = new PanelUi({ tips: false, scale: readScaleChoice() });
   const walkthrough = new WalkthroughState(undefined, () => {
     markWalkthroughDone();
     dismissTips();

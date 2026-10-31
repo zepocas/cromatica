@@ -2,6 +2,7 @@ import { type Design } from '../design/design';
 import { CONTEXT_ATTRIBUTES, type OutputSize } from '../engine/types';
 import { createPreviewCore, editingScale, type PreviewState } from './core';
 import { fitFrame, MAX_DPR } from './layout';
+import { currentScale } from '../ui/state/ui-scale';
 import { createPerfLog, describeRenderer, perfEnabled } from './perf';
 
 export { editingScale };
@@ -67,7 +68,13 @@ export function createFrameLayout(canvas: HTMLCanvasElement, opts: PreviewOption
       const { cssWidth, cssHeight } = fitFrame(cw, ch, aspect, displayAspect);
       canvas.style.width = `${cssWidth}px`;
       canvas.style.height = `${cssHeight}px`;
-      return { cssWidth, cssHeight, dpr: Math.min(window.devicePixelRatio || 1, MAX_DPR), aspect, displayAspect };
+      return {
+        cssWidth,
+        cssHeight,
+        dpr: Math.min((window.devicePixelRatio || 1) * currentScale(), MAX_DPR),
+        aspect,
+        displayAspect,
+      };
     },
   };
 }

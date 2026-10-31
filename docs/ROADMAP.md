@@ -376,7 +376,7 @@ Each milestone uses the same structure:
 
 ### M14 — Lean panel (trial and error) ✅
 
-- **Closed (user, 2026-10-31, D111):** the status bar, the shuffle nudge and the per-color grade stay as built. The crowded-panel and narrow-window questions below move to M15, where the layout gets reworked anyway.
+- **Closed (user, 2026-10-31, D112):** the status bar, the shuffle nudge and the per-color grade stay as built. The crowded-panel and narrow-window questions below move to M15, where the layout gets reworked anyway.
 - **Goal:** try to make the left panel leaner. Added 2026-10-08. A trial-and-error session that can run in parallel with almost any other milestone.
 - **Scope:**
   - **Status bar under the preview** (only if it earns its place, 2026-10-08): IDE-style, for global and view settings. Not needed on its own; worth building only if settings move into it from the left panel to declutter it (show points, preview zoom, output size, autosave state and others to be picked).
@@ -405,7 +405,7 @@ Each milestone uses the same structure:
 - **Done when:** the whole flow (shuffle, adjust colors, keep a favourite, export) works on a current iPhone Safari and Android Chrome, and the desktop layout is unchanged.
 - **Open questions:**
   - Whether the panel becomes a sheet or a separate screen.
-  - Inherited from M14 (D111): the crowded panel (popovers, auto-hiding untouched groups, fewer controls per section) and the status bar below about 1200px (#61: fold into a menu or wrap).
+  - Inherited from M14 (D112): the crowded panel (popovers, auto-hiding untouched groups, fewer controls per section) and the status bar below about 1200px (#61: fold into a menu or wrap).
   - Slow GPUs: whether the half-resolution fallback and the grain coarsening while dragging are acceptable (#68; the M4 numbers are in its comments).
   - Whether a smaller set of controls makes sense on mobile, or the same ones in a different frame.
 
@@ -441,7 +441,7 @@ Each milestone uses the same structure:
 
 ## Phase 2 — Multi-monitor preview ✅
 
-- **Closed (user, 2026-10-31, D111):** the first version stays as the whole of Phase 2. The open questions at the end of this section are dropped unless a real use brings them back.
+- **Closed (user, 2026-10-31, D112):** the first version stays as the whole of Phase 2. The open questions at the end of this section are dropped unless a real use brings them back.
 - **Built (2026-10-14, D84):** a status bar button with joined, draggable monitor rectangles (aspect ratio and diagonal) over the wallpaper, span or stretch (the picture is drawn bent in stretch), Shift-drag to slide the wallpaper in span, and the OS context drawn inside each monitor (full on the primary, a secondary screen's share on the rest). The sketch below is the earlier idea; bezel gaps and a wallpaper-size-to-layout action were left out.
 - **Scope (user, 2026-10-12):** a preview of a window and monitor layout, so a wallpaper can be judged spanned across several displays for immersion. It is not an export: no per-monitor images and no ZIP.
 - A canvas for arranging displays. Each display is modelled as aspect ratio + physical size (from its diagonal) + position. Optional bezel-gap compensation.

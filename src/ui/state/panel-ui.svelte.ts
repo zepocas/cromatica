@@ -1,3 +1,5 @@
+import type { UiScaleChoice } from './ui-scale';
+
 /** Chrome state shared by the panel, the bars and the preview: what is open, folded or picked. */
 export class PanelUi {
   /** The panel is folded to a one-line bar floating over a full-width preview. */
@@ -13,7 +15,11 @@ export class PanelUi {
   /** The screen highlighted in the open list, shown until it closes; null = none. */
   contextPreview = $state<string | null>(null);
 
-  constructor(opts: { tips: boolean }) {
+  /** The panel size picked by hand; null = follows the window width. */
+  scale = $state<UiScaleChoice>(null);
+
+  constructor(opts: { tips: boolean; scale?: UiScaleChoice }) {
     this.tips = opts.tips;
+    this.scale = opts.scale ?? null;
   }
 }
