@@ -52,13 +52,18 @@
   <button
     class="btn"
     aria-label="Reset"
-    title="Undo rotate, zoom and flips"
+    title="Undo rotate, zoom, position and flips"
     disabled={!editor.isTransformed}
     onclick={() => editor.resetTransform()}>reset</button
   >
 </div>
+<p class="hint">alt-drag moves the image, alt-scroll zooms it</p>
 
 <style>
+  .hint {
+    margin: 4px 0 0;
+    color: var(--dim);
+  }
   .spacer {
     flex: 1;
   }

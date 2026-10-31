@@ -59,6 +59,23 @@ test.describe('transform', () => {
       expect(r.maxDiff, JSON.stringify(r.worstAny)).toBeLessThanOrEqual(2);
     });
 
+    test(`${name}: a pan shifts pixels exactly and matches the CPU reference`, async ({ page }) => {
+      const r = await engineHarness(
+        page,
+        'compareWarpReference',
+        turn(base, { rotate: 33, zoom: 1.7, flipX: true, panX: 0.21, panY: -0.13 }),
+        640,
+        360,
+        2,
+      );
+      expect(r.maxDiff, JSON.stringify(r.worstAny)).toBeLessThanOrEqual(2);
+    });
+
+    test(`${name}: a zero pan is bit-identical to none`, async ({ page }) => {
+      const r = await engineHarness(page, 'compareDesigns', base, turn(base, { panX: 0, panY: 0 }), 480, 270);
+      expect(r.identical).toBe(true);
+    });
+
     test(`${name}: transformed 1531×917 single pass equals 256 px tiles (noise on)`, async ({ page }) => {
       const r = await engineHarness(
         page,

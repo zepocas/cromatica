@@ -443,6 +443,7 @@ export function createRenderer(gl: WebGL2RenderingContext): Renderer {
         u_outputSize: [output.width, output.height],
         u_tile: [tile.x, tile.y, tile.width, tile.height],
         u_transform: mat2Uniform(transformMatrix(design.transform)),
+        u_pan: [design.transform?.panX ?? 0, design.transform?.panY ?? 0],
         ...baseUniforms,
         ...warpUniforms(warp),
         u_grainAmp: grain.sigma,

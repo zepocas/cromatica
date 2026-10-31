@@ -123,6 +123,64 @@ test('transform: rotate, flip, zoom and reset move the image and the handles tog
   expect(y).toBeCloseTo(y0, 2);
 });
 
+test('transform: alt-drag moves the image and the handles with it, even from a handle; reset centres it', async ({
+  page,
+}) => {
+  await openApp(page);
+  const handle = page.locator('[data-point="1"]');
+  const onScreen = async () => toComposition(page, ...(await centerOf(handle)));
+  const [x0, y0] = await onScreen();
+  const pts = await readPoints(page);
+  await openMore(page, 'adjust');
+  const reset = page.getByRole('button', { name: 'Reset' });
+  await expect(reset).toBeDisabled();
+
+  // Grabbing a handle with Alt moves the image, not the point.
+  const [cx, cy] = await centerOf(handle);
+  const canvas = (await page.getByTestId('preview-canvas').boundingBox())!;
+  await page.keyboard.down('Alt');
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  await page.mouse.move(cx + 60, cy - 30, { steps: 4 });
+  await page.mouse.up();
+  await page.keyboard.up('Alt');
+
+  // Up and to the right on screen is +x, +y; the frame is canvas.height tall, one unit.
+  const [x, y] = await onScreen();
+  expect(x - x0).toBeCloseTo(60 / canvas.height, 2);
+  expect(y - y0).toBeCloseTo(30 / canvas.height, 2);
+  expect(await readPoints(page)).toEqual(pts);
+  await expect(reset).toBeEnabled();
+
+  await reset.click();
+  await expect(reset).toBeDisabled();
+  const [x1, y1] = await onScreen();
+  expect(x1).toBeCloseTo(x0, 2);
+  expect(y1).toBeCloseTo(y0, 2);
+});
+
+test('transform: a ghost tip always lists the image gestures; alt-scroll zooms about the pointer', async ({ page }) => {
+  await openApp(page);
+  const tip = page.getByRole('note').filter({ hasText: 'alt-drag move the image' });
+  await expect(tip).toContainText('alt-scroll zoom it');
+
+  // The point under the pointer stays under it, so what is zoomed into is what was pointed at.
+  const handle = page.locator('[data-point="1"]');
+  const [cx, cy] = await centerOf(handle);
+  const before = await toComposition(page, cx, cy);
+  await openMore(page, 'adjust');
+  const viewport = page.locator('.viewport');
+  await viewport.dispatchEvent('wheel', { deltaY: -20, altKey: true, cancelable: true, clientX: cx, clientY: cy });
+  await viewport.dispatchEvent('wheel', { deltaY: -20, altKey: true, cancelable: true, clientX: cx, clientY: cy });
+  await expect(page.getByRole('slider', { name: 'Zoom', exact: true })).not.toHaveValue('0');
+  const [x, y] = await toComposition(page, ...(await centerOf(handle)));
+  expect(x).toBeCloseTo(before[0], 2);
+  expect(y).toBeCloseTo(before[1], 2);
+
+  // Still there after moving the image, and with the view zoomed in on its own.
+  await expect(tip).toBeVisible();
+});
+
 test('vignette darkens the image; bands and edge work on every style', async ({ page }) => {
   await openApp(page);
   const { settled, expectPreviewChanged } = previewProbe(page);

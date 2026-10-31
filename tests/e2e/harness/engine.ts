@@ -7,7 +7,7 @@ import { linearSrgbToOklab, oklabToLinearSrgb, oklabToOklch, srgbDecode } from '
 import { bakeRamp, RAMP_SIZE } from '../../../src/color/ramp';
 import type { Rgb } from '../../../src/color/types';
 import { type Design, type RampGradient, noFinish, noWarp, type PointMesh } from '../../../src/design/design';
-import { applyMat2, transformMatrix } from '../../../src/engine/transform';
+import { transformPoint } from '../../../src/engine/transform';
 import { bandLevel, meshBanding, prepareFinish, vignetteFactor } from '../../../src/engine/finish';
 import { prepareRampShape, rampT } from '../../../src/engine/ramp-shape';
 import { evaluatePlanes, preparePlanes } from '../../../src/engine/planes';
@@ -147,25 +147,22 @@ function createReference(design: Design, output: OutputSize, halfFloat = false, 
 function createHeightReference(design: Design, output: OutputSize): ((u: number, v: number) => Rgb) | undefined {
   if (design.base.kind !== 'blobs') return undefined;
   const warp = createWarp(design.warp ?? noWarp);
-  const m = transformMatrix(design.transform);
   const blobs = prepareBlobs(design.base, output);
-  return (u, v) => evaluateBlobsHeight(blobs, ...warp(...applyMat2(m, u, v)));
+  return (u, v) => evaluateBlobsHeight(blobs, ...warp(...transformPoint(design.transform, u, v)));
 }
 
 /** How much room the glass has to refract before a blob's outline; undefined for other patterns. */
 function createRoomReference(design: Design, output: OutputSize): ((u: number, v: number) => number) | undefined {
   if (design.base.kind !== 'blobs') return undefined;
   const warp = createWarp(design.warp ?? noWarp);
-  const m = transformMatrix(design.transform);
   const blobs = prepareBlobs(design.base, output);
-  return (u, v) => evaluateBlobsRoom(blobs, ...warp(...applyMat2(m, u, v)));
+  return (u, v) => evaluateBlobsRoom(blobs, ...warp(...transformPoint(design.transform, u, v)));
 }
 
 /** The pattern's linear RGB at composition coords (u, v). */
 function createPatternReference(design: Design, output: OutputSize, halfFloat: boolean): (u: number, v: number) => Rgb {
   const warp = createWarp(design.warp ?? noWarp);
-  const m = transformMatrix(design.transform);
-  const at = (u: number, v: number) => warp(...applyMat2(m, u, v));
+  const at = (u: number, v: number) => warp(...transformPoint(design.transform, u, v));
   const finish = prepareFinish(design.finish, output);
   const base = design.base;
   if (base.kind === 'mesh') {
@@ -175,7 +172,7 @@ function createPatternReference(design: Design, output: OutputSize, halfFloat: b
   if (base.kind === 'grid') {
     const grid = prepareGrid(base);
     return (u, v) => {
-      const t = applyMat2(m, u, v);
+      const t = transformPoint(design.transform, u, v);
       const p = warp(...t);
       const lineAt: [number, number] = [t[0] + GRID_LINE_WARP * (p[0] - t[0]), t[1] + GRID_LINE_WARP * (p[1] - t[1])];
       return meshGamutClip(evaluateGrid(grid, ...p, 1 / output.height, lineAt));
@@ -652,11 +649,10 @@ const harness = {
     const image = render(d, output, false);
     const ref = createReference(d, output);
     const warp = createWarp(d.warp ?? noWarp);
-    const m = transformMatrix(d.transform);
     const warped = new Float64Array(width * height * 2);
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        const p = warp(...applyMat2(m, ...compositionCoord(x, y, width, height)));
+        const p = warp(...transformPoint(d.transform, ...compositionCoord(x, y, width, height)));
         warped[(y * width + x) * 2] = p[0];
         warped[(y * width + x) * 2 + 1] = p[1];
       }

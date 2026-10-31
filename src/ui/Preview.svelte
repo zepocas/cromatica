@@ -25,6 +25,10 @@
     /** Alone on the screen: the × shows on pointer movement and calls onexitfullscreen. */
     fullscreen?: boolean;
     onexitfullscreen?: () => void;
+    /** Alt-scroll zooms the image about the pointer: a factor, and the pointer in composition units (frame height = 1, +y up). */
+    onimagezoom?: (factor: number, x: number, y: number) => void;
+    /** Alt-drag moves the image on the frame: called with the step in composition units (frame height = 1, +y up). */
+    onimagepan?: (dx: number, dy: number) => void;
   }
 
   let {
@@ -39,6 +43,8 @@
     zoomable = true,
     fullscreen = false,
     onexitfullscreen,
+    onimagepan,
+    onimagezoom,
   }: Props = $props();
 
   /** Wheel pixels per e-fold of zoom; a trackpad pinch arrives as ctrl + wheel. */
@@ -107,7 +113,13 @@
       if (!zoomable) return;
       // Also keeps the browser from zooming the whole page.
       e.preventDefault();
-      if (e.ctrlKey) {
+      if (e.altKey && onimagezoom) {
+        const [x, y] = fromCentre(e);
+        const unit = frame.offsetHeight * view.zoom;
+        // The frame's centre sits at the view's offset, so measure the pointer from there, in frame heights.
+        const delta = Math.max(-MAX_WHEEL_DELTA, Math.min(MAX_WHEEL_DELTA, e.deltaY || e.deltaX));
+        onimagezoom(Math.exp(-delta / PINCH_SENSITIVITY), (x - view.x) / unit, -(y - view.y) / unit);
+      } else if (e.ctrlKey) {
         const [cx, cy] = fromCentre(e);
         const delta = Math.max(-MAX_WHEEL_DELTA, Math.min(MAX_WHEEL_DELTA, e.deltaY));
         view.zoomAt(Math.exp(-delta / PINCH_SENSITIVITY), cx, cy, frame.offsetWidth, frame.offsetHeight);
@@ -137,13 +149,23 @@
     };
   });
 
-  let pan: { pointerId: number; x: number; y: number } | null = null;
+  let pan: { pointerId: number; x: number; y: number; image: boolean } | null = null;
   let panning = $state(false);
+
+  /** Alt takes the drag before any handle does: the image moves, whatever is under the pointer. */
+  function onPointerDownCapture(e: PointerEvent) {
+    if (!e.altKey || !onimagepan || !zoomable || e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    pan = { pointerId: e.pointerId, x: e.clientX, y: e.clientY, image: true };
+    panning = true;
+    container.setPointerCapture(e.pointerId);
+  }
 
   function onPointerDown(e: PointerEvent) {
     if (!zoomable || !view.zoomed || e.button !== 0) return;
     if ((e.target as HTMLElement).closest('[data-point], [data-node], button')) return;
-    pan = { pointerId: e.pointerId, x: e.clientX, y: e.clientY };
+    pan = { pointerId: e.pointerId, x: e.clientX, y: e.clientY, image: false };
     panning = true;
     container.setPointerCapture(e.pointerId);
   }
@@ -151,7 +173,13 @@
   function onPointerMove(e: PointerEvent) {
     if (!pan || e.pointerId !== pan.pointerId) return;
     const k = currentScale();
-    view.panBy((e.clientX - pan.x) / k, (e.clientY - pan.y) / k, frame.offsetWidth, frame.offsetHeight);
+    const dx = (e.clientX - pan.x) / k;
+    const dy = (e.clientY - pan.y) / k;
+    if (pan.image) {
+      // The frame is one unit tall on screen at the view's zoom.
+      const unit = frame.offsetHeight * view.zoom;
+      onimagepan?.(dx / unit, -dy / unit);
+    } else view.panBy(dx, dy, frame.offsetWidth, frame.offsetHeight);
     pan.x = e.clientX;
     pan.y = e.clientY;
   }
@@ -163,7 +191,11 @@
     if (container.hasPointerCapture(e.pointerId)) container.releasePointerCapture(e.pointerId);
   }
 
+  /** Alt held over the preview: the cursor says a drag now moves the image. */
+  let alt = $state(false);
+
   function onKeyDown(e: KeyboardEvent) {
+    alt = e.altKey;
     if (e.key !== '0' || e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
     view.reset();
     glowKey('fit');
@@ -193,7 +225,7 @@
   const shown = $derived(zoomable && view.zoomed);
 </script>
 
-<svelte:window onkeydown={onKeyDown} />
+<svelte:window onkeydown={onKeyDown} onkeyup={(e) => (alt = e.altKey)} onblur={() => (alt = false)} />
 
 <div
   class="viewport"
@@ -201,8 +233,10 @@
   class:barred
   class:zoomed={shown}
   class:panning
+  class:alt={alt && !!onimagepan && zoomable}
   bind:this={container}
   role="presentation"
+  onpointerdowncapture={onPointerDownCapture}
   onpointerdown={onPointerDown}
   onpointermove={(e) => {
     onPointerMove(e);
@@ -256,6 +290,15 @@
   .viewport.zoomed {
     cursor: grab;
     touch-action: none;
+  }
+  /* Over the handles too: Alt takes their drag. */
+  .viewport.alt,
+  .viewport.alt :global(*) {
+    cursor: grab;
+  }
+  .viewport.panning,
+  .viewport.panning :global(*) {
+    cursor: grabbing;
   }
   .viewport.panning {
     cursor: grabbing;

@@ -63,6 +63,7 @@ App.svelte                      owns the state and wires everything together
 | a color row, hex field or picker    | `sections/ColorRow.svelte`                                                                                                                |
 | shuffle, harmony, mood, key         | `state/palette.svelte.ts`, `src/design/shuffle.ts`, `src/color/`                                                                          |
 | the drag handles on the image       | `overlays/MeshOverlay`, `GridOverlay`, `PlanesOverlay` (planes and blobs), `ImagePins`                                                    |
+| moving the image (alt-drag)         | `Preview.svelte` (`onimagepan`), `editor.panBy`, `Transform.panX/panY` (D113)                                                             |
 | the bottom bar                      | `StatusBar.svelte`                                                                                                                        |
 | the OS mockups and legibility check | `overlays/ContextOverlay`, `src/context/`                                                                                                 |
 | keyboard shortcuts                  | `App.svelte` (`onKeyDown`: undo, full screen, save) and `ControlPanel.svelte` (`onWindowKeyDown`: the rest), listed in `Shortcuts.svelte` |
