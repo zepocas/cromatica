@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { identityTransform, MAX_ZOOM, MIN_ZOOM, type Transform } from '../../src/design/design';
-import { applyMat2, clampZoom, inverseTransformMatrix, mat2Uniform, transformMatrix } from '../../src/engine/transform';
+import { identityTransform, MAX_PAN, MAX_ZOOM, MIN_ZOOM, type Transform } from '../../src/design/design';
+import {
+  applyMat2,
+  clampPan,
+  clampZoom,
+  inverseTransformMatrix,
+  inverseTransformPoint,
+  mat2Uniform,
+  transformMatrix,
+  transformPoint,
+} from '../../src/engine/transform';
 import { normalizeDegrees } from '../../src/math';
 
 const t = (p: Partial<Transform>): Transform => ({ ...identityTransform, ...p });
@@ -41,6 +50,35 @@ describe('transform', () => {
       expect(x).toBeCloseTo(0.41, 12);
       expect(y).toBeCloseTo(-0.37, 12);
     }
+  });
+
+  it('a missing or zero pan leaves the point exactly as the matrix gives it', () => {
+    const tr = t({ rotate: 33, zoom: 1.7 });
+    expect(transformPoint(tr, 0.41, -0.37)).toEqual(applyMat2(transformMatrix(tr), 0.41, -0.37));
+    expect(transformPoint(t({ panX: 0, panY: 0 }), 0.41, -0.37)).toEqual([0.41, -0.37]);
+  });
+
+  it('pan moves the image as seen, whatever the turn, zoom and flips', () => {
+    // The pattern point at the frame's centre moves to (panX, panY) on screen.
+    for (const tr of [t({ rotate: 33, zoom: 1.7, flipX: true }), t({ rotate: 271.5, zoom: 0.6, flipY: true })]) {
+      const moved = { ...tr, panX: 0.2, panY: -0.1 };
+      const [x, y] = inverseTransformPoint(moved, ...transformPoint(tr, 0, 0));
+      expect(x).toBeCloseTo(0.2, 12);
+      expect(y).toBeCloseTo(-0.1, 12);
+    }
+  });
+
+  it('inverse undoes the transform with a pan', () => {
+    const tr = t({ rotate: 33, zoom: 1.7, flipX: true, panX: 0.3, panY: -0.2 });
+    const [x, y] = inverseTransformPoint(tr, ...transformPoint(tr, 0.41, -0.37));
+    expect(x).toBeCloseTo(0.41, 12);
+    expect(y).toBeCloseTo(-0.37, 12);
+  });
+
+  it('clamps a pan', () => {
+    expect(clampPan(100)).toBe(MAX_PAN);
+    expect(clampPan(-100)).toBe(-MAX_PAN);
+    expect(clampPan(NaN)).toBe(0);
   });
 
   it('sanitizes angles and zoom', () => {

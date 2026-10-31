@@ -40,7 +40,7 @@ import { blobCount, blobDistance, blobOutline, blobReach, prepareBlobs } from '.
 import { contourPath } from './contour';
 import { planeCount, planeOrder, preparePlanes } from '../../engine/planes';
 import { prepareRampShape, rampT } from '../../engine/ramp-shape';
-import { applyMat2, clampZoom, inverseTransformMatrix, transformMatrix } from '../../engine/transform';
+import { clampPan, clampZoom, inverseTransformPoint, transformPoint } from '../../engine/transform';
 import { createWarp, warpPoint } from '../../engine/warp';
 import { clamp, normalizeDegrees } from '../../math';
 import { paletteFromImage, type ImagePalette } from './image-palette';
@@ -683,23 +683,49 @@ export class EditorState {
     this.transform.rotate = normalizeDegrees(-this.transform.rotate);
   }
 
+  /** Move the image on screen by (dx, dy) composition units. */
+  panBy(dx: number, dy: number): void {
+    this.setPan((this.transform.panX ?? 0) + dx, (this.transform.panY ?? 0) + dy);
+  }
+
+  /** Scale the image by `factor` keeping the point under (x, y), in composition coords, still: p - pan scales with the zoom. */
+  zoomAt(factor: number, x: number, y: number): void {
+    const after = clampZoom(this.transform.zoom * factor);
+    const k = after / this.transform.zoom;
+    this.transform.zoom = after;
+    this.setPan(x - (x - (this.transform.panX ?? 0)) * k, y - (y - (this.transform.panY ?? 0)) * k);
+  }
+
+  /** A centred image stores no pan, so its saves and links stay as they were. */
+  private setPan(px: number, py: number): void {
+    const x = clampPan(px);
+    const y = clampPan(py);
+    if (x === 0 && y === 0) {
+      delete this.transform.panX;
+      delete this.transform.panY;
+    } else {
+      this.transform.panX = x;
+      this.transform.panY = y;
+    }
+  }
+
   resetTransform(): void {
     this.transform = { ...identityTransform };
   }
 
   get isTransformed(): boolean {
     const t = this.transform;
-    return t.rotate !== 0 || t.zoom !== 1 || t.flipX || t.flipY;
+    return t.rotate !== 0 || t.zoom !== 1 || t.flipX || t.flipY || !!t.panX || !!t.panY;
   }
 
   /** Pattern → screen (composition) coords. */
   toScreen(x: number, y: number): [number, number] {
-    return applyMat2(inverseTransformMatrix(this.transform), x, y);
+    return inverseTransformPoint(this.transform, x, y);
   }
 
   /** Screen (composition) → pattern coords. */
   toPattern(x: number, y: number): [number, number] {
-    return applyMat2(transformMatrix(this.transform), x, y);
+    return transformPoint(this.transform, x, y);
   }
 
   // ---- Colors: mesh points or linear stops, whichever is active --------------

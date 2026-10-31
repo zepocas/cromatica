@@ -21,6 +21,11 @@
     ],
     ['o', 'preview with your OS on top, and a warning where the clock or icons would be hard to read'],
     ['share', 'the share link button copies a link to the design, not the image; whoever opens it can edit it'],
+    ['alt drag', 'move the image on the canvas, handles included, for a fine position'],
+    [
+      'alt scroll',
+      'zoom the image about the pointer (the zoom in adjust, advanced); ctrl scroll and pinch zoom the view only',
+    ],
     ['e', 'export the image'],
     [
       'png jpg',

@@ -280,7 +280,7 @@ export type ReliefStyle = (typeof RELIEF_STYLES)[number];
  * Whole-image transform (D24), applied to composition coords before the
  * warp, so the warp turns, scales and mirrors with the pattern. Lithograph and
  * xerox noise and dither stay on the output pixel grid. Pattern coords are
- *   q = S · R(-rotate) · p / zoom,   S = diag(flipX ? -1 : 1, flipY ? -1 : 1)
+ *   q = S · R(-rotate) · (p - pan) / zoom,   S = diag(flipX ? -1 : 1, flipY ? -1 : 1)
  * (src/engine/transform.ts). Flipping in pattern space means a flip button
  * that mirrors the image as seen on screen must also negate `rotate`.
  */
@@ -291,6 +291,9 @@ export interface Transform {
   zoom: number;
   flipX: boolean;
   flipY: boolean;
+  /** Where the image sits on the frame, composition units (frame height = 1, +y up); missing = 0, centred. Moves the image as seen, whatever the rotation. */
+  panX?: number;
+  panY?: number;
 }
 
 export interface Design {
@@ -318,6 +321,8 @@ export const noFinish: Finish = {
 export const identityTransform: Transform = { rotate: 0, zoom: 1, flipX: false, flipY: false };
 export const MIN_ZOOM = 0.5;
 export const MAX_ZOOM = 4;
+/** Largest image offset on either axis. */
+export const MAX_PAN = 2;
 
 export const MAX_STOPS = 8;
 export const MAX_MESH_POINTS = 16;
