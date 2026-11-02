@@ -14,6 +14,18 @@ async function copyLink(page: Page): Promise<string> {
   return page.evaluate(() => navigator.clipboard.readText());
 }
 
+test('"link copied" is a toast above the share button that goes away by itself', async ({ page }) => {
+  await openApp(page);
+  const button = page.getByRole('button', { name: 'Copy share link' });
+  await button.click();
+  const toast = page.getByRole('status').filter({ hasText: 'link copied' });
+  await expect(toast).toBeVisible();
+  const [t, b] = [(await toast.boundingBox())!, (await button.boundingBox())!];
+  expect(t.y + t.height).toBeLessThanOrEqual(b.y);
+  expect(t.x).toBeGreaterThanOrEqual(b.x - 1);
+  await expect(toast).toHaveCount(0, { timeout: 5000 });
+});
+
 test('the copied link opens the same design, and keeps its fragment until the first edit', async ({ page }) => {
   await openApp(page);
   await shuffle(page);
