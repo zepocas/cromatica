@@ -6,7 +6,7 @@
   import Dropdown from '../controls/Dropdown.svelte';
   import { PATTERN_KINDS, type EditorState } from '../state/editor.svelte';
   import { MAX_SIZE, type ExportSettings } from '../state/export-settings.svelte';
-  import { CUSTOM_PRESET_ID, PRESET_GROUPS, presetLabel, SIZE_PRESETS } from '../state/presets';
+  import { CUSTOM_PRESET_ID, PRESET_GROUPS, presetLabel, SCREEN_PRESET_ID, SIZE_PRESETS } from '../state/presets';
   import Section from '../controls/Section.svelte';
   import ShapeIcon from '../controls/ShapeIcon.svelte';
   import { PATTERN_ICONS, WARP_ICONS } from '../controls/shapeIcons';
@@ -19,12 +19,20 @@
   // Bindable so child bindings into the editor's state pass Svelte's ownership checks.
   let { editor = $bindable(), exportSettings }: Props = $props();
 
-  const SIZE_OPTIONS = [
+  const SIZE_OPTIONS = $derived([
+    ...(exportSettings.screen
+      ? [
+          {
+            value: SCREEN_PRESET_ID,
+            label: `this screen (${exportSettings.screen.width} × ${exportSettings.screen.height})`,
+          },
+        ]
+      : []),
     ...PRESET_GROUPS.flatMap((group) =>
       SIZE_PRESETS.filter((p) => p.group === group).map((p) => ({ value: p.id, label: presetLabel(p), group })),
     ),
     { value: CUSTOM_PRESET_ID, label: 'custom' },
-  ];
+  ]);
 
   const PATTERNS = PATTERN_KINDS.map((kind) => ({ kind, label: kind === 'grid' ? 'net' : kind }));
 

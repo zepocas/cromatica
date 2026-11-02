@@ -882,3 +882,10 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Decision (2026-10-31, user):** M14 (lean panel) and Phase 2 (multi-monitor preview) are done as built (D73, D74, D84). The status bar stays; the multi-monitor open questions (presets, portrait monitors, a preset size for a spanned setup) are dropped unless real use brings them back.
 - **Moved to M15:** the crowded panel and the status bar on narrow windows (#61), since the mobile layout reworks both.
 - **Product name:** settled by the user; the placeholder question is removed from M13.
+
+## D114. Six size presets, "this screen" as the start, JPEG as the default format
+
+- **Decision (2026-10-31, user):** the size list was 24 native resolutions, too many to scan, especially on a phone. It is now "this screen" followed by six high-resolution presets, one per shape (the highest of each), each labelled `W × H (ratio)`: desktop 5120 × 2880 (16:9), 3840 × 2400 (16:10), 5120 × 2160 (21:9); mobile 1440 × 3120 (9:19.5) and 1440 × 2560 (9:16); tablet 2064 × 2752 (3:4). Custom covers every other screen.
+- **This screen:** the first option and the starting size: the screen's pixels (`screen` times `devicePixelRatio`, capped at the export limit), so a phone starts as held and a computer at its panel. It follows the screen on each load; `?default` has no screen, so no option and the fixed 5120 × 2880 for tests. Replaces the first-visit sizing in D100 (nearest desktop preset); the walkthrough and the folded panel stay.
+- **JPEG by default:** the format starts as JPEG, a file a fraction of the PNG's size, and wallpapers rarely need lossless. PNG stays one pick away.
+- **Saved data:** the size was never saved with a design, so nothing to migrate.

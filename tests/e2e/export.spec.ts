@@ -101,7 +101,7 @@ test('a custom size letterboxes the preview and downloads', async ({ page }) => 
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download' }).click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toMatch(/^cromatica-\d{12}\.png$/);
+  expect(download.suggestedFilename()).toMatch(/^cromatica-\d{12}\.jpg$/);
 });
 
 for (const format of ['png', 'jpeg'] as const) {
@@ -124,7 +124,7 @@ for (const format of ['png', 'jpeg'] as const) {
     expect(file.toString('latin1')).toMatch(/cromatica[.:]design>?\0*v1\.[\w-]+/);
     expect(file.toString('latin1')).not.toContain('"version"');
 
-    await choose(page.getByLabel('Size preset'), '1920x1080');
+    await choose(page.getByLabel('Size preset'), '3840x2400');
     await page.getByRole('button', { name: /^Shuffle( Space)?$/ }).click();
     await expectPreviewChanged(before);
     const shuffled = await settled();

@@ -20,14 +20,14 @@ test('every context draws over the preview without changing it', async ({ page }
 test('the warning flags a zone no text color reads over and stays quiet on a calm one', async ({ page }) => {
   await openApp(page);
   // The default mesh is one flat pink behind the iOS clock...
-  await choose(page.getByLabel('Size preset'), '1206x2622');
+  await choose(page.getByLabel('Size preset'), '1440x3120');
   await choose(page.getByLabel('OS context'), 'ios-lock');
   const clock = page.locator('[data-zone="clock"]');
   await expect(clock).toHaveAttribute('data-contrast', /\d/);
   await expect(clock).toHaveAttribute('data-warn', '');
 
   // ...but runs from dark navy to light orange under the macOS menu bar.
-  await choose(page.getByLabel('Size preset'), '3840x2160');
+  await choose(page.getByLabel('Size preset'), '5120x2880');
   await choose(page.getByLabel('OS context'), 'macos');
   const menuBar = page.locator('[data-zone="menu bar"]');
   await expect(menuBar).toHaveAttribute('data-warn', 'mid-tone');
@@ -39,7 +39,7 @@ test('phone outputs list the phone contexts first', async ({ page }) => {
   await context.click();
   await expect(page.getByRole('listbox').getByRole('option').nth(1)).toHaveAttribute('data-value', 'macos');
   await page.keyboard.press('Escape');
-  await choose(page.getByLabel('Size preset'), '1206x2622');
+  await choose(page.getByLabel('Size preset'), '1440x3120');
   await context.click();
   await expect(page.getByRole('listbox').getByRole('option').nth(1)).toHaveAttribute('data-value', 'ios-lock');
 });
