@@ -9,20 +9,34 @@ test.describe('ui size (D111)', () => {
     expect(await rootScale(page)).toBe('1');
   });
 
-  test('a 4K-wide window scales up by itself', async ({ page }) => {
-    await page.setViewportSize({ width: 3840, height: 2000 });
-    await openApp(page);
-    expect(await rootScale(page)).toBe('1.5');
-    const panel = await page.locator('aside').boundingBox();
-    expect(panel?.width).toBeCloseTo(450, 0);
+  test.describe('a 4K screen at 100%', () => {
+    test.use({ viewport: { width: 3840, height: 2000 }, screen: { width: 3840, height: 2160 }, deviceScaleFactor: 1 });
+    test('scales up by itself', async ({ page }) => {
+      await openApp(page);
+      expect(await rootScale(page)).toBe('1.5');
+      expect((await page.locator('aside').boundingBox())?.width).toBeCloseTo(450, 0);
+    });
+  });
+
+  test.describe('a 4K screen at 125%, in a window far from full', () => {
+    test.use({
+      viewport: { width: 1664, height: 1000 },
+      screen: { width: 3072, height: 1728 },
+      deviceScaleFactor: 1.25,
+    });
+    test('follows the screen, not the window: 1.15', async ({ page }) => {
+      await openApp(page);
+      expect(await rootScale(page)).toBe('1.15');
+      expect((await page.locator('aside').boundingBox())?.width).toBeCloseTo(345, 0);
+    });
   });
 
   test('a picked size applies at once, is remembered, and keeps the list on its button', async ({ page }) => {
     await page.setViewportSize({ width: 1600, height: 1000 });
     await openApp(page);
     const size = page.getByRole('combobox', { name: 'UI size' });
-    await choose(size, { label: '200%' });
-    expect(await rootScale(page)).toBe('2');
+    await choose(size, { label: '125%' });
+    expect(await rootScale(page)).toBe('1.25');
 
     await size.click();
     const button = (await size.boundingBox())!;
@@ -33,7 +47,7 @@ test.describe('ui size (D111)', () => {
     await page.keyboard.press('Escape');
 
     await page.reload();
-    expect(await rootScale(page)).toBe('2');
+    expect(await rootScale(page)).toBe('1.25');
   });
 
   test('the preview keeps a sharp buffer at a scale', async ({ page }) => {
@@ -57,4 +71,12 @@ test('75% shrinks the panel and the preview still fills the rest', async ({ page
   await choose(page.getByRole('combobox', { name: 'UI size' }), { label: '75%' });
   expect(await page.evaluate(() => document.documentElement.dataset.uiScale)).toBe('0.75');
   expect((await page.locator('aside').boundingBox())?.width).toBeCloseTo(225, 0);
+});
+
+test('115% sits between 100% and 125% and is labelled without float noise', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await openApp(page);
+  await choose(page.getByRole('combobox', { name: 'UI size' }), { label: '115%' });
+  expect(await rootScale(page)).toBe('1.15');
+  expect((await page.locator('aside').boundingBox())?.width).toBeCloseTo(345, 0);
 });

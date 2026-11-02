@@ -1,20 +1,29 @@
 // The panel's size, like browser zoom but remembered by the app (best-effort, D13).
 export const UI_SCALE_KEY = 'cromatica.ui-scale';
 
-export const UI_SCALES = [0.75, 1, 1.25, 1.5, 2] as const;
+export const UI_SCALES = [0.75, 1, 1.15, 1.25, 1.5] as const;
 export type UiScale = (typeof UI_SCALES)[number];
 
 /** `null` = follow the window width. */
 export type UiScaleChoice = UiScale | null;
 
+/** The screen width the UI was drawn for: 1080p at an OS scale of 1. */
+const REFERENCE_WIDTH = 1920;
+/** What auto may pick; 75% is for a hand pick. */
+const AUTO_STEPS = [1, 1.15, 1.25, 1.5] as const;
+
 /**
- * Width in CSS px, so browser zoom and the OS scale are already in it: a 4K screen the OS scales to 1080p
- * stays at 1, and only one drawn 1:1 (a 3840 window) gets bigger. Laptops and 1080p are below the first step.
+ * From the screen, not the window, so un-maximizing it doesn't change the size. The apparent size grows with the
+ * screen's physical width like the square root of it (a bigger monitor is seen from about the same distance, so
+ * more pixels need larger controls, but less than in proportion); the OS scale (and browser zoom) already
+ * supplies part of that, so it is divided out. Snapped to the nearest step and never below 1: 1080p and laptops
+ * stay at 1, a 4K at 125% gets 1.15, a 4K at 100% gets 1.5, and a 4K the OS scales to 1080p stays at 1.
+ * `screenWidth` is in CSS px (`screen.width`), so with the pixel ratio it gives the physical width.
  */
-export function autoScale(innerWidth: number): UiScale {
-  if (innerWidth >= 3200) return 1.5;
-  if (innerWidth >= 2400) return 1.25;
-  return 1;
+export function autoScale(screenWidth: number, pixelRatio: number): UiScale {
+  const target = Math.sqrt((screenWidth * pixelRatio) / REFERENCE_WIDTH) / pixelRatio;
+  if (!(target > 1)) return 1;
+  return AUTO_STEPS.reduce((best, s) => (Math.abs(s - target) < Math.abs(best - target) ? s : best));
 }
 
 export function readScaleChoice(storage: Storage = localStorage): UiScaleChoice {
@@ -45,10 +54,10 @@ export function currentScale(root: HTMLElement = document.documentElement): numb
   return Number(root.dataset.uiScale) || 1;
 }
 
-/** Auto reads the window width, which element zoom leaves unchanged. */
+/** Auto reads the screen, which element zoom leaves unchanged. */
 export function chooseScale(choice: UiScaleChoice, storage: Storage = localStorage): void {
   writeScaleChoice(choice, storage);
-  applyScale(choice ?? autoScale(innerWidth));
+  applyScale(choice ?? autoScale(screen.width, devicePixelRatio));
 }
 
 export function applyScale(scale: number, root: HTMLElement = document.documentElement): void {

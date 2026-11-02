@@ -17,15 +17,34 @@ function memoryStorage(initial: Record<string, string> = {}): Storage {
   } as Storage;
 }
 
-describe('autoScale', () => {
+describe('autoScale (screen width in CSS px, pixel ratio)', () => {
   it('leaves laptops and 1080p to 1', () => {
-    for (const w of [800, 1280, 1512, 1920, 2399]) expect(autoScale(w)).toBe(1);
+    expect(autoScale(1920, 1)).toBe(1);
+    expect(autoScale(1280, 1)).toBe(1);
+    expect(autoScale(1512, 2)).toBe(1);
+    expect(autoScale(1920, 1.25)).toBe(1);
+    expect(autoScale(1280, 1.5)).toBe(1);
   });
 
-  it('steps up for a window that is drawn 1:1 on a big screen', () => {
-    expect(autoScale(2560)).toBe(1.25);
-    expect(autoScale(3199)).toBe(1.25);
-    expect(autoScale(3840)).toBe(1.5);
+  it('leaves phones and tablets at 1', () => {
+    expect(autoScale(390, 3)).toBe(1);
+    expect(autoScale(1366, 2)).toBe(1);
+  });
+
+  it('a 4K screen: 1.5 at 100%, 1.15 at 125%, and 1 once the OS scales it to 1080p or less', () => {
+    expect(autoScale(3840, 1)).toBe(1.5);
+    expect(autoScale(3072, 1.25)).toBe(1.15);
+    expect(autoScale(2560, 1.5)).toBe(1);
+    expect(autoScale(1920, 2)).toBe(1);
+  });
+
+  it('a 1440p screen at 100% gets a small step up', () => {
+    expect(autoScale(2560, 1)).toBe(1.15);
+  });
+
+  it('is 1 for values that mean nothing', () => {
+    expect(autoScale(NaN, 1)).toBe(1);
+    expect(autoScale(1920, 0)).toBe(1);
   });
 });
 
@@ -39,8 +58,16 @@ describe('the saved choice', () => {
     expect(readScaleChoice(storage)).toBeNull();
   });
 
+  it('keeps the 115% step', () => {
+    const storage = memoryStorage();
+    writeScaleChoice(1.15, storage);
+    expect(readScaleChoice(storage)).toBe(1.15);
+  });
+
   it('ignores a value that is not one of the sizes', () => {
     expect(readScaleChoice(memoryStorage({ [UI_SCALE_KEY]: '7' }))).toBeNull();
+    // 200% was dropped: a browser that saved it goes back to auto.
+    expect(readScaleChoice(memoryStorage({ [UI_SCALE_KEY]: '2' }))).toBeNull();
     expect(readScaleChoice(memoryStorage({ [UI_SCALE_KEY]: 'big' }))).toBeNull();
   });
 });
