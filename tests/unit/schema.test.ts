@@ -31,6 +31,15 @@ describe('design schema', () => {
     expect(d.base).toEqual(v1Mesh.base);
   });
 
+  it('stores a pan only when the image is off centre, so centred saves are unchanged', () => {
+    expect(saveDesign(defaultDesign).design.transform).toEqual(identityTransform);
+    const moved: Design = { ...defaultDesign, transform: { ...identityTransform, panX: 0.25, panY: -0.5 } };
+    expect(roundTrip(moved).transform).toEqual({ ...identityTransform, panX: 0.25, panY: -0.5 });
+    const saved = saveDesign(moved);
+    const far = { ...saved, design: { ...saved.design, transform: { ...saved.design.transform, panX: 9 } } };
+    expect(() => loadDesign(far)).toThrow(DesignLoadError);
+  });
+
   it('gives a version 2 aurora the blend that keeps its look', () => {
     const base = { kind: 'aurora', colors: [[0.2, 0.03, 260]], count: 0.5, glow: 0.4, seed: 3 };
     const d = loadDesign({ version: 2, design: { ...saveDesign(defaultDesign).design, base } });

@@ -80,21 +80,23 @@ describe('shuffleDesign', () => {
     }
   });
 
-  it('turns the image (whatever the pattern) on a style shuffle, keeping flips and, off planes, the zoom, and lays mesh points out in view', () => {
-    const transform = { rotate: 0, zoom: 2, flipX: true, flipY: false };
+  it('turns the image (whatever the pattern) on a style shuffle, keeping the flips and, off planes, the zoom, but not the pan (D113), and lays mesh points out in view', () => {
+    const transform = { rotate: 0, zoom: 2, flipX: true, flipY: false, panX: 0.3, panY: -0.2 };
     const styled = (s: number) => ({ ...all(s), style: true });
     const turned = new Set<number>();
     for (let s = 0; s < 40; s++) {
       const out = shuffled({ ...meshDesign, transform }, styled(s), 16 / 9);
       expect(out.transform).toMatchObject({ flipX: true, flipY: false });
-      // Planes zoom in on their own (D76); everything else keeps the zoom.
+      // Planes zoom in on their own (D76); everything else keeps the zoom. The pan always goes.
       if (out.base.kind !== 'planes') expect(out.transform!.zoom).toBe(2);
+      expect(out.transform).not.toHaveProperty('panX');
+      expect(out.transform).not.toHaveProperty('panY');
       turned.add(out.transform!.rotate);
       expect(out.transform!.rotate).toBeGreaterThanOrEqual(0);
       expect(out.transform!.rotate).toBeLessThan(360);
     }
     expect(turned.size).toBeGreaterThan(5);
-    // Same seed, same turn; and plain layout shuffles leave the rotation alone.
+    // Same seed, same turn; and plain layout shuffles leave the rotation, zoom and pan alone.
     expect(shuffled(meshDesign, styled(7))).toEqual(shuffled(meshDesign, styled(7)));
     expect(shuffled({ ...meshDesign, transform }, all(3)).transform).toEqual(transform);
   });

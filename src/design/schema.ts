@@ -6,6 +6,7 @@ import {
   BAND_STYLES,
   identityTransform,
   MAX_GRID,
+  MAX_PAN,
   MAX_MESH_POINTS,
   BLOB_SCALE,
   PLANE_SCALE,
@@ -124,6 +125,9 @@ const designSchema = z.object({
     zoom: z.number().min(MIN_ZOOM).max(MAX_ZOOM),
     flipX: z.boolean(),
     flipY: z.boolean(),
+    // Optional so a centred design saves exactly as before, and links stay short (share.ts diffs against a frozen reference).
+    panX: z.number().min(-MAX_PAN).max(MAX_PAN).optional(),
+    panY: z.number().min(-MAX_PAN).max(MAX_PAN).optional(),
   }),
   finish: z.object({
     vignette: unit,

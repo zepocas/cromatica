@@ -1,7 +1,7 @@
 import { oklchDistance } from '../color/gamut';
 import { type GeneratedPalette, generatePalette, type PaletteInfo, type PaletteOptions } from '../color/harmony';
 import type { Oklch } from '../color/types';
-import { applyMat2, clampZoom, transformMatrix } from '../engine/transform';
+import { applyMat2, clampZoom, transformMatrix, transformPoint } from '../engine/transform';
 import { clamp } from '../math';
 import {
   AURORA_BLEND,
@@ -368,7 +368,9 @@ export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 
     const zoomIn = round4(rotRng.range(...PLANES_SHUFFLE.zoom));
     const current = transform?.zoom ?? 1;
     const zoom = kind === 'planes' ? (zoomRoll && !surprise ? zoomIn : 1) : design.base.kind === 'planes' ? 1 : current;
-    transform = { ...(transform ?? identityTransform), rotate, zoom };
+    // The pan was set for the design that is leaving, so a new look starts centred (D113).
+    const { panX: _panX, panY: _panY, ...kept } = transform ?? identityTransform;
+    transform = { ...kept, rotate, zoom };
   }
   const ctx: ShuffleContext = {
     opts,
@@ -433,7 +435,12 @@ function frameExtent(aspect: number, transform: Transform | undefined): [number,
   const zoom = clampZoom(transform.zoom);
   // Quarter turns are exact (cos 90° is 6e-17, not 0).
   const snap = (x: number) => (x < 1e-9 ? 0 : x > 1 - 1e-9 ? 1 : x);
-  return [(snap(c) * fw + snap(s) * fh) / zoom, (snap(s) * fw + snap(c) * fh) / zoom];
+  // The pattern is centred on the origin, so the offset frame is covered by growing the box by the offset.
+  const [ox, oy] = applyMat2(transformMatrix({ ...transform, zoom: 1 }), transform.panX ?? 0, transform.panY ?? 0);
+  return [
+    (snap(c) * fw + snap(s) * fh) / zoom + Math.abs(ox) / zoom,
+    (snap(s) * fw + snap(c) * fh) / zoom + Math.abs(oy) / zoom,
+  ];
 }
 
 function paletteInfo({ rule, mood, key }: GeneratedPalette): PaletteInfo {
@@ -872,10 +879,9 @@ function shuffleBlobs(base: BlobsPattern, ctx: ShuffleContext): { pattern: Blobs
 
 /** Layouts are made on screen; map them under the transform so they land in view. */
 function toPatternSpace(mesh: PointMesh, transform: Transform): PointMesh {
-  const m = transformMatrix(transform);
   const zoom = clampZoom(transform.zoom);
   const points = mesh.points.map((p) => {
-    const [x, y] = applyMat2(m, p.x, p.y);
+    const [x, y] = transformPoint(transform, p.x, p.y);
     return { ...p, x: round4(x), y: round4(y), radius: round4(p.radius / zoom) };
   });
   return { ...mesh, points };
