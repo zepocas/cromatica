@@ -368,7 +368,9 @@ export function shuffleDesign(design: Design, opts: ShuffleOptions, aspect = 16 
     const zoomIn = round4(rotRng.range(...PLANES_SHUFFLE.zoom));
     const current = transform?.zoom ?? 1;
     const zoom = kind === 'planes' ? (zoomRoll && !surprise ? zoomIn : 1) : design.base.kind === 'planes' ? 1 : current;
-    transform = { ...(transform ?? identityTransform), rotate, zoom };
+    // The pan was set for the design that is leaving, so a new look starts centred (D113).
+    const { panX: _panX, panY: _panY, ...kept } = transform ?? identityTransform;
+    transform = { ...kept, rotate, zoom };
   }
   const ctx: ShuffleContext = {
     opts,
