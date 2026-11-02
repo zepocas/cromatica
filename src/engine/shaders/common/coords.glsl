@@ -25,7 +25,8 @@ vec2 compositionCoord(ivec2 px) {
 
 // Whole-image transform (src/engine/transform.ts): composition → pattern coords.
 uniform mat2 u_transform;
+uniform vec2 u_pan;
 
 vec2 transformCoord(vec2 p) {
-  return u_transform * p;
+  return u_transform * (p - u_pan);
 }

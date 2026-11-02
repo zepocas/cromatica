@@ -23,6 +23,7 @@
   import MonitorsOverlay from './ui/overlays/MonitorsOverlay.svelte';
   import { MonitorsState } from './ui/state/monitors.svelte';
   import { CONTEXT_SCREENS } from './context/screens';
+  import GhostTip from './ui/GhostTip.svelte';
   import Preview from './ui/Preview.svelte';
   import {
     dismissTips,
@@ -164,6 +165,22 @@
   const previewAspect = $derived(previewPreset ? previewPreset.width / previewPreset.height : aspect);
 
   const showMonitors = $derived(monitors.on && !fullscreen && !ui.exploring && !previewPreset);
+  /** The image gestures act on the design underneath, so not while something else is drawn over or in place of it. */
+  const imageMovable = $derived(!showMonitors && !editor.preview && !previewPreset);
+  /** Alt has no touch equivalent yet (D113), so a phone or tablet gets no hint. */
+  const touch = isTouchDevice(navigator.platform, navigator.userAgent, navigator.maxTouchPoints);
+  /** A quiet reminder of the image gestures, always on (D113). */
+  const panHint = $derived(
+    !touch &&
+      !walkthrough.active &&
+      !fullscreen &&
+      !ui.exploring &&
+      !showMonitors &&
+      !editor.preview &&
+      !previewPreset &&
+      !ui.tips &&
+      !ui.shortcuts,
+  );
   /** In the stretch fit the wallpaper is drawn bent to the block, whose shape the monitors keep. */
   const stretchedTo = $derived.by(() => {
     if (!showMonitors || monitors.fit !== 'stretch') return null;
@@ -189,9 +206,15 @@
     if (!builtIn && linked === null) saveTimer = setTimeout(() => writeAutosave(design), 300);
   });
 
+  /** How long the "link copied" toast stays. A long-link warning has more to read. */
+  const TOAST_MS = 2500;
+  const LONG_TOAST_MS = 6000;
+  let toastTimer: ReturnType<typeof setTimeout> | undefined;
+
   async function share() {
     error = '';
     notice = '';
+    clearTimeout(toastTimer);
     try {
       const url = await shareUrl(renderDesign);
       await navigator.clipboard.writeText(url);
@@ -199,6 +222,7 @@
         url.length > LONG_LINK
           ? 'link copied; long, so chat apps may cut it (download keeps the design)'
           : 'link copied';
+      toastTimer = setTimeout(() => (notice = ''), url.length > LONG_LINK ? LONG_TOAST_MS : TOAST_MS);
     } catch (err) {
       error = err instanceof Error ? err.message : String(err);
     }
@@ -377,6 +401,8 @@
   zoomable={!ui.exploring && !fullscreen}
   {fullscreen}
   onexitfullscreen={exitFullscreen}
+  onimagepan={imageMovable ? (dx, dy) => editor.panBy(dx, dy) : undefined}
+  onimagezoom={imageMovable ? (f, x, y) => editor.zoomAt(f, x, y) : undefined}
 >
   {#snippet overlay()}
     {#if !ui.exploring && contextScreen && !previewPreset && !showMonitors}
@@ -418,6 +444,14 @@
     onundo={undo}
     onredo={redo}
     {nudgeShuffle}
+  />
+{/if}
+{#if panHint}
+  <GhostTip
+    tips={[
+      ['alt-drag', 'move the image'],
+      ['alt-scroll', 'zoom it'],
+    ]}
   />
 {/if}
 {#if !fullscreen}

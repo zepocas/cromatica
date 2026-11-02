@@ -46,6 +46,8 @@
         ['o', 'show or hide the OS screen that fits the canvas'],
         ['n', 'show or hide the mesh points or grid nodes'],
         ['0', 'fit the view after zooming'],
+        [`${mac ? '⌥' : 'Alt'} drag`, 'move the image on the canvas'],
+        [`${mac ? '⌥' : 'Alt'} scroll`, 'zoom the image about the pointer'],
         ['t', 'tips and tricks (the ✦ button)'],
         ['?', 'this list'],
       ],

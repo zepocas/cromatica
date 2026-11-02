@@ -1,6 +1,6 @@
 // Whole-image transform, applied before the warp. The shader reads the same matrix
-// (u_transform); the identity matrix is exact in fp32, so untransformed designs are unchanged.
-import { MAX_ZOOM, MIN_ZOOM, type Transform } from '../design/design';
+// (u_transform, u_pan); the identity matrix and a zero pan are exact in fp32, so untransformed designs are unchanged.
+import { MAX_PAN, MAX_ZOOM, MIN_ZOOM, type Transform } from '../design/design';
 import { normalizeDegrees } from '../math';
 
 /** Row-major 2×2 matrix [m00, m01, m10, m11]: q = (m00·x + m01·y, m10·x + m11·y). */
@@ -51,6 +51,21 @@ export function inverseTransformMatrix(t: Transform | undefined): Mat2 {
   const m = transpose(orientationMatrix(t));
   const z = clampZoom(t?.zoom ?? 1);
   return [m[0] * z, m[1] * z, m[2] * z, m[3] * z];
+}
+
+/** Composition → pattern point: the image's offset first, so the matrix keeps turning and scaling about the frame's centre. */
+export function transformPoint(t: Transform | undefined, x: number, y: number): [number, number] {
+  return applyMat2(transformMatrix(t), x - (t?.panX ?? 0), y - (t?.panY ?? 0));
+}
+
+/** Pattern → composition point (inverse of transformPoint). */
+export function inverseTransformPoint(t: Transform | undefined, x: number, y: number): [number, number] {
+  const [sx, sy] = applyMat2(inverseTransformMatrix(t), x, y);
+  return [sx + (t?.panX ?? 0), sy + (t?.panY ?? 0)];
+}
+
+export function clampPan(v: number): number {
+  return Number.isFinite(v) ? Math.min(MAX_PAN, Math.max(-MAX_PAN, v)) : 0;
 }
 
 export function transpose(m: Mat2): Mat2 {

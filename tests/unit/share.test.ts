@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultDesign, type Design } from '../../src/design/design';
+import { defaultDesign, identityTransform, type Design } from '../../src/design/design';
 import { loadDesign, saveDesign, SCHEMA_VERSION } from '../../src/design/schema';
 import { shuffleDesign } from '../../src/design/shuffle';
 import {
@@ -76,6 +76,14 @@ describe('step B: quantize', () => {
     let total = 0;
     for (const d of ds) total += await byteLength(d);
     expect(total / ds.length).toBeLessThan(650);
+  });
+
+  it('carries a pan through a link and adds nothing for a centred image', async () => {
+    const centred = await encodeShare(defaultDesign);
+    const moved: Design = { ...defaultDesign, transform: { ...identityTransform, panX: 0.1234, panY: -0.5 } };
+    const got = (await decodeShare(await encodeShare(moved))).transform;
+    expect(got).toMatchObject({ panX: 0.123, panY: -0.5 });
+    expect((await decodeShare(centred)).transform).not.toHaveProperty('panX');
   });
 
   it('keeps rotate under 360 when rounding would reach it', async () => {
