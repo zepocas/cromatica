@@ -159,6 +159,68 @@ test('transform: alt-drag moves the image and the handles with it, even from a h
   expect(y1).toBeCloseTo(y0, 2);
 });
 
+test('transform: the move pad is a view and a heavy one: slow drags move it less, fast ones more, Shift least', async ({
+  page,
+}) => {
+  await openApp(page);
+  const handle = page.locator('[data-point="1"]');
+  const onScreen = async () => toComposition(page, ...(await centerOf(handle)));
+  const [x0, y0] = await onScreen();
+  await openMore(page, 'adjust');
+  const pad = page.getByRole('button', { name: /^Move, x/ });
+  const centre = page.getByRole('button', { name: 'Centre the image' });
+  await expect(centre).toBeDisabled();
+  const box = (await pad.boundingBox())!;
+  const mid = [box.x + box.width / 2, box.y + box.height / 2];
+  const reading = async () => {
+    const m = /x ([+−]\d\.\d+), y ([+−]\d\.\d+)/.exec((await pad.getAttribute('aria-label'))!)!;
+    return [m[1], m[2]].map((v) => Number(v.replace('−', '-')));
+  };
+  /** One drag of 20 px to the right in `steps` moves, `pause` ms apart, from the centre; leaves the pad centred again. */
+  const drag = async (steps: number, pause: number, shift = false) => {
+    await pad.dblclick();
+    await page.mouse.move(mid[0], mid[1]);
+    if (shift) await page.keyboard.down('Shift');
+    await page.mouse.down();
+    for (let i = 1; i <= steps; i++) {
+      await page.mouse.move(mid[0] + (20 * i) / steps, mid[1]);
+      if (pause) await page.waitForTimeout(pause);
+    }
+    await page.mouse.up();
+    if (shift) await page.keyboard.up('Shift');
+    return (await reading())[0];
+  };
+
+  const fast = await drag(1, 0);
+  const slow = await drag(10, 60);
+  const fine = await drag(1, 0, true);
+  expect(slow).toBeGreaterThan(0);
+  expect(slow).toBeLessThan(fast * 0.7);
+  expect(fine).toBeLessThan(slow);
+  // Even a fast drag is not faster than the pointer: 20 px of a 96 px pad is at most 20/96 of its span.
+  expect(fast).toBeLessThanOrEqual((20 / box.width) * 2 + 1e-9);
+
+  // The dot going right and up looks right and up: the image goes left and down (a handle near the top
+  // would leave the frame going up). The arrows step exactly.
+  await pad.dblclick();
+  await pad.focus();
+  for (const key of ['ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowUp', 'ArrowUp']) await page.keyboard.press(key);
+  await expect(pad).toHaveAccessibleName(/x \+0\.03, y \+0\.02/);
+  await page.keyboard.press('ArrowLeft');
+  await expect(pad).toHaveAccessibleName(/x \+0\.02/);
+  let [x, y] = await onScreen();
+  expect(x - x0).toBeCloseTo(-0.02, 2);
+  expect(y - y0).toBeCloseTo(-0.02, 2);
+  await expect(centre).toBeEnabled();
+
+  // Double-click on the pad centres.
+  await pad.dblclick();
+  await expect(centre).toBeDisabled();
+  [x, y] = await onScreen();
+  expect(x).toBeCloseTo(x0, 2);
+  expect(y).toBeCloseTo(y0, 2);
+});
+
 test('transform: a ghost tip always lists the image gestures; alt-scroll zooms about the pointer', async ({ page }) => {
   await openApp(page);
   const tip = page.getByRole('note').filter({ hasText: 'alt-drag move the image' });

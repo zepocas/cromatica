@@ -697,7 +697,7 @@ export class EditorState {
   }
 
   /** A centred image stores no pan, so its saves and links stay as they were. */
-  private setPan(px: number, py: number): void {
+  setPan(px: number, py: number): void {
     const x = clampPan(px);
     const y = clampPan(py);
     if (x === 0 && y === 0) {
