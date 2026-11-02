@@ -57,7 +57,10 @@
 
   const percent = $derived(progress && progress.tilesTotal > 0 ? (progress.tilesDone / progress.tilesTotal) * 100 : 0);
 
-  const SCALE_OPTIONS = [{ value: 'auto' }, ...UI_SCALES.map((s) => ({ value: String(s), label: `${s * 100}%` }))];
+  const SCALE_OPTIONS = [
+    { value: 'auto' },
+    ...UI_SCALES.map((s) => ({ value: String(s), label: `${Math.round(s * 100)}%` })),
+  ];
 
   function setScale(value: string) {
     const choice: UiScaleChoice = UI_SCALES.find((s) => String(s) === value) ?? null;
@@ -213,7 +216,7 @@
         value={ui.scale === null ? 'auto' : String(ui.scale)}
         options={SCALE_OPTIONS}
         onchange={setScale}
-        title="Size of the panel and bars; auto follows the window width"
+        title="Size of the panel and bars; auto follows the screen"
       />
     </span>
     <span class="sep" role="separator" aria-orientation="vertical"></span>
