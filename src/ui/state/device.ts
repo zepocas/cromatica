@@ -5,6 +5,11 @@ export interface Size {
   height: number;
 }
 
+/** A phone or tablet: the screen is what it is and may be held either way, unlike a desk monitor. */
+export function isTouchDevice(platform: string, userAgent: string, touchPoints: number): boolean {
+  return /Android|iPhone|iPad|iPod|Mobi/i.test(userAgent) || (/Mac/.test(platform) && touchPoints > 1);
+}
+
 /** The screen in device pixels: what a wallpaper for it has to measure. */
 export function deviceSize(screen: Size, pixelRatio: number): Size {
   const px = (v: number) => Math.min(MAX_SIZE, Math.max(1, Math.round(v * (pixelRatio || 1))));

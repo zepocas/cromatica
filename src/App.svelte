@@ -35,7 +35,7 @@
     tipsDismissed,
     walkthroughDone,
   } from './ui/tips';
-  import { contextForSize, deviceSize } from './ui/state/device';
+  import { contextForSize, deviceSize, isTouchDevice } from './ui/state/device';
   import Walkthrough from './ui/Walkthrough.svelte';
   import { Walkthrough as WalkthroughState, type Signals } from './ui/state/walkthrough.svelte';
   import Shortcuts from './ui/Shortcuts.svelte';
