@@ -35,7 +35,7 @@
     tipsDismissed,
     walkthroughDone,
   } from './ui/tips';
-  import { contextForSize, isTouchDevice, startSize } from './ui/state/device';
+  import { contextForSize, deviceSize, isTouchDevice } from './ui/state/device';
   import Walkthrough from './ui/Walkthrough.svelte';
   import { Walkthrough as WalkthroughState, type Signals } from './ui/state/walkthrough.svelte';
   import Shortcuts from './ui/Shortcuts.svelte';
@@ -76,7 +76,10 @@
   const history = new History<Step>({ editor: initial.snapshot(), favourites: favourites.items });
   // Class instance (not proxied); $state only so it can be bound down the panel tree.
   let editor = $state(initial);
-  const exportSettings = new ExportSettings();
+  // Starts at this screen's own pixels (a phone as held); `?default` has no screen, so tests get the fixed default size.
+  const exportSettings = new ExportSettings({
+    screen: builtIn ? undefined : deviceSize({ width: screen.width, height: screen.height }, devicePixelRatio),
+  });
   // A first visit gets the walkthrough in place of the tips card; `?default` (tests) gets neither.
   // `?walkthrough` runs it on demand, whatever was stored.
   const firstVisit =
@@ -88,10 +91,8 @@
   });
   if (firstVisit) {
     walkthrough.start();
-    // Starts from the device: the panel folded away and the size of its screen (the OS screen waits for `o`).
+    // The panel starts folded away (the OS screen waits for `o`).
     ui.collapsed = true;
-    const touch = isTouchDevice(navigator.platform, navigator.userAgent, navigator.maxTouchPoints);
-    exportSettings.open(startSize({ width: screen.width, height: screen.height }, devicePixelRatio, touch));
   }
   if (!firstVisit && !builtIn) ui.collapsed = panelFolded() ?? false;
   // Not while the walkthrough runs: it folds and opens the panel itself, and a first visit should not pin that.

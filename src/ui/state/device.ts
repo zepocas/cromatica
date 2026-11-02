@@ -1,7 +1,4 @@
 import { MAX_SIZE } from './export-settings.svelte';
-import { SIZE_PRESETS } from './presets';
-
-const DESKTOP_PRESETS = SIZE_PRESETS.filter((p) => p.group === 'desktop');
 
 export interface Size {
   width: number;
@@ -17,22 +14,6 @@ export function isTouchDevice(platform: string, userAgent: string, touchPoints: 
 export function deviceSize(screen: Size, pixelRatio: number): Size {
   const px = (v: number) => Math.min(MAX_SIZE, Math.max(1, Math.round(v * (pixelRatio || 1))));
   return { width: px(screen.width), height: px(screen.height) };
-}
-
-/**
- * Where a first visit starts. A phone or tablet gets its own screen, as held. A computer gets the smallest
- * desktop preset that covers its screen in both directions, always landscape: rounding up keeps the wallpaper sharp, so a screen
- * between two presets gets the bigger one (the browser reports the screen the window is on). Past the largest
- * preset it gets the largest.
- */
-export function startSize(screen: Size, pixelRatio: number, touch: boolean): Size {
-  const own = deviceSize(screen, pixelRatio);
-  if (touch) return own;
-  const covers = DESKTOP_PRESETS.filter((p) => p.width >= own.width && p.height >= own.height);
-  const pick = covers.length
-    ? covers.reduce((a, b) => (b.width * b.height < a.width * a.height ? b : a))
-    : DESKTOP_PRESETS.reduce((a, b) => (b.width * b.height > a.width * a.height ? b : a));
-  return { width: pick.width, height: pick.height };
 }
 
 /**
