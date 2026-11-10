@@ -463,7 +463,7 @@ Each milestone uses the same structure:
 - ~~Blend: sharper at the top of the slider.~~ Done in M4.5: the far end now reaches near-hard edges (D34).
 - **Light/dark pair** (dropped for good, 2026-10-08, D57, D59): the code stays on the branch `feat/light-dark-pairs`; not planned. The earlier notes on a macOS HEIC script and a "dark colors from an image" drop target are dropped with it.
 - **Technical section** (to evaluate, 2026-10-08, D59): Display P3 output, 16-bit PNG, mozjpeg (WASM) for 4:4:4 JPEG, WebGPU backend, flow-field advection (LIC) and Gabor noise. Performance comes first. Display P3 may matter for gamut, so it needs a real look; the rest wait for a reason.
-- User-saved palettes
+- ~~User-saved palettes~~ Built (2026-11-09, D116, #65): a ♡ row under the colors title, colors only.
 - ~~Mobile authoring~~ Promoted to M15 (2026-10-07; was M12).
 - **Stipple / halftone finish:** moved to M8 (2026-10-05). The ink-blobs look below stays here.
 - **Looks (curated bundles)** (parked 2026-10-05, D47): named presets such as Zine, Dusk or Riso that set pattern, mood, key and finish together, so shuffle could stay inside a look. It would help adoption, but M7's onboarding tips cover most of that for now.

@@ -13,6 +13,7 @@ App.svelte                      owns the state and wires everything together
 │   ├── sections/AdjustSection       warp, finishes, lighting, transform
 │   │   └── adjust/                  PatternAdjust (per pattern kind), FinishGroups (bands, noise, lighting), TransformControls
 │   ├── sections/ColorsSection       color rows, shuffle colors, palette from image
+│   │   └── SavedPalettesRow         ♡ and the saved palettes, under the colors title
 │   ├── sections/FavouritesSection   saved designs
 │   └── ExportBar.svelte             shuffle, more like this, share link, download
 ├── StatusBar.svelte            bottom bar: format, OS context, monitors, zoom
@@ -79,6 +80,7 @@ App.svelte                      owns the state and wires everything together
 | `History`        | `state/history.svelte.ts`         | undo and redo steps                                                        |
 | `Reel`           | `state/reel.svelte.ts`            | the last shuffles, stepped with the arrow keys                             |
 | `Favourites`     | `state/favourites.svelte.ts`      | saved designs in localStorage                                              |
+| `SavedPalettes`  | `state/saved-palettes.svelte.ts`  | saved palettes (colors only) in localStorage                               |
 | `CanvasView`     | `state/view.svelte.ts`            | preview zoom and pan                                                       |
 | `MonitorsState`  | `state/monitors.svelte.ts`        | the multi-monitor preview layout                                           |
 | `ExportSettings` | `state/export-settings.svelte.ts` | output size (preset or custom) and file format                             |

@@ -9,6 +9,7 @@
   import { EditorState, type EditorSnapshot } from './ui/state/editor.svelte';
   import { ExportSettings } from './ui/state/export-settings.svelte';
   import { Favourites, type Favourite } from './ui/state/favourites.svelte';
+  import { SavedPalettes, type SavedPalette } from './ui/state/saved-palettes.svelte';
   import { PanelUi } from './ui/state/panel-ui.svelte';
   import { readScaleChoice } from './ui/state/ui-scale';
   import { History } from './ui/state/history.svelte';
@@ -67,13 +68,19 @@
   const initial = new EditorState({ shuffle: !builtIn && !saved });
   if (saved) initial.setDesign(saved);
   const favourites = new Favourites();
-  /** One undo step covers the design and the favourites list, so a removed favourite comes back. */
+  const savedPalettes = new SavedPalettes();
+  /** One undo step covers the design and both saved lists, so a removed favourite or palette comes back. */
   interface Step {
     editor: EditorSnapshot;
     favourites: Favourite[];
+    palettes: SavedPalette[];
   }
-  const step = (): Step => ({ editor: editor.snapshot(), favourites: favourites.items });
-  const history = new History<Step>({ editor: initial.snapshot(), favourites: favourites.items });
+  const step = (): Step => ({ editor: editor.snapshot(), favourites: favourites.items, palettes: savedPalettes.items });
+  const history = new History<Step>({
+    editor: initial.snapshot(),
+    favourites: favourites.items,
+    palettes: savedPalettes.items,
+  });
   // Class instance (not proxied); $state only so it can be bound down the panel tree.
   let editor = $state(initial);
   // Starts at this screen's own pixels (a phone as held); `?default` has no screen, so tests get the fixed default size.
@@ -254,6 +261,7 @@
     if (!s) return;
     editor.restore(s.editor);
     if (s.favourites !== favourites.items) favourites.restore(s.favourites);
+    if (s.palettes !== savedPalettes.items) savedPalettes.restore(s.palettes);
   }
 
   function enterFullscreen() {
@@ -437,6 +445,7 @@
   <ControlPanel
     bind:editor
     {favourites}
+    {savedPalettes}
     {exportSettings}
     {ui}
     canUndo={history.canUndo}
