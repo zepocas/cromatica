@@ -69,7 +69,7 @@ Decisions made during the architecture review. Reopen one only if new informatio
 ## D12. Palette shuffle belongs to M5 (superseded by D22)
 
 - The curated library, the Curated/Remix/Generate modes, and the colors/layout locks are all part of M5.
-- No user-saved palettes in Phase 1.
+- No user-saved palettes in Phase 1 (added later, D116).
 
 ## D13. Browser storage is a best-effort cache
 
@@ -910,3 +910,10 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **4:4:4 is pinned:** mozjpeg's `auto_subsample` only picks it at high quality, so the call sets `auto_subsample: false, chroma_subsample: 1`. An e2e test reads the frame header of an export (progressive marker, `11,11,11`).
 - **Cost:** the encoder is a 246 KB wasm file (58 KB gzipped) loaded by the export worker only when a JPEG is exported. Vite must not pre-bundle it (`optimizeDeps.exclude`), because the glue finds the .wasm next to itself. Encoding is slower than the browser's.
 - **Unchanged:** the design still travels in the file (D72, D110): the XMP segment is spliced after the JFIF header, which mozjpeg writes too.
+
+## D116. Saved palettes: colors only, a row under the colors title
+
+- **Decision (2026-11-09, user, #65):** a palette can be kept on its own, apart from favourites (which keep a whole design, D45). A ♡ on its own row between the colors title and harmony saves the current colors; saved palettes sit next to it as small swatch chips, newest first. When they don't fit, a › opens the rest in a tray that starts at the › and floats over the preview (user's call: a sideways scroll in the panel was almost unusable). The header was already full, and a dropdown would hide them.
+- **Using one:** a click puts its colors on the current pattern and keeps the layout; hover (or focus) previews it on the canvas. Harmony becomes custom, like a palette from an image (D25). The palette's size wins where the pattern can follow it: mesh points are dropped from the end or added in the emptiest spot, stops are respaced evenly (a palette of the same size keeps the positions), and a grid keeps its nodes and deals the colors over them like a shuffle, with every saved color on at least one node when there are enough. Saved from a ramp, colors are in position order.
+- **♥** means the current colors are already saved (the same set, whatever the order or repeats); clicking it removes them. A × on a chip, shown on hover, removes that one, as in the favourites tray (touch has only the ♥ for now). Undo brings back a removed palette, as it does a favourite.
+- **Stored:** `cromatica.palettes` in localStorage, up to 12, each a list of OKLCH triplets rounded to 4 decimals (at most 25). No design, no thumbnail, no account (D13).

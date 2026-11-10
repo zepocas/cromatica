@@ -33,8 +33,8 @@ import {
   type Warp,
   type WarpShape,
 } from '../../design/design';
-import { randomSeed } from '../../design/random';
-import { gridLayout, shuffleDesign, WARP_SHUFFLE_TABLE } from '../../design/shuffle';
+import { createRng, randomSeed } from '../../design/random';
+import { dealGridColors, gridLayout, shuffleDesign, WARP_SHUFFLE_TABLE } from '../../design/shuffle';
 import { evaluateGrid, forwardMap, prepareGrid, restPoint } from '../../engine/grid';
 import { blobCount, blobDistance, blobOutline, blobReach, prepareBlobs } from '../../engine/blobs';
 import { contourPath } from './contour';
@@ -829,6 +829,69 @@ export class EditorState {
       this.selectedStop = 0;
     }
     this.palette.adopt(null);
+  }
+
+  // ---- Saved palettes -------------------------------------------------------
+
+  /** The active pattern's colors as a palette: stops by position, points and nodes as stored. */
+  get paletteColors(): Oklch[] {
+    const items = this.kind === 'grid' || this.kind === 'mesh' ? this.colorItems : this.stopsByPosition();
+    return items.map(({ color: c }) => [c[0], c[1], c[2]]);
+  }
+
+  private stopsByPosition(): ColorStop[] {
+    return [...this.ramp.stops].sort((a, b) => a.position - b.position);
+  }
+
+  /**
+   * Put a saved palette on the active pattern and keep its layout (D116). The palette's size wins where the
+   * pattern can follow it: points are added or dropped, stops respaced; a grid keeps its nodes and deals the colors.
+   */
+  applyPalette(saved: readonly Oklch[]): void {
+    if (saved.length === 0) return;
+    const colors = saved.map((c): Oklch => [c[0], c[1], c[2]]);
+    const distinct = () => colors.filter((c, i) => colors.findIndex((d) => d.join() === c.join()) === i);
+    if (this.kind === 'grid') {
+      const { nodes, rows, cols } = this.grid;
+      const dealt = colors.length === nodes.length ? colors : this.dealAll(distinct(), rows, cols);
+      nodes.forEach((n, i) => {
+        n.color = dealt[i];
+      });
+    } else if (this.kind === 'mesh') {
+      const list = colors.length > MAX_MESH_POINTS ? distinct().slice(0, MAX_MESH_POINTS) : colors;
+      this.mesh.points.splice(list.length);
+      while (this.mesh.points.length < list.length) this.addColor();
+      this.mesh.points.forEach((p, i) => {
+        p.color = list[i];
+      });
+      this.selectedPoint = Math.min(this.selectedPoint, list.length - 1);
+    } else {
+      let list = colors.length > MAX_STOPS ? distinct().slice(0, MAX_STOPS) : colors;
+      if (list.length < MIN_STOPS) list = [list[0], list[0]];
+      if (list.length === this.ramp.stops.length) {
+        this.stopsByPosition().forEach((s, i) => {
+          s.color = list[i];
+        });
+      } else {
+        this.ramp.stops = list.map((color, k) => ({ position: k / (list.length - 1), color }));
+        this.selectedStop = 0;
+      }
+    }
+    this.palette.adopt(null);
+  }
+
+  /** The shuffle's deal, then each color it left out takes a node from the most repeated one. */
+  private dealAll(palette: Oklch[], rows: number, cols: number): Oklch[] {
+    const out = dealGridColors(createRng(1), palette, rows, cols);
+    const key = (c: Oklch) => c.join();
+    const count = (k: string) => out.filter((c) => key(c) === k).length;
+    for (const missing of palette) {
+      if (count(key(missing)) > 0) continue;
+      const most = key(out.reduce((best, c) => (count(key(c)) > count(key(best)) ? c : best)));
+      if (count(most) < 2) break;
+      out[out.findLastIndex((c) => key(c) === most)] = [...missing];
+    }
+    return out;
   }
 
   // ---- Selection ------------------------------------------------------------

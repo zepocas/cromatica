@@ -782,7 +782,7 @@ export function gridLayout(
 }
 
 /** Palette colors dealt over grid nodes, each unlike its left and lower neighbors where possible. */
-function dealGridColors(rng: Rng, palette: Oklch[], rows: number, cols: number): Oklch[] {
+export function dealGridColors(rng: Rng, palette: Oklch[], rows: number, cols: number): Oklch[] {
   const out: Oklch[] = [];
   for (let i = 0; i < rows * cols; i++) {
     const neighbors = [i % cols > 0 ? out[i - 1] : null, i >= cols ? out[i - cols] : null].filter(

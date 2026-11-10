@@ -8,6 +8,7 @@
   import type { ExportSettings } from './state/export-settings.svelte';
   import type { Favourites } from './state/favourites.svelte';
   import type { PanelUi } from './state/panel-ui.svelte';
+  import type { SavedPalettes } from './state/saved-palettes.svelte';
   import FavouritesSection from './sections/FavouritesSection.svelte';
   import { isFormControl, isHandle, isTypingTarget } from './state/keys';
   import PatternSection from './sections/PatternSection.svelte';
@@ -15,6 +16,7 @@
   interface Props {
     editor: EditorState;
     favourites: Favourites;
+    savedPalettes: SavedPalettes;
     exportSettings: ExportSettings;
     ui: PanelUi;
     canUndo: boolean;
@@ -28,6 +30,7 @@
   let {
     editor = $bindable(),
     favourites,
+    savedPalettes,
     exportSettings,
     ui,
     canUndo,
@@ -175,7 +178,7 @@
     <AdjustSection bind:editor />
     <!-- With spare height these sit at the bottom, above the footer; a full panel scrolls as before. -->
     <div class="bottom">
-      <ColorsSection bind:editor />
+      <ColorsSection bind:editor saved={savedPalettes} />
       <FavouritesSection {favourites} design={editor.design} onopen={(d) => editor.setDesign(d)} />
     </div>
   {/if}

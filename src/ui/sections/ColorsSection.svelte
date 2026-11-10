@@ -8,6 +8,8 @@
   import Lock from '../controls/Lock.svelte';
   import type { EditorState } from '../state/editor.svelte';
   import PaletteSettings from './PaletteSettings.svelte';
+  import SavedPalettesRow from './SavedPalettesRow.svelte';
+  import type { SavedPalettes } from '../state/saved-palettes.svelte';
   import { glow } from '../controls/glow';
   import Section from '../controls/Section.svelte';
   import SelectedColorSettings from './SelectedColorSettings.svelte';
@@ -15,10 +17,11 @@
 
   interface Props {
     editor: EditorState;
+    saved: SavedPalettes;
   }
 
   // Bindable so child bindings into the editor's state pass Svelte's ownership checks.
-  let { editor = $bindable() }: Props = $props();
+  let { editor = $bindable(), saved }: Props = $props();
 
   const RULE_LABELS: Record<HarmonyRule, string> = {
     monochrome: 'monochrome',
@@ -130,6 +133,8 @@
     {/if}
     <input bind:this={fileInput} type="file" accept="image/*" hidden aria-label="Image file" onchange={onImagePicked} />
   {/snippet}
+
+  <SavedPalettesRow {editor} {saved} />
 
   <div class="row">
     <label for="harmony">harmony</label>
