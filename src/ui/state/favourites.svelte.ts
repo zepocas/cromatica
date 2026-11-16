@@ -1,6 +1,7 @@
 import type { Oklch } from '../../color/types';
 import type { Design } from '../../design/design';
 import { loadDesign, saveDesign, type SavedDesign } from '../../design/schema';
+import { newId } from './id';
 
 // Best-effort like the autosave (D13); each entry is a full save, so the
 // schema's migrations apply to favourites too (D45).
@@ -51,7 +52,7 @@ export class Favourites {
   /** Newest first; past the limit the oldest goes. */
   add(design: Design): void {
     if (this.find(design)) return;
-    const item = { id: crypto.randomUUID(), design: saveDesign(design).design };
+    const item = { id: newId(), design: saveDesign(design).design };
     const items = [item, ...this.items];
     this.notice = items.length > FAVOURITES_LIMIT ? `kept the newest ${FAVOURITES_LIMIT}; the oldest was dropped` : '';
     this.items = items.slice(0, FAVOURITES_LIMIT);

@@ -1,4 +1,5 @@
 import type { Oklch } from '../../color/types';
+import { newId } from './id';
 
 // Colors only, local and small (D13, D116): a palette is a few numbers, not a design.
 export const SAVED_PALETTES_KEY = 'cromatica.palettes';
@@ -42,7 +43,7 @@ export class SavedPalettes {
   /** Newest first; past the limit the oldest goes. */
   add(colors: readonly Oklch[]): void {
     if (colors.length === 0 || this.find(colors)) return;
-    const items = [{ id: crypto.randomUUID(), colors: tidy(colors.slice(0, MAX_COLORS)) }, ...this.items];
+    const items = [{ id: newId(), colors: tidy(colors.slice(0, MAX_COLORS)) }, ...this.items];
     this.notice =
       items.length > SAVED_PALETTES_LIMIT ? `kept the newest ${SAVED_PALETTES_LIMIT}; the oldest was dropped` : '';
     this.items = items.slice(0, SAVED_PALETTES_LIMIT);

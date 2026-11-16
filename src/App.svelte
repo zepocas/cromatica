@@ -224,6 +224,11 @@
     clearTimeout(toastTimer);
     try {
       const url = await shareUrl(renderDesign);
+      // The clipboard API is secure-context only; over plain HTTP the prompt leaves the link selected to copy.
+      if (!navigator.clipboard) {
+        window.prompt('Copy this link', url);
+        return;
+      }
       await navigator.clipboard.writeText(url);
       notice =
         url.length > LONG_LINK
