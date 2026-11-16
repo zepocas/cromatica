@@ -119,10 +119,11 @@ export async function centerOf(locator: Locator): Promise<[number, number]> {
 export function previewProbe(page: Page) {
   const canvas = page.getByTestId('preview-canvas');
   const settled = async () => {
+    // The tray is display:none, not hidden: its SVG filters still paint a few pixels into the shot otherwise.
     await expect(canvas).toHaveAttribute('data-settled', 'true');
     return canvas.screenshot({
       style:
-        'aside, [data-testid="mesh-overlay"], [data-testid="planes-overlay"], [data-testid="context-overlay"], [data-testid="monitors-overlay"], [data-testid="monitors-panel"], [data-testid="favourites-tray"] { visibility: hidden; }',
+        'aside, [data-testid="mesh-overlay"], [data-testid="planes-overlay"], [data-testid="context-overlay"], [data-testid="monitors-overlay"], [data-testid="monitors-panel"] { visibility: hidden; } [data-testid="favourites-tray"] { display: none; }',
     });
   };
   /** Poll until the settled preview differs from `before`. */
