@@ -4,6 +4,8 @@
   import { FAVOURITES_LIMIT, swatchesOf, type Favourites } from '../state/favourites.svelte';
   import { glow } from '../controls/glow';
   import Section from '../controls/Section.svelte';
+  import ShapeIcon from '../controls/ShapeIcon.svelte';
+  import { PATTERN_ICONS, WARP_ICONS } from '../controls/shapeIcons';
   import { currentScale } from '../state/ui-scale';
 
   interface Props {
@@ -95,8 +97,14 @@
               title="Open this {fav.design.base.kind} design"
               onclick={() => onopen(fav.design)}
             >
+              <span class="marks">
+                <ShapeIcon body={PATTERN_ICONS[fav.design.base.kind] ?? ''} />
+                {#if fav.design.warp.shape !== 'none'}
+                  <ShapeIcon body={WARP_ICONS[fav.design.warp.shape]} />
+                {/if}
+              </span>
               {#each swatchesOf(fav.design) as color, j (j)}
-                <span style:background={oklchToHex(color)}></span>
+                <span class="swatch" style:background={oklchToHex(color)}></span>
               {/each}
             </button>
             <button
@@ -168,13 +176,25 @@
   .pick {
     display: flex;
     flex-direction: column;
-    width: 26px;
-    height: 64px;
+    width: 30px;
+    height: 106px;
     padding: 0;
     outline: 1px solid var(--rule);
   }
-  .pick > span {
+  .swatch {
     flex: 1;
+  }
+  /* Room for both icons even with no warp, so every strip starts at the same height. */
+  .marks {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 4px;
+    box-sizing: border-box;
+    padding-bottom: 5px;
+    height: 42px;
+    color: var(--ink);
   }
   .current .pick {
     outline: 2px solid var(--ink);

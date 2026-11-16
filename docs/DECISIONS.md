@@ -917,3 +917,9 @@ Decisions made during the architecture review. Reopen one only if new informatio
 - **Using one:** a click puts its colors on the current pattern and keeps the layout; hover (or focus) previews it on the canvas. Harmony becomes custom, like a palette from an image (D25). The palette's size wins where the pattern can follow it: mesh points are dropped from the end or added in the emptiest spot, stops are respaced evenly (a palette of the same size keeps the positions), and a grid keeps its nodes and deals the colors over them like a shuffle, with every saved color on at least one node when there are enough. Saved from a ramp, colors are in position order.
 - **♥** means the current colors are already saved (the same set, whatever the order or repeats); clicking it removes them. A × on a chip, shown on hover, removes that one, as in the favourites tray (touch has only the ♥ for now). Undo brings back a removed palette, as it does a favourite.
 - **Stored:** `cromatica.palettes` in localStorage, up to 12, each a list of OKLCH triplets rounded to 4 decimals (at most 25). No design, no thumbnail, no account (D13).
+
+## D117. Favourites show the pattern and warp above the color strip
+
+- **Decision (2026-11-16, user, #140):** each favourite chip has up to two small glyphs above its color strip: the pattern (ramp shape or base kind) and the warp shape, the latter only when a warp is on. They reuse the pattern and warp icons of the panel.
+- **Why:** since palettes can be saved on their own (D116), a strip of colors no longer says that a favourite keeps the whole design. Above the strip, because over it the glyphs would sit on arbitrary colors.
+- **Cost:** none stored; both values are already in the saved design. The glyph area always has room for two, so strips line up across chips.
